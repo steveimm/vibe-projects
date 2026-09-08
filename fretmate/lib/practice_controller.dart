@@ -1,22 +1,28 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 
 import 'audio/audio_services.dart';
 import 'audio/click_track.dart';
 import 'audio/pitch_detector.dart';
+import 'tuning.dart';
 
 const _tunerDiagnostics = kDebugMode && bool.fromEnvironment('TUNER_DIAGNOSTICS');
 
-PitchEstimate? _analyzeFrame(({Float64List samples, double? previousFrequency, bool diagnostics}) frame) =>
-    analyzePitch(
-      frame.samples,
-      previousFrequency: frame.previousFrequency,
-      onDiagnostic: frame.diagnostics ? debugPrint : null,
-    );
+PitchEstimate? _analyzeFrame(
+  ({Float64List samples, double? previousFrequency, double minimum, double maximum, bool diagnostics}) frame,
+) => analyzePitch(
+  frame.samples,
+  previousFrequency: frame.previousFrequency,
+  minFrequency: frame.minimum,
+  maxFrequency: frame.maximum,
+  onDiagnostic: frame.diagnostics ? debugPrint : null,
+);
 
 class PracticeController extends ChangeNotifier {
   PracticeController({required this.microphone, required this.clicks}) {
+    _toneSubscription = clicks.toneEnds.listen(_endReferenceTone);
     _beatSubscription = clicks.beats.listen((value) {
       if (value == null) {
         playing = false;
@@ -34,10 +40,17 @@ class PracticeController extends ChangeNotifier {
   final Stopwatch _clock = Stopwatch()..start();
   final PitchTracker _pitchTracker = PitchTracker();
   late final StreamSubscription<int?> _beatSubscription;
+  late final StreamSubscription<int> _toneSubscription;
   StreamSubscription<Object?>? _microphoneSubscription;
   Future<void> _pending = Future.value();
   Timer? _stalePitch;
   int _epoch = 0;
+  int _tuningRevision = 0;
+  int _referenceRequest = 0;
+  int? _activeToneId;
+  int _ignoreMicrophoneUntil = 0;
+  int? _selectedStringNumber;
+  List<GuitarString> _strings = standardStrings;
   int _operations = 0;
   int _lastPitchLog = 0;
   bool _analyzing = false;
@@ -48,7 +61,6 @@ class PracticeController extends ChangeNotifier {
   bool listening = false;
   bool playing = false;
   double? frequency;
-  GuitarString? selectedString;
   String? error;
   int bpm = 100;
   int beatsPerBar = 4;
@@ -57,9 +69,24 @@ class PracticeController extends ChangeNotifier {
   int? beat;
 
   bool get busy => _operations > 0;
-  GuitarString? get target => selectedString ?? (frequency == null ? null : nearestString(frequency!));
+  bool get referencePlaying => _activeToneId != null;
+  bool get _ignoreMicrophone => referencePlaying || _clock.elapsedMilliseconds < _ignoreMicrophoneUntil;
+  List<GuitarString> get strings => _strings;
+  TuningPreset? get tuning => matchingTuning(_strings);
+  String get tuningName => tuning?.name ?? 'Custom';
+  String get tuningNotes => _strings.map((string) => string.note).join();
+  GuitarString? get selectedString => _selectedStringNumber == null ? null : _strings[6 - _selectedStringNumber!];
+  GuitarString? get target =>
+      selectedString ?? (frequency == null ? null : nearestString(frequency!, strings: _strings));
   double? get cents => frequency == null || target == null ? null : centsBetween(frequency!, target!.frequency);
   bool get inTune => cents != null && cents!.abs() <= 5;
+  ({double minimum, double maximum}) get pitchRange {
+    final frequencies = _strings.map((string) => string.frequency);
+    return (
+      minimum: math.min(65, frequencies.reduce(math.min) / math.pow(2, 2 / 12)),
+      maximum: math.max(400, frequencies.reduce(math.max) * math.pow(2, 2 / 12)),
+    );
+  }
 
   void _notify() {
     if (!_disposed) notifyListeners();
@@ -103,7 +130,73 @@ class PracticeController extends ChangeNotifier {
   }
 
   void selectString(GuitarString? value) {
-    selectedString = value;
+    _cancelReferenceTone();
+    _selectedStringNumber = value?.number;
+    _notify();
+  }
+
+  Future<void> lockAndPlayString(GuitarString string) {
+    selectString(string);
+    final request = ++_referenceRequest;
+    return _enqueue(() async {
+      if (!_foreground || tab != 0 || request != _referenceRequest) return;
+      error = null;
+      _activeToneId = request;
+      _tuningRevision++;
+      _clearPitch();
+      _notify();
+      if (_tunerDiagnostics) debugPrint('Reference: start id=$request note=${selectedString!.label}');
+      await clicks.playTone(selectedString!.frequency, requestId: request, requestFocus: !listening);
+      if (!_foreground || _disposed || tab != 0 || request != _referenceRequest) {
+        await clicks.stop();
+        _endReferenceTone(request);
+      }
+    });
+  }
+
+  void _endReferenceTone(int request) {
+    if (_activeToneId != request) return;
+    _activeToneId = null;
+    _ignoreMicrophoneUntil = _clock.elapsedMilliseconds + 300;
+    if (_tunerDiagnostics) debugPrint('Reference: end id=$request');
+    _notify();
+  }
+
+  void _cancelReferenceTone() {
+    _referenceRequest++;
+    final active = _activeToneId;
+    if (active == null) return;
+    unawaited(
+      _enqueue(() async {
+        if (_activeToneId != active) return;
+        await clicks.stop();
+        _endReferenceTone(active);
+      }),
+    );
+  }
+
+  void _clearPitch() {
+    frequency = null;
+    _pitchTracker.reset();
+    _stalePitch?.cancel();
+  }
+
+  void selectTuning(TuningPreset preset) => _setStrings(preset.strings);
+
+  void adjustString(int number, int semitones) {
+    final index = 6 - number;
+    final note = (_strings[index].midiNote + semitones).clamp(minimumTuningNote, maximumTuningNote);
+    if (note == _strings[index].midiNote) return;
+    final updated = _strings.toList();
+    updated[index] = GuitarString(number, note);
+    _setStrings(updated);
+  }
+
+  void _setStrings(List<GuitarString> value) {
+    _cancelReferenceTone();
+    _strings = List.unmodifiable(value);
+    _tuningRevision++;
+    _clearPitch();
     _notify();
   }
 
@@ -123,14 +216,24 @@ class PracticeController extends ChangeNotifier {
     _microphoneSubscription = stream.listen(
       (bytes) {
         for (final frame in decoder.add(bytes)) {
-          if (_analyzing || !listening) continue;
+          if (_analyzing || !listening || _ignoreMicrophone) continue;
           _analyzing = true;
           final now = _clock.elapsedMilliseconds;
           final logPitch = _tunerDiagnostics && now - _lastPitchLog >= 250;
           if (logPitch) _lastPitchLog = now;
-          compute(_analyzeFrame, (samples: frame, previousFrequency: frequency, diagnostics: logPitch))
+          final revision = _tuningRevision;
+          final range = pitchRange;
+          compute(_analyzeFrame, (
+                samples: frame,
+                previousFrequency: frequency,
+                minimum: range.minimum,
+                maximum: range.maximum,
+                diagnostics: logPitch,
+              ))
               .then((pitch) {
-                if (!_disposed && listening && session == _epoch) _acceptPitch(pitch);
+                if (!_disposed && listening && !_ignoreMicrophone && session == _epoch && revision == _tuningRevision) {
+                  _acceptPitch(pitch);
+                }
               })
               .catchError((Object error) {
                 if (session == _epoch) _audioError('Could not analyze the microphone. Tap Listen to try again.');
@@ -229,12 +332,12 @@ class PracticeController extends ChangeNotifier {
 
   Future<void> _stopAudio() async {
     _epoch++;
+    _referenceRequest++;
+    if (_activeToneId != null) _endReferenceTone(_activeToneId!);
     listening = false;
     playing = false;
-    frequency = null;
     beat = null;
-    _pitchTracker.reset();
-    _stalePitch?.cancel();
+    _clearPitch();
     await _microphoneSubscription?.cancel();
     _microphoneSubscription = null;
     try {
@@ -261,6 +364,7 @@ class PracticeController extends ChangeNotifier {
       _pending
           .then((_) async {
             await _beatSubscription.cancel();
+            await _toneSubscription.cancel();
             try {
               await _stopAudio();
             } finally {

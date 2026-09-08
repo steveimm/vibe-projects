@@ -5,6 +5,7 @@ import 'package:record/record.dart';
 
 import 'click_track.dart';
 import 'pitch_detector.dart';
+import 'reference_tone.dart';
 
 class MicrophonePermissionDenied implements Exception {}
 
@@ -65,7 +66,9 @@ class DeviceMicrophone implements MicrophoneInput {
 
 abstract class ClickOutput {
   Stream<int?> get beats;
+  Stream<int> get toneEnds;
   Future<void> start({required int bpm, required int beats, required bool accent, required double volume});
+  Future<void> playTone(double frequency, {required int requestId, bool requestFocus = true});
   Future<void> stop();
   Future<void> dispose();
 }
@@ -75,15 +78,31 @@ class AndroidClickOutput implements ClickOutput {
     _channel.setMethodCallHandler((call) async {
       if (call.method == 'beat') _beats.add(call.arguments as int);
       if (call.method == 'stopped') _beats.add(null);
+      if (call.method == 'toneEnded') _toneEnds.add(call.arguments as int);
     });
   }
 
   static const _channel = MethodChannel('id.steveimm.fretmate/metronome');
   final _beats = StreamController<int?>.broadcast();
+  final _toneEnds = StreamController<int>.broadcast();
   bool _started = false;
 
   @override
   Stream<int?> get beats => _beats.stream;
+
+  @override
+  Stream<int> get toneEnds => _toneEnds.stream;
+
+  @override
+  Future<void> playTone(double frequency, {required int requestId, bool requestFocus = true}) async {
+    await _channel.invokeMethod<void>('playTone', {
+      'pcm': ReferenceTone(frequency).pcm,
+      'requestId': requestId,
+      'requestFocus': requestFocus,
+      'volume': 0.7,
+    });
+    _started = true;
+  }
 
   @override
   Future<void> start({required int bpm, required int beats, required bool accent, required double volume}) async {
@@ -109,5 +128,6 @@ class AndroidClickOutput implements ClickOutput {
     await stop();
     _channel.setMethodCallHandler(null);
     await _beats.close();
+    await _toneEnds.close();
   }
 }

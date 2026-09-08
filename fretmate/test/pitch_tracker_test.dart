@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fretmate/audio/pitch_detector.dart';
+import 'package:fretmate/tuning.dart';
 
 void main() {
   test('repeated pluck swings are reduced equally at different pitches', () {

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fretmate/audio/pitch_detector.dart';
+import 'package:fretmate/tuning.dart';
 
 void main() {
   for (final string in standardStrings) {

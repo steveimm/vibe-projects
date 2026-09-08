@@ -1,37 +1,13 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import '../tuning.dart';
+
 const tunerSampleRate = 22050;
 const tunerFrameSize = 4096;
 const tunerReliableConfidence = 0.85;
 
 typedef PitchEstimate = ({double frequency, double confidence});
-
-class GuitarString {
-  const GuitarString(this.number, this.note, this.octave, this.frequency);
-
-  final int number;
-  final String note;
-  final int octave;
-  final double frequency;
-
-  String get label => '$note$octave';
-}
-
-const standardStrings = [
-  GuitarString(6, 'E', 2, 82.4069),
-  GuitarString(5, 'A', 2, 110),
-  GuitarString(4, 'D', 3, 146.8324),
-  GuitarString(3, 'G', 3, 195.9977),
-  GuitarString(2, 'B', 3, 246.9417),
-  GuitarString(1, 'E', 4, 329.6276),
-];
-
-double centsBetween(double frequency, double target) => 1200 * math.log(frequency / target) / math.ln2;
-
-GuitarString nearestString(double frequency) => standardStrings.reduce((a, b) {
-  return centsBetween(frequency, a.frequency).abs() < centsBetween(frequency, b.frequency).abs() ? a : b;
-});
 
 double? detectPitch(Float64List samples, {void Function(String message)? onDiagnostic}) =>
     analyzePitch(samples, onDiagnostic: onDiagnostic)?.frequency;

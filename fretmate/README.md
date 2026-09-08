@@ -5,7 +5,8 @@ A Flutter guitar tuner and metronome for Android 15 and newer. Organization: `id
 ## Features
 
 - Microphone tuner with automatic string detection or manual string locking, measured frequency, and a cents meter. Readings within ±5 cents show “In tune.”
-- Standard six-string tuning with A4 = 440 Hz.
+- Six-string preset dropdown and per-string semitone controls, with A4 = 440 Hz. Matching note combinations show the preset name, otherwise the header shows Custom.
+- Tapping a string locks it and plays a 1.2-second reference tone. Repeated taps replay the tone, and a new string replaces the previous tone. Reference playback does not require microphone permission.
 - Audible metronome from 40–240 BPM, tap tempo, 2/3/4/6 beats per bar, optional first-beat accent, volume, and beat indicators.
 - Switching tools, backgrounding the app, or losing audio focus stops the relevant audio. Resume is manual. Microphone access is requested only after tapping Listen.
 - Audio stays in memory on the device. No recordings are saved, and no account, server, downloaded assets, or runtime internet connection is needed.
@@ -19,7 +20,11 @@ A Flutter guitar tuner and metronome for Android 15 and newer. Organization: `id
 | 2 | B3 | 246.94 Hz |
 | 1 (highest) | E4 | 329.63 Hz |
 
-Pluck one open string at a time and let it ring. Auto selects the nearest standard string by pitch distance. Select a string manually when the instrument is far out of tune. Pitch estimation is independent of the tuning targets and uses a configurable frequency range, currently 65–400 Hz. Weaker readings need two consecutive frames to agree before being displayed. Changing an established note needs three agreeing frames. Within a note, median filtering and gradual smoothing in cents reduce needle movement without snapping to the tuning target. The detector does not analyze chords.
+Pluck one open string at a time and let it ring. Auto selects the nearest string in the current tuning by pitch distance. Select a string manually when the instrument is far out of tune. Pitch estimation is independent of the tuning targets. Standard tuning uses the existing 65–400 Hz range. Alternate targets extend that range when needed, leaving two semitones of room beyond the lowest and highest targets. Weaker readings need two consecutive frames to agree before being displayed. Changing an established note needs three agreeing frames. Within a note, median filtering and gradual smoothing in cents reduce needle movement without snapping to the tuning target. The detector does not analyze chords.
+
+The dropdown includes 26 presets: standard, E♭/D/C♯/C/B/A standard, Drop D/C♯/C/B/B♭/A, Double Drop D, DADGAD, Open D/G/C/E/A, Open D/G/C/E minor, Nashville, and New standard. Note and octave definitions follow the [Peterson Guided Tuning reference](https://www.petersontuners.com/media/pdf/Guided%20Tuning%20Manual.pdf). Accidentals are displayed with sharp spellings, including their flat equivalents. Manual target adjustments cover C1–C6 and keep Auto or the current string lock. Preset matching includes octaves, not just note letters. Changing targets clears the old pitch reading without restarting the microphone. Tuning selection is kept when switching tools but resets when the app process restarts.
+
+During reference playback, pitch analysis skips microphone frames and discards in-flight readings. Detection resumes 300 ms after playback ends, without restarting an active microphone. Auto, target edits, preset changes, tool changes, and backgrounding cancel reference playback. Tone volume follows the phone's media volume, with a fixed 0.7 playback gain.
 
 ## Development
 
@@ -56,10 +61,12 @@ The debug APK will be under `build/app/outputs/flutter-apk/`. Release signing cu
 
 - `lib/main.dart` and `lib/ui/`: Material interface, accessible controls, scrollable layouts, and lifecycle handling.
 - `lib/practice_controller.dart`: serialized audio actions, session cancellation, pitch smoothing, stale reading expiry, and UI state.
+- `lib/tuning.dart`: semitone-based string targets, frequencies, preset definitions, and tuning-name recognition.
 - `lib/audio/pitch_detector.dart`: PCM16 framing, low-pass noise filtering, and YIN pitch detection. Each 4,096-sample frame is analyzed in a background Dart isolate, with backpressure to avoid queued stale frames.
 - `lib/audio/audio_services.dart`: microphone capture through [`record`](https://pub.dev/packages/record) and the Android metronome channel.
 - `lib/audio/click_track.dart`: generated PCM clicks, bar construction, and tap tempo. Tempo changes restart the bar. No audio assets are required.
-- `android/app/src/main/kotlin/id/steveimm/fretmate/MetronomeAudio.kt`: an Android [`AudioTrack`](https://developer.android.com/reference/android/media/AudioTrack) static buffer loop, playback-position beat callbacks, and [audio focus handling](https://developer.android.com/media/optimize/audio-focus). Click timing is driven by audio frames. Visual callbacks can lag with device output latency.
+- `lib/audio/reference_tone.dart`: generated reference-tone PCM with short fades and quiet harmonics.
+- `android/app/src/main/kotlin/id/steveimm/fretmate/MetronomeAudio.kt`: Android [`AudioTrack`](https://developer.android.com/reference/android/media/AudioTrack) playback for looping clicks and one-shot reference tones, playback-position callbacks, and [audio focus handling](https://developer.android.com/media/optimize/audio-focus). Click timing is driven by audio frames. Visual callbacks can lag with device output latency.
 - `test/`: synthetic guitar pitch signals with harmonics/noise/detuning, PCM chunk boundaries, click timing and accents, tap tempo, audio failures, cancellation races, and widget controls/layouts. Device audio is replaced with fakes in these tests.
 
 ## Remaining device checks
