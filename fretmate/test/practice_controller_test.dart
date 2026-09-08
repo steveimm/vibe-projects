@@ -43,6 +43,64 @@ void main() {
     expect(controller.listening, isTrue);
   });
 
+  for (final string in standardStrings.take(2)) {
+    test('weak ${string.label} readings need agreement before selecting the string', () async {
+      await controller.toggleTuner();
+      final detected = Completer<void>();
+      final random = math.Random(42);
+      var framesSent = 0;
+      int? firstDetectionFrame;
+      controller.addListener(() {
+        if (controller.frequency != null && !detected.isCompleted) {
+          firstDetectionFrame = framesSent;
+          detected.complete();
+        }
+      });
+      final timer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+        final pcm = ByteData(tunerFrameSize * 2);
+        for (var i = 0; i < tunerFrameSize; i++) {
+          final phase = 2 * math.pi * string.frequency * (framesSent * tunerFrameSize + i) / tunerSampleRate;
+          final sample = 0.006 * math.sin(phase) + 0.035 * (random.nextDouble() - 0.5);
+          pcm.setInt16(i * 2, (sample * 32768).round(), Endian.little);
+        }
+        framesSent++;
+        microphone.stream.add(pcm.buffer.asUint8List());
+        if (framesSent == 4) timer.cancel();
+      });
+      addTearDown(timer.cancel);
+      await detected.future.timeout(const Duration(seconds: 5));
+      expect(firstDetectionFrame, greaterThanOrEqualTo(2));
+      expect(controller.target, string);
+    });
+  }
+
+  test('a short false lower pitch expires without changing the displayed string', () async {
+    await controller.toggleTuner();
+    final expired = Completer<void>();
+    final readings = <double>[];
+    controller.addListener(() {
+      final pitch = controller.frequency;
+      if (pitch != null) readings.add(pitch);
+      if (readings.isNotEmpty && pitch == null && !expired.isCompleted) expired.complete();
+    });
+    const frequencies = [196.0, 196.0, 65.5, 65.5, 0.0];
+    var framesSent = 0;
+    final timer = Timer.periodic(const Duration(milliseconds: 180), (timer) {
+      final pcm = ByteData(tunerFrameSize * 2);
+      final pitch = frequencies[framesSent++];
+      for (var i = 0; i < tunerFrameSize; i++) {
+        pcm.setInt16(i * 2, (1600 * math.sin(2 * math.pi * pitch * i / tunerSampleRate)).round(), Endian.little);
+      }
+      microphone.stream.add(pcm.buffer.asUint8List());
+      if (framesSent == frequencies.length) timer.cancel();
+    });
+    addTearDown(timer.cancel);
+    await expired.future.timeout(const Duration(seconds: 4));
+    expect(readings, isNotEmpty);
+    expect(readings, everyElement(closeTo(196, 0.2)));
+    expect(controller.target, isNull);
+  });
+
   test('permission denial keeps the microphone off and allows retry', () async {
     microphone.permission = false;
     await controller.toggleTuner();

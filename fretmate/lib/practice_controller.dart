@@ -6,6 +6,15 @@ import 'audio/audio_services.dart';
 import 'audio/click_track.dart';
 import 'audio/pitch_detector.dart';
 
+const _tunerDiagnostics = kDebugMode && bool.fromEnvironment('TUNER_DIAGNOSTICS');
+
+PitchEstimate? _analyzeFrame(({Float64List samples, double? previousFrequency, bool diagnostics}) frame) =>
+    analyzePitch(
+      frame.samples,
+      previousFrequency: frame.previousFrequency,
+      onDiagnostic: frame.diagnostics ? debugPrint : null,
+    );
+
 class PracticeController extends ChangeNotifier {
   PracticeController({required this.microphone, required this.clicks}) {
     _beatSubscription = clicks.beats.listen((value) {
@@ -23,13 +32,14 @@ class PracticeController extends ChangeNotifier {
   final ClickOutput clicks;
   final TapTempo _tapTempo = TapTempo();
   final Stopwatch _clock = Stopwatch()..start();
-  final List<double> _recentPitches = [];
+  final PitchTracker _pitchTracker = PitchTracker();
   late final StreamSubscription<int?> _beatSubscription;
   StreamSubscription<Object?>? _microphoneSubscription;
   Future<void> _pending = Future.value();
   Timer? _stalePitch;
   int _epoch = 0;
   int _operations = 0;
+  int _lastPitchLog = 0;
   bool _analyzing = false;
   bool _foreground = true;
   bool _disposed = false;
@@ -115,7 +125,10 @@ class PracticeController extends ChangeNotifier {
         for (final frame in decoder.add(bytes)) {
           if (_analyzing || !listening) continue;
           _analyzing = true;
-          compute(detectPitch, frame)
+          final now = _clock.elapsedMilliseconds;
+          final logPitch = _tunerDiagnostics && now - _lastPitchLog >= 250;
+          if (logPitch) _lastPitchLog = now;
+          compute(_analyzeFrame, (samples: frame, previousFrequency: frequency, diagnostics: logPitch))
               .then((pitch) {
                 if (!_disposed && listening && session == _epoch) _acceptPitch(pitch);
               })
@@ -134,17 +147,19 @@ class PracticeController extends ChangeNotifier {
     );
   });
 
-  void _acceptPitch(double? pitch) {
+  void _acceptPitch(PitchEstimate? estimate) {
+    final pitch = _pitchTracker.add(estimate);
     if (pitch == null) return;
-    if (_recentPitches.isNotEmpty && centsBetween(pitch, _recentPitches.last).abs() > 80) _recentPitches.clear();
-    _recentPitches.add(pitch);
-    if (_recentPitches.length > 3) _recentPitches.removeAt(0);
-    final sorted = [..._recentPitches]..sort();
-    frequency = sorted[sorted.length ~/ 2];
+    frequency = pitch;
+    if (_tunerDiagnostics) {
+      debugPrint(
+        'Tuner: displayed=${frequency!.toStringAsFixed(2)} string=${target?.number} confidence=${estimate!.confidence.toStringAsFixed(3)}',
+      );
+    }
     _stalePitch?.cancel();
     _stalePitch = Timer(const Duration(milliseconds: 600), () {
       frequency = null;
-      _recentPitches.clear();
+      _pitchTracker.reset();
       _notify();
     });
     _notify();
@@ -218,7 +233,7 @@ class PracticeController extends ChangeNotifier {
     playing = false;
     frequency = null;
     beat = null;
-    _recentPitches.clear();
+    _pitchTracker.reset();
     _stalePitch?.cancel();
     await _microphoneSubscription?.cancel();
     _microphoneSubscription = null;

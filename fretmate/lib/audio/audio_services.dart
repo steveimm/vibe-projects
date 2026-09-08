@@ -30,7 +30,7 @@ class DeviceMicrophone implements MicrophoneInput {
         sampleRate: tunerSampleRate,
         numChannels: 1,
         streamBufferSize: 2048,
-        androidConfig: AndroidRecordConfig(manageBluetooth: false, audioSource: AndroidAudioSource.mic),
+        androidConfig: AndroidRecordConfig(manageBluetooth: false, audioSource: AndroidAudioSource.unprocessed),
       ),
     );
     final stream = StreamController<Uint8List>.broadcast();

@@ -19,7 +19,7 @@ A Flutter guitar tuner and metronome for Android 15 and newer. Organization: `id
 | 2 | B3 | 246.94 Hz |
 | 1 (highest) | E4 | 329.63 Hz |
 
-Pluck one open string at a time and let it ring. Auto selects the nearest standard string by pitch distance. Select a string manually when the instrument is far out of tune. The detector covers 65–400 Hz and does not analyze chords.
+Pluck one open string at a time and let it ring. Auto selects the nearest standard string by pitch distance. Select a string manually when the instrument is far out of tune. Pitch estimation is independent of the tuning targets and uses a configurable frequency range, currently 65–400 Hz. Weaker readings need two consecutive frames to agree before being displayed. Changing an established note needs three agreeing frames. Within a note, median filtering and gradual smoothing in cents reduce needle movement without snapping to the tuning target. The detector does not analyze chords.
 
 ## Development
 
@@ -56,7 +56,7 @@ The debug APK will be under `build/app/outputs/flutter-apk/`. Release signing cu
 
 - `lib/main.dart` and `lib/ui/`: Material interface, accessible controls, scrollable layouts, and lifecycle handling.
 - `lib/practice_controller.dart`: serialized audio actions, session cancellation, pitch smoothing, stale reading expiry, and UI state.
-- `lib/audio/pitch_detector.dart`: PCM16 framing and YIN pitch detection. Each 2,048-sample frame is analyzed in a background Dart isolate, with backpressure to avoid queued stale frames.
+- `lib/audio/pitch_detector.dart`: PCM16 framing, low-pass noise filtering, and YIN pitch detection. Each 4,096-sample frame is analyzed in a background Dart isolate, with backpressure to avoid queued stale frames.
 - `lib/audio/audio_services.dart`: microphone capture through [`record`](https://pub.dev/packages/record) and the Android metronome channel.
 - `lib/audio/click_track.dart`: generated PCM clicks, bar construction, and tap tempo. Tempo changes restart the bar. No audio assets are required.
 - `android/app/src/main/kotlin/id/steveimm/fretmate/MetronomeAudio.kt`: an Android [`AudioTrack`](https://developer.android.com/reference/android/media/AudioTrack) static buffer loop, playback-position beat callbacks, and [audio focus handling](https://developer.android.com/media/optimize/audio-focus). Click timing is driven by audio frames. Visual callbacks can lag with device output latency.
