@@ -21,6 +21,28 @@ void main() {
   });
   tearDown(() => controller.dispose());
 
+  test('live metronome changes retain the current beat without a busy flash', () async {
+    await controller.selectTab(1);
+    await controller.toggleMetronome();
+    clicks.events.add(2);
+    await Future<void>.delayed(Duration.zero);
+    controller.setTempo(300);
+    controller.setBeats(6);
+    controller.setAccent(false);
+    expect(controller.busy, isFalse);
+    await controller.applyMetronomeSettings();
+    expect(controller.playing, isTrue);
+    expect(controller.beat, 2);
+    expect(clicks.settings, (bpm: 300, beats: 6, accent: false, volume: 0.7));
+    controller.setTempo(1);
+    await controller.applyMetronomeSettings();
+    expect(clicks.settings!.bpm, 20);
+    expect(controller.beat, 2);
+    controller.setTempo(999);
+    expect(controller.bpm, 300);
+    await controller.applyMetronomeSettings();
+  });
+
   test('locking plays the current target and tapping again replays it', () async {
     controller.adjustString(6, -2);
     final string = controller.strings.first;

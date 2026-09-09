@@ -25,6 +25,7 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
     private var track: AudioTrack? = null
     private var focusRequest: AudioFocusRequest? = null
     private var toneId: Int? = null
+    private var metronome: StreamingMetronome? = null
     private val fadingTones = mutableListOf<FadingTone>()
     private val pendingStops = mutableListOf<MethodChannel.Result>()
 
@@ -40,9 +41,8 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
                     val framesPerBeat = requireNotNull(call.argument<Int>("framesPerBeat"))
                     val beats = requireNotNull(call.argument<Int>("beats"))
                     val volume = requireNotNull(call.argument<Double>("volume"))
-                    require(framesPerBeat in 11025..66150 && beats in 1..6)
-                    require(pcm.size == framesPerBeat * beats * 2 && volume in 0.0..1.0)
-                    start(pcm, volume.toFloat(), framesPerBeat, beats)
+                    require(volume in 0.0..1.0)
+                    startMetronome(MetronomeConfig(pcm, framesPerBeat, beats), volume.toFloat())
                     result.success(null)
                 }
                 "playTone" -> {
@@ -51,7 +51,7 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
                     val requestFocus = requireNotNull(call.argument<Boolean>("requestFocus"))
                     val volume = requireNotNull(call.argument<Double>("volume"))
                     require(pcm.size in 2..441000 && pcm.size % 2 == 0 && volume in 0.0..1.0)
-                    start(pcm, volume.toFloat(), requestId = requestId, requestFocus = requestFocus)
+                    start(pcm, volume.toFloat(), requestId, requestFocus)
                     result.success(null)
                 }
                 "stop" -> fadeOutAndStop(result)
@@ -63,18 +63,9 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
         }
     }
 
-    private fun start(
-        pcm: ByteArray,
-        volume: Float,
-        framesPerBeat: Int? = null,
-        beats: Int = 0,
-        requestId: Int? = null,
-        requestFocus: Boolean = true,
-    ) {
-        if (requestId == null || (track != null && toneId == null)) stop(notify = false)
-        // An active recorder already owns focus and handles interruptions for the app.
-        if (requestFocus && focusRequest == null) {
-            val focusGain = if (requestId == null) AudioManager.AUDIOFOCUS_GAIN else AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+    private fun acquireFocus(transient: Boolean) {
+        if (focusRequest == null) {
+            val focusGain = if (transient) AudioManager.AUDIOFOCUS_GAIN_TRANSIENT else AudioManager.AUDIOFOCUS_GAIN
             val request = AudioFocusRequest.Builder(focusGain)
                 .setAudioAttributes(attributes)
                 .setOnAudioFocusChangeListener({ change ->
@@ -86,6 +77,32 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
                 "Another app is using audio. Try again when it finishes."
             }
         }
+    }
+
+    private fun startMetronome(config: MetronomeConfig, volume: Float) {
+        metronome?.let {
+            it.update(config, volume)
+            return
+        }
+        stop(notify = false)
+        acquireFocus(transient = false)
+        lateinit var output: StreamingMetronome
+        output = StreamingMetronome(attributes, handler, config,
+            onBeat = { if (metronome === output) channel.invokeMethod("beat", it) },
+            onError = {
+                if (metronome === output) {
+                    stop()
+                    channel.invokeMethod("audioError", "Metronome playback failed")
+                }
+            })
+        metronome = output
+        output.start(volume)
+    }
+
+    private fun start(pcm: ByteArray, volume: Float, requestId: Int, requestFocus: Boolean) {
+        if (metronome != null) stop(notify = false)
+        // An active recorder already owns focus and handles interruptions for the app.
+        if (requestFocus) acquireFocus(transient = true)
 
         val player = AudioTrack.Builder()
             .setAudioAttributes(attributes)
@@ -100,37 +117,27 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
         try {
             check(player.write(pcm, 0, pcm.size) == pcm.size) { "Could not load the audio." }
             check(player.setVolume(volume) == AudioTrack.SUCCESS)
-            if (requestId != null) retireTone()
+            retireTone()
         } catch (error: Exception) {
             player.release()
             throw error
         }
         track = player
         toneId = requestId
-        if (framesPerBeat != null) {
-            check(player.setLoopPoints(0, pcm.size / 2, -1) == AudioTrack.SUCCESS)
-            check(player.setPositionNotificationPeriod(framesPerBeat) == AudioTrack.SUCCESS)
-        } else {
-            check(player.setNotificationMarkerPosition(pcm.size / 2 - 1) == AudioTrack.SUCCESS)
-        }
+        check(player.setNotificationMarkerPosition(pcm.size / 2 - 1) == AudioTrack.SUCCESS)
         player.setPlaybackPositionUpdateListener(object : AudioTrack.OnPlaybackPositionUpdateListener {
             override fun onMarkerReached(audioTrack: AudioTrack) {
                 if (track !== audioTrack || toneId == null) return
                 stop()
             }
 
-            override fun onPeriodicNotification(audioTrack: AudioTrack) {
-                if (framesPerBeat == null || track !== audioTrack || audioTrack.playState != AudioTrack.PLAYSTATE_PLAYING) return
-                val frame = audioTrack.playbackHeadPosition.toLong() and 0xffffffffL
-                channel.invokeMethod("beat", ((frame / framesPerBeat) % beats).toInt())
-            }
+            override fun onPeriodicNotification(audioTrack: AudioTrack) {}
         }, handler)
         player.play()
-        if (framesPerBeat != null) channel.invokeMethod("beat", 0)
     }
 
     private fun fadeOutAndStop(result: MethodChannel.Result) {
-        if (track != null && toneId == null) {
+        if (metronome != null) {
             stop()
             result.success(null)
             return
@@ -151,7 +158,7 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
     }
 
     private fun finishStopsIfIdle() {
-        if (track != null || fadingTones.isNotEmpty()) return
+        if (track != null || metronome != null || fadingTones.isNotEmpty()) return
         focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
         focusRequest = null
         val completions = pendingStops.toList()
@@ -224,10 +231,16 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
         pendingStops.clear()
         val previous = track
         val previousToneId = toneId
+        val previousMetronome = metronome
+        metronome = null
         track = null
         toneId = null
         try {
-            if (previous != null) releasePlayer(previous)
+            try {
+                previousMetronome?.stop()
+            } finally {
+                if (previous != null) releasePlayer(previous)
+            }
         } finally {
             fadingTones.toList().forEach { it.release(notify) }
             focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
@@ -236,6 +249,7 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
                 if (previousToneId == null) channel.invokeMethod("stopped", null)
                 else channel.invokeMethod("toneEnded", previousToneId)
             }
+            if (notify && previousMetronome != null) channel.invokeMethod("stopped", null)
             completions.forEach { it.success(null) }
         }
     }

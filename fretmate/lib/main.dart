@@ -173,12 +173,11 @@ class _PracticeScreenState extends State<PracticeScreen> with WidgetsBindingObse
                           ),
                           const SizedBox(height: 12),
                         ],
-                        if (isTuner)
-                          Expanded(
-                            child: TunerView(controller: controller, meterHeight: contentWidth / 2 + 4),
-                          )
-                        else
-                          MetronomeView(controller: controller),
+                        Expanded(
+                          child: isTuner
+                              ? TunerView(controller: controller, meterHeight: contentWidth / 2 + 4)
+                              : MetronomeView(controller: controller),
+                        ),
                       ],
                     );
                     return SingleChildScrollView(
@@ -188,9 +187,9 @@ class _PracticeScreenState extends State<PracticeScreen> with WidgetsBindingObse
                         child: ConstrainedBox(
                           constraints: BoxConstraints(
                             maxWidth: 600,
-                            minHeight: isTuner ? (constraints.maxHeight - 20).clamp(0.0, double.infinity) : 0,
+                            minHeight: (constraints.maxHeight - 20).clamp(0.0, double.infinity),
                           ),
-                          child: isTuner ? IntrinsicHeight(child: content) : content,
+                          child: IntrinsicHeight(child: content),
                         ),
                       ),
                     );

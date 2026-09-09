@@ -7,7 +7,8 @@ A Flutter guitar tuner and metronome for Android 15 and newer. Organization: `id
 - Microphone tuner with automatic string detection or manual string locking, measured frequency, and a cents meter. Readings within ±5 cents show “In tune.”
 - Six-string preset dropdown and per-string semitone controls, with A4 = 440 Hz. Matching note combinations show the preset name, otherwise the header shows Custom.
 - Tapping a string locks it and plays a 1.2-second reference tone. Repeated taps replay the tone, and a new string replaces the previous tone. Reference playback does not require microphone permission.
-- Audible metronome from 40–240 BPM, tap tempo, 2/3/4/6 beats per bar, optional first-beat accent, volume, and beat indicators.
+- Audible metronome from 20–300 BPM, tap tempo, 2/3/4/6 beats per bar, optional first-beat accent, and beat indicators. Playback uses the phone's media volume with a fixed 0.7 gain, without an in-app volume slider.
+- Both tools fit portrait phone screens without scrolling at normal text size. Short windows, larger text, and error messages retain a vertical-scroll fallback.
 - Switching tools, backgrounding the app, or losing audio focus stops the relevant audio. Resume is manual. Microphone access is requested only after tapping Listen.
 - Switch tools by tapping the top tabs or swiping horizontally across the page. Each tool keeps its own vertical scroll position, and metronome sliders keep their horizontal drag controls.
 - Audio stays in memory on the device. No recordings are saved, and no account, server, downloaded assets, or runtime internet connection is needed.
@@ -69,9 +70,11 @@ The debug APK will be under `build/app/outputs/flutter-apk/`. Release signing cu
 - `lib/tuning.dart`: semitone-based string targets, frequencies, preset definitions, and tuning-name recognition.
 - `lib/audio/pitch_detector.dart`: PCM16 framing, low-pass noise filtering, and YIN pitch detection. Each 4,096-sample frame is analyzed in a background Dart isolate, with backpressure to avoid queued stale frames.
 - `lib/audio/audio_services.dart`: microphone capture through [`record`](https://pub.dev/packages/record) and the Android metronome channel.
-- `lib/audio/click_track.dart`: generated PCM clicks, bar construction, and tap tempo. Tempo changes restart the bar. No audio assets are required.
+- `lib/audio/click_track.dart`: generated PCM clicks, bar construction, and tap tempo. No audio assets are required.
 - `lib/audio/reference_tone.dart`: generated reference-tone PCM with smooth fades, stronger low-note harmonics, and peak normalization.
-- `android/app/src/main/kotlin/id/steveimm/fretmate/MetronomeAudio.kt`: Android [`AudioTrack`](https://developer.android.com/reference/android/media/AudioTrack) playback for looping clicks and one-shot reference tones, playback-position callbacks, and [audio focus handling](https://developer.android.com/media/optimize/audio-focus). Click timing is driven by audio frames. Visual callbacks can lag with device output latency.
+- `android/app/src/main/kotlin/id/steveimm/fretmate/MetronomeAudio.kt`: Android [`AudioTrack`](https://developer.android.com/reference/android/media/AudioTrack) playback and [audio focus handling](https://developer.android.com/media/optimize/audio-focus) for the metronome and one-shot reference tones.
+- `StreamingMetronome.kt` and `MetronomeSequence.kt` in the same directory keep a continuous PCM stream running. Live tempo changes preserve the remaining fraction of the current beat. Bar-length changes continue the count and wrap at the next beat if necessary. Accent changes affect the next click without cutting the current click. Updates apply to the next generated 10 ms block, behind audio already queued by the device. Visual callbacks follow the audio playback head.
+- `android/app/src/test/`: native sequence regression tests for timing, beat-count changes, click continuity, repeated updates, and the tempo limits. Run `./gradlew :app:testDebugUnitTest` from `android/` with the Android toolchain configured.
 - `test/`: synthetic guitar pitch signals with harmonics/noise/detuning, PCM chunk boundaries, click timing and accents, tap tempo, audio failures, cancellation races, and widget controls/layouts. Device audio is replaced with fakes in these tests.
 
 ## Remaining device checks

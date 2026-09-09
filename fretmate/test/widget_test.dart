@@ -8,6 +8,40 @@ import 'package:fretmate/practice_controller.dart';
 import 'audio_fakes.dart';
 
 void main() {
+  testWidgets('metronome fits phone screens with six beats and no extra copy or volume slider', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final controller = PracticeController(microphone: FakeMicrophone(), clicks: FakeClicks());
+    addTearDown(controller.dispose);
+    await controller.selectTab(1);
+    controller.setBeats(6);
+    for (final size in [const Size(320, 740), const Size(360, 740), const Size(360, 791)]) {
+      tester.view.physicalSize = size;
+      await tester.pumpWidget(FretmateApp(controller: controller));
+      await tester.pumpAndSettle();
+      final scroll = tester.state<ScrollableState>(
+        find.descendant(of: find.byKey(const PageStorageKey('tool-scroll-1')), matching: find.byType(Scrollable)),
+      );
+      expect(scroll.position.maxScrollExtent, 0, reason: '$size');
+      expect(find.byType(Slider), findsOneWidget);
+      expect(find.text('BPM'), findsOneWidget);
+      expect(find.text('beats per minute'), findsNothing);
+      expect(tester.widget<Slider>(find.byType(Slider)).min, 20);
+      expect(tester.widget<Slider>(find.byType(Slider)).max, 300);
+      expect(find.text('Settle into rhythm.'), findsNothing);
+      expect(find.text('Make every beat count.'), findsNothing);
+      expect(find.text('Tap twice or more to set your pace.'), findsNothing);
+      expect(find.text('Use your phone’s media volume to adjust the speaker level.'), findsNothing);
+      final start = find.byKey(const ValueKey('metronome-button'));
+      expect(start.hitTestable(), findsOneWidget);
+      expect(tester.getRect(start).bottom, closeTo(size.height - 16, 0.1));
+      expect(find.text('Tap tempo').hitTestable(), findsOneWidget);
+      expect(find.byKey(const ValueKey('beats-6')).hitTestable(), findsOneWidget);
+      expect(find.byType(SwitchListTile).hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   testWidgets('swipes and tab taps stay synchronized and stop the tool being left', (tester) async {
     tester.view.physicalSize = const Size(360, 740);
     tester.view.devicePixelRatio = 1;
@@ -29,7 +63,7 @@ void main() {
     expect(controller.tab, 1);
     expect(microphone.recording, isFalse);
     expect(clicks.activeTone, isNull);
-    expect(find.text('Settle into rhythm.'), findsOneWidget);
+    expect(find.text('Tap tempo'), findsOneWidget);
     await tester.ensureVisible(find.text('Start metronome'));
     await tester.tap(find.text('Start metronome'));
     await tester.pumpAndSettle();
@@ -148,12 +182,12 @@ void main() {
     expect(controller.tab, 1);
     expect(controller.busy, isFalse);
     expect(microphone.recording, isFalse);
-    expect(find.text('Settle into rhythm.'), findsOneWidget);
+    expect(find.text('Tap tempo'), findsOneWidget);
     await tester.tap(find.byTooltip('Increase tempo'));
     await tester.pumpAndSettle();
     expect(find.text('101'), findsOneWidget);
-    await tester.ensureVisible(find.text('3 beats'));
-    await tester.tap(find.text('3 beats'));
+    await tester.ensureVisible(find.byKey(const ValueKey('beats-3')));
+    await tester.tap(find.byKey(const ValueKey('beats-3')));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Start metronome'));
     await tester.tap(find.text('Start metronome'));

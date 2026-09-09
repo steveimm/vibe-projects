@@ -288,6 +288,7 @@ class PracticeController extends ChangeNotifier {
 
   Future<void> _startClicks() async {
     if (!_foreground || _disposed) return;
+    final wasPlaying = playing;
     final session = _epoch;
     await clicks.start(bpm: bpm, beats: beatsPerBar, accent: accent, volume: volume);
     if (session != _epoch || !_foreground || _disposed) {
@@ -295,19 +296,19 @@ class PracticeController extends ChangeNotifier {
       return;
     }
     playing = true;
-    beat = 0;
+    if (!wasPlaying) beat = 0;
   }
 
   void setTempo(int value) {
-    bpm = value.clamp(40, 240);
+    bpm = value.clamp(minimumTempo, maximumTempo);
     _notify();
+    if (playing) unawaited(applyMetronomeSettings());
   }
 
   void tapTempo() {
     final value = _tapTempo.tap(_clock.elapsed);
     if (value == null) return;
     setTempo(value);
-    unawaited(applyMetronomeSettings());
   }
 
   void setBeats(int value) {
@@ -323,12 +324,13 @@ class PracticeController extends ChangeNotifier {
   void setVolume(double value) {
     volume = value.clamp(0, 1);
     _notify();
+    if (playing) unawaited(applyMetronomeSettings());
   }
 
   Future<void> applyMetronomeSettings() => _enqueue(() async {
-    if (!playing) return;
+    if (!playing || !_foreground || tab != 1) return;
     await _startClicks();
-  });
+  }, blockControls: false);
 
   Future<void> _stopAudio() async {
     _epoch++;

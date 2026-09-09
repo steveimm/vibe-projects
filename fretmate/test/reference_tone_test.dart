@@ -93,6 +93,27 @@ void main() {
     await output.dispose();
     expect(calls.last.method, 'stop');
   });
+
+  testWidgets('metronome configuration changes do not send a stop or repeat unchanged settings', (tester) async {
+    const channel = MethodChannel('id.steveimm.fretmate/metronome');
+    final calls = <MethodCall>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null));
+    final output = AndroidClickOutput();
+    await output.start(bpm: 20, beats: 4, accent: true, volume: 0.7);
+    await output.start(bpm: 300, beats: 6, accent: false, volume: 0.7);
+    await output.start(bpm: 300, beats: 6, accent: false, volume: 0.7);
+    expect(calls.map((call) => call.method), ['start', 'start']);
+    expect((calls.first.arguments as Map)['framesPerBeat'], 132300);
+    expect((calls.last.arguments as Map)['framesPerBeat'], 8820);
+    await output.stop();
+    await output.start(bpm: 300, beats: 6, accent: false, volume: 0.7);
+    expect(calls.map((call) => call.method), ['start', 'start', 'stop', 'start']);
+    await output.dispose();
+  });
 }
 
 double _amplitude(ByteData data, double frequency) {

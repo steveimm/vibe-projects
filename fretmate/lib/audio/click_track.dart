@@ -1,10 +1,13 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+const minimumTempo = 20;
+const maximumTempo = 300;
+
 class ClickTrack {
   ClickTrack({required int bpm, required int beats, required bool accent}) {
-    if (bpm < 40 || bpm > 240 || beats < 1 || beats > 6) {
-      throw ArgumentError('Tempo must be 40–240 BPM and beats must be 1–6.');
+    if (bpm < minimumTempo || bpm > maximumTempo || beats < 1 || beats > 6) {
+      throw ArgumentError('Tempo must be $minimumTempo–$maximumTempo BPM and beats must be 1–6.');
     }
     framesPerBeat = (sampleRate * 60 / bpm).round();
     final data = ByteData(framesPerBeat * beats * 2);
@@ -31,7 +34,7 @@ class TapTempo {
   final List<Duration> _taps = [];
 
   int? tap(Duration now) {
-    if (_taps.isNotEmpty && (now - _taps.last > const Duration(seconds: 2) || now <= _taps.last)) {
+    if (_taps.isNotEmpty && (now - _taps.last > const Duration(milliseconds: 3500) || now <= _taps.last)) {
       _taps.clear();
     }
     if (_taps.isNotEmpty && now - _taps.last < const Duration(milliseconds: 180)) return null;
@@ -39,6 +42,6 @@ class TapTempo {
     if (_taps.length > 5) _taps.removeAt(0);
     if (_taps.length < 2) return null;
     final average = (now - _taps.first).inMicroseconds / (_taps.length - 1);
-    return (60000000 / average).round().clamp(40, 240);
+    return (60000000 / average).round().clamp(minimumTempo, maximumTempo);
   }
 }

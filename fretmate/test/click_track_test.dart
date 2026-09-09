@@ -5,7 +5,7 @@ import 'package:fretmate/audio/click_track.dart';
 
 void main() {
   test('audio loop has evenly spaced clicks at slow, fractional and fast tempos', () {
-    for (final bpm in [40, 137, 240]) {
+    for (final bpm in [20, 137, 300]) {
       final track = ClickTrack(bpm: bpm, beats: 6, accent: true);
       expect(track.pcm.length, track.framesPerBeat * 6 * 2);
       expect(60 * ClickTrack.sampleRate / track.framesPerBeat, closeTo(bpm, 0.02));
@@ -39,7 +39,16 @@ void main() {
     expect(tempo.tap(const Duration(milliseconds: 500)), 120);
     expect(tempo.tap(const Duration(milliseconds: 550)), isNull);
     expect(tempo.tap(const Duration(milliseconds: 1000)), 120);
-    expect(tempo.tap(const Duration(seconds: 4)), isNull);
-    expect(tempo.tap(const Duration(seconds: 5)), 60);
+    expect(tempo.tap(const Duration(seconds: 5)), isNull);
+    expect(tempo.tap(const Duration(seconds: 6)), 60);
+  });
+
+  test('tap tempo supports the new slow and fast limits', () {
+    final slow = TapTempo();
+    expect(slow.tap(Duration.zero), isNull);
+    expect(slow.tap(const Duration(seconds: 3)), 20);
+    final fast = TapTempo();
+    expect(fast.tap(Duration.zero), isNull);
+    expect(fast.tap(const Duration(milliseconds: 200)), 300);
   });
 }
