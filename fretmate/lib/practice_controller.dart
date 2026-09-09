@@ -92,9 +92,9 @@ class PracticeController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
-  Future<void> _enqueue(Future<void> Function() action) {
+  Future<void> _enqueue(Future<void> Function() action, {bool blockControls = true}) {
     if (_disposed) return Future.value();
-    _operations++;
+    if (blockControls) _operations++;
     _notify();
     _pending = _pending.then((_) async {
       try {
@@ -106,7 +106,7 @@ class PracticeController extends ChangeNotifier {
         error = 'Audio is unavailable. Close other audio apps and try again.';
         await _recover();
       } finally {
-        _operations--;
+        if (blockControls) _operations--;
         _notify();
       }
     });
@@ -136,7 +136,7 @@ class PracticeController extends ChangeNotifier {
   }
 
   Future<void> lockAndPlayString(GuitarString string) {
-    selectString(string);
+    _selectedStringNumber = string.number;
     final request = ++_referenceRequest;
     return _enqueue(() async {
       if (!_foreground || tab != 0 || request != _referenceRequest) return;
@@ -147,11 +147,11 @@ class PracticeController extends ChangeNotifier {
       _notify();
       if (_tunerDiagnostics) debugPrint('Reference: start id=$request note=${selectedString!.label}');
       await clicks.playTone(selectedString!.frequency, requestId: request, requestFocus: !listening);
-      if (!_foreground || _disposed || tab != 0 || request != _referenceRequest) {
+      if (!_foreground || _disposed || tab != 0) {
         await clicks.stop();
         _endReferenceTone(request);
       }
-    });
+    }, blockControls: false);
   }
 
   void _endReferenceTone(int request) {
@@ -171,7 +171,7 @@ class PracticeController extends ChangeNotifier {
         if (_activeToneId != active) return;
         await clicks.stop();
         _endReferenceTone(active);
-      }),
+      }, blockControls: false),
     );
   }
 

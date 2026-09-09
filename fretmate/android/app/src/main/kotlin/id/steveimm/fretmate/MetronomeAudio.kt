@@ -9,6 +9,7 @@ import android.media.AudioTrack
 import android.media.VolumeShaper
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -24,9 +25,8 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
     private var track: AudioTrack? = null
     private var focusRequest: AudioFocusRequest? = null
     private var toneId: Int? = null
-    private var stopFade: VolumeShaper? = null
+    private val fadingTones = mutableListOf<FadingTone>()
     private val pendingStops = mutableListOf<MethodChannel.Result>()
-    private val finishStop = Runnable { stop() }
 
     init {
         channel.setMethodCallHandler(this)
@@ -71,9 +71,9 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
         requestId: Int? = null,
         requestFocus: Boolean = true,
     ) {
-        stop(notify = false)
+        if (requestId == null || (track != null && toneId == null)) stop(notify = false)
         // An active recorder already owns focus and handles interruptions for the app.
-        if (requestFocus) {
+        if (requestFocus && focusRequest == null) {
             val focusGain = if (requestId == null) AudioManager.AUDIOFOCUS_GAIN else AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
             val request = AudioFocusRequest.Builder(focusGain)
                 .setAudioAttributes(attributes)
@@ -97,10 +97,16 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
             .setTransferMode(AudioTrack.MODE_STATIC)
             .setBufferSizeInBytes(pcm.size)
             .build()
+        try {
+            check(player.write(pcm, 0, pcm.size) == pcm.size) { "Could not load the audio." }
+            check(player.setVolume(volume) == AudioTrack.SUCCESS)
+            if (requestId != null) retireTone()
+        } catch (error: Exception) {
+            player.release()
+            throw error
+        }
         track = player
         toneId = requestId
-        check(player.write(pcm, 0, pcm.size) == pcm.size) { "Could not load the audio." }
-        check(player.setVolume(volume) == AudioTrack.SUCCESS)
         if (framesPerBeat != null) {
             check(player.setLoopPoints(0, pcm.size / 2, -1) == AudioTrack.SUCCESS)
             check(player.setPositionNotificationPeriod(framesPerBeat) == AudioTrack.SUCCESS)
@@ -109,7 +115,8 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
         }
         player.setPlaybackPositionUpdateListener(object : AudioTrack.OnPlaybackPositionUpdateListener {
             override fun onMarkerReached(audioTrack: AudioTrack) {
-                if (track === audioTrack && toneId != null) stop()
+                if (track !== audioTrack || toneId == null) return
+                stop()
             }
 
             override fun onPeriodicNotification(audioTrack: AudioTrack) {
@@ -123,45 +130,106 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
     }
 
     private fun fadeOutAndStop(result: MethodChannel.Result) {
-        val player = track
-        if (player == null || toneId == null || player.playState != AudioTrack.PLAYSTATE_PLAYING) {
+        if (track != null && toneId == null) {
             stop()
             result.success(null)
             return
         }
-        if (stopFade == null) {
-            stopFade = player.createVolumeShaper(VolumeShaper.Configuration.Builder()
-                .setDuration(35)
+        retireTone()
+        pendingStops.add(result)
+        finishStopsIfIdle()
+    }
+
+    private fun retireTone() {
+        val player = track ?: return
+        val id = toneId ?: return
+        val tail = FadingTone(player, id)
+        fadingTones.add(tail)
+        track = null
+        toneId = null
+        tail.start()
+    }
+
+    private fun finishStopsIfIdle() {
+        if (track != null || fadingTones.isNotEmpty()) return
+        focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+        focusRequest = null
+        val completions = pendingStops.toList()
+        pendingStops.clear()
+        completions.forEach { it.success(null) }
+    }
+
+    private inner class FadingTone(val player: AudioTrack, val id: Int) {
+        private var fade: VolumeShaper? = null
+        private var draining = false
+        private val deadline = SystemClock.uptimeMillis() + 250
+        private val checkFade = Runnable { advance() }
+        private val finish = Runnable { release() }
+
+        fun start() {
+            player.setPlaybackPositionUpdateListener(object : AudioTrack.OnPlaybackPositionUpdateListener {
+                override fun onMarkerReached(audioTrack: AudioTrack) = advance(ended = true)
+                override fun onPeriodicNotification(audioTrack: AudioTrack) {}
+            }, handler)
+            fade = player.createVolumeShaper(VolumeShaper.Configuration.Builder()
+                .setDuration(40)
                 .setCurve(floatArrayOf(0f, 1f), floatArrayOf(1f, 0f))
                 .setInterpolatorType(VolumeShaper.Configuration.INTERPOLATOR_TYPE_CUBIC)
                 .build())
-            stopFade!!.apply(VolumeShaper.Operation.PLAY)
-            handler.postDelayed(finishStop, 55)
+            fade!!.apply(VolumeShaper.Operation.PLAY)
+            handler.postDelayed(checkFade, 40)
         }
-        pendingStops.add(result)
+
+        private fun advance(ended: Boolean = false) {
+            if (draining || this !in fadingTones) return
+            try {
+                if (!ended && SystemClock.uptimeMillis() < deadline && (fade?.volume ?: 0f) > 0.001f) {
+                    handler.postDelayed(checkFade, 10)
+                    return
+                }
+                draining = true
+                handler.removeCallbacks(checkFade)
+                player.setVolume(0f)
+                handler.postDelayed(finish, 200)
+            } catch (_: Exception) {
+                release()
+            }
+        }
+
+        fun release(notify: Boolean = true) {
+            if (!fadingTones.remove(this)) return
+            handler.removeCallbacks(checkFade)
+            handler.removeCallbacks(finish)
+            try {
+                releasePlayer(player)
+            } finally {
+                fade?.close()
+                if (notify) channel.invokeMethod("toneEnded", id)
+                finishStopsIfIdle()
+            }
+        }
+    }
+
+    private fun releasePlayer(player: AudioTrack) {
+        player.setPlaybackPositionUpdateListener(null)
+        try {
+            if (player.playState == AudioTrack.PLAYSTATE_PLAYING) player.pause()
+        } finally {
+            player.release()
+        }
     }
 
     fun stop(notify: Boolean = true) {
-        handler.removeCallbacks(finishStop)
         val completions = pendingStops.toList()
         pendingStops.clear()
         val previous = track
         val previousToneId = toneId
-        val fade = stopFade
         track = null
         toneId = null
-        stopFade = null
         try {
-            if (previous != null) {
-                previous.setPlaybackPositionUpdateListener(null)
-                try {
-                    if (previous.playState == AudioTrack.PLAYSTATE_PLAYING) previous.pause()
-                } finally {
-                    previous.release()
-                }
-            }
+            if (previous != null) releasePlayer(previous)
         } finally {
-            fade?.close()
+            fadingTones.toList().forEach { it.release(notify) }
             focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
             focusRequest = null
             if (notify && previous != null) {

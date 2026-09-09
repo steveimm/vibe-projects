@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fretmate/main.dart';
@@ -6,6 +8,45 @@ import 'package:fretmate/practice_controller.dart';
 import 'audio_fakes.dart';
 
 void main() {
+  for (final listening in [false, true]) {
+    testWidgets('reference startup and switching keep ${listening ? 'Stop' : 'Listen'} unchanged', (tester) async {
+      tester.view.physicalSize = const Size(360, 740);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final clicks = FakeClicks();
+      final controller = PracticeController(microphone: FakeMicrophone(), clicks: clicks);
+      addTearDown(controller.dispose);
+      if (listening) await controller.toggleTuner();
+      await tester.pumpWidget(FretmateApp(controller: controller));
+      final button = find.byKey(const ValueKey('listen-button'));
+      final label = listening ? 'Stop' : 'Listen';
+      void expectStableButton() {
+        expect(find.text(label), findsOneWidget);
+        expect(find.text('Please wait…'), findsNothing);
+        expect(find.text('Reference tone'), findsNothing);
+        expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
+      }
+
+      clicks.toneGate = Completer<void>();
+      await tester.tap(find.byKey(const ValueKey('string-6')));
+      await tester.pump();
+      expectStableButton();
+      clicks.toneGate!.complete();
+      await tester.pumpAndSettle();
+      clicks.stopGate = Completer<void>();
+      await tester.tap(find.byKey(const ValueKey('string-1')));
+      await tester.pump();
+      expectStableButton();
+      expect(clicks.tones.length, 2);
+      await tester.pump(const Duration(milliseconds: 300));
+      expectStableButton();
+      clicks.stopGate!.complete();
+      await tester.pumpAndSettle();
+      expectStableButton();
+      expect(clicks.tones.length, 2);
+    });
+  }
+
   testWidgets('tuner selection, listening, navigation and metronome controls', (tester) async {
     tester.view.physicalSize = const Size(360, 740);
     tester.view.devicePixelRatio = 1;
@@ -24,7 +65,7 @@ void main() {
     expect(controller.selectedString?.label, 'E2');
     expect(clicks.tones.single.frequency, closeTo(82.4069, 0.001));
     expect(controller.referencePlaying, isTrue);
-    expect(find.text('Reference tone'), findsOneWidget);
+    expect(find.text('Reference tone'), findsNothing);
 
     await tester.tap(find.byKey(const ValueKey('listen-button')));
     await tester.pumpAndSettle();

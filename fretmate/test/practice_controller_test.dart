@@ -59,26 +59,24 @@ void main() {
     expect(clicks.activeTone, clicks.tones.last.requestId);
   });
 
-  test('switching waits for the old tone fade and only starts the latest request', () async {
+  test('switching starts the next tone without waiting for an old tone stop', () async {
     await controller.lockAndPlayString(controller.strings.first);
     clicks.stopGate = Completer<void>();
     final second = controller.lockAndPlayString(controller.strings[1]);
-    await Future<void>.delayed(Duration.zero);
     final third = controller.lockAndPlayString(controller.strings.last);
-    expect(clicks.tones.length, 1);
-    expect(controller.referencePlaying, isTrue);
-    clicks.stopGate!.complete();
-    await Future.wait([second, third]);
+    await Future.wait([second, third]).timeout(const Duration(seconds: 1));
     expect(clicks.tones.map((tone) => tone.frequency), [
       controller.strings.first.frequency,
       controller.strings.last.frequency,
     ]);
     expect(controller.referencePlaying, isTrue);
+    clicks.stopGate!.complete();
   });
 
   test('backgrounding during a fade prevents the replacement tone from starting', () async {
     await controller.lockAndPlayString(controller.strings.first);
     clicks.stopGate = Completer<void>();
+    controller.selectString(null);
     final replacement = controller.lockAndPlayString(controller.strings.last);
     await Future<void>.delayed(Duration.zero);
     final stop = controller.suspend();

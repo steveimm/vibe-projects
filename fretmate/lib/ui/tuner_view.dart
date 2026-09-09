@@ -295,7 +295,7 @@ class _DetectionPanel extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final cents = controller.cents;
     final reading = controller.referencePlaying
-        ? 'Reference tone'
+        ? ' '
         : cents == null
         ? controller.listening
               ? 'Listening…'
