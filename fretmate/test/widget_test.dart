@@ -8,6 +8,71 @@ import 'package:fretmate/practice_controller.dart';
 import 'audio_fakes.dart';
 
 void main() {
+  testWidgets('swipes and tab taps stay synchronized and stop the tool being left', (tester) async {
+    tester.view.physicalSize = const Size(360, 740);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final microphone = FakeMicrophone();
+    final clicks = FakeClicks();
+    final controller = PracticeController(microphone: microphone, clicks: clicks);
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(FretmateApp(controller: controller));
+    await tester.tap(find.byKey(const ValueKey('listen-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('string-6')));
+    await tester.pumpAndSettle();
+    final pages = find.byKey(const ValueKey('tool-pages'));
+    await tester.dragFrom(tester.getTopLeft(pages) + const Offset(280, 24), const Offset(-280, 0));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pumpAndSettle();
+    expect(controller.tab, 1);
+    expect(microphone.recording, isFalse);
+    expect(clicks.activeTone, isNull);
+    expect(find.text('Settle into rhythm.'), findsOneWidget);
+    await tester.ensureVisible(find.text('Start metronome'));
+    await tester.tap(find.text('Start metronome'));
+    await tester.pumpAndSettle();
+    expect(clicks.playing, isTrue);
+    await tester.dragFrom(tester.getTopLeft(pages) + const Offset(80, 24), const Offset(280, 0));
+    await tester.pumpAndSettle();
+    expect(controller.tab, 0);
+    expect(clicks.playing, isFalse);
+    expect(find.byKey(const ValueKey('listen-button')).hitTestable(), findsOneWidget);
+    await tester.tap(find.text('Metronome'));
+    await tester.pumpAndSettle();
+    expect(controller.tab, 1);
+    await tester.tap(find.text('Tuner'));
+    await tester.pumpAndSettle();
+    expect(controller.tab, 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('slider drags and reversed tab taps do not leave the wrong page selected', (tester) async {
+    tester.view.physicalSize = const Size(360, 740);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final controller = PracticeController(microphone: FakeMicrophone(), clicks: FakeClicks());
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(FretmateApp(controller: controller));
+    await tester.tap(find.text('Metronome'));
+    await tester.pump(const Duration(milliseconds: 40));
+    await tester.tap(find.text('Tuner'));
+    await tester.pumpAndSettle();
+    expect(controller.tab, 0);
+    expect(find.byKey(const ValueKey('listen-button')).hitTestable(), findsOneWidget);
+    await tester.tap(find.text('Metronome'));
+    await tester.pumpAndSettle();
+    final slider = find.byType(Slider).first;
+    await tester.ensureVisible(slider);
+    final previousTempo = controller.bpm;
+    await tester.drag(slider, const Offset(70, 0));
+    await tester.pumpAndSettle();
+    expect(controller.bpm, isNot(previousTempo));
+    expect(controller.tab, 1);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final listening in [false, true]) {
     testWidgets('reference startup and switching keep ${listening ? 'Stop' : 'Listen'} unchanged', (tester) async {
       tester.view.physicalSize = const Size(360, 740);
@@ -178,7 +243,9 @@ void main() {
         previousBottom = box.bottom;
       }
     }
-    final scroll = tester.state<ScrollableState>(find.byType(Scrollable));
+    final scroll = tester.state<ScrollableState>(
+      find.descendant(of: find.byKey(const PageStorageKey('tool-scroll-0')), matching: find.byType(Scrollable)),
+    );
     expect(scroll.position.maxScrollExtent, 0);
 
     tester.view.physicalSize = const Size(360, 840);

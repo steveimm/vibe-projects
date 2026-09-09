@@ -9,6 +9,7 @@ A Flutter guitar tuner and metronome for Android 15 and newer. Organization: `id
 - Tapping a string locks it and plays a 1.2-second reference tone. Repeated taps replay the tone, and a new string replaces the previous tone. Reference playback does not require microphone permission.
 - Audible metronome from 40–240 BPM, tap tempo, 2/3/4/6 beats per bar, optional first-beat accent, volume, and beat indicators.
 - Switching tools, backgrounding the app, or losing audio focus stops the relevant audio. Resume is manual. Microphone access is requested only after tapping Listen.
+- Switch tools by tapping the top tabs or swiping horizontally across the page. Each tool keeps its own vertical scroll position, and metronome sliders keep their horizontal drag controls.
 - Audio stays in memory on the device. No recordings are saved, and no account, server, downloaded assets, or runtime internet connection is needed.
 
 | String | Note | Frequency |

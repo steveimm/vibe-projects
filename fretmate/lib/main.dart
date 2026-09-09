@@ -75,12 +75,30 @@ class PracticeScreen extends StatefulWidget {
 
 class _PracticeScreenState extends State<PracticeScreen> with WidgetsBindingObserver {
   late final PracticeController controller;
+  late final PageController _pages;
+  late int _pageIndex;
 
   @override
   void initState() {
     super.initState();
     controller = widget.controller ?? PracticeController(microphone: DeviceMicrophone(), clicks: AndroidClickOutput());
+    _pageIndex = controller.tab;
+    _pages = PageController(initialPage: _pageIndex);
+    controller.addListener(_syncPage);
     WidgetsBinding.instance.addObserver(this);
+  }
+
+  void _syncPage() {
+    if (_pageIndex == controller.tab) return;
+    _pageIndex = controller.tab;
+    if (_pages.hasClients) {
+      unawaited(_pages.animateToPage(_pageIndex, duration: const Duration(milliseconds: 220), curve: Curves.easeOut));
+    }
+  }
+
+  void _onPageChanged(int index) {
+    _pageIndex = index;
+    unawaited(controller.selectTab(index));
   }
 
   @override
@@ -97,6 +115,8 @@ class _PracticeScreenState extends State<PracticeScreen> with WidgetsBindingObse
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    controller.removeListener(_syncPage);
+    _pages.dispose();
     if (widget.controller == null) controller.dispose();
     super.dispose();
   }
@@ -124,52 +144,58 @@ class _PracticeScreenState extends State<PracticeScreen> with WidgetsBindingObse
               ),
             ),
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isTuner = controller.tab == 0;
-                  final contentWidth = (constraints.maxWidth - 32).clamp(0.0, 600.0);
-                  final content = Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (controller.error != null) ...[
-                        Semantics(
-                          liveRegion: true,
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.errorContainer,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Text(
-                              controller.error!,
-                              style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+              child: PageView.builder(
+                key: const ValueKey('tool-pages'),
+                controller: _pages,
+                onPageChanged: _onPageChanged,
+                itemCount: 2,
+                itemBuilder: (context, index) => LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isTuner = index == 0;
+                    final contentWidth = (constraints.maxWidth - 32).clamp(0.0, 600.0);
+                    final content = Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (controller.error != null) ...[
+                          Semantics(
+                            liveRegion: true,
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.errorContainer,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                controller.error!,
+                                style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
+                          const SizedBox(height: 12),
+                        ],
+                        if (isTuner)
+                          Expanded(
+                            child: TunerView(controller: controller, meterHeight: contentWidth / 2 + 4),
+                          )
+                        else
+                          MetronomeView(controller: controller),
                       ],
-                      if (isTuner)
-                        Expanded(
-                          child: TunerView(controller: controller, meterHeight: contentWidth / 2 + 4),
-                        )
-                      else
-                        MetronomeView(controller: controller),
-                    ],
-                  );
-                  return SingleChildScrollView(
-                    key: ValueKey(controller.tab),
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: 600,
-                          minHeight: isTuner ? (constraints.maxHeight - 20).clamp(0.0, double.infinity) : 0,
+                    );
+                    return SingleChildScrollView(
+                      key: PageStorageKey('tool-scroll-$index'),
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: 600,
+                            minHeight: isTuner ? (constraints.maxHeight - 20).clamp(0.0, double.infinity) : 0,
+                          ),
+                          child: isTuner ? IntrinsicHeight(child: content) : content,
                         ),
-                        child: isTuner ? IntrinsicHeight(child: content) : content,
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ],

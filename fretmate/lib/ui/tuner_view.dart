@@ -76,7 +76,7 @@ class TunerView extends StatelessWidget {
               ),
               icon: Icon(controller.listening ? Icons.stop_rounded : Icons.mic_rounded, size: 20),
               label: Text(
-                controller.busy
+                controller.busy && controller.tab == 0
                     ? 'Please wait…'
                     : controller.listening
                     ? 'Stop'
