@@ -8,6 +8,35 @@ import 'package:fretmate/practice_controller.dart';
 import 'audio_fakes.dart';
 
 void main() {
+  testWidgets('theme toggle updates both tools without interrupting playback', (tester) async {
+    final clicks = FakeClicks();
+    final controller = PracticeController(microphone: FakeMicrophone(), clicks: clicks);
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(FretmateApp(controller: controller));
+    final toggle = find.byKey(const ValueKey('theme-toggle'));
+    expect(Theme.of(tester.element(toggle)).brightness, Brightness.light);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(Theme.of(tester.element(toggle)).brightness, Brightness.dark);
+    expect(find.byTooltip('Switch to light mode'), findsOneWidget);
+    await tester.tap(find.text('Metronome'));
+    await tester.pumpAndSettle();
+    await controller.toggleMetronome();
+    controller.setTempo(140);
+    await tester.pumpAndSettle();
+    final card = tester.widget<Card>(find.byType(Card));
+    expect(card.color ?? Theme.of(tester.element(find.byType(Card))).cardTheme.color, isNot(Colors.white));
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(Theme.of(tester.element(toggle)).brightness, Brightness.light);
+    expect(find.byTooltip('Switch to dark mode'), findsOneWidget);
+    expect(controller.tab, 1);
+    expect(controller.bpm, 140);
+    expect(controller.playing, isTrue);
+    expect(clicks.playing, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('metronome fits phone screens with six beats and no extra copy or volume slider', (tester) async {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);

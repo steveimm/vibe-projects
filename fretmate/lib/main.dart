@@ -12,62 +12,96 @@ void main() {
   runApp(const FretmateApp());
 }
 
-class FretmateApp extends StatelessWidget {
+class FretmateApp extends StatefulWidget {
   const FretmateApp({super.key, this.controller});
 
   final PracticeController? controller;
 
   @override
+  State<FretmateApp> createState() => _FretmateAppState();
+}
+
+class _FretmateAppState extends State<FretmateApp> {
+  bool _darkMode = false;
+
+  @override
   Widget build(BuildContext context) {
-    const ink = Color(0xFF24352E);
-    const canvas = Color(0xFFF3F6F2);
-    final scheme = ColorScheme.fromSeed(seedColor: const Color(0xFF187A62), surface: Colors.white).copyWith(
-      primary: const Color(0xFF187A62),
-      onPrimary: Colors.white,
-      primaryContainer: const Color(0xFFDDEEDB),
-      onPrimaryContainer: const Color(0xFF14533F),
-      surfaceContainerLow: const Color(0xFFE8EEE7),
-      onSurface: ink,
-      onSurfaceVariant: const Color(0xFF63716A),
-      outlineVariant: const Color(0xFFDFE7E2),
-    );
     return MaterialApp(
       title: 'Fretmate',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: scheme,
-        scaffoldBackgroundColor: canvas,
-        textTheme: ThemeData.light().textTheme.apply(bodyColor: ink, displayColor: ink),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: canvas,
-          foregroundColor: ink,
-          centerTitle: false,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            minimumSize: const Size(48, 56),
-            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          ),
-        ),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          color: Colors.white,
-          margin: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      theme: _theme(Brightness.light),
+      darkTheme: _theme(Brightness.dark),
+      themeMode: _darkMode ? ThemeMode.dark : ThemeMode.light,
+      home: PracticeScreen(
+        controller: widget.controller,
+        darkMode: _darkMode,
+        onToggleTheme: () => setState(() => _darkMode = !_darkMode),
+      ),
+    );
+  }
+
+  ThemeData _theme(Brightness brightness) {
+    final dark = brightness == Brightness.dark;
+    final canvas = dark ? const Color(0xFF121B17) : const Color(0xFFF3F6F2);
+    final seed = ColorScheme.fromSeed(seedColor: const Color(0xFF187A62), brightness: brightness);
+    final scheme = dark
+        ? seed.copyWith(
+            primary: const Color(0xFF82D5B7),
+            onPrimary: const Color(0xFF003828),
+            primaryContainer: const Color(0xFF234D3E),
+            onPrimaryContainer: const Color(0xFFBCEED7),
+            surface: const Color(0xFF1B2721),
+            surfaceContainerLow: const Color(0xFF202F27),
+            onSurface: const Color(0xFFE0EAE2),
+            onSurfaceVariant: const Color(0xFFAFBFB4),
+            outlineVariant: const Color(0xFF3C4D43),
+          )
+        : seed.copyWith(
+            surface: Colors.white,
+            primary: const Color(0xFF187A62),
+            onPrimary: Colors.white,
+            primaryContainer: const Color(0xFFDDEEDB),
+            onPrimaryContainer: const Color(0xFF14533F),
+            surfaceContainerLow: const Color(0xFFE8EEE7),
+            onSurface: const Color(0xFF24352E),
+            onSurfaceVariant: const Color(0xFF63716A),
+            outlineVariant: const Color(0xFFDFE7E2),
+          );
+    return ThemeData(
+      colorScheme: scheme,
+      scaffoldBackgroundColor: canvas,
+      textTheme: ThemeData(brightness: brightness).textTheme
+          .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface),
+      appBarTheme: AppBarTheme(
+        backgroundColor: canvas,
+        foregroundColor: scheme.onSurface,
+        centerTitle: false,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(48, 56),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
-      home: PracticeScreen(controller: controller),
+      cardTheme: CardThemeData(
+        elevation: 0,
+        color: scheme.surface,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
     );
   }
 }
 
 class PracticeScreen extends StatefulWidget {
-  const PracticeScreen({super.key, this.controller});
+  const PracticeScreen({super.key, this.controller, required this.darkMode, required this.onToggleTheme});
 
   final PracticeController? controller;
+  final bool darkMode;
+  final VoidCallback onToggleTheme;
 
   @override
   State<PracticeScreen> createState() => _PracticeScreenState();
@@ -129,6 +163,15 @@ class _PracticeScreenState extends State<PracticeScreen> with WidgetsBindingObse
         toolbarHeight: 52,
         titleSpacing: 16,
         title: const Text('Fretmate', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: -0.5)),
+        actions: [
+          IconButton(
+            key: const ValueKey('theme-toggle'),
+            tooltip: widget.darkMode ? 'Switch to light mode' : 'Switch to dark mode',
+            onPressed: widget.onToggleTheme,
+            icon: Icon(widget.darkMode ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SafeArea(
         top: false,
