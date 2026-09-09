@@ -32,6 +32,7 @@ class FakeClicks implements ClickOutput {
   final tones = <({double frequency, int requestId, bool requestFocus})>[];
   int? activeTone;
   Completer<void>? toneGate;
+  Completer<void>? stopGate;
   bool playing = false;
   bool fail = false;
   int starts = 0;
@@ -68,6 +69,7 @@ class FakeClicks implements ClickOutput {
 
   @override
   Future<void> stop() async {
+    await stopGate?.future;
     playing = false;
     finishTone();
   }

@@ -6,6 +6,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
+import android.media.VolumeShaper
 import android.os.Handler
 import android.os.Looper
 import io.flutter.plugin.common.BinaryMessenger
@@ -23,6 +24,9 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
     private var track: AudioTrack? = null
     private var focusRequest: AudioFocusRequest? = null
     private var toneId: Int? = null
+    private var stopFade: VolumeShaper? = null
+    private val pendingStops = mutableListOf<MethodChannel.Result>()
+    private val finishStop = Runnable { stop() }
 
     init {
         channel.setMethodCallHandler(this)
@@ -50,10 +54,7 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
                     start(pcm, volume.toFloat(), requestId = requestId, requestFocus = requestFocus)
                     result.success(null)
                 }
-                "stop" -> {
-                    stop()
-                    result.success(null)
-                }
+                "stop" -> fadeOutAndStop(result)
                 else -> result.notImplemented()
             }
         } catch (error: Exception) {
@@ -121,24 +122,53 @@ class MetronomeAudio(context: Context, messenger: BinaryMessenger) : MethodChann
         if (framesPerBeat != null) channel.invokeMethod("beat", 0)
     }
 
+    private fun fadeOutAndStop(result: MethodChannel.Result) {
+        val player = track
+        if (player == null || toneId == null || player.playState != AudioTrack.PLAYSTATE_PLAYING) {
+            stop()
+            result.success(null)
+            return
+        }
+        if (stopFade == null) {
+            stopFade = player.createVolumeShaper(VolumeShaper.Configuration.Builder()
+                .setDuration(35)
+                .setCurve(floatArrayOf(0f, 1f), floatArrayOf(1f, 0f))
+                .setInterpolatorType(VolumeShaper.Configuration.INTERPOLATOR_TYPE_CUBIC)
+                .build())
+            stopFade!!.apply(VolumeShaper.Operation.PLAY)
+            handler.postDelayed(finishStop, 55)
+        }
+        pendingStops.add(result)
+    }
+
     fun stop(notify: Boolean = true) {
+        handler.removeCallbacks(finishStop)
+        val completions = pendingStops.toList()
+        pendingStops.clear()
         val previous = track
         val previousToneId = toneId
+        val fade = stopFade
         track = null
         toneId = null
-        if (previous != null) {
-            previous.setPlaybackPositionUpdateListener(null)
-            try {
-                if (previous.playState == AudioTrack.PLAYSTATE_PLAYING) previous.pause()
-            } finally {
-                previous.release()
+        stopFade = null
+        try {
+            if (previous != null) {
+                previous.setPlaybackPositionUpdateListener(null)
+                try {
+                    if (previous.playState == AudioTrack.PLAYSTATE_PLAYING) previous.pause()
+                } finally {
+                    previous.release()
+                }
             }
-        }
-        focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
-        focusRequest = null
-        if (notify && previous != null) {
-            if (previousToneId == null) channel.invokeMethod("stopped", null)
-            else channel.invokeMethod("toneEnded", previousToneId)
+        } finally {
+            fade?.close()
+            focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+            focusRequest = null
+            if (notify && previous != null) {
+                if (previousToneId == null) channel.invokeMethod("stopped", null)
+                else channel.invokeMethod("toneEnded", previousToneId)
+            }
+            completions.forEach { it.success(null) }
         }
     }
 

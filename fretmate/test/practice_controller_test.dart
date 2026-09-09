@@ -59,6 +59,36 @@ void main() {
     expect(clicks.activeTone, clicks.tones.last.requestId);
   });
 
+  test('switching waits for the old tone fade and only starts the latest request', () async {
+    await controller.lockAndPlayString(controller.strings.first);
+    clicks.stopGate = Completer<void>();
+    final second = controller.lockAndPlayString(controller.strings[1]);
+    await Future<void>.delayed(Duration.zero);
+    final third = controller.lockAndPlayString(controller.strings.last);
+    expect(clicks.tones.length, 1);
+    expect(controller.referencePlaying, isTrue);
+    clicks.stopGate!.complete();
+    await Future.wait([second, third]);
+    expect(clicks.tones.map((tone) => tone.frequency), [
+      controller.strings.first.frequency,
+      controller.strings.last.frequency,
+    ]);
+    expect(controller.referencePlaying, isTrue);
+  });
+
+  test('backgrounding during a fade prevents the replacement tone from starting', () async {
+    await controller.lockAndPlayString(controller.strings.first);
+    clicks.stopGate = Completer<void>();
+    final replacement = controller.lockAndPlayString(controller.strings.last);
+    await Future<void>.delayed(Duration.zero);
+    final stop = controller.suspend();
+    clicks.stopGate!.complete();
+    await Future.wait([replacement, stop]);
+    expect(clicks.tones.length, 1);
+    expect(clicks.activeTone, isNull);
+    expect(controller.referencePlaying, isFalse);
+  });
+
   for (final change in ['auto', 'notes', 'preset', 'tab', 'background']) {
     test('$change cancels the reference tone', () async {
       await controller.toggleTuner();

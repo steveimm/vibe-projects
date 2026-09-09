@@ -26,6 +26,8 @@ The dropdown includes 26 presets: standard, E♭/D/C♯/C/B/A standard, Drop D/C
 
 During reference playback, pitch analysis skips microphone frames and discards in-flight readings. Detection resumes 300 ms after playback ends, without restarting an active microphone. Auto, target edits, preset changes, tool changes, and backgrounding cancel reference playback. Tone volume follows the phone's media volume, with a fixed 0.7 playback gain.
 
+Reference notes below 220 Hz use stronger integer harmonics to improve small-speaker audibility while retaining the fundamental, following the principle of [harmonic bass enhancement](https://www.mathworks.com/help/audio/ug/psychoacoustic-bass-enhancement-for-band-limited-signals.html). Generated PCM peaks stay at or below 0.8 full scale. Switching or cancelling a reference tone applies a 35 ms native [VolumeShaper fade-out](https://developer.android.com/media/platform/volumeshaper) before releasing its track and starting the next tone. Backgrounding and audio-focus loss still release playback immediately.
+
 ## Development
 
 Created with Flutter 3.47.2 and Dart 3.13.2. Only the Android platform is generated. Android `minSdk` is 35 (Android 15), while `compileSdk` and `targetSdk` are 36. “Android ≥15” is interpreted as the OS version, not API level 15. The [Android 15 SDK documentation](https://developer.android.com/about/versions/15/setup-sdk) identifies Android 15 as API 35.
@@ -65,7 +67,7 @@ The debug APK will be under `build/app/outputs/flutter-apk/`. Release signing cu
 - `lib/audio/pitch_detector.dart`: PCM16 framing, low-pass noise filtering, and YIN pitch detection. Each 4,096-sample frame is analyzed in a background Dart isolate, with backpressure to avoid queued stale frames.
 - `lib/audio/audio_services.dart`: microphone capture through [`record`](https://pub.dev/packages/record) and the Android metronome channel.
 - `lib/audio/click_track.dart`: generated PCM clicks, bar construction, and tap tempo. Tempo changes restart the bar. No audio assets are required.
-- `lib/audio/reference_tone.dart`: generated reference-tone PCM with short fades and quiet harmonics.
+- `lib/audio/reference_tone.dart`: generated reference-tone PCM with smooth fades, stronger low-note harmonics, and peak normalization.
 - `android/app/src/main/kotlin/id/steveimm/fretmate/MetronomeAudio.kt`: Android [`AudioTrack`](https://developer.android.com/reference/android/media/AudioTrack) playback for looping clicks and one-shot reference tones, playback-position callbacks, and [audio focus handling](https://developer.android.com/media/optimize/audio-focus). Click timing is driven by audio frames. Visual callbacks can lag with device output latency.
 - `test/`: synthetic guitar pitch signals with harmonics/noise/detuning, PCM chunk boundaries, click timing and accents, tap tempo, audio failures, cancellation races, and widget controls/layouts. Device audio is replaced with fakes in these tests.
 
