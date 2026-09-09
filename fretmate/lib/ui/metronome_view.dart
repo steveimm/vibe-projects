@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../audio/click_track.dart';
 import '../practice_controller.dart';
+import 'practice_button.dart';
 
 class MetronomeView extends StatelessWidget {
   const MetronomeView({super.key, required this.controller});
@@ -135,17 +136,15 @@ class MetronomeView extends StatelessWidget {
         ),
         const Spacer(),
         const SizedBox(height: 12),
-        FilledButton.icon(
-          key: const ValueKey('metronome-button'),
+        PracticeButton(
+          buttonKey: const ValueKey('metronome-button'),
           onPressed: controller.busy ? null : controller.toggleMetronome,
-          icon: Icon(controller.playing ? Icons.stop_rounded : Icons.play_arrow_rounded),
-          label: Text(
-            controller.busy
-                ? 'Please wait…'
-                : controller.playing
-                ? 'Stop metronome'
-                : 'Start metronome',
-          ),
+          icon: controller.playing ? Icons.stop_rounded : Icons.play_arrow_rounded,
+          label: controller.busy
+              ? 'Please wait…'
+              : controller.playing
+              ? 'Stop metronome'
+              : 'Start metronome',
         ),
       ],
     );

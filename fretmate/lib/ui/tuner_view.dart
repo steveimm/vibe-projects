@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../practice_controller.dart';
 import '../tuning.dart';
+import 'practice_button.dart';
 
 class TunerView extends StatelessWidget {
   const TunerView({super.key, required this.controller, required this.meterHeight});
@@ -63,29 +64,15 @@ class TunerView extends StatelessWidget {
         const SizedBox(height: 4),
         _PitchMeter(controller: controller, height: meterHeight),
         const SizedBox(height: 4),
-        Align(
-          child: SizedBox(
-            width: 240,
-            child: FilledButton.icon(
-              key: const ValueKey('listen-button'),
-              onPressed: controller.busy ? null : controller.toggleTuner,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(48, 56),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                shape: const StadiumBorder(),
-              ),
-              icon: Icon(controller.listening ? Icons.stop_rounded : Icons.mic_rounded, size: 20),
-              label: Text(
-                controller.busy && controller.tab == 0
-                    ? 'Please wait…'
-                    : controller.listening
-                    ? 'Stop'
-                    : 'Listen',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
+        PracticeButton(
+          buttonKey: const ValueKey('listen-button'),
+          onPressed: controller.busy ? null : controller.toggleTuner,
+          icon: controller.listening ? Icons.stop_rounded : Icons.mic_rounded,
+          label: controller.busy && controller.tab == 0
+              ? 'Please wait…'
+              : controller.listening
+              ? 'Stop'
+              : 'Listen',
         ),
       ],
     );

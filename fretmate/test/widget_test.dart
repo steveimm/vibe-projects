@@ -8,6 +8,66 @@ import 'package:fretmate/practice_controller.dart';
 import 'audio_fakes.dart';
 
 void main() {
+  testWidgets('metronome and Listen buttons have identical size and shape', (tester) async {
+    tester.view.physicalSize = const Size(360, 740);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final controller = PracticeController(microphone: FakeMicrophone(), clicks: FakeClicks());
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(FretmateApp(controller: controller));
+    final listen = find.byKey(const ValueKey('listen-button'));
+    final size = tester.getSize(listen);
+    final shape = tester.widget<FilledButton>(listen).style!.shape!.resolve({});
+    expect(size.width, 240);
+    await tester.tap(find.text('Metronome'));
+    await tester.pumpAndSettle();
+    final metronome = find.byKey(const ValueKey('metronome-button'));
+    expect(tester.getSize(metronome), size);
+    expect(tester.widget<FilledButton>(metronome).style!.shape!.resolve({}), shape);
+    await tester.tap(metronome);
+    await tester.pumpAndSettle();
+    expect(find.text('Stop metronome'), findsOneWidget);
+    expect(tester.getSize(metronome), size);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('swiping does not flash busy buttons while audio cleanup is pending', (tester) async {
+    tester.view.physicalSize = const Size(360, 740);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final clicks = FakeClicks();
+    final controller = PracticeController(microphone: FakeMicrophone(), clicks: clicks);
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(FretmateApp(controller: controller));
+    final pages = find.byKey(const ValueKey('tool-pages'));
+    for (final active in [false, true]) {
+      for (final destination in [1, 0]) {
+        if (active) {
+          await tester.runAsync(() => controller.tab == 0 ? controller.toggleTuner() : controller.toggleMetronome());
+          await tester.pumpAndSettle();
+        }
+        final gate = Completer<void>();
+        clicks.stopGate = gate;
+        try {
+          final start = tester.getTopLeft(pages) + Offset(destination == 1 ? 280 : 80, 24);
+          await tester.dragFrom(start, Offset(destination == 1 ? -280 : 280, 0));
+          await tester.pumpAndSettle();
+          expect(controller.tab, destination);
+          expect(controller.busy, isFalse);
+          expect(find.text('Please wait…'), findsNothing);
+          final button = find.byKey(ValueKey(destination == 0 ? 'listen-button' : 'metronome-button'));
+          expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
+          expect(find.text(destination == 0 ? 'Listen' : 'Start metronome'), findsOneWidget);
+        } finally {
+          gate.complete();
+          clicks.stopGate = null;
+          await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+          await tester.pumpAndSettle();
+        }
+      }
+    }
+  });
+
   testWidgets('theme toggle updates both tools without interrupting playback', (tester) async {
     final clicks = FakeClicks();
     final controller = PracticeController(microphone: FakeMicrophone(), clicks: clicks);

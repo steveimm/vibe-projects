@@ -126,7 +126,7 @@ class PracticeController extends ChangeNotifier {
     tab = value;
     _epoch++;
     error = null;
-    return _enqueue(_stopAudio);
+    return _enqueue(_stopAudio, blockControls: false);
   }
 
   void selectString(GuitarString? value) {

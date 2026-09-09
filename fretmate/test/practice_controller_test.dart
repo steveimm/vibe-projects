@@ -21,6 +21,25 @@ void main() {
   });
   tearDown(() => controller.dispose());
 
+  test('starting the new tool waits for tab cleanup without making navigation busy', () async {
+    await controller.toggleTuner();
+    final gate = Completer<void>();
+    clicks.stopGate = gate;
+    final navigation = controller.selectTab(1);
+    expect(controller.busy, isFalse);
+    final start = controller.toggleMetronome();
+    await Future<void>.delayed(Duration.zero);
+    expect(clicks.starts, 0);
+    expect(microphone.recording, isFalse);
+    gate.complete();
+    clicks.stopGate = null;
+    await navigation;
+    await start;
+    expect(clicks.starts, 1);
+    expect(controller.playing, isTrue);
+    expect(controller.busy, isFalse);
+  });
+
   test('live metronome changes retain the current beat without a busy flash', () async {
     await controller.selectTab(1);
     await controller.toggleMetronome();
