@@ -1,12 +1,11 @@
 package id.steveimm.pocketpilot.ui.onboarding
 
+import id.steveimm.pocketpilot.app.AppSettingsState
+import id.steveimm.pocketpilot.ui.settings.ModelServerForm
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import id.steveimm.pocketpilot.onboarding.ApiKeyAuthMethod
-import id.steveimm.pocketpilot.onboarding.ApiKeyStepState
 import id.steveimm.pocketpilot.onboarding.DemoStepState
 import id.steveimm.pocketpilot.onboarding.OnboardingEffect
-import id.steveimm.pocketpilot.onboarding.OnboardingProvider
 import id.steveimm.pocketpilot.onboarding.OnboardingStepState
 import id.steveimm.pocketpilot.onboarding.PermissionStepState
 import id.steveimm.pocketpilot.onboarding.StepOutcomes
@@ -16,11 +15,11 @@ import kotlinx.coroutines.flow.Flow
 /** Full-screen onboarding wizard. */
 @Composable
 fun OnboardingScreen(
+    settings: AppSettingsState,
+    onServerSaved: () -> Unit,
     currentStep: WizardStep,
     stepState: OnboardingStepState?,
     outcomes: StepOutcomes,
-    selectedProvider: OnboardingProvider,
-    authMethod: ApiKeyAuthMethod,
     accessibilityGranted: Boolean,
     overlayGranted: Boolean,
     batteryGranted: Boolean,
@@ -29,17 +28,9 @@ fun OnboardingScreen(
     onContinue: () -> Unit,
     onOpenSettings: () -> Unit,
     onSkipStep: () -> Unit,
-    onProviderSelected: (OnboardingProvider) -> Unit,
-    onAuthMethodSelected: (ApiKeyAuthMethod) -> Unit,
-    onStartOAuth: () -> Unit,
-    onCancelOAuth: () -> Unit,
-    onApiKeyChanged: (String) -> Unit,
-    onValidateApiKey: () -> Unit,
-    onRetryValidation: () -> Unit,
-    onUseCustomServer: () -> Unit,
     onStartDemo: () -> Unit,
     onFinish: () -> Unit,
-    onGoToAuthStep: () -> Unit,
+    onGoToServerStep: () -> Unit,
     onEffect: (OnboardingEffect) -> Unit
 ) {
     // Consume one-shot effects
@@ -102,27 +93,9 @@ fun OnboardingScreen(
             }
         }
 
-        WizardStep.ApiKey -> {
-            OnboardingShell(
-                stepIndex = 4,
-                totalSteps = totalSteps,
-                title = "Connect your model",
-                onBack = backAction
-            ) {
-                ApiKeyStepContent(
-                    state = stepState as? ApiKeyStepState ?: ApiKeyStepState.Empty,
-                    selectedProvider = selectedProvider,
-                    authMethod = authMethod,
-                    onProviderSelected = onProviderSelected,
-                    onAuthMethodSelected = onAuthMethodSelected,
-                    onStartOAuth = onStartOAuth,
-                    onCancelOAuth = onCancelOAuth,
-                    onContinue = onContinue,
-                    onKeyChanged = onApiKeyChanged,
-                    onValidate = onValidateApiKey,
-                    onRetry = onRetryValidation,
-                    onUseCustomServer = onUseCustomServer
-                )
+        WizardStep.ModelServer -> {
+            OnboardingShell(stepIndex = 4, totalSteps = totalSteps, title = "Connect your model server", onBack = backAction) {
+                ModelServerForm(settings, onSaved = onServerSaved)
             }
         }
 
@@ -137,7 +110,7 @@ fun OnboardingScreen(
                     state = stepState as? DemoStepState ?: DemoStepState.Ready,
                     onRunDemo = onStartDemo,
                     onSkip = onSkipStep,
-                    onGoToAuthStep = onGoToAuthStep
+                    onGoToServerStep = onGoToServerStep
                 )
             }
         }
@@ -151,7 +124,6 @@ fun OnboardingScreen(
             ) {
                 CompleteStepContent(
                     outcomes = outcomes,
-                    authMethod = authMethod,
                     accessibilityGranted = accessibilityGranted,
                     overlayGranted = overlayGranted,
                     batteryGranted = batteryGranted,

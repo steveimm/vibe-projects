@@ -3,13 +3,13 @@ package id.steveimm.pocketpilot.llm
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-class CloudStreamRetryPolicyTest {
+class StreamRetryPolicyTest {
 
     private val tag = "TestPolicy"
 
     @Test
     fun `TransientException before any events triggers Retry`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = TransientException("timeout"),
             attempt = 1,
@@ -21,7 +21,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `RateLimitException before any events triggers Retry`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = RateLimitException("rate limited"),
             attempt = 1,
@@ -33,7 +33,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `RateLimitException with retryAfterMs uses that value for waitMs`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = RateLimitException("rate limited", retryAfterMs = 5000L),
             attempt = 1,
@@ -46,7 +46,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `RateLimitException without retryAfterMs falls back to backoffMs`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = RateLimitException("rate limited"),
             attempt = 1,
@@ -59,7 +59,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `TransientException uses backoffMs for waitMs`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = TransientException("server error"),
             attempt = 1,
@@ -72,7 +72,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `nextBackoffMs is doubled from current backoff`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = TransientException("error"),
             attempt = 1,
@@ -85,7 +85,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `nextBackoffMs is capped at MAX_BACKOFF_MS`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = TransientException("error"),
             attempt = 1,
@@ -97,7 +97,7 @@ class CloudStreamRetryPolicyTest {
             .isEqualTo(LLMClient.MAX_BACKOFF_MS)
     }
 
-    // Boundary: this file characterizes ONLY the pure decision matrix in CloudStreamRetryPolicy.decide.
+    // Boundary: this file characterizes ONLY the pure decision matrix in StreamRetryPolicy.decide.
 
     @Test
     fun `policy guard - retryable plus emittedEvent always returns FailAndStop`() {
@@ -112,7 +112,7 @@ class CloudStreamRetryPolicyTest {
         )
         for (err in retryableErrors) {
             for (attempt in 1..LLMClient.MAX_RETRIES) {
-                val action = CloudStreamRetryPolicy.decide(
+                val action = StreamRetryPolicy.decide(
                     tag = tag,
                     classified = err,
                     attempt = attempt,
@@ -128,7 +128,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `retryable error after emitted event returns FailAndStop`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = TransientException("connection reset"),
             attempt = 1,
@@ -140,7 +140,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `RateLimitException after emitted event returns FailAndStop`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = RateLimitException("rate limited"),
             attempt = 1,
@@ -152,7 +152,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `FailAndStop message mentions partial output`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = TransientException("some error"),
             attempt = 1,
@@ -165,7 +165,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `RuntimeException returns Stop regardless of emitted state`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = RuntimeException("unknown error"),
             attempt = 1,
@@ -177,7 +177,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `IllegalStateException returns Stop`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = IllegalStateException("bad state"),
             attempt = 1,
@@ -189,7 +189,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `retryable error at max attempts returns Stop`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = TransientException("timeout"),
             attempt = LLMClient.MAX_RETRIES,
@@ -202,7 +202,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `retryable error at attempt just below max still retries`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = TransientException("timeout"),
             attempt = LLMClient.MAX_RETRIES - 1,
@@ -214,7 +214,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `retryable error past max attempts returns Stop`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = TransientException("timeout"),
             attempt = LLMClient.MAX_RETRIES + 5,
@@ -228,7 +228,7 @@ class CloudStreamRetryPolicyTest {
     fun `RateLimit at max attempts returns Stop even when retryAfterMs is set`() {
         // emittedEvent guard does not apply here, but MAX_RETRIES exhaustion
         // overrides the rate-limit hint — caller should not wait or retry.
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = RateLimitException("rate limited", retryAfterMs = 9999L),
             attempt = LLMClient.MAX_RETRIES,
@@ -242,7 +242,7 @@ class CloudStreamRetryPolicyTest {
     fun `emittedEvent guard takes priority over max-attempts exhaustion`() {
         // Even at exhaustion, the emittedEvent guard still fires FailAndStop
         // because it is checked before the attempt-budget guard.
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = TransientException("late failure"),
             attempt = LLMClient.MAX_RETRIES,
@@ -256,7 +256,7 @@ class CloudStreamRetryPolicyTest {
     fun `non-retryable error with emittedEvent still returns Stop not FailAndStop`() {
         // FailAndStop only applies when the error is retryable; a programming
         // error after partial output still falls through to Stop.
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = IllegalArgumentException("bad arg"),
             attempt = 1,
@@ -268,7 +268,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `FailAndStop message includes original exception message`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = RateLimitException("quota exhausted"),
             attempt = 2,
@@ -281,7 +281,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `nextBackoffMs grows by BACKOFF_MULTIPLIER from initial backoff`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = TransientException("error"),
             attempt = 1,
@@ -294,7 +294,7 @@ class CloudStreamRetryPolicyTest {
 
     @Test
     fun `nextBackoffMs at exact cap stays at MAX_BACKOFF_MS`() {
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = TransientException("error"),
             attempt = 1,
@@ -309,7 +309,7 @@ class CloudStreamRetryPolicyTest {
     fun `RateLimit retryAfterMs of zero is honored over backoff`() {
         // Server-supplied "retry immediately" (0) wins over computed backoff,
         // because the policy uses Elvis on null only — not on zero.
-        val action = CloudStreamRetryPolicy.decide(
+        val action = StreamRetryPolicy.decide(
             tag = tag,
             classified = RateLimitException("ok now", retryAfterMs = 0L),
             attempt = 1,

@@ -12,7 +12,6 @@ import android.view.accessibility.AccessibilityEvent
 import id.steveimm.pocketpilot.debug.ActionDebugReceiver
 import id.steveimm.pocketpilot.protocol.Op
 import id.steveimm.pocketpilot.protocol.PlatformMode
-import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.session.AgentSession
 import id.steveimm.pocketpilot.ui.overlay.compose.IslandOverlayHost
 import id.steveimm.pocketpilot.ui.overlay.compose.ServiceLifecycleOwner
@@ -31,7 +30,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.lang.ref.WeakReference
 
@@ -344,63 +342,6 @@ class AgentService : AccessibilityService() {
                         Log.e(TAG, "Session event collector crashed", e)
                     }
                 }
-    }
-
-    fun runAgent(
-            goal: String,
-            authStore: id.steveimm.pocketpilot.auth.AuthStore? = null,
-            platformMode: PlatformMode = PlatformMode.ACCESSIBILITY
-    ) {
-        if (!isServiceActive) {
-            Log.w(TAG, "Ignoring runAgent because service is not active")
-            return
-        }
-        if (session != null) {
-            Log.i(TAG, "Stopping existing session before starting new one")
-            eventCollectorJob?.cancel()
-            eventCollectorJob = null
-            val oldSession = session
-            session = null
-            serviceScope.launch { oldSession?.submit(Op.Shutdown) }
-        }
-
-        currentPlatformMode = platformMode
-        overlayController?.setPlatformMode(platformMode)
-
-        serviceScope.launch {
-            try {
-                val settings = AppSettingsStore(this@AgentService).load()
-                val sessionConfig =
-                        SessionConfig(
-                                debugMode = true,
-                                traceEnabled = settings.traceEnabled,
-                                platformMode = platformMode
-                        )
-                val visualizer = actionVisualizer
-                val touchGate = overlayController?.overlayTouchGate
-                val newSession =
-                        withContext(Dispatchers.Default) {
-                            AgentSession.create(
-                                    config = sessionConfig,
-                                    service = this@AgentService,
-                                    scope = serviceScope,
-                                    authStore = authStore,
-                                    visualizer = visualizer,
-                                    overlayTouchGate = touchGate,
-                            )
-                        }
-
-                session = newSession
-
-                observeSession(newSession)
-
-                newSession.submit(Op.UserInput(text = goal))
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to create session", e)
-                updateStatus("❌ Failed to start: ${e.message}")
-                overlayController?.hideAll()
-            }
-        }
     }
 
     fun stopAgent() {

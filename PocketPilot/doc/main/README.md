@@ -80,10 +80,9 @@ doc/main/
 │   ├── session_coordinator.md # SubmitResult queue + drain semantics
 │   ├── agent_run_loop.md    # Agent.run TurnOutcome loop
 │   ├── tool_call.md         # ToolCallState 7-state lifecycle
-│   ├── llm_retry.md         # CloudStreamRetryPolicy + StreamRetryRunner
-│   ├── local_model_loading.md # LFMLLMClient ModelLoadingState
+│   ├── llm_retry.md         # StreamRetryPolicy + StreamRetryRunner
 │   ├── onboarding_wizard.md # WizardStep funnel + StepOutcome
-│   ├── onboarding_apikey_step.md # ApiKeyStepState (manual + OAuth)
+│   ├── onboarding_model_server_step.md # ModelServerForm (local server settings)
 │   ├── onboarding_demo_step.md   # DemoStepState
 │   ├── onboarding_permission_step.md # PermissionStepState
 │   ├── onboarding_step_states.md # Why 3 hierarchies are kept (KISS rationale)
@@ -226,13 +225,11 @@ app/src/main/kotlin/id/steveimm/pocketpilot/
 ├── llm/                          # LLM integration
 │   ├── LLMClient.kt              # Abstract base (stream events, result types)
 │   ├── LLMClientFactory.kt       # Catalog-driven creation with caching
-│   ├── ModelCatalog.kt            # ModelEntry, LLMProvider, ApiType
-│   ├── OpenAIResponseClient.kt   # OpenAI Responses API client
+│   ├── ModelCatalog.kt            # Metadata for models served by the configured endpoint
 │   ├── ChatCompletionClient.kt   # Chat Completions API client
 │   ├── ChatCompletionInterop.kt  # Responses ↔ Chat Completions type bridge
-│   ├── LFMLLMClient.kt           # Local LFM client (Leap SDK)
-│   ├── CloudLlmRetry.kt          # Non-streaming retry
-│   ├── CloudStreamRetryRunner.kt # Streaming retry
+│   ├── LlmRetry.kt          # Non-streaming retry
+│   ├── StreamRetryRunner.kt # Streaming retry
 │   ├── OpenAIErrorClassifier.kt  # Exception → retryable classification
 │   └── ...                       # Logger, local config, interop helpers
 │

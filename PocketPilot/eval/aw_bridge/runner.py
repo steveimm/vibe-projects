@@ -5,7 +5,6 @@ import copy
 import json
 import logging
 import os
-import socket
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -61,21 +60,7 @@ class RunnerConfig:
     task_overrides: dict[str, dict[str, Any]]
 
 
-_PROVIDER_REQUIRED_API_KEY = {
-    "OPENAI": "OPENAI_API_KEY",
-    "OPENROUTER": "OPENROUTER_API_KEY",
-    "OTHER": "OTHER_API_KEY",
-}
-
-_API_KEY_NAMES = ("OPENAI_API_KEY", "OPENROUTER_API_KEY", "OTHER_API_KEY")
-_ENV_EXTRAS = ("OPENAI_BASE_URL", "OTHER_BASE_URL", "OTHER_MODEL_ID")
-# When `main_model == "other-custom"` (the synth catalog entry that the app builds
-# at runtime from AppSettingsState), llm_models.json doesn't list the model, so
-# preflight needs to require the full OTHER trio explicitly. Otherwise an
-# `other-custom` run would launch with no base URL or model id and fail at
-# session bootstrap with a useless "unknown model" error.
-_OTHER_CUSTOM_MODEL_NAME = "other-custom"
-_OTHER_REQUIRED_EXTRAS = ("OTHER_API_KEY", "OTHER_BASE_URL", "OTHER_MODEL_ID")
+_SERVER_ENV_NAMES = ("POCKETPILOT_SERVER_URL", "POCKETPILOT_MODEL_ID", "POCKETPILOT_API_KEY")
 _DEFAULT_CONFIG_PATH = Path("eval/config/default.yaml")
 
 
@@ -85,9 +70,11 @@ def main() -> None:
     workspace_root = Path(__file__).resolve().parents[2]
     config = load_config(workspace_root, args)
 
-    api_keys = _load_api_keys(workspace_root)
-    config.bridge.api_keys = api_keys or None
-    _validate_required_api_key(config, api_keys, workspace_root)
+    server = _load_server_settings(workspace_root)
+    config.bridge.server_base_url = server.get("POCKETPILOT_SERVER_URL", config.bridge.server_base_url)
+    config.bridge.main_model = server.get("POCKETPILOT_MODEL_ID", config.bridge.main_model)
+    config.bridge.api_key = server.get("POCKETPILOT_API_KEY")
+    _validate_server_settings(config)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_dir = (workspace_root / config.output_root / timestamp).resolve()
@@ -261,12 +248,11 @@ def load_config(workspace_root: Path, args: argparse.Namespace) -> RunnerConfig:
     bridge = BridgeConfig(
         package_name=str(bridge_cfg.get("package_name", "id.steveimm.pocketpilot")),
         activity=str(bridge_cfg.get("activity", "id.steveimm.pocketpilot/.app.MainActivity")),
-        llm_backend=str(bridge_cfg.get("llm_backend", "openai")),
+        server_base_url=str(bridge_cfg.get("server_base_url", "")),
         agent_mode=str(bridge_cfg.get("agent_mode", "pro")),
         perception_mode=str(bridge_cfg.get("perception_mode", "accessibility_only")),
         platform_mode=str(args.platform_mode or bridge_cfg.get("platform_mode", "accessibility")),
-        main_model=str(bridge_cfg.get("main_model", "minimax-m2.5")),
-        executor_model=str(bridge_cfg.get("executor_model", "")),
+        main_model=str(bridge_cfg.get("main_model", "")),
         max_turns=int(bridge_cfg.get("max_turns", 30)),
         auto_start=bool(bridge_cfg.get("auto_start", True)),
         fresh_session=bool(bridge_cfg.get("fresh_session", True)),
@@ -399,9 +385,8 @@ def _nullable_path_str(value: Any) -> str | None:
     return os.path.expanduser(os.path.expandvars(text))
 
 
-def _load_api_keys(workspace_root: Path) -> dict[str, str]:
-    """Load API keys and env extras (e.g. OPENAI_BASE_URL) from .env and environment."""
-    _ALL_ENV_NAMES = _API_KEY_NAMES + _ENV_EXTRAS
+def _load_server_settings(workspace_root: Path) -> dict[str, str]:
+    """Load the configured server URL, model ID, and optional key from .env and environment."""
     keys: dict[str, str] = {}
     env_file = workspace_root / ".env"
     if env_file.is_file():
@@ -412,115 +397,31 @@ def _load_api_keys(workspace_root: Path) -> dict[str, str]:
             name, _, value = line.partition("=")
             name = name.strip()
             value = value.strip().strip("\"'")
-            if name in _ALL_ENV_NAMES and value:
+            if name in _SERVER_ENV_NAMES:
                 keys[name] = value
-    for name in _ALL_ENV_NAMES:
+    for name in _SERVER_ENV_NAMES:
         val = os.environ.get(name)
-        if val:
+        if val is not None:
             keys[name] = val
     return keys
 
 
-def _validate_required_api_key(
-    config: RunnerConfig,
-    api_keys: dict[str, str],
-    workspace_root: Path | None = None,
-) -> None:
-    """Reject runs missing credentials required by the configured models.
+def _validate_server_settings(config: RunnerConfig) -> None:
+    """Require an explicit HTTP(S) server and model without requiring authentication.
 
     Args:
         config: Runner settings for the target device and benchmark.
-        api_keys: Available provider credentials and endpoint settings.
-        workspace_root: Project root used to resolve relative paths.
     """
-    backend = config.bridge.llm_backend.strip().lower()
-    if backend == "local":
-        return
-
-    workspace = workspace_root or Path(__file__).resolve().parents[2]
-    required_keys = _resolve_required_api_keys_for_models(config, workspace)
-    missing = [name for name in sorted(required_keys) if not api_keys.get(name)]
-    if missing:
-        models = [config.bridge.main_model]
-        if config.bridge.executor_model.strip():
-            models.append(config.bridge.executor_model.strip())
-        raise RuntimeError(
-            f"Missing required credential/config value(s) for selected model(s): {', '.join(missing)}. Models={models}. Add them to .env or environment variables."
-        )
-    _validate_openai_base_url(api_keys, required_keys)
-
-
-def _validate_openai_base_url(api_keys: dict[str, str], required_keys: set[str]) -> None:
-    """Reject OpenAI configurations that route chat requests to the wrong endpoint.
-
-    Args:
-        api_keys: Available provider credentials and endpoint settings.
-        required_keys: Credential names needed by the selected models.
-    """
-    if "OPENAI_API_KEY" not in required_keys:
-        return
-
-    base_url = api_keys.get("OPENAI_BASE_URL")
-    if not base_url:
-        return
-
-    parsed = urlparse(base_url)
-    if not parsed.scheme or not parsed.hostname:
-        raise RuntimeError(f"Invalid OPENAI_BASE_URL: {base_url}")
-
-    host = parsed.hostname
-    if host in {"localhost", "127.0.0.1", "::1", "10.0.2.2"}:
-        host = "127.0.0.1"
-    port = parsed.port or (443 if parsed.scheme == "https" else 80)
-
-    try:
-        with socket.create_connection((host, port), timeout=2.0):
-            return
-    except OSError as exc:
-        hint = ""
-        if port == 18080 and host == "127.0.0.1":
-            hint = " Start the local proxy or establish the SSH tunnel before running eval."
-        raise RuntimeError(
-            f"OPENAI_BASE_URL is configured but not reachable from the eval host: {base_url} ({host}:{port}).{hint}"
-        ) from exc
-
-
-def _resolve_required_api_keys_for_models(config: RunnerConfig, workspace_root: Path) -> set[str]:
-    """Find credential names required by the configured model selections.
-
-    Args:
-        config: Runner settings for the target device and benchmark.
-        workspace_root: Project root used to resolve relative paths.
-    """
-    model_catalog_path = workspace_root / "app" / "src" / "main" / "assets" / "llm_models.json"
-    if not model_catalog_path.is_file():
-        raise RuntimeError(f"Model catalog not found: {model_catalog_path}")
-
-    raw = json.loads(model_catalog_path.read_text(encoding="utf-8"))
-    if not isinstance(raw, dict):
-        raise RuntimeError(f"Invalid model catalog format: {model_catalog_path}")
-
-    model_names: list[str] = [config.bridge.main_model.strip()]
-    executor_model = config.bridge.executor_model.strip()
-    if executor_model:
-        model_names.append(executor_model)
-
-    required: set[str] = set()
-    for model_name in model_names:
-        if model_name == _OTHER_CUSTOM_MODEL_NAME:
-            # Synth entry — not in llm_models.json. Demand the full OTHER trio
-            # so the run won't launch without a usable user-supplied endpoint.
-            required.update(_OTHER_REQUIRED_EXTRAS)
-            continue
-        entry = raw.get(model_name)
-        if not isinstance(entry, dict):
-            raise RuntimeError(f"Unknown model key '{model_name}' in {model_catalog_path}")
-        provider = str(entry.get("provider", "")).strip().upper()
-        env_name = _PROVIDER_REQUIRED_API_KEY.get(provider)
-        if not env_name:
-            raise RuntimeError(f"Unsupported provider '{provider}' for model '{model_name}' in {model_catalog_path}")
-        required.add(env_name)
-    return required
+    parsed = urlparse(config.bridge.server_base_url.strip())
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise RuntimeError("Set POCKETPILOT_SERVER_URL to your server API base URL")
+    if parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment:
+        raise RuntimeError("The model server URL must not contain credentials, a query, or a fragment")
+    model = config.bridge.main_model.strip()
+    if not model or any(character.isspace() for character in model):
+        raise RuntimeError("Set POCKETPILOT_MODEL_ID to the exact model ID served by your endpoint")
+    config.bridge.main_model = model
+    config.bridge.server_base_url = config.bridge.server_base_url.strip().rstrip("/").removesuffix("/chat/completions")
 
 
 def _safe_config_for_logging(config: RunnerConfig) -> dict[str, Any]:
@@ -531,9 +432,8 @@ def _safe_config_for_logging(config: RunnerConfig) -> dict[str, Any]:
     """
     safe = asdict(config)
     bridge = safe.get("bridge")
-    if isinstance(bridge, dict) and "api_keys" in bridge:
-        keys = bridge.get("api_keys") or {}
-        bridge["api_keys"] = {name: "***" for name in keys}
+    if isinstance(bridge, dict):
+        bridge["api_key"] = "***" if bridge.get("api_key") else ""
     return safe
 
 

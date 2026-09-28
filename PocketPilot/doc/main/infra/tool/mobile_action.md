@@ -37,7 +37,7 @@ When multiple target fields are provided in one call, higher-priority fields sta
 
 ### Coordinate-hint normalization
 
-The Codex backend sometimes emits both semantic selectors and raw coordinates in one call, e.g. `{"action":"click","element_index":14,"text":"Save","x":540,"y":1230}`. The runtime normalizes this at the tool boundary:
+Models sometimes emit both semantic selectors and raw coordinates in one call, e.g. `{"action":"click","element_index":14,"text":"Save","x":540,"y":1230}`. The runtime normalizes this at the tool boundary:
 
 - The semantic target is **primary**. Execution targets the resolved semantic node, not the hint coordinate.
 - If the semantic target resolves, the call executes against the semantic target even when hint coordinates are outside the resolved bounds. The hint is ignored in that case; it does not create an ambiguity failure.

@@ -173,7 +173,7 @@ catch (e: ContextWindowExceededException) {
 }
 ```
 
-- `ContextWindowExceededException` is raised by `CloudStreamRetryRunner` when the provider returns HTTP 413 / `prompt_too_long` / `request_too_large` / Ollama "prompt too long; exceeded max context length".
+- `ContextWindowExceededException` is raised by `StreamRetryRunner` when the provider returns HTTP 413 / `prompt_too_long` / `request_too_large` / Ollama "prompt too long; exceeded max context length".
 - The exception is **not** retried by the cloud retry policy — it's not transient.
 - `Turn.runStreaming` catches it once, forces a compaction with `keepRecentTokens` halved, then retries. A second failure propagates to the turn outcome.
 

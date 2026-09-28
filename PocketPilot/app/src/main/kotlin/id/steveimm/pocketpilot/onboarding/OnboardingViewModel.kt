@@ -1,499 +1,204 @@
 package id.steveimm.pocketpilot.onboarding
 
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import id.steveimm.pocketpilot.app.AppSettingsState
-import id.steveimm.pocketpilot.auth.AuthCredential
-import id.steveimm.pocketpilot.auth.AuthStore
-import id.steveimm.pocketpilot.auth.OpenAiSignInResult
-import id.steveimm.pocketpilot.auth.openAiSignIn
-import id.steveimm.pocketpilot.llm.LLMProvider
-import id.steveimm.pocketpilot.llm.ModelCatalog
-import id.steveimm.pocketpilot.llm.ModelEntry
+import id.steveimm.pocketpilot.llm.ModelIdValidator
+import id.steveimm.pocketpilot.llm.ServerBaseUrlValidator
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
-/** Onboarding wizard state machine. */
 class OnboardingViewModel(
     private val store: OnboardingStore,
     private val settingsState: AppSettingsState,
-    private val modelCatalog: ModelCatalog,
     private val permissionMonitor: PermissionStateMonitor,
-    private val authStore: AuthStore,
     private val demoController: OnboardingDemoController,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
 ) {
-    companion object {
-        private const val TAG = "OnboardingVM"
-        private const val AUTO_ADVANCE_DELAY_MS = 400L
-        private const val A11Y_POLL_INTERVAL_MS = 200L
-        private const val A11Y_POLL_MAX_ATTEMPTS = 15 // 3 seconds
-    }
-
     var currentStep by mutableStateOf(WizardStep.Accessibility)
         private set
-
     var stepState by mutableStateOf<OnboardingStepState>(PermissionStepState.Checking)
         private set
-
-    var outcomes by mutableStateOf(StepOutcomes())
+    var outcomes by mutableStateOf(store.loadOutcomes())
         private set
-
-    private val _effects = Channel<OnboardingEffect>(Channel.BUFFERED)
-    val effects = _effects.receiveAsFlow()
-
-    var selectedProvider by mutableStateOf(OnboardingProvider.OPENAI_API)
-        private set
-
-    var authMethod by mutableStateOf(ApiKeyAuthMethod.OAUTH)
-        private set
-
-    val providerLabel: String get() = selectedProvider.label
-
-    private var oauthJob: kotlinx.coroutines.Job? = null
-
-    fun selectProvider(provider: OnboardingProvider) {
-        if (currentStep != WizardStep.ApiKey) return
-        if (provider == selectedProvider) return
-        selectedProvider = provider
-        if (provider == OnboardingProvider.OPENAI_API) {
-            authMethod = ApiKeyAuthMethod.OAUTH
-            stepState = ApiKeyStepState.OAuthReady
-        } else {
-            authMethod = ApiKeyAuthMethod.MANUAL
-            stepState = ApiKeyStepState.Empty
-        }
-    }
-
-    fun selectAuthMethod(method: ApiKeyAuthMethod) {
-        if (currentStep != WizardStep.ApiKey) return
-        authMethod = method
-        stepState = if (method == ApiKeyAuthMethod.MANUAL) ApiKeyStepState.Empty
-        else ApiKeyStepState.OAuthReady
-    }
-
-    /** Launch OAuth flow using shared suspend helper. */
-    fun startOAuth() {
-        if (stepState is ApiKeyStepState.OAuthInProgress) return
-
-        oauthJob = scope.launch {
-            stepState = ApiKeyStepState.OAuthInProgress
-
-            val result = openAiSignIn(
-                launchBrowser = { url -> _effects.trySend(OnboardingEffect.LaunchOAuth(url)) },
-                onCallbackReceived = { stepState = ApiKeyStepState.OAuthFinishing },
-            )
-
-            when (result) {
-                is OpenAiSignInResult.Success -> {
-                    val tokens = result.tokens
-                    withContext(Dispatchers.IO) {
-                        authStore.set(
-                            LLMProvider.OPENAI_CODEX,
-                            AuthCredential.OAuth(
-                                accessToken = tokens.accessToken,
-                                refreshToken = tokens.refreshToken,
-                                expiresAt = tokens.expiresAt,
-                                email = tokens.email,
-                                idToken = tokens.idToken,
-                            )
-                        )
-                    }
-                    applyDefaultModelFor(LLMProvider.OPENAI_CODEX)
-                    store.saveOutcome(WizardStep.ApiKey, StepOutcome.Done)
-                    outcomes = outcomes.copy(apiKey = StepOutcome.Done)
-                    stepState = ApiKeyStepState.OAuthSuccess(tokens.email ?: "")
-                    Log.d(TAG, "OAuth success, email=${tokens.email}")
-                    delay(AUTO_ADVANCE_DELAY_MS)
-                    advanceToNextStep()
-                }
-                is OpenAiSignInResult.Error -> {
-                    stepState = ApiKeyStepState.OAuthError(result.message)
-                }
-            }
-        }
-    }
-
-    fun cancelOAuth() {
-        oauthJob?.cancel()
-        oauthJob = null
-        stepState = ApiKeyStepState.OAuthReady
-    }
+    private val effectChannel = Channel<OnboardingEffect>(Channel.BUFFERED)
+    val effects = effectChannel.receiveAsFlow()
+    private var transition: Job? = null
 
     init {
-        outcomes = store.loadOutcomes()
-        val firstIncomplete = firstIncompleteStep()
-        currentStep = firstIncomplete
-        enterStep(firstIncomplete, isResume = false)
-    }
-
-    /** Called from MainActivity.onResume() — re-check current permission step. */
-    fun onHostResumed() {
-        if (currentStep in listOf(WizardStep.Accessibility, WizardStep.Overlay, WizardStep.Battery)) {
-            checkCurrentPermission(isReturnFromSettings = true)
-        }
-    }
-
-    fun goBack() {
-        val prev = previousStep(currentStep) ?: return
-        enterStep(prev, isResume = false, autoAdvance = false)
-    }
-
-    /** Manual advance from a satisfied step (used after back navigation). */
-    fun continueForward() {
-        advanceToNextStep()
-    }
-
-    /** Jump back to the ApiKey step from a credential error in the demo. */
-    fun goToAuthStep() {
-        store.saveOutcome(WizardStep.ApiKey, StepOutcome.Pending)
-        store.saveOutcome(WizardStep.Demo, StepOutcome.Pending)
-        outcomes = outcomes.copy(
-            apiKey = StepOutcome.Pending,
-            demo = StepOutcome.Pending,
-        )
-        currentStep = WizardStep.ApiKey
-        enterStep(WizardStep.ApiKey, isResume = false)
-    }
-
-    fun openSystemSettings() {
-        when (currentStep) {
-            WizardStep.Accessibility -> {
-                stepState = PermissionStepState.OpeningSettings
-                _effects.trySend(OnboardingEffect.OpenAccessibilitySettings)
-            }
-            WizardStep.Overlay -> {
-                stepState = PermissionStepState.OpeningSettings
-                _effects.trySend(OnboardingEffect.OpenOverlaySettings)
-            }
-            WizardStep.Battery -> {
-                stepState = PermissionStepState.OpeningSettings
-                _effects.trySend(OnboardingEffect.OpenBatteryOptimization)
-            }
-            else -> {}
-        }
-    }
-
-    fun onApiKeyChanged(key: String) {
-        if (currentStep != WizardStep.ApiKey) return
-        stepState = if (key.isBlank()) ApiKeyStepState.Empty else ApiKeyStepState.Editing(key)
-    }
-
-    fun validateApiKey() {
-        val state = stepState
-        val key = when (state) {
-            is ApiKeyStepState.Editing -> state.key
-            is ApiKeyStepState.Invalid -> state.key
-            else -> return
-        }
-        if (key.isBlank()) return
-
-        stepState = ApiKeyStepState.Validating(key)
-        scope.launch {
-            val validator = createValidatorForProvider(selectedProvider)
-            if (validator == null) {
-                stepState = ApiKeyStepState.TransientError(key, "No model found for ${selectedProvider.label}")
-                return@launch
-            }
-            val result = validator.validate(key)
-            when (result) {
-                is LlmCredentialValidator.Result.Valid -> {
-                    withContext(Dispatchers.IO) {
-                        authStore.set(selectedProvider.llmProvider, AuthCredential.ApiKey(key))
-                    }
-                    applyDefaultModelFor(selectedProvider.llmProvider)
-                    stepState = ApiKeyStepState.Valid(key)
-                    store.saveOutcome(WizardStep.ApiKey, StepOutcome.Done)
-                    outcomes = outcomes.copy(apiKey = StepOutcome.Done)
-                    delay(AUTO_ADVANCE_DELAY_MS)
-                    advanceToNextStep()
-                }
-                is LlmCredentialValidator.Result.InvalidKey -> {
-                    stepState = ApiKeyStepState.Invalid(key, result.message)
-                }
-                is LlmCredentialValidator.Result.TransientError -> {
-                    stepState = ApiKeyStepState.TransientError(key, result.message)
-                }
-            }
-        }
-    }
-
-    fun retryValidation() {
-        val state = stepState
-        if (state is ApiKeyStepState.TransientError) {
-            stepState = ApiKeyStepState.Editing(state.key)
-            validateApiKey()
-        }
-    }
-
-    fun startDemo() {
-        if (currentStep != WizardStep.Demo) return
-        stepState = DemoStepState.Preflight
-
-        // Preflight: re-check hard gates
-        if (!isAccessibilityEnabled() || !isOverlayEnabled()) {
-            Log.w(TAG, "Demo preflight failed: permission revoked")
-            val brokenStep = if (!isAccessibilityEnabled()) WizardStep.Accessibility else WizardStep.Overlay
-            store.saveOutcome(brokenStep, StepOutcome.Pending)
-            outcomes = when (brokenStep) {
-                WizardStep.Accessibility -> outcomes.copy(accessibility = StepOutcome.Pending)
-                else -> outcomes.copy(overlay = StepOutcome.Pending)
-            }
-            currentStep = brokenStep
-            enterStep(brokenStep, isResume = false)
-            return
-        }
-        if (outcomes.apiKey != StepOutcome.Done) {
-            currentStep = WizardStep.ApiKey
-            enterStep(WizardStep.ApiKey, isResume = false)
-            return
-        }
-
-        stepState = DemoStepState.Running
-        demoController.run(
-            onSuccess = { message ->
-                stepState = DemoStepState.Success(message)
-                store.saveOutcome(WizardStep.Demo, StepOutcome.Done)
-                outcomes = outcomes.copy(demo = StepOutcome.Done)
-                scope.launch {
-                    delay(AUTO_ADVANCE_DELAY_MS)
-                    advanceToNextStep()
-                }
-            },
-            onFailure = { reason ->
-                stepState = DemoStepState.Failure(reason)
-            },
-            onCredentialError = { message, isOAuth ->
-                stepState = DemoStepState.CredentialError(message, isOAuth)
-            },
-            onBringToFront = {
-                _effects.trySend(OnboardingEffect.BringMainActivityToFront)
-            }
-        )
-    }
-
-    fun skipStep() {
-        when (currentStep) {
-            WizardStep.Battery -> {
-                store.saveOutcome(WizardStep.Battery, StepOutcome.Skipped)
-                outcomes = outcomes.copy(battery = StepOutcome.Skipped)
-                advanceToNextStep()
-            }
-            WizardStep.Demo -> {
-                store.saveOutcome(WizardStep.Demo, StepOutcome.Skipped)
-                outcomes = outcomes.copy(demo = StepOutcome.Skipped)
-                advanceToNextStep()
-            }
-            else -> {}
-        }
-    }
-
-    fun useCustomServer() {
-        if (currentStep != WizardStep.ApiKey) return
-        if ((stepState as? ApiKeyStepState)?.canUseCustomServer != true) return
-
-        store.saveOutcome(WizardStep.ApiKey, StepOutcome.Skipped)
-        store.saveOutcome(WizardStep.Demo, StepOutcome.Skipped)
-        outcomes = outcomes.copy(apiKey = StepOutcome.Skipped, demo = StepOutcome.Skipped)
-        enterStep(WizardStep.Complete, isResume = false)
-        finish()
-        _effects.trySend(OnboardingEffect.OpenCustomServerSettings)
-    }
-
-    fun finish() {
-        store.setCompleted()
-        Log.d(TAG, "Onboarding completed")
-    }
-
-    private fun firstIncompleteStep(): WizardStep {
-        // Live hard-gate checks override stored Done
-        if (!isAccessibilityEnabled()) return WizardStep.Accessibility
-        if (!isOverlayEnabled()) return WizardStep.Overlay
-        if (outcomes.battery == StepOutcome.Pending && !isBatteryOptimized()) return WizardStep.Battery
-        if (outcomes.battery != StepOutcome.Pending && outcomes.apiKey == StepOutcome.Pending) return WizardStep.ApiKey
-        if (outcomes.battery == StepOutcome.Pending) return WizardStep.Battery
-        if (outcomes.apiKey == StepOutcome.Pending) return WizardStep.ApiKey
-        if (outcomes.demo == StepOutcome.Pending) return WizardStep.Demo
-        return WizardStep.Complete
-    }
-
-    private fun enterStep(step: WizardStep, isResume: Boolean, autoAdvance: Boolean = true) {
-        currentStep = step
-        when (step) {
-            WizardStep.Accessibility, WizardStep.Overlay, WizardStep.Battery -> {
-                checkCurrentPermission(isReturnFromSettings = isResume, autoAdvance = autoAdvance)
-            }
-            WizardStep.ApiKey -> {
-                // AuthStore is the source of truth for credentials.
-                if (tryRenderExistingCredential()) {
-                    if (autoAdvance) {
-                        scope.launch {
-                            delay(AUTO_ADVANCE_DELAY_MS)
-                            advanceToNextStep()
-                        }
-                    }
-                    return
-                }
-
-                if (outcomes.apiKey == StepOutcome.Done) {
-                    // Outcome said Done but no matching credential — recover.
-                    store.saveOutcome(WizardStep.ApiKey, StepOutcome.Pending)
-                    outcomes = outcomes.copy(apiKey = StepOutcome.Pending)
-                }
-
-                if (selectedProvider == OnboardingProvider.OPENAI_API) {
-                    authMethod = ApiKeyAuthMethod.OAUTH
-                    stepState = ApiKeyStepState.OAuthReady
-                } else {
-                    authMethod = ApiKeyAuthMethod.MANUAL
-                    stepState = ApiKeyStepState.Empty
-                }
-            }
-            WizardStep.Demo -> {
-                stepState = DemoStepState.Ready
-            }
-            WizardStep.Complete -> {
-                stepState = DemoStepState.Ready // not used for Complete
-            }
-        }
-    }
-
-    private fun checkCurrentPermission(isReturnFromSettings: Boolean, autoAdvance: Boolean = true) {
-        stepState = PermissionStepState.Checking
-
-        val satisfied = when (currentStep) {
-            WizardStep.Accessibility -> isAccessibilityEnabled()
-            WizardStep.Overlay -> isOverlayEnabled()
-            WizardStep.Battery -> isBatteryOptimized()
-            else -> return
-        }
-
-        if (satisfied) {
-            if (autoAdvance) {
-                onPermissionSatisfied()
-            } else {
-                stepState = PermissionStepState.Satisfied
-            }
-            return
-        }
-
-        if (currentStep == WizardStep.Accessibility && isReturnFromSettings) {
-            // A11y service connection can lag — poll briefly
-            scope.launch {
-                for (i in 1..A11Y_POLL_MAX_ATTEMPTS) {
-                    delay(A11Y_POLL_INTERVAL_MS)
-                    if (isAccessibilityEnabled()) {
-                        onPermissionSatisfied()
-                        return@launch
-                    }
-                }
-                stepState = if (isReturnFromSettings) PermissionStepState.Unsatisfied
-                    else PermissionStepState.Ready
-            }
-            return
-        }
-
-        stepState = if (isReturnFromSettings) PermissionStepState.Unsatisfied
-            else PermissionStepState.Ready
-    }
-
-    private fun onPermissionSatisfied() {
-        stepState = PermissionStepState.Satisfied
-        val outcomeStep = currentStep
-        store.saveOutcome(outcomeStep, StepOutcome.Done)
-        outcomes = when (outcomeStep) {
-            WizardStep.Accessibility -> outcomes.copy(accessibility = StepOutcome.Done)
-            WizardStep.Overlay -> outcomes.copy(overlay = StepOutcome.Done)
-            WizardStep.Battery -> outcomes.copy(battery = StepOutcome.Done)
-            else -> outcomes
-        }
-        scope.launch {
-            delay(AUTO_ADVANCE_DELAY_MS)
-            advanceToNextStep()
-        }
-    }
-
-    private fun advanceToNextStep() {
-        val next = nextStep(currentStep)
-        enterStep(next, isResume = false)
-    }
-
-    /** If [AuthStore] already has a credential for any onboarding-visible provider, render the matching success state, mark the step
-     * Done, and return true. Returns false when no credential exists. */
-    private fun tryRenderExistingCredential(): Boolean {
-        if (authStore.has(LLMProvider.OPENAI_CODEX)) {
-            authMethod = ApiKeyAuthMethod.OAUTH
-            selectedProvider = OnboardingProvider.OPENAI_API
-            stepState = ApiKeyStepState.OAuthSuccess("")
-            markApiKeyDoneIfNeeded()
-            return true
-        }
-        val matched = OnboardingProvider.entries
-            .firstOrNull { authStore.has(it.llmProvider) }
-        if (matched != null) {
-            authMethod = ApiKeyAuthMethod.MANUAL
-            selectedProvider = matched
-            stepState = ApiKeyStepState.Valid("")
-            markApiKeyDoneIfNeeded()
-            return true
-        }
-        return false
-    }
-
-    private fun markApiKeyDoneIfNeeded() {
-        if (outcomes.apiKey != StepOutcome.Done) {
-            store.saveOutcome(WizardStep.ApiKey, StepOutcome.Done)
-            outcomes = outcomes.copy(apiKey = StepOutcome.Done)
-        }
-    }
-
-    private fun nextStep(current: WizardStep): WizardStep = when (current) {
-        WizardStep.Accessibility -> WizardStep.Overlay
-        WizardStep.Overlay -> WizardStep.Battery
-        WizardStep.Battery -> WizardStep.ApiKey
-        WizardStep.ApiKey -> WizardStep.Demo
-        WizardStep.Demo -> WizardStep.Complete
-        WizardStep.Complete -> WizardStep.Complete
-    }
-
-    /** Returns null for the first step (no back from Accessibility). */
-    private fun previousStep(current: WizardStep): WizardStep? = when (current) {
-        WizardStep.Accessibility -> null
-        WizardStep.Overlay -> WizardStep.Accessibility
-        WizardStep.Battery -> WizardStep.Overlay
-        WizardStep.ApiKey -> WizardStep.Battery
-        WizardStep.Demo -> WizardStep.ApiKey
-        WizardStep.Complete -> WizardStep.Demo
+        if (!serverConfigured()) mark(WizardStep.ModelServer, StepOutcome.Pending)
+        enter(firstIncompleteStep())
     }
 
     fun isAccessibilityEnabled(): Boolean = permissionMonitor.isAccessibilityEnabled()
     fun isOverlayEnabled(): Boolean = permissionMonitor.isOverlayEnabled()
     fun isBatteryOptimized(): Boolean = permissionMonitor.isBatteryOptimized()
 
-    private fun applyDefaultModelFor(provider: LLMProvider) {
-        val entry = modelCatalog.modelsFor(provider).lastOrNull() ?: return
-        settingsState.updateModel(entry.name)
-        Log.d(TAG, "Default model set to ${entry.name} for provider $provider")
+    fun onHostResumed() {
+        if (currentStep in permissionSteps) checkPermission(returned = true)
     }
 
-    private fun createValidatorForProvider(provider: OnboardingProvider): LlmCredentialValidator? {
-        val entry: ModelEntry = modelCatalog.modelsFor(provider.llmProvider).lastOrNull() ?: return null
-        val baseUrl = resolveBaseUrl(entry)
-        return HttpLlmCredentialValidator(baseUrl, entry.modelId)
+    fun goBack() {
+        val previous = WizardStep.entries.getOrNull(currentStep.ordinal - 1) ?: return
+        if (currentStep == WizardStep.Demo) demoController.cancel()
+        enter(previous, advance = false)
     }
 
-    /** Mirrors [id.steveimm.pocketpilot.llm.LLMClientFactory.build]: for OPENAI_API entries, an [AppSettingsState.openaiBaseUrl]
-     * override (set from `.env` via intent) wins over the catalog entry's baseUrl. */
-    private fun resolveBaseUrl(entry: ModelEntry): String {
-        val override = settingsState.openaiBaseUrl
-        if (entry.provider == LLMProvider.OPENAI_API && override.isNotBlank()) return override
-        return entry.effectiveBaseUrl ?: "https://api.openai.com/v1"
+    fun continueForward() {
+        when (currentStep) {
+            in permissionSteps -> if (permissionGranted(currentStep) || outcomes[currentStep] == StepOutcome.Skipped) advance()
+            WizardStep.ModelServer -> onServerConfigured()
+            WizardStep.Demo -> if (outcomes.demo != StepOutcome.Pending) advance()
+            else -> Unit
+        }
     }
+
+    fun onServerConfigured() {
+        if (currentStep != WizardStep.ModelServer || !serverConfigured()) return
+        mark(WizardStep.ModelServer, StepOutcome.Done)
+        advance()
+    }
+
+    fun goToServerStep() {
+        demoController.cancel()
+        mark(WizardStep.ModelServer, StepOutcome.Pending)
+        mark(WizardStep.Demo, StepOutcome.Pending)
+        enter(WizardStep.ModelServer, advance = false)
+    }
+
+    fun openSystemSettings() {
+        val effect = when (currentStep) {
+            WizardStep.Accessibility -> OnboardingEffect.OpenAccessibilitySettings
+            WizardStep.Overlay -> OnboardingEffect.OpenOverlaySettings
+            WizardStep.Battery -> OnboardingEffect.OpenBatteryOptimization
+            else -> return
+        }
+        stepState = PermissionStepState.OpeningSettings
+        effectChannel.trySend(effect)
+    }
+
+    fun startDemo() {
+        if (currentStep != WizardStep.Demo) return
+        val missing = listOf(WizardStep.Accessibility, WizardStep.Overlay).firstOrNull { !permissionGranted(it) }
+        if (missing != null) {
+            mark(missing, StepOutcome.Pending)
+            enter(missing)
+            return
+        }
+        if (!serverConfigured() || outcomes.modelServer != StepOutcome.Done) {
+            goToServerStep()
+            return
+        }
+        stepState = DemoStepState.Running
+        demoController.run(
+            onSuccess = {
+                if (currentStep == WizardStep.Demo) {
+                    stepState = DemoStepState.Success(it)
+                    mark(WizardStep.Demo, StepOutcome.Done)
+                    advanceSoon()
+                }
+            },
+            onFailure = { if (currentStep == WizardStep.Demo) stepState = DemoStepState.Failure(it) },
+            onBringToFront = { effectChannel.trySend(OnboardingEffect.BringMainActivityToFront) },
+        )
+    }
+
+    fun skipStep() {
+        if (currentStep != WizardStep.Battery && currentStep != WizardStep.Demo) return
+        if (currentStep == WizardStep.Demo) demoController.cancel()
+        mark(currentStep, StepOutcome.Skipped)
+        advance()
+    }
+
+    fun finish() {
+        if (serverConfigured()) store.setCompleted()
+    }
+
+    private fun firstIncompleteStep(): WizardStep {
+        if (!permissionGranted(WizardStep.Accessibility)) return WizardStep.Accessibility
+        if (!permissionGranted(WizardStep.Overlay)) return WizardStep.Overlay
+        return WizardStep.entries.firstOrNull { it != WizardStep.Complete && outcomes[it] == StepOutcome.Pending }
+            ?: WizardStep.Complete
+    }
+
+    private fun enter(step: WizardStep, advance: Boolean = true) {
+        transition?.cancel()
+        currentStep = step
+        when (step) {
+            in permissionSteps -> checkPermission(returned = false, advance = advance)
+            WizardStep.ModelServer -> {
+                stepState = ModelServerStepState.Ready
+                if (advance && serverConfigured() && outcomes.modelServer == StepOutcome.Done) advanceSoon()
+            }
+            else -> stepState = DemoStepState.Ready
+        }
+    }
+
+    private fun checkPermission(returned: Boolean, advance: Boolean = true) {
+        transition?.cancel()
+        val step = currentStep
+        if (permissionGranted(step)) {
+            permissionSatisfied(step, advance)
+        } else if (step == WizardStep.Accessibility && returned) {
+            stepState = PermissionStepState.Checking
+            transition = scope.launch {
+                repeat(15) {
+                    delay(200)
+                    if (currentStep != step) return@launch
+                    if (permissionGranted(step)) {
+                        permissionSatisfied(step, advance)
+                        return@launch
+                    }
+                }
+                stepState = PermissionStepState.Unsatisfied
+            }
+        } else {
+            stepState = if (returned) PermissionStepState.Unsatisfied else PermissionStepState.Ready
+        }
+    }
+
+    private fun permissionSatisfied(step: WizardStep, advance: Boolean) {
+        mark(step, StepOutcome.Done)
+        stepState = PermissionStepState.Satisfied
+        if (advance) advanceSoon()
+    }
+
+    private fun advanceSoon() {
+        val expected = currentStep
+        transition = scope.launch {
+            delay(400)
+            if (currentStep == expected) advance()
+        }
+    }
+
+    private fun advance() = enter(WizardStep.entries.getOrElse(currentStep.ordinal + 1) { WizardStep.Complete })
+
+    private fun permissionGranted(step: WizardStep): Boolean = when (step) {
+        WizardStep.Accessibility -> permissionMonitor.isAccessibilityEnabled()
+        WizardStep.Overlay -> permissionMonitor.isOverlayEnabled()
+        WizardStep.Battery -> permissionMonitor.isBatteryOptimized()
+        else -> false
+    }
+
+    private fun serverConfigured(): Boolean = ServerBaseUrlValidator.validate(settingsState.serverBaseUrl).isSuccess &&
+        ModelIdValidator.validate(settingsState.serverModelId).isSuccess
+
+    private fun mark(step: WizardStep, outcome: StepOutcome) {
+        store.saveOutcome(step, outcome)
+        outcomes = when (step) {
+            WizardStep.Accessibility -> outcomes.copy(accessibility = outcome)
+            WizardStep.Overlay -> outcomes.copy(overlay = outcome)
+            WizardStep.Battery -> outcomes.copy(battery = outcome)
+            WizardStep.ModelServer -> outcomes.copy(modelServer = outcome)
+            WizardStep.Demo -> outcomes.copy(demo = outcome)
+            WizardStep.Complete -> outcomes
+        }
+    }
+
+    private val permissionSteps get() = listOf(WizardStep.Accessibility, WizardStep.Overlay, WizardStep.Battery)
 }

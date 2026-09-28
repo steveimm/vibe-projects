@@ -16,7 +16,7 @@ PocketPilot can read the current screen only through the Android Accessibility S
 
 ## What is sent to third parties
 
-PocketPilot sends screen content and task context to the LLM provider you choose, such as OpenAI, OpenRouter, or Novita, only during active task execution. This allows the provider's model to decide the next step for the task you started.
+PocketPilot sends screen content and task context to the model server URL you configure, only during active task execution. The app has no default cloud endpoint, provider login, or cloud fallback.
 
 Examples of sent data may include visible text on the screen, app UI structure, your typed task request, and recent action history needed to continue the task. PocketPilot sends this data only so the chosen provider can process the automation request. PocketPilot does not send this information to advertising, analytics, or tracking services.
 
@@ -46,7 +46,7 @@ Because PocketPilot stores everything locally on your device and does not operat
 
 In-app deletion (granular):
 
-- **Provider credentials and API keys** — `Settings → LLM Auth → Sign out` (for OAuth) or clear the API key field (for paste-key providers). Encrypted credentials are removed from local storage.
+- **Server API key** — clear the optional key in `Settings → Model server` and save. Keys are encrypted and scoped to each endpoint.
 - **Session history and local traces** — `Settings → Permissions & Advanced → Clear session history` and `Clear debug traces`. Removes recorded task transcripts, on-device debug screenshots, and tool-call logs.
 - **Memory files** — `Settings → Memory Files`, select a file, tap delete. Removes any agent memory entries you have saved.
 
@@ -58,7 +58,7 @@ Full deletion (one tap):
 What is deleted vs. kept:
 
 - **Deleted:** all data created by your use of the app, stored on the device — credentials, history, traces, memory, settings.
-- **Not in PocketPilot's control:** copies of prompts and screen content that you sent to your chosen third-party LLM provider during prior tasks. To delete those, use the provider's account dashboard (OpenAI, OpenRouter, Anthropic, etc.).
+- **Stored by your model server:** prompts or screen content retained by that server are governed by its configuration. Delete them on the server if needed.
 
 ## Children
 

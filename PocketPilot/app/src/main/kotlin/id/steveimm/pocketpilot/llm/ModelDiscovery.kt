@@ -14,18 +14,8 @@ import kotlinx.serialization.json.longOrNull
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.Locale
 
-/** Parsed entry from an upstream `/models` response with the optional `created` timestamp used for picker sort order. The discovery
- * layer returns these so callers can sort by recency before they collapse to plain [ModelEntry] for the catalog. */
-data class DiscoveredModel(
-    val entry: ModelEntry,
-    /** Unix seconds upstream-reported model creation time. `0` when absent. */
-    val created: Long,
-)
-
-/** Single-file model discovery — GET `{baseUrl}/models` against an OpenAI-compatible upstream, parse with a tolerant field-priority
- * reader, filter out non-chat / non-tool-calling models, and return namespaced [DiscoveredModel] rows. */
+/** Fetches model metadata from the configured server and filters out models that explicitly lack chat or tool support. */
 object ModelDiscovery {
 
     private const val TAG = "ModelDiscovery"
@@ -41,26 +31,21 @@ object ModelDiscovery {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** Fetch and parse `{baseUrl}/models` for [provider] using [apiKey] as a bearer token. Returns the surviving discovered models
+    /** Fetch and parse `{baseUrl}/models`, adding bearer authentication only when [apiKey] is nonblank. Returns the surviving discovered models
      * after CHAT-only, tool-calling, and non-chat filters. */
     suspend fun discover(
-        provider: LLMProvider,
         baseUrl: String,
         apiKey: String,
-    ): List<DiscoveredModel> = withContext(Dispatchers.IO) {
-        require(baseUrl.isNotBlank()) { "baseUrl must not be blank" }
-        require(apiKey.isNotBlank()) { "apiKey must not be blank" }
-        val normalizedBaseUrl = baseUrl.trimEnd('/')
+    ): List<ModelEntry> = withContext(Dispatchers.IO) {
+        val normalizedBaseUrl = ServerBaseUrlValidator.validate(baseUrl).getOrThrow()
         val raw = fetch(normalizedBaseUrl, apiKey)
-        parse(provider, normalizedBaseUrl, raw)
+        parse(raw)
     }
 
-    /** Parse a `/models` response body into [DiscoveredModel]s. Exposed for fixture tests; HTTP is handled by [discover]. */
+    /** Parse a `/models` response body into [ModelEntry]s. Exposed for fixture tests; HTTP is handled by [discover]. */
     fun parse(
-        provider: LLMProvider,
-        sourceBaseUrl: String,
         body: String,
-    ): List<DiscoveredModel> {
+    ): List<ModelEntry> {
         val root: JsonElement = try {
             json.parseToJsonElement(body)
         } catch (e: Exception) {
@@ -68,11 +53,11 @@ object ModelDiscovery {
             return emptyList()
         }
         val items = extractItems(root) ?: return emptyList()
-        return items.mapNotNull { itemToDiscoveredModel(it, provider, sourceBaseUrl) }
+        return items.mapNotNull { parseModel(it) }
     }
 
     private fun extractItems(root: JsonElement): List<JsonObject>? {
-        // OpenAI / OpenRouter / Novita all wrap as `{data: [...]}`. Bare arrays
+        // Compatible servers commonly wrap entries as `{data: [...]}`. Bare arrays
         // are accepted for upstreams that don't.
         val arr = when (root) {
             is JsonArray -> root
@@ -82,11 +67,9 @@ object ModelDiscovery {
         return arr.mapNotNull { it as? JsonObject }
     }
 
-    private fun itemToDiscoveredModel(
+    private fun parseModel(
         obj: JsonObject,
-        provider: LLMProvider,
-        sourceBaseUrl: String,
-    ): DiscoveredModel? {
+    ): ModelEntry? {
         val rawId = obj.stringOrNull("id") ?: return null
         val modelId = ModelIdValidator.validate(rawId).getOrElse {
             Log.d(TAG, "Skipping invalid model id")
@@ -113,20 +96,12 @@ object ModelDiscovery {
 
         val created = obj.longOrNull("created") ?: 0L
 
-        val name = "${provider.name.lowercase(Locale.ROOT)}:$modelId"
-        return DiscoveredModel(
-            entry = ModelEntry(
-                name = name,
-                displayName = displayName,
-                provider = provider,
-                api = ApiType.CHAT,
-                modelId = modelId,
-                contextWindow = contextWindow,
-                baseUrl = sourceBaseUrl,
-                apiKeyEnv = null,
-                supportsVision = supportsVision,
-                created = created,
-            ),
+        return ModelEntry(
+            name = modelId,
+            displayName = displayName,
+            modelId = modelId,
+            contextWindow = contextWindow,
+            supportsVision = supportsVision,
             created = created,
         )
     }
@@ -147,7 +122,7 @@ object ModelDiscovery {
     }
 
     private fun readSupportsVision(obj: JsonObject): Boolean {
-        // OpenRouter: architecture.input_modalities = ["text","image"].
+        // Optional modality metadata describes text and image inputs.
         val architectureModalities = (obj["architecture"] as? JsonObject)
             ?.get("input_modalities") as? JsonArray
         if (architectureModalities?.containsString("image") == true) return true
@@ -184,7 +159,7 @@ object ModelDiscovery {
             return if (endpoints.isEmpty()) false else !hasChat
         }
 
-        // 3. `architecture.modality` (OpenRouter) — `text->text` etc.
+        // 3. `architecture.modality` — `text->text` etc.
         val modality = (obj["architecture"] as? JsonObject)?.stringOrNull("modality")?.lowercase()
         if (modality != null) {
             if ("audio" in modality || "image->" in modality) return true
@@ -208,9 +183,10 @@ object ModelDiscovery {
         try {
             connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
+                instanceFollowRedirects = false
                 connectTimeout = CONNECT_TIMEOUT_MS
                 readTimeout = READ_TIMEOUT_MS
-                setRequestProperty("Authorization", "Bearer $apiKey")
+                if (apiKey.isNotBlank()) setRequestProperty("Authorization", "Bearer $apiKey")
                 setRequestProperty("Accept", "application/json")
             }
             val code = connection.responseCode

@@ -1,8 +1,12 @@
 package id.steveimm.pocketpilot.ui.settings
 
+import id.steveimm.pocketpilot.app.AppSettingsState
+import id.steveimm.pocketpilot.app.AppSettingsStore
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.remember
+
 import id.steveimm.pocketpilot.app.MemoryEditGate
 import id.steveimm.pocketpilot.memory.MemoryStore
-import id.steveimm.pocketpilot.protocol.LLMBackendType
 import id.steveimm.pocketpilot.protocol.PlatformMode
 import id.steveimm.pocketpilot.protocol.SessionState
 import id.steveimm.pocketpilot.session.AgentSession
@@ -36,7 +40,7 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import java.io.File
 
-/** Tests for the Settings → Memory page surface and the IA reshuffle (LLM & Authentication moves under Behavior, Voice header drops,
+/** Tests for the Settings → Memory page surface and the IA reshuffle (Model server moves under Behavior, Voice header drops,
  * Memory row added under Behavior). */
 @RunWith(AndroidJUnit4::class)
 class MemorySettingsPageTest {
@@ -181,21 +185,14 @@ class MemorySettingsPageTest {
         }
     }
 
-    // IA reshuffle: LLM & Authentication moves under Behavior, Voice header disappears, Memory row joins Behavior. Asserted directly on
+    // IA reshuffle: Model server moves under Behavior, Voice header disappears, Memory row joins Behavior. Asserted directly on
     // SettingsHomePage so we are testing the IA, not the sheet wrapper.
     @Test fun home_ia_collapses_voice_into_behavior_and_adds_memory_row() {
         compose.setContent {
             PocketPilotTheme {
-                SettingsHomePage(
-                    llmBackend = LLMBackendType.OPENAI,
-                    selectedModel = "gpt-5.2",
-                    modelOptions = listOf("gpt-5.2" to "GPT-5.2"),
-                    selectedLocalModel = "LFM2.5-1.2B-Instruct",
-                    modelCatalog = id.steveimm.pocketpilot.llm.ModelCatalog.fromJson(
-                        """
-                        {"gpt-5.2": {"display_name":"GPT-5.2","provider":"OPENAI_API","api":"response","model_id":"gpt-5.2"}}
-                        """.trimIndent()
-                    ),
+                val contextForSettings = LocalContext.current
+        SettingsHomePage(
+                    settings = remember { AppSettingsState(AppSettingsStore(contextForSettings)) },
                     perceptionMode = "accessibility_only",
                     isAccessibilityEnabled = true,
                     isOverlayEnabled = true,
@@ -215,7 +212,7 @@ class MemorySettingsPageTest {
         // Behavior section header is present.
         compose.onNodeWithText("Behavior").assertIsDisplayed()
         // All three Behavior rows render.
-        compose.onNodeWithText("LLM & Authentication").assertIsDisplayed()
+        compose.onNodeWithText("Model server").assertIsDisplayed()
         compose.onNodeWithText("Agent Behavior").assertIsDisplayed()
         compose.onNodeWithText("Memory").assertIsDisplayed()
     }

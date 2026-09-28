@@ -10,7 +10,6 @@ import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -33,12 +32,6 @@ class TermuxLocalhostCleartextTest {
         for (host in listOf(EMULATOR_HOST, LOCALHOST_HOST, "192.168.1.10")) {
             assertTrue(
                 "network security config must permit HTTP for $host",
-                networkPolicy.isCleartextTrafficPermitted(host),
-            )
-        }
-        for (host in listOf("api.openai.com", "auth.openai.com", "chatgpt.com", "openrouter.ai")) {
-            assertFalse(
-                "network security config must require HTTPS for $host",
                 networkPolicy.isCleartextTrafficPermitted(host),
             )
         }
@@ -81,7 +74,7 @@ class TermuxLocalhostCleartextTest {
             try {
                 client.newCall(request).execute().use { response ->
                     assertEquals(200, response.code)
-                    assertEquals("ok", response.body?.string())
+                    assertEquals("ok", response.body.string())
                 }
             } catch (e: UnknownServiceException) {
                 if (e.message.orEmpty().contains("CLEARTEXT")) {

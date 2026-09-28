@@ -32,7 +32,7 @@ data class ConversationConfigSnapshot(
     val perceptionMode: String,   // backed by free-form string + UI options
     val platformMode: String,     // backed by PlatformMode enum
     val approvalMode: String = "SMART", // backed by ApprovalMode enum
-    val llmBackendType: String = "OPENAI", // backed by LLMBackendType enum
+    val serverBaseUrl: String = "", // explicit HTTP(S) model server
     ...
 )
 ```
@@ -40,7 +40,6 @@ data class ConversationConfigSnapshot(
 Several mode/type fields are stored as raw `String` even though strongly-typed enums exist:
 - `PlatformMode` — `ACCESSIBILITY`, `VIRTUAL_DISPLAY` (`protocol/SessionConfig.kt:64`)
 - `ApprovalMode` — `ALWAYS_ASK`, `AUTO_APPROVE`, `SMART` (`protocol/SessionConfig.kt:88`)
-- `LLMBackendType` — `OPENAI`, `LOCAL` (`protocol/SessionConfig.kt:80`)
 
 **Redundancy / risk:** the string boundary loses compile-time guarantees. Any typo in a writer or rename of an enum value silently corrupts checkpoints. Round-tripping currently relies on `valueOf` at consumption sites with no central validator.
 
@@ -53,12 +52,10 @@ File: `app/src/main/kotlin/id/steveimm/pocketpilot/onboarding/OnboardingState.kt
 | Hierarchy             | Count | Subtypes                                                                                                |
 |-----------------------|-------|---------------------------------------------------------------------------------------------------------|
 | `PermissionStepState` | 6     | `Checking`, `Ready`, `OpeningSettings`, `Satisfied`, `Unsatisfied`, `Skipped`                           |
-| `ApiKeyStepState`     | 10    | `Empty`, `Editing`, `Validating`, `Invalid`, `TransientError`, `Valid`, `OAuthReady`, `OAuthInProgress`, `OAuthSuccess`, `OAuthError` |
 | `DemoStepState`       | 7     | `Ready`, `Preflight`, `Running`, `Success`, `Failure`, `CredentialError`, `Skipped`                     |
 
 Only one is active at a time per the file's comment ("Per-step transient state (one active at a time)"). Hierarchies are disjoint — no shared common state beyond the marker interface — so the marker exists more for grouping than for polymorphism.
 
-**Observation:** `ApiKeyStepState` overloads the password step with both manual key entry (6 states) and OAuth (4 states). Splitting into two sealed hierarchies (`ManualKeyState`, `OAuthState`) would mirror the `ApiKeyAuthMethod` enum and reduce per-state guards in the ViewModel.
 
 ## 5. TodoSnapshot — String status parsed via valueOf
 

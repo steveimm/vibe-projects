@@ -51,7 +51,7 @@ class Turn(
     suspend fun run(
             systemPrompt: String,
             inputItems: List<ResponseInputItem>,
-            model: String = LLMClient.DEFAULT_MODEL
+            model: String
     ): TurnResult {
         val request = prepareRequest(inputItems, model)
         Log.d(TAG, "Running turn with ${request.inputItems.size} input items, model=$model")
@@ -75,7 +75,7 @@ class Turn(
     fun runStreaming(
             systemPrompt: String,
             inputItems: List<ResponseInputItem>,
-            model: String = LLMClient.DEFAULT_MODEL,
+            model: String,
             rebuildInputItems: (() -> List<ResponseInputItem>)? = null
     ): Flow<TurnStreamEvent> = flow {
         Log.d(TAG, "Running streaming turn with LLM streaming, model=$model")
@@ -89,7 +89,7 @@ class Turn(
             } catch (e: ContextWindowExceededException) {
                 e
             } catch (e: Exception) {
-                // Some providers (and the local LFM client) surface overflow as a Failed event whose message bubbles up as an unclassified
+                // Some servers surface overflow as a Failed event whose message bubbles up as an unclassified
                 // RuntimeException. Re-classify here so we route to compaction instead of treating it as a generic terminal error.
                 val reclassified = classifyContextWindowExceeded(e)
                 if (reclassified != null) {

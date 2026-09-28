@@ -1,6 +1,6 @@
 package id.steveimm.pocketpilot.llm
 
-/** Detects provider/runtime signals that the prompt exceeded the model's context window. Centralized so cloud retry, the streaming
+/** Detects provider/runtime signals that the prompt exceeded the model's context window. Centralized so retry, the streaming
  * Failed branch, and the generic catch in `Turn.runStreaming` all agree on what counts as an overflow. */
 private val HTTP_413_CODE = Regex("""(?<![A-Za-z0-9])413(?![A-Za-z0-9])""")
 

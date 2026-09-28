@@ -1,16 +1,13 @@
 package id.steveimm.pocketpilot.agent
 
+import id.steveimm.pocketpilot.test.testModelCatalog
+
 import com.google.common.truth.Truth.assertThat
-import id.steveimm.pocketpilot.auth.AuthCredential
-import id.steveimm.pocketpilot.auth.AuthStore
-import id.steveimm.pocketpilot.auth.MissingCredential
+import id.steveimm.pocketpilot.auth.ServerCredentialStore
 import id.steveimm.pocketpilot.llm.LLMClient
 import id.steveimm.pocketpilot.llm.LLMClientFactory
-import id.steveimm.pocketpilot.llm.LLMProvider
 import id.steveimm.pocketpilot.llm.LLMStreamEvent
-import id.steveimm.pocketpilot.llm.ModelCatalog
 import id.steveimm.pocketpilot.llm.ResponsesResult
-import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import com.openai.models.responses.FunctionTool
@@ -25,20 +22,18 @@ class AgentModelResolverTest {
         fun `known catalog model uses factory metadata and client`() {
                 val sessionClient = FakeTestLLMClient()
                 val catalog =
-                        ModelCatalog.fromJson(
+                        testModelCatalog(
                                 """
                 {
                   "test-model": {
                     "display_name": "Test Model",
-                    "provider":"OPENAI_API",
-                    "api": "response",
                     "model_id": "provider-model-id",
                     "supports_vision": true
                   }
                 }
                 """
                         )
-                val factory = LLMClientFactory(catalog = catalog, authStore = fakeStore())
+                val factory = LLMClientFactory(catalog = catalog, credentialStore = fakeStore(), baseUrl = "http://localhost:8000/v1")
                 val resolver = AgentModelResolver(sessionClient, catalog, factory)
 
                 val resolved = resolver.resolve("test-model")
@@ -52,19 +47,17 @@ class AgentModelResolverTest {
         fun `unknown model falls back to session client`() {
                 val sessionClient = FakeTestLLMClient()
                 val catalog =
-                        ModelCatalog.fromJson(
+                        testModelCatalog(
                                 """
                 {
                   "known-model": {
                     "display_name": "Known Model",
-                    "provider":"OPENAI_API",
-                    "api": "response",
                     "model_id": "known-model-id"
                   }
                 }
                 """
                         )
-                val factory = LLMClientFactory(catalog = catalog, authStore = fakeStore())
+                val factory = LLMClientFactory(catalog = catalog, credentialStore = fakeStore(), baseUrl = "http://localhost:8000/v1")
                 val resolver = AgentModelResolver(sessionClient, catalog, factory)
 
                 val resolved = resolver.resolve("legacy-local-model")
@@ -78,20 +71,18 @@ class AgentModelResolverTest {
         fun `known model falls back to session client when factory cannot build client`() {
                 val sessionClient = FakeTestLLMClient()
                 val catalog =
-                        ModelCatalog.fromJson(
+                        testModelCatalog(
                                 """
                 {
                   "known-model": {
                     "display_name": "Known Model",
-                    "provider":"OPENAI_API",
-                    "api": "response",
                     "model_id": "known-model-id",
                     "supports_vision": true
                   }
                 }
                 """
                         )
-                val factory = LLMClientFactory(catalog = catalog, authStore = emptyStore())
+                val factory = LLMClientFactory(catalog = catalog, credentialStore = emptyStore(), baseUrl = "http://localhost:8000/v1")
                 val resolver = AgentModelResolver(sessionClient, catalog, factory)
 
                 val resolved = resolver.resolve("known-model")
@@ -101,17 +92,17 @@ class AgentModelResolverTest {
                 assertThat(resolved.supportsVision).isFalse()
         }
 
-        private fun fakeStore(): AuthStore {
-                val store = mockk<AuthStore>(relaxed = true)
+        private fun fakeStore(): ServerCredentialStore {
+                val store = mockk<ServerCredentialStore>(relaxed = true)
                 every { store.generation(any()) } returns 0L
-                every { store.requireApiKey(any()) } returns "test-key"
+                every { store.apiKey(any()) } returns "test-key"
                 return store
         }
 
-        private fun emptyStore(): AuthStore {
-                val store = mockk<AuthStore>(relaxed = true)
+        private fun emptyStore(): ServerCredentialStore {
+                val store = mockk<ServerCredentialStore>(relaxed = true)
                 every { store.generation(any()) } returns 0L
-                every { store.requireApiKey(any()) } throws MissingCredential(LLMProvider.OPENAI_API)
+                every { store.apiKey(any()) } throws IllegalStateException("Cannot read server credentials")
                 return store
         }
 }

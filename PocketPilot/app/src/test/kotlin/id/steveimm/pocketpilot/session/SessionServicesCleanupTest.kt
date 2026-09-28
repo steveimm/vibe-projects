@@ -1,9 +1,10 @@
 package id.steveimm.pocketpilot.session
 
+import id.steveimm.pocketpilot.test.testModelCatalog
+
 import id.steveimm.pocketpilot.history.HistoryManager
 import id.steveimm.pocketpilot.llm.LLMClient
 import id.steveimm.pocketpilot.llm.LLMClientFactory
-import id.steveimm.pocketpilot.llm.ModelCatalog
 import id.steveimm.pocketpilot.browser.cdp.CdpConnection
 import id.steveimm.pocketpilot.browser.cdp.CdpConnectionClosedException
 import id.steveimm.pocketpilot.browser.cdp.CdpConnectionFactory
@@ -13,7 +14,6 @@ import id.steveimm.pocketpilot.browser.script.BrowserDevtoolsBridge
 import id.steveimm.pocketpilot.browser.script.BrowserScriptExecutor
 import id.steveimm.pocketpilot.browser.script.BrowserSessionManager
 import id.steveimm.pocketpilot.browser.script.ScriptResult
-import id.steveimm.pocketpilot.protocol.LLMBackendType
 import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.protocol.SessionLlmConfig
 import id.steveimm.pocketpilot.test.FakeAndroidPlatform
@@ -227,8 +227,8 @@ class SessionServicesCleanupTest {
         val policyEngine = PolicyEngine(appClassifier = AppClassifier(emptyMap()))
         val toolRouter = ToolRouter(toolRegistry, policyEngine)
         val catalog =
-            ModelCatalog.fromJson(
-                """{"gpt-5.2":{"display_name":"GPT-5.2","provider":"OPENAI_API","api":"response","model_id":"gpt-5.2"}}"""
+            testModelCatalog(
+                """{"gpt-5.2":{"display_name":"GPT-5.2","model_id":"gpt-5.2"}}"""
             )
         return SessionServices(
             toolRegistry = toolRegistry,
@@ -240,7 +240,7 @@ class SessionServicesCleanupTest {
             platform = FakeAndroidPlatform(),
             config = SessionConfig(
                 actionDelayMs = 0,
-                llm = SessionLlmConfig(backendType = LLMBackendType.OPENAI)
+                llm = SessionLlmConfig(baseUrl = "http://localhost:8000/v1")
             ),
             llmClient = llmClient,
             modelCatalog = catalog,

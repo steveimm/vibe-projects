@@ -11,7 +11,8 @@ import argparse
 from eval.aw_bridge.native_agent_bridge import BridgeConfig
 from eval.aw_bridge.runner import (
     RunnerConfig,
-    _validate_required_api_key,
+    _validate_server_settings,
+    _safe_config_for_logging,
     load_config,
     load_config_from_path,
 )
@@ -28,12 +29,11 @@ def _bridge_config() -> BridgeConfig:
     return BridgeConfig(
         package_name="id.steveimm.pocketpilot",
         activity="id.steveimm.pocketpilot/.app.MainActivity",
-        llm_backend="openai",
+        server_base_url="http://localhost:8000/v1",
         agent_mode="basic",
         perception_mode="accessibility_only",
         platform_mode="accessibility",
         main_model="minimax-m2.5",
-        executor_model="",
         max_turns=30,
         auto_start=True,
         fresh_session=True,
@@ -45,7 +45,7 @@ def _bridge_config() -> BridgeConfig:
         stop_agent_after_task=True,
         adb_command_timeout_sec=60,
         adb_pull_timeout_sec=300,
-        api_keys=None,
+        api_key=None,
         shizuku_apk_path=None,
         excluded_tools="",
         clear_memory_before_task=True,
@@ -174,151 +174,31 @@ class RunnerEmulatorStabilityTest(unittest.TestCase):
         self.assertEqual(first_call[1]["timeout_sec"], 180)
 
 
-class RunnerApiKeyValidationTest(unittest.TestCase):
-    def _workspace_with_catalog(self, catalog: dict[str, dict[str, str]]) -> Path:
-        tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(tmp.cleanup)
-        root = Path(tmp.name)
-        catalog_path = root / "app" / "src" / "main" / "assets"
-        catalog_path.mkdir(parents=True, exist_ok=True)
-        (catalog_path / "llm_models.json").write_text(
-            json.dumps(catalog, ensure_ascii=True, indent=2),
-            encoding="utf-8",
-        )
-        return root
-
-    def test_openai_protocol_uses_model_provider_key(self) -> None:
+class RunnerServerValidationTest(unittest.TestCase):
+    def test_keyless_server_is_valid(self) -> None:
         config = _runner_config()
-        config.bridge.llm_backend = "openai"
-        config.bridge.main_model = "glm-5"
-        workspace = self._workspace_with_catalog(
-            {
-                "glm-5": {"provider": "OPENROUTER"},
-            }
-        )
+        config.bridge.server_base_url = "http://localhost:8000/v1/chat/completions"
+        config.bridge.main_model = "local-model"
+        _validate_server_settings(config)
+        self.assertEqual(config.bridge.server_base_url, "http://localhost:8000/v1")
 
-        with mock.patch("eval.aw_bridge.runner.socket.create_connection"):
-            _validate_required_api_key(
-                config,
-                {"OPENROUTER_API_KEY": "ok"},
-                workspace_root=workspace,
-            )
-
-    def test_missing_provider_key_raises(self) -> None:
+    def test_missing_server_never_uses_a_cloud_default(self) -> None:
         config = _runner_config()
-        config.bridge.llm_backend = "openai"
-        config.bridge.main_model = "glm-5"
-        workspace = self._workspace_with_catalog(
-            {
-                "glm-5": {"provider": "OPENROUTER"},
-            }
-        )
+        config.bridge.server_base_url = ""
+        with self.assertRaisesRegex(RuntimeError, "POCKETPILOT_SERVER_URL"):
+            _validate_server_settings(config)
 
-        with self.assertRaisesRegex(RuntimeError, "OPENROUTER_API_KEY"):
-            _validate_required_api_key(config, {}, workspace_root=workspace)
-
-    def test_local_backend_skips_cloud_key_validation(self) -> None:
+    def test_url_credentials_are_rejected_without_echoing_them(self) -> None:
         config = _runner_config()
-        config.bridge.llm_backend = "local"
-        workspace = self._workspace_with_catalog({})
+        config.bridge.server_base_url = "http://user:SECRET@local:8000/v1"
+        with self.assertRaises(RuntimeError) as error:
+            _validate_server_settings(config)
+        self.assertNotIn("SECRET", str(error.exception))
 
-        _validate_required_api_key(config, {}, workspace_root=workspace)
-
-    def test_mixed_main_and_executor_require_both_keys(self) -> None:
+    def test_server_key_is_redacted_in_diagnostic_configuration(self) -> None:
         config = _runner_config()
-        config.bridge.llm_backend = "openai"
-        config.bridge.main_model = "glm-5"
-        config.bridge.executor_model = "gpt-5.2"
-        workspace = self._workspace_with_catalog(
-            {
-                "glm-5": {"provider": "OPENROUTER"},
-                "gpt-5.2": {"provider": "OPENAI"},
-            }
-        )
-
-        with self.assertRaisesRegex(RuntimeError, "OPENAI_API_KEY"):
-            _validate_required_api_key(
-                config,
-                {"OPENROUTER_API_KEY": "ok"},
-                workspace_root=workspace,
-            )
-
-    def test_openai_base_url_must_be_reachable_for_openai_provider(self) -> None:
-        config = _runner_config()
-        config.bridge.llm_backend = "openai"
-        config.bridge.main_model = "gpt-5.4"
-        workspace = self._workspace_with_catalog({"gpt-5.4": {"provider": "OPENAI"}})
-
-        with mock.patch(
-            "eval.aw_bridge.runner.socket.create_connection",
-            side_effect=ConnectionRefusedError("refused"),
-        ):
-            with self.assertRaisesRegex(
-                RuntimeError,
-                "OPENAI_BASE_URL is configured but not reachable",
-            ):
-                _validate_required_api_key(
-                    config,
-                    {
-                        "OPENAI_API_KEY": "ok",
-                        "OPENAI_BASE_URL": "http://localhost:18080/v1",
-                    },
-                    workspace_root=workspace,
-                )
-
-    def test_openai_base_url_accepts_emulator_alias(self) -> None:
-        config = _runner_config()
-        config.bridge.llm_backend = "openai"
-        config.bridge.main_model = "gpt-5.4"
-        workspace = self._workspace_with_catalog({"gpt-5.4": {"provider": "OPENAI"}})
-
-        mocked_socket = mock.MagicMock()
-        mocked_socket.__enter__.return_value = mocked_socket
-        mocked_socket.__exit__.return_value = False
-        with mock.patch(
-            "eval.aw_bridge.runner.socket.create_connection",
-            return_value=mocked_socket,
-        ) as connect_mock:
-            _validate_required_api_key(
-                config,
-                {
-                    "OPENAI_API_KEY": "ok",
-                    "OPENAI_BASE_URL": "http://10.0.2.2:18080/v1",
-                },
-                workspace_root=workspace,
-            )
-
-        connect_mock.assert_called_once_with(("127.0.0.1", 18080), timeout=2.0)
-
-    def test_other_custom_requires_full_trio(self) -> None:
-        config = _runner_config()
-        config.bridge.llm_backend = "openai"
-        config.bridge.main_model = "other-custom"
-        # llm_models.json does NOT list other-custom — synth entry only.
-        workspace = self._workspace_with_catalog({})
-
-        # Missing all three.
-        with self.assertRaisesRegex(
-            RuntimeError, "OTHER_API_KEY.*OTHER_BASE_URL.*OTHER_MODEL_ID"
-        ):
-            _validate_required_api_key(config, {}, workspace_root=workspace)
-
-        # Missing base url + model id.
-        with self.assertRaisesRegex(RuntimeError, "OTHER_BASE_URL"):
-            _validate_required_api_key(
-                config, {"OTHER_API_KEY": "key"}, workspace_root=workspace
-            )
-
-        # All three present → passes.
-        _validate_required_api_key(
-            config,
-            {
-                "OTHER_API_KEY": "key",
-                "OTHER_BASE_URL": "https://example.com/v1",
-                "OTHER_MODEL_ID": "vendor/model",
-            },
-            workspace_root=workspace,
-        )
+        config.bridge.api_key = "private-token"
+        self.assertNotIn("private-token", json.dumps(_safe_config_for_logging(config)))
 
 
 class RunnerTaskPackageMapTest(unittest.TestCase):
@@ -366,14 +246,13 @@ class RunnerConfigLoadingTest(unittest.TestCase):
                 f"{adb_path_line}"
                 "  auto_start_emulator: false\n"
                 "bridge:\n"
-                "  llm_backend: openai\n"
+                "  server_base_url: http://localhost:8000/v1\n"
                 "  package_name: id.steveimm.pocketpilot\n"
                 "  activity: id.steveimm.pocketpilot/.app.MainActivity\n"
                 "  agent_mode: basic\n"
                 "  perception_mode: accessibility_only\n"
                 "  platform_mode: accessibility\n"
                 "  main_model: minimax-m2.5\n"
-                "  executor_model: \"\"\n"
                 "  max_turns: 30\n"
                 "  auto_start: true\n"
                 "  fresh_session: true\n"

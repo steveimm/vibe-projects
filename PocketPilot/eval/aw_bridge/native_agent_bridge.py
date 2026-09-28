@@ -21,12 +21,11 @@ _SHIZUKU_PERMISSION = "moe.shizuku.manager.permission.API_V23"
 class BridgeConfig:
     package_name: str
     activity: str
-    llm_backend: str
+    server_base_url: str
     agent_mode: str
     perception_mode: str
     platform_mode: str
     main_model: str
-    executor_model: str
     max_turns: int
     auto_start: bool
     fresh_session: bool
@@ -38,7 +37,7 @@ class BridgeConfig:
     stop_agent_after_task: bool
     adb_command_timeout_sec: int
     adb_pull_timeout_sec: int
-    api_keys: dict[str, str] | None = None
+    api_key: str | None = None
     shizuku_apk_path: str | None = None
     excluded_tools: str = ""  # comma-separated tool names to remove from agent
     clear_memory_before_task: bool = True
@@ -173,6 +172,13 @@ class NativeAgentBridge:
             timeout_sec=self._config.adb_command_timeout_sec,
         )
 
+    def _server_url_for_device(self) -> str:
+        """Map host loopback to the Android emulator gateway only for emulator targets."""
+        url = self._config.server_base_url
+        if (self._config.adb_serial or "").startswith("emulator-"):
+            return url.replace("://localhost", "://10.0.2.2").replace("://127.0.0.1", "://10.0.2.2")
+        return url
+
     def _start_agent(self, goal: str, run_id: str) -> None:
         """Prepare service permissions and launch the configured agent goal.
 
@@ -191,8 +197,8 @@ class NativeAgentBridge:
             "goal",
             goal,
             "--es",
-            "llm_backend",
-            self._config.llm_backend,
+            "server_base_url",
+            self._server_url_for_device(),
             "--es",
             "agent_mode",
             self._config.agent_mode,
@@ -218,40 +224,16 @@ class NativeAgentBridge:
             "trace_run_id",
             run_id,
             "--es",
-            "main_model",
+            "server_model_id",
             self._config.main_model,
             "--ei",
             "eval_turn_budget",
             str(self._config.max_turns),
         ]
-        if self._config.executor_model:
-            extras.extend(["--es", "executor_model", self._config.executor_model])
         if self._config.excluded_tools:
             extras.extend(["--es", "excluded_tools", self._config.excluded_tools])
-        if self._config.api_keys:
-            _KEY_MAP = {
-                "OPENAI_API_KEY": "api_key",
-                "OPENROUTER_API_KEY": "openrouter_api_key",
-                "OTHER_API_KEY": "other_api_key",
-            }
-            for env_name, extra_name in _KEY_MAP.items():
-                val = self._config.api_keys.get(env_name)
-                if val:
-                    extras.extend(["--es", extra_name, val])
-            # Forward provider base URL overrides
-            base_url = self._config.api_keys.get("OPENAI_BASE_URL")
-            if base_url:
-                # Translate localhost to 10.0.2.2 for the Android emulator
-                emulator_url = base_url.replace("://localhost", "://10.0.2.2").replace("://127.0.0.1", "://10.0.2.2")
-                extras.extend(["--es", "openai_base_url", emulator_url])
-            # OTHER provider trio: api key already mapped above; forward url + model id.
-            other_base_url = self._config.api_keys.get("OTHER_BASE_URL")
-            if other_base_url:
-                emulator_other_url = other_base_url.replace("://localhost", "://10.0.2.2").replace("://127.0.0.1", "://10.0.2.2")
-                extras.extend(["--es", "other_base_url", emulator_other_url])
-            other_model_id = self._config.api_keys.get("OTHER_MODEL_ID")
-            if other_model_id:
-                extras.extend(["--es", "other_model_id", other_model_id])
+        if self._config.api_key is not None:
+            extras.extend(["--es", "server_api_key", self._config.api_key])
 
         self._run_adb_shell(
             ["input", "keyevent", "KEYCODE_HOME"],

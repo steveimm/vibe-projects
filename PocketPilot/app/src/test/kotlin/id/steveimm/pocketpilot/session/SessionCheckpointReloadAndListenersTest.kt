@@ -2,6 +2,8 @@
 
 package id.steveimm.pocketpilot.session
 
+import id.steveimm.pocketpilot.test.testModelCatalog
+
 import android.accessibilityservice.AccessibilityService
 import com.google.common.truth.Truth.assertThat
 import id.steveimm.pocketpilot.history.HistoryManager
@@ -10,14 +12,12 @@ import id.steveimm.pocketpilot.history.ResponseItem
 import id.steveimm.pocketpilot.history.SessionRecordingService
 import id.steveimm.pocketpilot.history.model.CheckpointState
 import id.steveimm.pocketpilot.history.model.ConversationConfigSnapshot
-import id.steveimm.pocketpilot.history.model.HistoryItemConverter
 import id.steveimm.pocketpilot.history.model.PersistedHistoryItem
 import id.steveimm.pocketpilot.history.model.SessionRuntimeSnapshot
 import id.steveimm.pocketpilot.history.model.TodoSnapshot
 import id.steveimm.pocketpilot.llm.LLMClient
 import id.steveimm.pocketpilot.llm.LLMClientFactory
 import id.steveimm.pocketpilot.llm.LLMStreamEvent
-import id.steveimm.pocketpilot.llm.ModelCatalog
 import id.steveimm.pocketpilot.llm.ResponsesResult
 import id.steveimm.pocketpilot.platform.AndroidPlatform
 import id.steveimm.pocketpilot.platform.PlatformFactory
@@ -50,7 +50,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.json.JSONObject
 import org.junit.After
 import org.junit.Test
 
@@ -76,7 +75,7 @@ class SessionCheckpointReloadAndListenersTest {
             snapshot = snapshot,
             service = service,
             scope = mockk(relaxed = true),
-            authStore = null
+            credentialStore = null
         )
 
         assertThat(reloaded).isNull()
@@ -91,7 +90,7 @@ class SessionCheckpointReloadAndListenersTest {
             snapshot = snapshot,
             service = service,
             scope = mockk(relaxed = true),
-            authStore = null
+            credentialStore = null
         )
 
         assertThat(reloaded).isNull()
@@ -133,7 +132,7 @@ class SessionCheckpointReloadAndListenersTest {
             snapshot = snapshot,
             service = mockk(relaxed = true),
             scope = this,
-            authStore = null
+            credentialStore = null
         )
 
         assertThat(reloaded).isNotNull()
@@ -178,7 +177,7 @@ class SessionCheckpointReloadAndListenersTest {
             snapshot = snapshot,
             service = mockk(relaxed = true),
             scope = this,
-            authStore = null
+            credentialStore = null
         )
 
         assertThat(reloaded).isNotNull()
@@ -205,7 +204,7 @@ class SessionCheckpointReloadAndListenersTest {
             snapshot = snapshot,
             service = mockk(relaxed = true),
             scope = this,
-            authStore = null
+            credentialStore = null
         )
 
         assertThat(reloaded).isNotNull()
@@ -314,8 +313,8 @@ class SessionCheckpointReloadAndListenersTest {
         val toolRouter = ToolRouter(toolRegistry, policyEngine)
         val platform = FakeAndroidPlatform(captureDelayMs = 0L)
         val config = SessionConfig(actionDelayMs = 0)
-        val testCatalog = ModelCatalog.fromJson(
-            """{"gpt-5.2":{"display_name":"GPT-5.2","provider":"OPENAI_API","api":"response","model_id":"gpt-5.2"}}"""
+        val testCatalog = testModelCatalog(
+            """{"gpt-5.2":{"display_name":"GPT-5.2","model_id":"gpt-5.2"}}"""
         )
         val testLlm = StubLLMClient()
         return SessionServices(
@@ -360,8 +359,7 @@ class SessionCheckpointReloadAndListenersTest {
             SessionServices.create(
                 config = any(),
                 platform = any(),
-                authStore = any(),
-                baseUrlOverrides = any(),
+                credentialStore = any(),
                 context = any(),
                 scope = any(),
                 traceRecorder = any(),

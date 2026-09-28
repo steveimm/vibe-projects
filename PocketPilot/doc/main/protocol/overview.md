@@ -113,7 +113,7 @@ protocol/
 ├── Op.kt                     # UI→Agent commands
 ├── AgentEvent.kt             # Base event interface
 ├── AgentEventDomains.kt      # 11 domain marker interfaces
-├── SessionConfig.kt          # Session configuration (ApprovalMode, PlatformMode, LLMBackendType, SessionLlmConfig)
+├── SessionConfig.kt          # Session configuration (ApprovalMode, PlatformMode, SessionLlmConfig)
 ├── SessionState.kt           # 6-state machine (incl. TakeoverPending)
 ├── SessionId.kt              # Session identifier
 ├── AppTier.kt                # BLOCKED / CAUTIOUS / NORMAL classification

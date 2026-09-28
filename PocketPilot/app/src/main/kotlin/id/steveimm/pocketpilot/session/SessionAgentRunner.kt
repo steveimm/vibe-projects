@@ -274,8 +274,6 @@ internal fun buildCompactor(
         sessionLlmClient to ModelEntry(
             name = modelName,
             displayName = modelName,
-            provider = id.steveimm.pocketpilot.llm.LLMProvider.OPENAI_API,
-            api = id.steveimm.pocketpilot.llm.ApiType.RESPONSE,
             modelId = modelName,
             contextWindow = 128_000,
         )

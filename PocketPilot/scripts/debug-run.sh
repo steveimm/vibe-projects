@@ -12,17 +12,12 @@ RUN_ID="$(date +"%Y%m%d_%H%M%S")"
 DEBUG_DIR="$PROJECT_ROOT/debug-output/run_${RUN_ID}"
 
 # Parse arguments
-USE_LOCAL=false
 FORCED_PERCEPTION_MODE=""
 FORCED_MAIN_MODEL=""
 FORCED_PLATFORM_MODE=""
 GOAL=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --local|-l)
-            USE_LOCAL=true
-            shift
-            ;;
         --accessibility-only|--a11y-only)
             FORCED_PERCEPTION_MODE="accessibility_only"
             shift
@@ -120,20 +115,7 @@ if [[ -f "$PROJECT_ROOT/.env" ]]; then
     source "$PROJECT_ROOT/.env"
 fi
 
-# Determine LLM backend
-LLM_BACKEND="${LLM_BACKEND:-openai}"
-if [[ "$USE_LOCAL" == "true" ]]; then
-    LLM_BACKEND="local"
-fi
-
-# Keep the fallback model aligned with the selected backend.
-DEFAULT_MAIN_MODEL="minimax-m2.5"
-if [[ "$LLM_BACKEND" == "openai" ]]; then
-    DEFAULT_MAIN_MODEL="gpt-5.4"
-fi
-
-# Determine effective model early for logging
-EFFECTIVE_MAIN_MODEL="${FORCED_MAIN_MODEL:-${MAIN_MODEL:-$DEFAULT_MAIN_MODEL}}"
+EFFECTIVE_MAIN_MODEL="${FORCED_MAIN_MODEL:-${POCKETPILOT_MODEL_ID:-}}"
 
 # Default debug mode on for debug-run unless explicitly set
 if [[ -z "${DEBUG_MODE+x}" ]]; then
@@ -174,12 +156,6 @@ if [[ -n "$DEBUG_BROWSER_SCRIPT_ENABLED" ]]; then
     DEBUG_BROWSER_SCRIPT_ENABLED=$(normalize_bool "$DEBUG_BROWSER_SCRIPT_ENABLED")
 fi
 
-# Check API key for OpenAI backend
-if [[ "$LLM_BACKEND" == "openai" && -z "$OPENAI_API_KEY" ]]; then
-    warn "No API key found. Set OPENAI_API_KEY in .env or use --local flag."
-fi
-
-log "Using LLM backend: $LLM_BACKEND"
 log "Using main model: $EFFECTIVE_MAIN_MODEL"
 log "Using perception mode: $PERCEPTION_MODE"
 log "Using platform mode: $PLATFORM_MODE"
@@ -216,10 +192,8 @@ fi
 
 # Preflight: re-run setup.sh so build + permissions are wired up. Cheap when
 # APK is up-to-date and re-granting overlay/a11y/Shizuku is idempotent.
-# Export LLM_BACKEND so setup.sh's API-key gate matches the backend this run
-# will actually use (otherwise --local fails on the OpenAI key check).
 log "Running setup.sh preflight..."
-LLM_BACKEND="$LLM_BACKEND" "$SCRIPT_DIR/setup.sh" || err "Preflight failed (see setup.sh output above)"
+"$SCRIPT_DIR/setup.sh" || err "Preflight failed (see setup.sh output above)"
 
 # Clear logs and start streaming capture
 adb logcat -c
@@ -267,12 +241,6 @@ finalize() {
         fi
     fi
 
-    # Save LFMLLMClient specific logs for local LLM debugging
-    if [[ "$LLM_BACKEND" == "local" ]]; then
-        log "Saving local LLM logs..."
-        grep -E "LFMLLMClient|Leap|Model" "$DEBUG_DIR/logcat_full.log" > "$DEBUG_DIR/local_llm.log" || true
-    fi
-
     echo ""
     echo -e "${GREEN}=============================================================${NC}"
     echo -e "${GREEN}Debug output saved to: $DEBUG_DIR${NC}"
@@ -294,52 +262,30 @@ trap 'cleanup' EXIT
 adb shell getprop > "$DEBUG_DIR/device_getprop.txt" 2>/dev/null || true
 adb shell dumpsys package "$PACKAGE" > "$DEBUG_DIR/package_dumpsys.txt" 2>/dev/null || true
 
-# Build intent extras based on backend
+# Build debug intent extras for the configured model server
 SAFE_GOAL=$(escape_shell_arg "$GOAL")
-SAFE_BACKEND=$(escape_shell_arg "$LLM_BACKEND")
-SAFE_API_KEY=$(escape_shell_arg "${OPENAI_API_KEY:-}")
 SAFE_RUN_ID=$(escape_shell_arg "$RUN_ID")
 SAFE_PERCEPTION_MODE=$(escape_shell_arg "$PERCEPTION_MODE")
 SAFE_PLATFORM_MODE=$(escape_shell_arg "$PLATFORM_MODE")
 
-INTENT_EXTRAS="--es goal '$SAFE_GOAL' --es llm_backend '$SAFE_BACKEND' --es perception_mode '$SAFE_PERCEPTION_MODE' --es platform_mode '$SAFE_PLATFORM_MODE' --ez auto_start true --ez fresh_session true --ez debug_mode $DEBUG_MODE --ez trace_enabled true --es trace_run_id '$SAFE_RUN_ID'"
+INTENT_EXTRAS="--es goal '$SAFE_GOAL' --es perception_mode '$SAFE_PERCEPTION_MODE' --es platform_mode '$SAFE_PLATFORM_MODE' --ez auto_start true --ez fresh_session true --ez debug_mode $DEBUG_MODE --ez trace_enabled true --es trace_run_id '$SAFE_RUN_ID'"
 SAFE_APPROVAL_MODE=$(escape_shell_arg "$APPROVAL_MODE")
 INTENT_EXTRAS="$INTENT_EXTRAS --es approval_mode '$SAFE_APPROVAL_MODE'"
 if [[ -n "$DEBUG_BROWSER_SCRIPT_ENABLED" ]]; then
     INTENT_EXTRAS="$INTENT_EXTRAS --ez browser_script_enabled $DEBUG_BROWSER_SCRIPT_ENABLED"
 fi
 
-# Add main model to intent
-SAFE_MAIN_MODEL=$(escape_shell_arg "$EFFECTIVE_MAIN_MODEL")
-INTENT_EXTRAS="$INTENT_EXTRAS --es main_model '$SAFE_MAIN_MODEL'"
-
-if [[ -n "${OPENAI_API_KEY:-}" ]]; then
-    INTENT_EXTRAS="--es api_key '$SAFE_API_KEY' $INTENT_EXTRAS"
+if [[ -n "$EFFECTIVE_MAIN_MODEL" ]]; then
+    SAFE_MODEL=$(escape_shell_arg "$EFFECTIVE_MAIN_MODEL")
+    INTENT_EXTRAS="$INTENT_EXTRAS --es server_model_id '$SAFE_MODEL'"
 fi
-
-if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
-    SAFE_OR_KEY=$(escape_shell_arg "$OPENROUTER_API_KEY")
-    INTENT_EXTRAS="$INTENT_EXTRAS --es openrouter_api_key '$SAFE_OR_KEY'"
+if [[ -n "${POCKETPILOT_SERVER_URL:-}" ]]; then
+    SAFE_URL=$(escape_shell_arg "$POCKETPILOT_SERVER_URL")
+    INTENT_EXTRAS="$INTENT_EXTRAS --es server_base_url '$SAFE_URL'"
 fi
-
-if [[ -n "${OTHER_API_KEY:-}" ]]; then
-    SAFE_OTHER_KEY=$(escape_shell_arg "$OTHER_API_KEY")
-    INTENT_EXTRAS="$INTENT_EXTRAS --es other_api_key '$SAFE_OTHER_KEY'"
-fi
-
-if [[ -n "${OTHER_BASE_URL:-}" ]]; then
-    SAFE_OTHER_BASE_URL=$(escape_shell_arg "$OTHER_BASE_URL")
-    INTENT_EXTRAS="$INTENT_EXTRAS --es other_base_url '$SAFE_OTHER_BASE_URL'"
-fi
-
-if [[ -n "${OTHER_MODEL_ID:-}" ]]; then
-    SAFE_OTHER_MODEL_ID=$(escape_shell_arg "$OTHER_MODEL_ID")
-    INTENT_EXTRAS="$INTENT_EXTRAS --es other_model_id '$SAFE_OTHER_MODEL_ID'"
-fi
-
-if [[ -n "${OPENAI_BASE_URL:-}" ]]; then
-    SAFE_OPENAI_BASE_URL=$(escape_shell_arg "$OPENAI_BASE_URL")
-    INTENT_EXTRAS="$INTENT_EXTRAS --es openai_base_url '$SAFE_OPENAI_BASE_URL'"
+if [[ -n "${POCKETPILOT_API_KEY+x}" ]]; then
+    SAFE_KEY=$(escape_shell_arg "$POCKETPILOT_API_KEY")
+    INTENT_EXTRAS="$INTENT_EXTRAS --es server_api_key '$SAFE_KEY'"
 fi
 
 # Clear any previous trace folder for this run id (best-effort)

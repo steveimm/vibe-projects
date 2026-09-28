@@ -34,114 +34,61 @@ class AppSettingsStoreTest {
     }
 
     @Test
-    fun `browser_script setting defaults disabled`() {
-        assertThat(AppSettingsStore(context).load().browserScriptEnabled).isFalse()
-    }
-
-    @Test
-    fun `invalid saved enums and legacy approval mode fall back without losing other settings`() {
-        backing["llm_backend"] = "removed_backend"
-        backing["platform_mode"] = "removed_platform"
-        backing["approval_mode"] = "ALWAYS_ASK"
-        backing["other_base_url"] = "http://192.168.1.20:8000/v1"
-        backing["screenshot_input"] = true
-
+    fun `server settings start empty with no cloud defaults`() {
         val settings = AppSettingsStore(context).load()
-
-        assertThat(settings.llmBackend).isEqualTo(AppSettingsStore.DEFAULT_LLM_BACKEND)
-        assertThat(settings.platformMode).isEqualTo(AppSettingsStore.DEFAULT_PLATFORM_MODE)
-        assertThat(settings.approvalMode).isEqualTo(AppSettingsStore.DEFAULT_APPROVAL_MODE)
-        assertThat(settings.perceptionMode).isEqualTo("hybrid")
-        assertThat(settings.otherBaseUrl).isEqualTo("http://192.168.1.20:8000/v1")
+        assertThat(settings.serverBaseUrl).isEmpty()
+        assertThat(settings.serverModelId).isEmpty()
     }
 
     @Test
-    fun `state reload replaces the snapshot without overwriting later persisted changes`() {
+    fun `existing custom server and discovered model selection migrate`() {
+        backing["other_base_url"] = "http://server-a:8000/v1/"
+        backing["other_model_id"] = "old-manual"
+        backing["model"] = "other:selected-model"
+        val settings = AppSettingsStore(context).load()
+        assertThat(settings.serverBaseUrl).isEqualTo("http://server-a:8000/v1")
+        assertThat(settings.serverModelId).isEqualTo("selected-model")
+    }
+
+    @Test
+    fun `old cloud selections never become a configured model server`() {
+        backing["model"] = "gpt-5.2"
+        backing["openai_base_url"] = "https://api.openai.com/v1"
+        val settings = AppSettingsStore(context).load()
+        assertThat(settings.serverBaseUrl).isEmpty()
+        assertThat(settings.serverModelId).isEmpty()
+    }
+
+    @Test
+    fun `clearing new settings does not restore legacy custom server values`() {
+        backing["other_base_url"] = "http://server-a:8000/v1"
+        backing["other_model_id"] = "old-model"
+        val store = AppSettingsStore(context)
+        store.saveServer("", "")
+        assertThat(store.load().serverBaseUrl).isEmpty()
+        assertThat(store.load().serverModelId).isEmpty()
+    }
+
+    @Test
+    fun `server state persists both fields without changing unrelated preferences`() {
         val store = AppSettingsStore(context)
         val state = AppSettingsState(store)
-        state.updateOtherModelId("local/model")
+        state.load()
         state.updateTraceEnabled(true)
-        store.saveTraceEnabled(false)
-        store.saveOtherBaseUrl("http://192.168.1.20:8000/v1")
-
+        state.updateServer("http://server-a:8000/v1", "my-model")
         state.load()
-
-        assertThat(state.otherModelId).isEqualTo("local/model")
-        assertThat(state.otherBaseUrl).isEqualTo("http://192.168.1.20:8000/v1")
-        assertThat(state.traceEnabled).isFalse()
+        assertThat(state.serverBaseUrl).isEqualTo("http://server-a:8000/v1")
+        assertThat(state.serverModelId).isEqualTo("my-model")
+        assertThat(state.traceEnabled).isTrue()
     }
 
     @Test
-    fun `browser_script setting round-trips through store`() {
-        val store = AppSettingsStore(context)
-
-        store.saveBrowserScriptEnabled(true)
-
-        assertThat(AppSettingsStore(context).load().browserScriptEnabled).isTrue()
-    }
-
-    @Test
-    fun `browser_script setting round-trips through state`() {
-        val state = AppSettingsState(AppSettingsStore(context))
-
-        state.load()
-        state.updateBrowserScriptEnabled(true)
-
-        val reloaded = AppSettingsStore(context).load()
-        assertThat(state.browserScriptEnabled).isTrue()
-        assertThat(reloaded.browserScriptEnabled).isTrue()
-    }
-
-    @Test
-    fun `otherBaseUrl + otherModelId default to empty`() {
+    fun `unknown platform and retired approval mode fall back safely`() {
+        backing["platform_mode"] = "removed"
+        backing["approval_mode"] = "ALWAYS_ASK"
         val settings = AppSettingsStore(context).load()
-        assertThat(settings.otherBaseUrl).isEmpty()
-        assertThat(settings.otherModelId).isEmpty()
-    }
-
-    @Test
-    fun `otherBaseUrl persists + restores`() {
-        val store = AppSettingsStore(context)
-        store.saveOtherBaseUrl("https://api.example.com/v1")
-
-        assertThat(AppSettingsStore(context).load().otherBaseUrl).isEqualTo("https://api.example.com/v1")
-    }
-
-    @Test
-    fun `otherModelId persists + restores`() {
-        val store = AppSettingsStore(context)
-        store.saveOtherModelId("vendor/model-x")
-
-        assertThat(AppSettingsStore(context).load().otherModelId).isEqualTo("vendor/model-x")
-    }
-
-    @Test
-    fun `blank otherBaseUrl write clears stored value`() {
-        val store = AppSettingsStore(context)
-        store.saveOtherBaseUrl("https://api.example.com/v1")
-        store.saveOtherBaseUrl("")
-
-        assertThat(AppSettingsStore(context).load().otherBaseUrl).isEmpty()
-    }
-
-    @Test
-    fun `other settings round-trip through state`() {
-        var invalidated = 0
-        val state = AppSettingsState(
-            store = AppSettingsStore(context),
-            onOtherSettingsChanged = { invalidated++ },
-        )
-        state.load()
-        state.updateOtherBaseUrl("https://api.example.com/v1")
-        state.updateOtherModelId("vendor/model-x")
-
-        val reloaded = AppSettingsStore(context).load()
-        assertThat(state.otherBaseUrl).isEqualTo("https://api.example.com/v1")
-        assertThat(state.otherModelId).isEqualTo("vendor/model-x")
-        assertThat(reloaded.otherBaseUrl).isEqualTo("https://api.example.com/v1")
-        assertThat(reloaded.otherModelId).isEqualTo("vendor/model-x")
-        // updateOtherBaseUrl + updateOtherModelId must each notify the catalog.
-        assertThat(invalidated).isEqualTo(2)
+        assertThat(settings.platformMode).isEqualTo(AppSettingsStore.DEFAULT_PLATFORM_MODE)
+        assertThat(settings.approvalMode).isEqualTo(AppSettingsStore.DEFAULT_APPROVAL_MODE)
     }
 
     @Test

@@ -15,10 +15,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
@@ -35,103 +33,6 @@ import com.composables.icons.lucide.Lucide
 import id.steveimm.pocketpilot.ui.theme.Fraunces
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 import id.steveimm.pocketpilot.ui.theme.foldedPaper
-
-/** Model loading status indicator. */
-@Composable
-internal fun ModelLoadingStatusIndicator(status: ModelLoadingStatus) {
-    when (status) {
-        is ModelLoadingStatus.Idle -> Unit
-        is ModelLoadingStatus.Downloading -> {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .foldedPaper(MaterialTheme.shapes.medium),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Column(
-                    modifier = Modifier.padding(MaterialTheme.pocketPilot.spacing.cardPadding),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.sm)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.sm)
-                    ) {
-                        Text(
-                            text = "Downloading model...",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            text = "${(status.progress * 100).toInt()}%",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    LinearProgressIndicator(
-                        progress = { status.progress },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        }
-        is ModelLoadingStatus.Loading -> {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .foldedPaper(MaterialTheme.shapes.medium),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Row(
-                    modifier = Modifier.padding(MaterialTheme.pocketPilot.spacing.cardPadding),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.sm)
-                ) {
-                    LinearProgressIndicator(
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = "Loading model...",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-        }
-        is ModelLoadingStatus.Ready -> {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .foldedPaper(MaterialTheme.shapes.medium),
-                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Row(
-                    modifier = Modifier.padding(MaterialTheme.pocketPilot.spacing.cardPadding),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.sm)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.secondary)
-                    )
-                    Text(
-                        text = "Model ready",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                }
-            }
-        }
-        is ModelLoadingStatus.Error -> {
-            SettingsAlertCard(
-                message = "Error: ${status.message}",
-                tone = AlertTone.Error,
-            )
-        }
-    }
-}
 
 @Composable
 internal fun SettingsSection(

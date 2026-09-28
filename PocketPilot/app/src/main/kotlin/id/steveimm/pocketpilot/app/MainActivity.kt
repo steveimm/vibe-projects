@@ -17,37 +17,27 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import id.steveimm.pocketpilot.BuildConfig
 import id.steveimm.pocketpilot.onboarding.StepOutcome
-import id.steveimm.pocketpilot.ui.chat.SettingsPage
 import id.steveimm.pocketpilot.ui.chat.SettingsDeepLink
-import id.steveimm.pocketpilot.auth.AuthStore
+import id.steveimm.pocketpilot.auth.ServerCredentialStore
 import id.steveimm.pocketpilot.history.ResumedSessionData
 import id.steveimm.pocketpilot.history.SessionHistoryManager
 import id.steveimm.pocketpilot.history.model.SessionInfo
 import id.steveimm.pocketpilot.history.model.isReloadable
 import id.steveimm.pocketpilot.history.storage.SessionStorage
-import id.steveimm.pocketpilot.llm.LFMLLMClient
-import id.steveimm.pocketpilot.llm.LLMProvider
-import id.steveimm.pocketpilot.llm.LocalLLMConfig
-import id.steveimm.pocketpilot.llm.ModelCatalog
-import id.steveimm.pocketpilot.llm.ModelCatalogRepository
-import id.steveimm.pocketpilot.llm.ModelCatalogRepositoryHolder
 import id.steveimm.pocketpilot.memory.MemoryStore
 import id.steveimm.pocketpilot.onboarding.OnboardingDemoController
 import id.steveimm.pocketpilot.onboarding.OnboardingEffect
 import id.steveimm.pocketpilot.onboarding.OnboardingStore
 import id.steveimm.pocketpilot.onboarding.OnboardingViewModel
-import id.steveimm.pocketpilot.onboarding.OnboardingViewModelFactory
 import id.steveimm.pocketpilot.onboarding.PermissionStateMonitor
 import id.steveimm.pocketpilot.perception.PerceptionConfig
 import id.steveimm.pocketpilot.protocol.ApprovalMode
-import id.steveimm.pocketpilot.protocol.LLMBackendType
 import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.protocol.SessionLlmConfig
 import id.steveimm.pocketpilot.platform.OverlayTouchGate
@@ -59,7 +49,6 @@ import id.steveimm.pocketpilot.tool.AppClassifierHolder
 import id.steveimm.pocketpilot.ui.chat.ChatViewModel
 import id.steveimm.pocketpilot.ui.onboarding.OnboardingScreen
 import id.steveimm.pocketpilot.ui.overlay.visualizer.ActionVisualizerManager
-import id.steveimm.pocketpilot.ui.settings.ModelLoadingStatus
 import id.steveimm.pocketpilot.ui.theme.PocketPilotTheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -76,24 +65,19 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
         private const val KEY_INTENT_PAYLOAD_CONSUMED = "intent_payload_consumed"
         private const val KEY_PENDING_GOAL_CONFIRMATION = "pending_goal_confirmation"
-        const val EXTRA_API_KEY = "api_key"
+        const val EXTRA_SERVER_BASE_URL = "server_base_url"
+        const val EXTRA_SERVER_MODEL_ID = "server_model_id"
+        const val EXTRA_SERVER_API_KEY = "server_api_key"
         const val EXTRA_GOAL = "goal"
         const val EXTRA_FRESH_SESSION = "fresh_session"
-        const val EXTRA_LLM_BACKEND = "llm_backend" // "openai" or "local"
         const val EXTRA_PERCEPTION_MODE = "perception_mode"
         const val EXTRA_DEBUG_MODE = "debug_mode"
         const val EXTRA_TRACE_ENABLED = "trace_enabled"
         const val EXTRA_TRACE_RUN_ID = "trace_run_id"
-        const val EXTRA_MAIN_MODEL = "main_model"
         const val EXTRA_APPROVAL_MODE = "approval_mode"
         const val EXTRA_BROWSER_SCRIPT_ENABLED = "browser_script_enabled"
         const val EXTRA_PLATFORM_MODE = "platform_mode"
         const val EXTRA_EXCLUDED_TOOLS = "excluded_tools"
-        const val EXTRA_OPENROUTER_API_KEY = "openrouter_api_key"
-        const val EXTRA_OPENAI_BASE_URL = "openai_base_url"
-        const val EXTRA_OTHER_API_KEY = "other_api_key"
-        const val EXTRA_OTHER_BASE_URL = "other_base_url"
-        const val EXTRA_OTHER_MODEL_ID = "other_model_id"
         const val EXTRA_EVAL_TURN_BUDGET = "eval_turn_budget"
         const val EXTRA_REQUEST_VOICE_PERMISSION = "request_voice_permission"
     }
@@ -107,8 +91,6 @@ class MainActivity : ComponentActivity() {
         MemoryEditGate(coordinator, sessionScope)
     }
     private lateinit var settingsState: AppSettingsState
-    private lateinit var modelCatalogRepo: ModelCatalogRepository
-    private lateinit var modelLoadingStatusHolder: ModelLoadingStatusHolder
     private var pendingTraceEnabled: Boolean? = null
     private var pendingTraceRunId: String? = null
     private var pendingExcludedTools: Set<String> = emptySet()
@@ -123,10 +105,9 @@ class MainActivity : ComponentActivity() {
     private var showSettings by mutableStateOf(false)
     private var pendingSettingsDeepLink by mutableStateOf<SettingsDeepLink?>(null)
     private lateinit var onboardingStore: OnboardingStore
-    private lateinit var authStore: AuthStore
+    private lateinit var credentialStore: ServerCredentialStore
     private var onboardingViewModel: OnboardingViewModel? = null
     private var onboardingRequired by mutableStateOf(false)
-    private lateinit var settingsAuthController: SettingsAuthController
     private var pendingVoicePermissionRequest by mutableStateOf(false)
 
     internal fun isVoicePermissionRequestPending(): Boolean = pendingVoicePermissionRequest
@@ -148,9 +129,6 @@ class MainActivity : ComponentActivity() {
         FORCE_FRESH
     }
 
-    private val modelCatalog: ModelCatalog
-        get() = modelCatalogRepo.catalog.value
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -158,32 +136,20 @@ class MainActivity : ComponentActivity() {
         pendingGoalForConfirmation = savedInstanceState?.getString(KEY_PENDING_GOAL_CONFIRMATION)
         settingsState = AppSettingsState.create(applicationContext)
         settingsState.load()
-        modelCatalogRepo = ModelCatalogRepositoryHolder.get(applicationContext)
-        modelLoadingStatusHolder = ModelLoadingStatusHolder(applicationContext, lifecycleScope, settingsState)
 
         // Onboarding: migrate + check completion
         onboardingStore = OnboardingStore(applicationContext)
-        authStore = AuthStoreHolder.get(applicationContext)
+        credentialStore = ServerCredentialStoreHolder.get(applicationContext)
         onboardingStore.migrateIfNeeded {
             hasLegacyUsageEvidence()
         }
-        settingsAuthController = SettingsAuthController(
-            authStore = authStore,
-            scope = lifecycleScope,
-            launchBrowser = { url -> startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) },
-            onSignedIn = { settingsState.updateBackend(LLMBackendType.OPENAI) },
-        )
-        settingsAuthController.load()
-
         // Eval/debug bypass: EXTRA_FRESH_SESSION + EXTRA_GOAL → skip onboarding (debug only)
         onboardingRequired = !onboardingStore.isCompleted && !isEvalIntent(intent)
 
         if (onboardingRequired) {
-            val vm = OnboardingViewModelFactory.create(
-                context = applicationContext,
+            val vm = OnboardingViewModel(
                 store = onboardingStore,
                 settingsState = settingsState,
-                modelCatalog = modelCatalog,
                 permissionMonitor = PermissionStateMonitor(applicationContext),
                 demoController = OnboardingDemoController(
                     settingsState = settingsState,
@@ -210,11 +176,11 @@ class MainActivity : ComponentActivity() {
                 val vm = onboardingViewModel!!
                 PocketPilotTheme {
                     OnboardingScreen(
+                        settings = settingsState,
+                        onServerSaved = vm::onServerConfigured,
                         currentStep = vm.currentStep,
                         stepState = vm.stepState,
                         outcomes = vm.outcomes,
-                        selectedProvider = vm.selectedProvider,
-                        authMethod = vm.authMethod,
                         accessibilityGranted = vm.isAccessibilityEnabled(),
                         overlayGranted = vm.isOverlayEnabled(),
                         batteryGranted = vm.isBatteryOptimized(),
@@ -223,16 +189,8 @@ class MainActivity : ComponentActivity() {
                         onContinue = { vm.continueForward() },
                         onOpenSettings = { vm.openSystemSettings() },
                         onSkipStep = { vm.skipStep() },
-                        onProviderSelected = { vm.selectProvider(it) },
-                        onAuthMethodSelected = { vm.selectAuthMethod(it) },
-                        onStartOAuth = { vm.startOAuth() },
-                        onCancelOAuth = { vm.cancelOAuth() },
-                        onApiKeyChanged = { vm.onApiKeyChanged(it) },
-                        onValidateApiKey = { vm.validateApiKey() },
-                        onRetryValidation = { vm.retryValidation() },
-                        onUseCustomServer = { vm.useCustomServer() },
                         onStartDemo = { vm.startDemo() },
-                        onGoToAuthStep = { vm.goToAuthStep() },
+                        onGoToServerStep = { vm.goToServerStep() },
                         onFinish = {
                             vm.finish()
                             onboardingRequired = false
@@ -243,7 +201,6 @@ class MainActivity : ComponentActivity() {
             } else {
                 var repairModel by remember { mutableStateOf(deriveRepairModel()) }
                 val lifecycleOwner = LocalLifecycleOwner.current
-                val catalogSnapshot by modelCatalogRepo.catalog.collectAsStateWithLifecycle()
                 DisposableEffect(lifecycleOwner) {
                     val observer = LifecycleEventObserver { _, event ->
                         if (event == Lifecycle.Event.ON_RESUME) {
@@ -256,8 +213,6 @@ class MainActivity : ComponentActivity() {
                 MainActivityContent(
                     viewModel = viewModel,
                     settingsState = settingsState,
-                    modelLoadingStatusHolder = modelLoadingStatusHolder,
-                    modelCatalog = catalogSnapshot,
                     showSettings = showSettings,
                     onShowSettingsChange = {
                         showSettings = it
@@ -279,7 +234,7 @@ class MainActivity : ComponentActivity() {
                     onNewSession = {
                         coordinator.selectedSessionForReload = null
                         lifecycleScope.launch { coordinator.clearSession() }
-                        viewModel.startNewSession(settingsState.selectedModel, BuildConfig.VERSION_NAME)
+                        viewModel.startNewSession(settingsState.serverModelId, BuildConfig.VERSION_NAME)
                     },
                     onOpenViewer = { openViewer(this@MainActivity) },
                     onOpenApp = { pkg ->
@@ -295,10 +250,6 @@ class MainActivity : ComponentActivity() {
                     onFixBattery = {
                         handleOnboardingEffect(OnboardingEffect.OpenBatteryOptimization)
                     },
-                    openAiAuthUiState = settingsAuthController.state,
-                    onStartOAuth = settingsAuthController::startSignIn,
-                    onCancelOAuth = settingsAuthController::cancelSignIn,
-                    onSignOut = settingsAuthController::signOut,
                     effectivePlatformModeFlow = AgentService.instance?.effectivePlatformMode
                         ?: kotlinx.coroutines.flow.MutableStateFlow(null),
                     appClassifier = AppClassifierHolder.get(applicationContext),
@@ -390,20 +341,25 @@ class MainActivity : ComponentActivity() {
         val alreadyConsumed = intentPayloadConsumed
         intentPayloadConsumed = true
         lifecycleScope.launch {
-            val applyResult = applyIntentPayloadToSettings(
-                payload = payload,
-                settingsState = settingsState,
-                modelLoadingStatusHolder = modelLoadingStatusHolder,
-                authStore = authStore,
-                isDebugBuild = BuildConfig.DEBUG,
-                currentPendingTraceEnabled = pendingTraceEnabled,
-                currentPendingTraceRunId = pendingTraceRunId,
-                currentPendingExcludedTools = pendingExcludedTools,
-                currentPendingApprovalMode = pendingApprovalMode,
-                currentPendingEvalTurnBudget = pendingEvalTurnBudget,
-                log = { message -> Log.d(TAG, message) },
-                invalidateCatalog = { modelCatalogRepo.invalidate() },
-            )
+            val applyResult = try {
+                applyIntentPayloadToSettings(
+                    payload = payload,
+                    settingsState = settingsState,
+                    credentialStore = credentialStore,
+                    isDebugBuild = BuildConfig.DEBUG,
+                    currentPendingTraceEnabled = pendingTraceEnabled,
+                    currentPendingTraceRunId = pendingTraceRunId,
+                    currentPendingExcludedTools = pendingExcludedTools,
+                    currentPendingApprovalMode = pendingApprovalMode,
+                    currentPendingEvalTurnBudget = pendingEvalTurnBudget,
+                    log = { message -> Log.d(TAG, message) },
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, "Invalid model server configuration", Toast.LENGTH_LONG).show()
+                return@launch
+            }
             pendingTraceEnabled = applyResult.pendingTraceEnabled
             pendingTraceRunId = applyResult.pendingTraceRunId
             pendingExcludedTools = applyResult.pendingExcludedTools
@@ -487,7 +443,7 @@ class MainActivity : ComponentActivity() {
             text: String,
             launchPolicy: SessionLaunchPolicy = SessionLaunchPolicy.AUTO
     ) {
-        if (!validateCloudKeysForSelectedModels()) return
+        if (!validateServerSettings()) return
 
         if (!Settings.canDrawOverlays(this)) {
             Toast.makeText(this, "Please grant Overlay permission", Toast.LENGTH_LONG).show()
@@ -559,27 +515,8 @@ class MainActivity : ComponentActivity() {
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to create session", e)
-                if (settingsState.llmBackend == LLMBackendType.LOCAL) {
-                    modelLoadingStatusHolder.update(
-                            ModelLoadingStatus.Error(e.message ?: "Unknown error")
-                    )
-                }
                 val errMsg = e.message ?: "Unknown error"
-                val deepLink = when (e) {
-                    is id.steveimm.pocketpilot.auth.MissingCredential,
-                    is id.steveimm.pocketpilot.auth.OAuthRefreshFailed,
-                    is id.steveimm.pocketpilot.auth.WrongCredentialType -> {
-                        val provider = (e as? id.steveimm.pocketpilot.auth.MissingCredential)?.provider
-                            ?: (e as? id.steveimm.pocketpilot.auth.OAuthRefreshFailed)?.provider
-                            ?: (e as? id.steveimm.pocketpilot.auth.WrongCredentialType)?.provider
-                        SettingsDeepLink(
-                            page = SettingsPage.LLM_AUTH,
-                            authTab = provider?.mode,
-                            provider = provider,
-                        )
-                    }
-                    else -> null
-                }
+                val deepLink = SettingsDeepLink()
                 viewModel.reportStartupFailure(text, errMsg, deepLink)
                 Toast.makeText(
                                 this@MainActivity,
@@ -598,9 +535,6 @@ class MainActivity : ComponentActivity() {
             launchPolicy: SessionLaunchPolicy,
             autoReload: Boolean = false
     ): AgentSession? {
-        val baseUrlOverrides: Map<LLMProvider, String> = if (settingsState.openaiBaseUrl.isNotBlank()) {
-            mapOf(LLMProvider.OPENAI_API to settingsState.openaiBaseUrl)
-        } else emptyMap()
         val visualizer = service.getActionVisualizer()
         val touchGate = service.getOverlayTouchGate()
         val selectedForReload =
@@ -610,7 +544,6 @@ class MainActivity : ComponentActivity() {
         val session = if (selectedForReload != null) {
             val reloaded = tryReloadSelectedSession(
                     service = service,
-                    baseUrlOverrides = baseUrlOverrides,
                     visualizer = visualizer,
                     touchGate = touchGate,
                     selected = selectedForReload
@@ -621,7 +554,7 @@ class MainActivity : ComponentActivity() {
             } else if (autoReload) {
                 Log.w(TAG, "Auto-reload failed for ${selectedForReload.id}, falling back to fresh session")
                 coordinator.selectedSessionForReload = null
-                createFreshSession(service, baseUrlOverrides, visualizer, touchGate)
+                createFreshSession(service, visualizer, touchGate)
             } else {
                 Log.w(TAG, "Explicit resume failed for ${selectedForReload.id}, checkpoint not reloadable")
                 coordinator.selectedSessionForReload = null
@@ -630,7 +563,7 @@ class MainActivity : ComponentActivity() {
             }
         } else {
             coordinator.selectedSessionForReload = null
-            createFreshSession(service, baseUrlOverrides, visualizer, touchGate)
+            createFreshSession(service, visualizer, touchGate)
         }
 
         pendingTraceEnabled = null
@@ -644,13 +577,12 @@ class MainActivity : ComponentActivity() {
         viewModel.startEventCollection(session)
         service.observeExternalSession(session, session.getServices().platform.mode)
 
-        Log.i(TAG, "Session ready with backend=${settingsState.llmBackend} and message sent")
+        Log.i(TAG, "Session ready with model=${settingsState.serverModelId} and message sent")
         return session
     }
 
     private suspend fun tryReloadSelectedSession(
             service: AgentService,
-            baseUrlOverrides: Map<LLMProvider, String>,
             visualizer: ActionVisualizerManager?,
             touchGate: OverlayTouchGate?,
             selected: SessionInfo
@@ -660,14 +592,14 @@ class MainActivity : ComponentActivity() {
         val snapshot = storage.readSnapshot(contextFileName).getOrNull() ?: return null
         if (snapshot.schemaVersion != 2) return null
         if (!snapshot.checkpointState.isReloadable()) return null
+        if (id.steveimm.pocketpilot.llm.ServerBaseUrlValidator.validate(snapshot.config.serverBaseUrl).isFailure) return null
 
         val session = withContext(Dispatchers.Default) {
             AgentSession.reload(
                     snapshot = snapshot,
                     service = service,
                     scope = service.serviceScope,
-                    authStore = authStore,
-                    baseUrlOverrides = baseUrlOverrides,
+                    credentialStore = credentialStore,
                     visualizer = visualizer,
                     overlayTouchGate = touchGate,
             )
@@ -688,34 +620,17 @@ class MainActivity : ComponentActivity() {
 
     private suspend fun createFreshSession(
             service: AgentService,
-            baseUrlOverrides: Map<LLMProvider, String>,
             visualizer: ActionVisualizerManager?,
             touchGate: OverlayTouchGate?
     ): AgentSession {
-        val localConfig =
-                if (settingsState.llmBackend == LLMBackendType.LOCAL) {
-                    LocalLLMConfig(
-                            modelSlug = settingsState.localModel.modelSlug,
-                            quantizationSlug = settingsState.localModel.quantizationSlug
-                    )
-                } else null
-
-        if (settingsState.llmBackend == LLMBackendType.LOCAL) {
-            modelLoadingStatusHolder.update(ModelLoadingStatus.Loading)
-        }
-
         val sessionConfig =
                 SessionConfig(
                         approvalMode = pendingApprovalMode ?: settingsState.approvalMode,
-                        mainModel = settingsState.selectedModel,
+                        mainModel = settingsState.serverModelId,
                         debugMode = settingsState.debugMode,
                         traceEnabled = pendingTraceEnabled ?: settingsState.traceEnabled,
                         traceRunId = pendingTraceRunId,
-                        llm =
-                                SessionLlmConfig(
-                                        backendType = settingsState.llmBackend,
-                                        localConfig = localConfig
-                                ),
+                        llm = SessionLlmConfig(baseUrl = settingsState.serverBaseUrl),
                         perceptionConfig =
                                 when (settingsState.perceptionMode) {
                                     "screenshot_only" ->
@@ -734,25 +649,11 @@ class MainActivity : ComponentActivity() {
                             config = sessionConfig,
                             service = service,
                             scope = service.serviceScope,
-                            authStore = authStore,
-                            baseUrlOverrides = baseUrlOverrides,
+                            credentialStore = credentialStore,
                             visualizer = visualizer,
                             overlayTouchGate = touchGate,
                     )
                 }
-
-        if (settingsState.llmBackend == LLMBackendType.LOCAL) {
-            val localClient = session.getServices().llmClient as? LFMLLMClient
-            if (localClient == null) {
-                modelLoadingStatusHolder.update(
-                        ModelLoadingStatus.Error("Local LLM client unavailable")
-                )
-            } else {
-                localClient.loadModel { state ->
-                    modelLoadingStatusHolder.update(state.toUiStatus())
-                }
-            }
-        }
 
         return session
     }
@@ -761,7 +662,7 @@ class MainActivity : ComponentActivity() {
         val pendingGoal = pendingAutoStartGoal ?: return
         if (AgentService.instance == null) return
         if (!Settings.canDrawOverlays(this)) return
-        if (findMissingCloudKeys(settingsState, modelCatalog, authStore).isNotEmpty()) return
+        if (serverConfigurationError(settingsState) != null) return
         // Clear before dispatching to prevent double-fire from rapid lifecycle callbacks
         pendingAutoStartGoal = null
         ensureSessionAndSend(pendingGoal)
@@ -778,19 +679,11 @@ class MainActivity : ComponentActivity() {
         window.decorView.postDelayed(runnable, delayMs)
     }
 
-    private fun validateCloudKeysForSelectedModels(): Boolean {
-        val missing = findMissingCloudKeys(settingsState, modelCatalog, authStore)
-
-        if (missing.isEmpty()) return true
-
-        Toast.makeText(this, "Missing credential(s): ${missing.joinToString("; ") { it.message }}", Toast.LENGTH_LONG)
-                .show()
-        pendingSettingsDeepLink = SettingsDeepLink(
-            page = SettingsPage.LLM_AUTH,
-            authTab = missing.first().provider.mode,
-            provider = missing.first().provider,
-        )
+    private fun validateServerSettings(): Boolean {
+        val error = serverConfigurationError(settingsState) ?: return true
+        pendingSettingsDeepLink = SettingsDeepLink()
         showSettings = true
+        Toast.makeText(this, "Configure your model server: $error", Toast.LENGTH_LONG).show()
         return false
     }
 
@@ -800,15 +693,6 @@ class MainActivity : ComponentActivity() {
                 openAccessibilitySettings(this)
             OnboardingEffect.OpenOverlaySettings ->
                 openOverlaySettings(this)
-            OnboardingEffect.OpenCustomServerSettings -> {
-                pendingSettingsDeepLink = SettingsDeepLink(
-                    page = SettingsPage.LLM_AUTH,
-                    authTab = LLMProvider.OTHER.mode,
-                    provider = LLMProvider.OTHER,
-                )
-                showSettings = true
-                onboardingRequired = false
-            }
             OnboardingEffect.OpenBatteryOptimization -> {
                 try {
                     startActivity(
@@ -838,16 +722,7 @@ class MainActivity : ComponentActivity() {
                 }
                 startActivity(intent)
             }
-            is OnboardingEffect.LaunchOAuth -> {
-                try {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(effect.url))
-                    startActivity(intent)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to launch OAuth browser", e)
-                    Toast.makeText(this, "Unable to open browser for sign-in", Toast.LENGTH_SHORT).show()
-                    onboardingViewModel?.cancelOAuth()
-                }
-            }
+
         }
     }
 
@@ -862,15 +737,7 @@ class MainActivity : ComponentActivity() {
     /** Check for evidence this is an existing user (for onboarding migration). */
     private fun hasLegacyUsageEvidence(): Boolean {
         val settings = settingsState
-        // Any stored cloud credential indicates prior use.
-        val providers = listOf(
-            LLMProvider.OPENAI_API,
-            LLMProvider.OPENAI_CODEX,
-            LLMProvider.OPENROUTER,
-        )
-        if (providers.any { authStore.has(it) }) return true
-        if (settings.selectedModel != AppSettingsStore.DEFAULT_MODEL) return true
-        if (settings.llmBackend != AppSettingsStore.DEFAULT_LLM_BACKEND) return true
+        if (settings.serverBaseUrl.isNotBlank() && settings.serverModelId.isNotBlank()) return true
         // User app overrides (persistent per-app policy)
         val overrides = AppSettingsStore(applicationContext).loadUserAppOverrides()
         if (overrides.isNotEmpty()) return true

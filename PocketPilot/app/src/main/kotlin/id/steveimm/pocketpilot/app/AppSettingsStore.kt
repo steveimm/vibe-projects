@@ -3,10 +3,7 @@ package id.steveimm.pocketpilot.app
 import android.content.Context
 import id.steveimm.pocketpilot.protocol.ApprovalMode
 import id.steveimm.pocketpilot.protocol.AppTier
-import id.steveimm.pocketpilot.protocol.LLMBackendType
 import id.steveimm.pocketpilot.protocol.PlatformMode
-import id.steveimm.pocketpilot.ui.settings.AVAILABLE_LOCAL_MODELS
-import id.steveimm.pocketpilot.ui.settings.LocalModelOption
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,48 +15,37 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 data class AppSettings(
-    val selectedModel: String = AppSettingsStore.DEFAULT_MODEL,
+    val serverBaseUrl: String = "",
+    val serverModelId: String = "",
     val debugMode: Boolean = AppSettingsStore.DEFAULT_DEBUG_MODE,
     val perceptionMode: String = AppSettingsStore.DEFAULT_PERCEPTION_MODE,
-    val llmBackend: LLMBackendType = AppSettingsStore.DEFAULT_LLM_BACKEND,
-    val localModel: LocalModelOption = AppSettingsStore.DEFAULT_LOCAL_MODEL,
     val platformMode: PlatformMode = AppSettingsStore.DEFAULT_PLATFORM_MODE,
     val traceEnabled: Boolean = AppSettingsStore.DEFAULT_TRACE_ENABLED,
     val browserScriptEnabled: Boolean = AppSettingsStore.DEFAULT_BROWSER_SCRIPT_ENABLED,
     val termuxShellEnabled: Boolean = AppSettingsStore.DEFAULT_TERMUX_SHELL_ENABLED,
-    val openaiBaseUrl: String = "",
-    val otherBaseUrl: String = "",
-    val otherModelId: String = "",
     val approvalMode: ApprovalMode = AppSettingsStore.DEFAULT_APPROVAL_MODE,
 )
 
 class AppSettingsStore(context: Context) {
     companion object {
         private const val PREFS_NAME = "agent_prefs"
+        private const val KEY_SERVER_BASE_URL = "server_base_url"
+        private const val KEY_SERVER_MODEL_ID = "server_model_id"
 
-        private const val KEY_MODEL = "model"
         private const val KEY_DEBUG_MODE = "debug_mode"
         private const val KEY_SCREENSHOT_INPUT = "screenshot_input"
         private const val KEY_PERCEPTION_MODE = "perception_mode"
-        private const val KEY_LLM_BACKEND = "llm_backend"
-        private const val KEY_LOCAL_MODEL_ID = "local_model_id"
         private const val KEY_PLATFORM_MODE = "platform_mode"
         private const val KEY_USER_APP_OVERRIDES = "user_app_overrides"
         private const val KEY_TRACE_ENABLED = "trace_enabled"
         private const val KEY_BROWSER_SCRIPT_ENABLED = "browser_script_enabled"
         private const val KEY_TERMUX_SHELL_ENABLED = "termux_shell_enabled"
-        private const val KEY_OPENAI_BASE_URL = "openai_base_url"
-        private const val KEY_OTHER_BASE_URL = "other_base_url"
-        private const val KEY_OTHER_MODEL_ID = "other_model_id"
         private const val KEY_DISABLED_AGENT_SKILLS = "disabled_agent_skills"
         private const val KEY_APPROVAL_MODE = "approval_mode"
         private const val KEY_COMPACT_OVERLAYS = "compact_overlays"
 
-        const val DEFAULT_MODEL = "glm-5"
         const val DEFAULT_DEBUG_MODE = false
         const val DEFAULT_PERCEPTION_MODE = "accessibility_only"
-        val DEFAULT_LLM_BACKEND = LLMBackendType.OPENAI
-        val DEFAULT_LOCAL_MODEL: LocalModelOption = AVAILABLE_LOCAL_MODELS.first()
         val DEFAULT_PLATFORM_MODE = PlatformMode.ACCESSIBILITY
         const val DEFAULT_TRACE_ENABLED = false
         const val DEFAULT_BROWSER_SCRIPT_ENABLED = false
@@ -83,24 +69,29 @@ class AppSettingsStore(context: Context) {
     private val disabledSkillsMutex = Mutex()
 
     fun load(): AppSettings {
-        val localModelId = prefs.getString(KEY_LOCAL_MODEL_ID, null)
+        val url = prefs.getString(KEY_SERVER_BASE_URL, null)
+            ?: prefs.getString("other_base_url", "").orEmpty()
+        val legacyModel = prefs.getString("model", "").orEmpty()
+        val modelId = prefs.getString(KEY_SERVER_MODEL_ID, null)
+            ?: if (legacyModel.startsWith("other:")) legacyModel.removePrefix("other:")
+            else prefs.getString("other_model_id", "").orEmpty()
         return AppSettings(
-            selectedModel = prefs.getString(KEY_MODEL, DEFAULT_MODEL) ?: DEFAULT_MODEL,
+            serverBaseUrl = id.steveimm.pocketpilot.llm.ServerBaseUrlValidator.validate(url).getOrDefault(""),
+            serverModelId = modelId,
             debugMode = prefs.getBoolean(KEY_DEBUG_MODE, DEFAULT_DEBUG_MODE),
             perceptionMode = prefs.getString(KEY_PERCEPTION_MODE, null)
                 ?: if (prefs.getBoolean(KEY_SCREENSHOT_INPUT, false)) "hybrid" else DEFAULT_PERCEPTION_MODE,
-            llmBackend = readEnum(KEY_LLM_BACKEND, DEFAULT_LLM_BACKEND),
-            localModel = AVAILABLE_LOCAL_MODELS.find { it.id == localModelId } ?: DEFAULT_LOCAL_MODEL,
             platformMode = readEnum(KEY_PLATFORM_MODE, DEFAULT_PLATFORM_MODE),
             traceEnabled = prefs.getBoolean(KEY_TRACE_ENABLED, DEFAULT_TRACE_ENABLED),
             browserScriptEnabled = loadBrowserScriptEnabled(),
             termuxShellEnabled = loadTermuxShellEnabled(),
-            openaiBaseUrl = prefs.getString(KEY_OPENAI_BASE_URL, "").orEmpty(),
-            otherBaseUrl = prefs.getString(KEY_OTHER_BASE_URL, "").orEmpty(),
-            otherModelId = prefs.getString(KEY_OTHER_MODEL_ID, "").orEmpty(),
             approvalMode = readEnum(KEY_APPROVAL_MODE, DEFAULT_APPROVAL_MODE)
                 .takeUnless { it == ApprovalMode.ALWAYS_ASK } ?: DEFAULT_APPROVAL_MODE,
         )
+    }
+
+    fun saveServer(baseUrl: String, modelId: String) {
+        prefs.edit().putString(KEY_SERVER_BASE_URL, baseUrl).putString(KEY_SERVER_MODEL_ID, modelId).apply()
     }
 
     private inline fun <reified T : Enum<T>> readEnum(key: String, default: T): T {
@@ -128,10 +119,6 @@ class AppSettingsStore(context: Context) {
         _browserScriptEnabled.value = value
     }
 
-    fun saveModel(value: String) {
-        prefs.edit().putString(KEY_MODEL, value).apply()
-    }
-
     fun saveDebugMode(value: Boolean) {
         prefs.edit().putBoolean(KEY_DEBUG_MODE, value).apply()
     }
@@ -155,32 +142,12 @@ class AppSettingsStore(context: Context) {
         prefs.edit().putString(KEY_PERCEPTION_MODE, value).apply()
     }
 
-    fun saveOpenaiBaseUrl(value: String) = saveOptionalString(KEY_OPENAI_BASE_URL, value)
-
-    fun saveOtherBaseUrl(value: String) = saveOptionalString(KEY_OTHER_BASE_URL, value)
-
-    fun saveOtherModelId(value: String) = saveOptionalString(KEY_OTHER_MODEL_ID, value)
-
-    private fun saveOptionalString(key: String, value: String) {
-        val editor = prefs.edit()
-        if (value.isBlank()) editor.remove(key) else editor.putString(key, value)
-        editor.apply()
-    }
-
-    fun saveBackend(value: LLMBackendType) {
-        prefs.edit().putString(KEY_LLM_BACKEND, value.name).apply()
-    }
-
     fun savePlatformMode(value: PlatformMode) {
         prefs.edit().putString(KEY_PLATFORM_MODE, value.name).apply()
     }
 
     fun saveApprovalMode(value: ApprovalMode) {
         prefs.edit().putString(KEY_APPROVAL_MODE, value.name).apply()
-    }
-
-    fun saveLocalModel(model: LocalModelOption) {
-        prefs.edit().putString(KEY_LOCAL_MODEL_ID, model.id).apply()
     }
 
     fun loadUserAppOverrides(): Map<String, AppTier> {

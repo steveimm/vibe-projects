@@ -2,7 +2,12 @@ package id.steveimm.pocketpilot.llm
 
 import android.util.Log
 import com.openai.client.OpenAIClient
-import com.openai.client.okhttp.OpenAIOkHttpClient
+import com.openai.client.OpenAIClientImpl
+import com.openai.core.ClientOptions
+import com.openai.core.RequestOptions
+import com.openai.core.http.HttpClient
+import com.openai.core.http.HttpRequest
+import com.openai.client.okhttp.OkHttpClient
 import com.openai.models.ChatModel
 import com.openai.models.chat.completions.ChatCompletionCreateParams
 import com.openai.models.responses.FunctionTool
@@ -20,31 +25,29 @@ import java.util.concurrent.atomic.AtomicReference
 
 /** LLM client using OpenAI Chat Completions API. */
 class ChatCompletionClient(
-    apiKey: String,
-    baseUrl: String? = null,
-    allowHttp: Boolean = false,
+    baseUrl: String,
+    apiKey: String = "",
 ) : LLMClient() {
-
     companion object {
         private const val TAG = "ChatCompletionClient"
     }
 
-    init {
-        if (allowHttp) {
-            OtherBaseUrlValidator.validate(requireNotNull(baseUrl) { "A custom server URL is required" }).getOrThrow()
-        } else {
-            InsecureSslConfig.validateBaseUrl(baseUrl)
-        }
-    }
+    private val client: OpenAIClient = createClient(ServerBaseUrlValidator.validate(baseUrl).getOrThrow(), apiKey)
 
-    private val client: OpenAIClient = OpenAIOkHttpClient.builder()
-        .apiKey(apiKey)
-        .apply { baseUrl?.let { baseUrl(it) } }
-        .apply {
+    private fun createClient(baseUrl: String, apiKey: String): OpenAIClient {
+        val transport = OkHttpClient.builder().apply {
             InsecureSslConfig.sslSocketFactory?.let { sslSocketFactory(it) }
             InsecureSslConfig.trustManager?.let { trustManager(it) }
+        }.build()
+        val serverTransport = if (apiKey.isNotBlank()) transport else object : HttpClient by transport {
+            override fun execute(request: HttpRequest, requestOptions: RequestOptions) =
+                transport.execute(request.toBuilder().removeHeaders("Authorization").build(), requestOptions)
+
+            override fun executeAsync(request: HttpRequest, requestOptions: RequestOptions) =
+                transport.executeAsync(request.toBuilder().removeHeaders("Authorization").build(), requestOptions)
         }
-        .build()
+        return OpenAIClientImpl(ClientOptions.builder().httpClient(serverTransport).baseUrl(baseUrl).apiKey(apiKey).build())
+    }
 
     override suspend fun chatWithTools(
         systemPrompt: String,
@@ -53,7 +56,7 @@ class ChatCompletionClient(
         model: String,
         maxOutputTokens: Long?,
     ): ResponsesResult = withContext(Dispatchers.IO) {
-        CloudLlmRetry.executeWithRetry(
+        LlmRetry.executeWithRetry(
                 tag = TAG,
                 operationName = "chat-completions chatWithTools"
         ) {

@@ -13,7 +13,6 @@ All day-to-day work uses the **debug** APK. The **release** APK is only for ship
 | Build | `./gradlew assembleDebug` (seconds) | `./scripts/release-build.sh :app:assembleRelease` (~2 min) |
 | Install | `scripts/setup.sh`, `adb install -r …` | Sign then `adb install`. `scripts/setup.sh` targets debug. |
 | R8 / resource shrink | off | **on** (`isMinifyEnabled=true`, `isShrinkResources=true`) |
-| APK size | ~96 MB | 140 MB (R8 enabled; large because Leap SDK + bcprov + tessdata native libs ship inside the APK) |
 | `BuildConfig.DEBUG` | `true` → `LlmLogger.VERBOSE_LOGGING` prints full prompt/response; streaming clients build accumulators | `false` → verbose log off, accumulators skipped (see `perf-streaming-guard`) |
 | `INSECURE_SSL_FOR_EVAL` | opt-in via `-PinsecureSslForEval=true` | forced `false` |
 | Custom HTTP endpoints | Supported for configured custom servers and localhost tools | Supported for configured custom servers and localhost tools |
@@ -38,40 +37,28 @@ All day-to-day work uses the **debug** APK. The **release** APK is only for ship
 - `bcprov-jdk18on:1.84` ships Java-25 multi-release bytecode that Kotlin 2.3.0's `produceReleaseComposeMapping` ASM can't parse → that whole optional pipeline (`produce/merge/reportReleaseComposeMappingErrors`) is disabled in `afterEvaluate`. Only debug-only stack-trace metadata is lost; APK functionality unaffected.
 - R8 needs `-Xmx4096m` daemon heap (`gradle.properties`); 2 GB OOMs.
 
-**Before publishing a release:** install the signed release APK with a real API key and run at least one full LLM tool-call end-to-end. R8 is the likely source of any `ClassNotFoundException` / `NoSuchMethodError`, and the `OpenAIResponseClient` / `ChatCompletionClient` streaming paths are the highest-risk zones. The `perf-qa-real-device` QA report explicitly calls this out as a follow-up.
+**Before publishing a release:** install the signed release APK with the configured model server and run at least one full LLM tool-call end-to-end. R8 is the likely source of any `ClassNotFoundException` / `NoSuchMethodError`, and the `ChatCompletionClient` streaming paths are the highest-risk zones. The `perf-qa-real-device` QA report explicitly calls this out as a follow-up.
 
 ## Prerequisites
 
 - Android device or emulator with USB debugging enabled
 - ADB installed and accessible
-- OpenAI API key (for cloud backend) OR compatible Android device (for local LLM)
+- A reachable OpenAI-compatible Chat Completions server and its model ID
 
 ## Quick Start
 
-### Using OpenAI (Cloud)
+### Using your model server
+
+Configure Settings → Model server in the app, or use host environment values for debug/evaluation runs:
 
 ```bash
-# 1. Setup API key
-echo 'OPENAI_API_KEY=sk-your-key' > .env
-
-# 2. Build and deploy
-./scripts/setup.sh
-
-# 3. Run a test
+export POCKETPILOT_SERVER_URL=http://192.168.1.10:8000/v1
+export POCKETPILOT_MODEL_ID=my-model
+# Set POCKETPILOT_API_KEY only if your server requires one.
 ./scripts/debug-run.sh "Open Settings"
 ```
 
-### Using Local LLM (On-Device)
-
-```bash
-# 1. Build and deploy (no API key needed)
-LLM_BACKEND=local ./scripts/setup.sh
-
-# 2. Run a test with local model
-./scripts/debug-run.sh --local "Open Settings"
-```
-
-The local backend uses LiquidAI's Leap SDK to run LFM models on-device. The model is downloaded automatically on first use and is a relatively large download.
+The phone must be able to reach the supplied address. Use the computer's LAN or VPN address for a physical phone. Android emulators reach their host at `10.0.2.2`.
 
 ## Development Cycle
 
@@ -120,7 +107,7 @@ adb devices                                                                    #
 What is and isn't covered:
 
 - `app/src/test/` — fast JVM unit tests (logic, state, formatting).
-- `app/src/androidTest/kotlin/id/steveimm/pocketpilot/qa/` — Compose UI behavior guards across Chat, SmartCapsule, Settings (45 tests as of 2026-04-17). Layout is flat, files grouped by area (`ChatHeaderTest`, `CapsuleInputTest`, `SettingsLlmAuthTest`, ...). No Robot pattern, no annotations, no base classes.
+- `app/src/androidTest/kotlin/id/steveimm/pocketpilot/qa/` — Compose UI behavior guards across Chat, SmartCapsule, Settings (45 tests as of 2026-04-17). Layout is flat, files grouped by area (`ChatHeaderTest`, `CapsuleInputTest`, `SettingsNavTest`, ...). No Robot pattern, no annotations, no base classes.
 - `eval/` — AndroidWorld-style agent benchmarks (separate Python harness, see `/autotune`).
 
 Design rule: add tests when adding behavior or fixing bugs — don't wait for bugs to grow guards.
@@ -191,8 +178,7 @@ Run the agent with a goal. `debug-run.sh` captures screenshots at each turn, rec
 > Onboarding bypass: debug builds skip the onboarding wizard whenever the launch intent carries both `fresh_session=true` and a `goal` extra (handled in both `onCreate` and `onNewIntent` of `MainActivity`). `debug-run.sh` always sets these, so you never need to complete the wizard before iterating.
 
 ```bash
-./scripts/debug-run.sh "Open Settings"                        # Default OpenAI backend
-./scripts/debug-run.sh --local "Open Settings"                # Use local LLM
+./scripts/debug-run.sh "Open Settings"                        # Uses your configured model server
 ./scripts/debug-run.sh --main-model gpt-5.2 "Open Chrome"     # Override main model
 ./scripts/debug-run.sh --perception accessibility_only "Open Chrome" # Explicit perception mode
 ./scripts/debug-run.sh --accessibility-only "Open Chrome"     # A11y only
@@ -250,38 +236,11 @@ Monitor agent behavior through filtered logs:
 
 ## Configuration
 
-### API Key (OpenAI Backend)
+### Model server
 
-Create `.env` in project root:
+Use `POCKETPILOT_SERVER_URL`, `POCKETPILOT_MODEL_ID`, and optional `POCKETPILOT_API_KEY` in `.env` or the environment. `debug-run.sh` forwards configured values through debug-only intent extras. Without those overrides, configure the server in the app first.
 
-```
-OPENAI_API_KEY=sk-proj-your-key-here
-```
-
-### Provider Base URL Override (cproxy + Tailscale)
-
-The app sets `usesCleartextTraffic="false"`, so all LLM traffic must go over HTTPS. For OPENAI-provider models routed through a local OpenAI-compatible proxy, expose that proxy over HTTPS:
-
-```bash
-# 1. The local proxy listens on localhost:18080
-
-# 2. Tailscale Serve exposes it as HTTPS on port 8741
-tailscale serve --bg --https=8741 http://127.0.0.1:18080
-
-# 3. Set the base URL in .env
-OPENAI_BASE_URL=https://<your-tailnet-host>:8741/v1
-```
-
-Example port allocation on the host running the proxy:
-
-| Port | Target | Purpose |
-|------|--------|---------|
-| 443 (default) | `127.0.0.1:5173` | workflow frontend |
-| 8741 | `127.0.0.1:18080` | cproxy (LLM proxy) |
-
-The URL is passed as an intent extra and applied at session bootstrap via `ModelCatalog.withBaseUrlOverrides()` — no changes to `llm_models.json` needed.
-
-**Emulator note:** Emulators can't reach Tailscale. The debug build includes a `network_security_config.xml` that permits cleartext to `10.0.2.2`/`127.0.0.1`/`localhost` only. Set `OPENAI_BASE_URL=http://localhost:18080/v1` — the eval bridge auto-rewrites to `10.0.2.2`. Release builds block all cleartext.
+Both debug and release builds support explicit HTTP server URLs. HTTPS retains certificate verification. The model ID is the server's actual ID, not a key from a bundled cloud catalog.
 
 ### Remote Eval Helper Config
 
@@ -296,33 +255,6 @@ cp .pocketpilot-local.env.example .pocketpilot-local.env
 `POCKETPILOT_REMOTE_DIR`. `scripts/remote/proxy_tunnel.sh install` uses
 `POCKETPILOT_PROXY_HOST`, `POCKETPILOT_PROXY_USER`, and `POCKETPILOT_PROXY_PORT`, then writes the
 systemd user service env file at `~/.config/pocketpilot/proxy-tunnel.env`.
-
-### LLM Backend Selection
-
-You can choose between cloud (OpenAI) and local (on-device) LLM backends:
-
-**Via environment variable:**
-```bash
-# Set in .env for persistence
-echo 'LLM_BACKEND=local' >> .env
-
-# Or use inline for one-off runs
-LLM_BACKEND=local ./scripts/debug-run.sh "Open Settings"
-```
-
-**Via command-line flag:**
-```bash
-./scripts/debug-run.sh --local "Open Settings"
-```
-
-| Backend | Pros | Cons |
-|---------|------|------|
-| `openai` | Better quality, tool-calling | Requires API key, network latency |
-| `local` | Offline, no cost, fast | Lower quality, ~800MB model download |
-
-### Agent Execution Mode
-
-Unified agent mode: a single Default agent role handles both main and subagent runtimes (the legacy `AgentMode` enum and `--basic`/`--pro` / `AGENT_MODE` switches were removed). Multi-agent execution is exposed through the `delegate_task` tool rather than a global mode flag — see `doc/main/agent/multiagent.md`.
 
 ### Perception Mode
 

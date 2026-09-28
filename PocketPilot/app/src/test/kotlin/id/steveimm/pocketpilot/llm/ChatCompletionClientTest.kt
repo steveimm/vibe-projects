@@ -38,7 +38,7 @@ class ChatCompletionClientTest {
 
     @Test
     fun `buildParams produces ChatCompletionCreateParams with system plus user messages and tools`() {
-        val client = ChatCompletionClient(apiKey)
+        val client = ChatCompletionClient(baseUrl = "http://localhost:8000/v1", apiKey = apiKey)
         val params = invokeBuildParams(
             client,
             systemPrompt = "you are helpful",
@@ -58,7 +58,7 @@ class ChatCompletionClientTest {
 
     @Test
     fun `buildParams carries empty tools when none provided`() {
-        val client = ChatCompletionClient(apiKey)
+        val client = ChatCompletionClient(baseUrl = "http://localhost:8000/v1", apiKey = apiKey)
         val params = invokeBuildParams(
             client,
             systemPrompt = "s",
@@ -72,7 +72,7 @@ class ChatCompletionClientTest {
 
     @Test
     fun `buildParams forwards maxOutputTokens as maxCompletionTokens`() {
-        val client = ChatCompletionClient(apiKey)
+        val client = ChatCompletionClient(baseUrl = "http://localhost:8000/v1", apiKey = apiKey)
         val params = invokeBuildParams(
             client,
             systemPrompt = "s",
@@ -86,7 +86,7 @@ class ChatCompletionClientTest {
 
     @Test
     fun `buildParams omits maxCompletionTokens when cap is null`() {
-        val client = ChatCompletionClient(apiKey)
+        val client = ChatCompletionClient(baseUrl = "http://localhost:8000/v1", apiKey = apiKey)
         val params = invokeBuildParams(
             client,
             systemPrompt = "s",
@@ -100,9 +100,9 @@ class ChatCompletionClientTest {
 
     @Test
     fun `provider 401 error is classified to plain RuntimeException (non-retryable)`() {
-        val client = ChatCompletionClient(apiKey)
+        val client = ChatCompletionClient(baseUrl = "http://localhost:8000/v1", apiKey = apiKey)
         installFailingOpenAIClient(client) {
-            // Non-retryable so CloudLlmRetry lets it through on the first attempt
+            // Non-retryable so LlmRetry lets it through on the first attempt
             throw RuntimeException("HTTP 401 Unauthorized")
         }
 
@@ -128,7 +128,7 @@ class ChatCompletionClientTest {
 
     @Test
     fun `provider SocketTimeoutException triggers retry loop`() {
-        val client = ChatCompletionClient(apiKey)
+        val client = ChatCompletionClient(baseUrl = "http://localhost:8000/v1", apiKey = apiKey)
         val attempts = java.util.concurrent.atomic.AtomicInteger(0)
         installFailingOpenAIClient(client) {
             val n = attempts.incrementAndGet()
@@ -140,8 +140,8 @@ class ChatCompletionClientTest {
             throw java.net.SocketTimeoutException("read timed out")
         }
 
-        // Behavior: transient errors must be retried by CloudLlmRetry, not surfaced on first failure. Assert retry happened — do NOT pin
-        // the specific terminal exception type (that is a separate contract owned by CloudLlmRetry and may legitimately change).
+        // Behavior: transient errors must be retried by LlmRetry, not surfaced on first failure. Assert retry happened — do NOT pin
+        // the specific terminal exception type (that is a separate contract owned by LlmRetry and may legitimately change).
         runCatching {
             runBlocking {
                 client.chatWithTools(

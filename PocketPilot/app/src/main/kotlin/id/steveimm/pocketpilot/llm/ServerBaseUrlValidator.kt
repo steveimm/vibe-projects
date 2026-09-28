@@ -4,7 +4,7 @@ import java.net.URI
 import java.net.URISyntaxException
 
 /** Validates HTTP(S) custom endpoints and rejects URL segments that could expose credentials. */
-object OtherBaseUrlValidator {
+object ServerBaseUrlValidator {
 
     fun validate(input: String): Result<String> {
         val trimmed = input.trim()
@@ -15,7 +15,7 @@ object OtherBaseUrlValidator {
         val uri = try {
             URI(trimmed)
         } catch (e: URISyntaxException) {
-            return Result.failure(IllegalArgumentException("Base URL is not a valid URI: ${e.message}"))
+            return Result.failure(IllegalArgumentException("Server URL is not a valid HTTP URL"))
         }
 
         val scheme = uri.scheme?.lowercase()
@@ -37,18 +37,22 @@ object OtherBaseUrlValidator {
                 IllegalArgumentException("Base URL must not contain credentials (user:pass@…)")
             )
         }
-        if (!uri.rawQuery.isNullOrEmpty()) {
+        if (uri.rawQuery != null) {
             return Result.failure(
                 IllegalArgumentException("Base URL must not contain a query string")
             )
         }
-        if (!uri.rawFragment.isNullOrEmpty()) {
+        if (uri.rawFragment != null) {
             return Result.failure(
                 IllegalArgumentException("Base URL must not contain a fragment")
             )
         }
 
-        val normalized = if (trimmed.endsWith('/')) trimmed.trimEnd('/') else trimmed
+        if (uri.port != -1 && uri.port !in 1..65535) {
+            return Result.failure(IllegalArgumentException("Server port must be between 1 and 65535"))
+        }
+
+        val normalized = trimmed.trimEnd('/').removeSuffix("/chat/completions")
         return Result.success(normalized)
     }
 }

@@ -1,7 +1,6 @@
 package id.steveimm.pocketpilot.llm
 
-import id.steveimm.pocketpilot.auth.AuthStore
-import id.steveimm.pocketpilot.auth.MissingCredential
+import id.steveimm.pocketpilot.auth.ServerCredentialStore
 import android.util.Log
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
@@ -9,8 +8,8 @@ import kotlinx.coroutines.withContext
 /** Creates [LLMClient] instances from model names using the [ModelCatalog]. */
 class LLMClientFactory(
         private val catalog: ModelCatalog,
-        private val authStore: AuthStore?,
-        private val baseUrlOverrides: Map<LLMProvider, String> = emptyMap(),
+        private val credentialStore: ServerCredentialStore?,
+        private val baseUrl: String = "",
         private val clientOverride: LLMClient? = null,
 ) {
     companion object {
@@ -19,7 +18,7 @@ class LLMClientFactory(
         /** Create a factory that always returns the given [client] regardless of model name. Useful for unit tests that inject a
          * mock/fake LLM. */
         fun forTest(catalog: ModelCatalog, client: LLMClient): LLMClientFactory =
-                LLMClientFactory(catalog, authStore = null, clientOverride = client)
+                LLMClientFactory(catalog, credentialStore = null, clientOverride = client)
     }
 
     private data class Entry(val generation: Long, val client: LLMClient)
@@ -34,19 +33,17 @@ class LLMClientFactory(
         check(!closed) { "LLM client factory is closed" }
         clientOverride?.let { return@synchronized it }
 
-        val entry = catalog.resolve(modelName)
-        val currentGeneration = if (entry.provider != LLMProvider.LOCAL_LFM) {
-            authStore?.generation(entry.provider) ?: 0L
-        } else 0L
+        catalog.resolve(modelName)
+        val currentGeneration = credentialStore?.generation(baseUrl) ?: 0L
         val existing = clientCache[modelName]
         if (existing != null && existing.generation == currentGeneration) {
             return@synchronized existing.client
         }
 
-        val client = build(entry)
+        val client = build()
         ownedClients += client
         clientCache[modelName] = Entry(currentGeneration, client)
-        Log.d(TAG, "Created ${client.javaClass.simpleName} for '$modelName' (provider=${entry.provider}, gen=$currentGeneration)")
+        Log.d(TAG, "Created ${client.javaClass.simpleName} for '$modelName' (gen=$currentGeneration)")
         client
     }
 
@@ -54,39 +51,9 @@ class LLMClientFactory(
         ownedClients.any { it === client }
     }
 
-    private fun build(entry: ModelEntry): LLMClient {
-        val store = authStore
-                ?: throw IllegalStateException(
-                        "LLMClientFactory has no AuthStore — test-only factory cannot build clients for model '${entry.name}'."
-                )
-        val baseUrl = baseUrlOverrides[entry.provider] ?: entry.effectiveBaseUrl
-        return when (entry.provider) {
-            LLMProvider.OPENAI_API ->
-                    when (entry.api) {
-                        ApiType.RESPONSE ->
-                                OpenAIResponseClient(store.requireApiKey(LLMProvider.OPENAI_API), baseUrl)
-                        ApiType.CHAT ->
-                                ChatCompletionClient(store.requireApiKey(LLMProvider.OPENAI_API), baseUrl)
-                    }
-            LLMProvider.OPENAI_CODEX ->
-                    CodexResponseClient(
-                            headerSupplier = { store.codexHeaders(LLMProvider.OPENAI_CODEX) }
-                    )
-            LLMProvider.OPENROUTER ->
-                    ChatCompletionClient(store.requireApiKey(LLMProvider.OPENROUTER), baseUrl)
-            LLMProvider.OTHER -> {
-                // Hard-require a non-blank baseUrl at this boundary.
-                val otherBaseUrl = entry.baseUrl
-                if (otherBaseUrl.isNullOrBlank()) {
-                    throw MissingCredential(LLMProvider.OTHER)
-                }
-                ChatCompletionClient(store.requireApiKey(LLMProvider.OTHER), otherBaseUrl, allowHttp = true)
-            }
-            LLMProvider.LOCAL_LFM ->
-                    throw IllegalStateException(
-                            "LLMClientFactory does not build LFMLLMClient; use LFMLLMClient(context) directly."
-                    )
-        }
+    private fun build(): LLMClient {
+        val url = ServerBaseUrlValidator.validate(baseUrl).getOrThrow()
+        return ChatCompletionClient(baseUrl = url, apiKey = credentialStore?.apiKey(url).orEmpty())
     }
 
     /** Close current and superseded clients after the session's callers have stopped. */

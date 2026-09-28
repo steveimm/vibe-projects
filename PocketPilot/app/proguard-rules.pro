@@ -80,16 +80,6 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
 
-# ── Leap SDK (LiquidAI) ─────────────────────────────────────────────────
-# Keeps JNI entry points and model classes the native side references by
-# name. Wildcard is conservative — the SDK is small and shrinking native
-# bindings has a high blast radius for a small APK win.
--keep class ai.liquid.leap.** { *; }
--keepclasseswithmembernames class * {
-    native <methods>;
-}
--dontwarn ai.liquid.leap.**
-
 # ── HiddenApiBypass ─────────────────────────────────────────────────────
 -keep class org.lsposed.hiddenapibypass.** { *; }
 

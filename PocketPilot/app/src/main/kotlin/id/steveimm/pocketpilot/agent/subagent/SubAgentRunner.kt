@@ -10,8 +10,6 @@ import id.steveimm.pocketpilot.agent.definition.ResolvedAgentRole
 import id.steveimm.pocketpilot.history.Compactor
 import id.steveimm.pocketpilot.history.HistoryManager
 import id.steveimm.pocketpilot.history.ResponseItem
-import id.steveimm.pocketpilot.llm.ApiType
-import id.steveimm.pocketpilot.llm.LLMProvider
 import id.steveimm.pocketpilot.llm.ModelEntry
 import id.steveimm.pocketpilot.protocol.*
 import id.steveimm.pocketpilot.session.AgentSessionState
@@ -152,8 +150,6 @@ internal class IsolatedSubAgentRunner(
             childServices.llmClient to ModelEntry(
                 name = childModelName,
                 displayName = childModelName,
-                provider = LLMProvider.OPENAI_API,
-                api = ApiType.RESPONSE,
                 modelId = childModelName,
                 contextWindow = 128_000,
             )

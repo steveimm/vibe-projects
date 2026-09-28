@@ -1,5 +1,7 @@
 package id.steveimm.pocketpilot.session
 
+import id.steveimm.pocketpilot.test.testModelCatalog
+
 import android.accessibilityservice.AccessibilityService
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -8,7 +10,6 @@ import id.steveimm.pocketpilot.history.HistoryManager
 import id.steveimm.pocketpilot.llm.LLMClient
 import id.steveimm.pocketpilot.llm.LLMClientFactory
 import id.steveimm.pocketpilot.llm.LLMStreamEvent
-import id.steveimm.pocketpilot.llm.ModelCatalog
 import id.steveimm.pocketpilot.llm.ResponsesResult
 import id.steveimm.pocketpilot.model.ScreenSnapshot
 import id.steveimm.pocketpilot.platform.ActionResult
@@ -181,8 +182,8 @@ class AgentSessionCompletionHandoffTest {
         val toolRouter = ToolRouter(toolRegistry, policyEngine)
         val config = SessionConfig(actionDelayMs = 0)
         val testCatalog =
-                ModelCatalog.fromJson(
-                        """{"gpt-5.2":{"display_name":"GPT-5.2","provider":"OPENAI_API","api":"response","model_id":"gpt-5.2"}}"""
+                testModelCatalog(
+                        """{"gpt-5.2":{"display_name":"GPT-5.2","model_id":"gpt-5.2"}}"""
                 )
         val llm = QuickCompletionLLMClient()
         val services =

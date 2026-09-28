@@ -3,7 +3,7 @@ package id.steveimm.pocketpilot.llm
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-class OtherBaseUrlValidatorTest {
+class ServerBaseUrlValidatorTest {
 
     @Test
     fun `accepts HTTP custom servers on loopback LAN and hostnames`() {
@@ -18,67 +18,76 @@ class OtherBaseUrlValidatorTest {
             "http://api.example.com/v1",
         )
         for (input in cases) {
-            val result = OtherBaseUrlValidator.validate(input)
+            val result = ServerBaseUrlValidator.validate(input)
             assertThat(result.getOrThrow()).isEqualTo(input)
         }
     }
 
     @Test
     fun `accepts HTTPS custom servers`() {
-        val result = OtherBaseUrlValidator.validate("https://api.example.com/v1")
+        val result = ServerBaseUrlValidator.validate("https://api.example.com/v1")
         assertThat(result.isSuccess).isTrue()
         assertThat(result.getOrThrow()).isEqualTo("https://api.example.com/v1")
     }
 
     @Test
     fun `normalizes HTTP server URL without changing scheme or port`() {
-        val result = OtherBaseUrlValidator.validate("  http://192.168.1.10:11434/v1/  ")
+        val result = ServerBaseUrlValidator.validate("  http://192.168.1.10:11434/v1/  ")
         assertThat(result.getOrThrow()).isEqualTo("http://192.168.1.10:11434/v1")
     }
 
     @Test
+    fun `accepts full chat endpoint and rejects invalid ports`() {
+        assertThat(ServerBaseUrlValidator.validate("http://localhost:8000/v1/chat/completions/").getOrThrow())
+            .isEqualTo("http://localhost:8000/v1")
+        for (port in listOf("0", "65536", "invalid")) {
+            assertThat(ServerBaseUrlValidator.validate("http://localhost:$port/v1").isFailure).isTrue()
+        }
+    }
+
+    @Test
     fun `rejects ftp and other non-http schemes`() {
-        val result = OtherBaseUrlValidator.validate("ftp://example.com/")
+        val result = ServerBaseUrlValidator.validate("ftp://example.com/")
         assertThat(result.isFailure).isTrue()
         assertThat(result.exceptionOrNull()).hasMessageThat().contains("http")
     }
 
     @Test
     fun `rejects empty input`() {
-        val result = OtherBaseUrlValidator.validate("")
+        val result = ServerBaseUrlValidator.validate("")
         assertThat(result.isFailure).isTrue()
     }
 
     @Test
     fun `rejects whitespace-only input`() {
-        val result = OtherBaseUrlValidator.validate("   ")
+        val result = ServerBaseUrlValidator.validate("   ")
         assertThat(result.isFailure).isTrue()
     }
 
     @Test
     fun `rejects empty host`() {
-        val result = OtherBaseUrlValidator.validate("https:///v1")
+        val result = ServerBaseUrlValidator.validate("https:///v1")
         assertThat(result.isFailure).isTrue()
         assertThat(result.exceptionOrNull()).hasMessageThat().contains("host")
     }
 
     @Test
     fun `trims trailing slash`() {
-        val result = OtherBaseUrlValidator.validate("https://api.example.com/v1/")
+        val result = ServerBaseUrlValidator.validate("https://api.example.com/v1/")
         assertThat(result.isSuccess).isTrue()
         assertThat(result.getOrThrow()).isEqualTo("https://api.example.com/v1")
     }
 
     @Test
     fun `trims surrounding whitespace`() {
-        val result = OtherBaseUrlValidator.validate("  https://api.example.com/v1  ")
+        val result = ServerBaseUrlValidator.validate("  https://api.example.com/v1  ")
         assertThat(result.isSuccess).isTrue()
         assertThat(result.getOrThrow()).isEqualTo("https://api.example.com/v1")
     }
 
     @Test
     fun `rejects user-info in URL and message does not echo the secret`() {
-        val result = OtherBaseUrlValidator.validate(
+        val result = ServerBaseUrlValidator.validate(
             "https://eve:supersecret@api.example.com/v1",
         )
         assertThat(result.isFailure).isTrue()
@@ -92,7 +101,7 @@ class OtherBaseUrlValidatorTest {
 
     @Test
     fun `rejects query string and message does not echo the secret`() {
-        val result = OtherBaseUrlValidator.validate(
+        val result = ServerBaseUrlValidator.validate(
             "https://api.example.com/v1?api_key=supersecret",
         )
         assertThat(result.isFailure).isTrue()
@@ -104,7 +113,7 @@ class OtherBaseUrlValidatorTest {
 
     @Test
     fun `rejects fragment and message does not echo the secret`() {
-        val result = OtherBaseUrlValidator.validate(
+        val result = ServerBaseUrlValidator.validate(
             "https://api.example.com/v1#supersecret",
         )
         assertThat(result.isFailure).isTrue()

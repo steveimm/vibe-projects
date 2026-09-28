@@ -70,14 +70,14 @@ class OnboardingStoreTest {
         store.saveOutcome(WizardStep.Accessibility, StepOutcome.Done)
         store.saveOutcome(WizardStep.Overlay, StepOutcome.Skipped)
         store.saveOutcome(WizardStep.Battery, StepOutcome.Done)
-        store.saveOutcome(WizardStep.ApiKey, StepOutcome.Pending)
+        store.saveOutcome(WizardStep.ModelServer, StepOutcome.Pending)
         store.saveOutcome(WizardStep.Demo, StepOutcome.Skipped)
 
         val outcomes = OnboardingStore(context).loadOutcomes()
         assertThat(outcomes.accessibility).isEqualTo(StepOutcome.Done)
         assertThat(outcomes.overlay).isEqualTo(StepOutcome.Skipped)
         assertThat(outcomes.battery).isEqualTo(StepOutcome.Done)
-        assertThat(outcomes.apiKey).isEqualTo(StepOutcome.Pending)
+        assertThat(outcomes.modelServer).isEqualTo(StepOutcome.Pending)
         assertThat(outcomes.demo).isEqualTo(StepOutcome.Skipped)
     }
 

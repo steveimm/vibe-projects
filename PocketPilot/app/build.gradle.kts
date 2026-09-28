@@ -12,12 +12,10 @@ plugins {
 
 android {
     namespace = "id.steveimm.pocketpilot"
-    compileSdk = 36  // Required by Leap SDK 0.9.2 (depends on androidx.core:core-ktx:1.17.0)
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "id.steveimm.pocketpilot"
-        // Required by LiquidAI Leap SDK for local inference.
-        // If we need to support Android < 12, consider a cloud-only flavor.
         minSdk = 31
         targetSdk = 36
         versionCode = (project.findProperty("VERSION_CODE") as String).toInt()
@@ -125,16 +123,18 @@ licenseReport {
     copyJsonReportToAssets = true
 }
 
-// Surface the license JSON to debug builds too. The plugin auto-wires `licenseReleaseReport` into the release `assets` task, but debug
-// needs an explicit hook so the in-app page works in regular `assembleDebug` builds.
-afterEvaluate {
-    listOf("licenseDebugReport", "licenseReleaseReport").forEach { name ->
-        tasks.findByName(name)?.notCompatibleWithConfigurationCache(
+// Generate the license inventory before packaging assets, including after runtime dependencies change.
+tasks.configureEach {
+    when (name) {
+        "licenseDebugReport", "licenseReleaseReport" -> notCompatibleWithConfigurationCache(
             "gradle-license-plugin 0.9.8 uses Task.project at execution time"
         )
+        "mergeDebugAssets" -> dependsOn("licenseDebugReport")
+        "mergeReleaseAssets" -> dependsOn("licenseReleaseReport")
     }
-    tasks.findByName("mergeDebugAssets")?.dependsOn("licenseDebugReport")
+}
 
+afterEvaluate {
     // Kotlin 2.3.0's `produceReleaseComposeMapping` ships an older ASM that can't read class file major version 69 (Java 25).
     // bcprov-jdk18on:1.84 bundles `META-INF/versions/25/*.class` in its multi-release jar, which crashes the mapping task.
     listOf(
@@ -154,7 +154,7 @@ kotlin {
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
     // Compose BOM - manages all Compose library versions
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
@@ -183,12 +183,8 @@ dependencies {
     // OpenAI SDK
     implementation("com.openai:openai-java:4.14.0")
 
-    // OkHttp — used by CodexResponseClient for raw SSE streaming to chatgpt.com
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-
-    // LiquidAI Leap SDK for local LLM inference
-    // Version 0.9.2 includes manifest.LeapDownloader with loadModel(modelSlug, quantizationSlug) API
-    implementation("ai.liquid.leap:leap-sdk:0.9.2")
+    // HTTP transport for model discovery and local bridges.
+    implementation("com.squareup.okhttp3:okhttp:5.2.1")
 
     // Kotlin Serialization for session persistence
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
@@ -216,7 +212,7 @@ dependencies {
 
     // Testing
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
     testImplementation("io.mockk:mockk:1.13.9")
     testImplementation("com.google.truth:truth:1.4.2")
     // Pure Java JSON library for unit tests (Android's JSONObject is not available in unit tests)

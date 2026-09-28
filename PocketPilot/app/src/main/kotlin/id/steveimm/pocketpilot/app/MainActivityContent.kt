@@ -1,6 +1,5 @@
 package id.steveimm.pocketpilot.app
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -14,7 +13,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import id.steveimm.pocketpilot.llm.ModelCatalog
 import id.steveimm.pocketpilot.memory.MemoryStore
 import id.steveimm.pocketpilot.onboarding.PermissionStateMonitor.PermissionRepairModel
 import id.steveimm.pocketpilot.protocol.PlatformMode
@@ -28,7 +26,6 @@ import id.steveimm.pocketpilot.ui.chat.ChatScreen
 import id.steveimm.pocketpilot.ui.chat.ChatViewModel
 import id.steveimm.pocketpilot.ui.chat.SettingsDeepLink
 import id.steveimm.pocketpilot.ui.chat.SettingsPage as DeepLinkPage
-import id.steveimm.pocketpilot.ui.settings.OpenAiAuthUiState
 import id.steveimm.pocketpilot.ui.settings.SettingsPage
 import id.steveimm.pocketpilot.ui.settings.SettingsSheet
 import id.steveimm.pocketpilot.ui.theme.PocketPilotTheme
@@ -57,8 +54,7 @@ private fun rememberCapsuleBinding(): CapsuleBinding {
 internal fun MainActivityContent(
     viewModel: ChatViewModel,
     settingsState: AppSettingsState,
-    modelLoadingStatusHolder: ModelLoadingStatusHolder,
-    modelCatalog: ModelCatalog,
+    initialSettingsDeepLink: SettingsDeepLink? = null,
     showSettings: Boolean,
     onShowSettingsChange: (Boolean) -> Unit,
     onSessionSelect: (id.steveimm.pocketpilot.history.model.SessionInfo) -> Unit,
@@ -71,11 +67,6 @@ internal fun MainActivityContent(
     onOverlayClick: () -> Unit,
     repairModel: PermissionRepairModel? = null,
     onFixBattery: () -> Unit = {},
-    openAiAuthUiState: OpenAiAuthUiState = OpenAiAuthUiState.SignedOut,
-    onStartOAuth: () -> Unit = {},
-    onCancelOAuth: () -> Unit = {},
-    onSignOut: () -> Unit = {},
-    initialSettingsDeepLink: SettingsDeepLink? = null,
     effectivePlatformModeFlow: StateFlow<PlatformMode?> = MutableStateFlow(null),
     appClassifier: AppClassifier,
     currentSessionStateFlow: StateFlow<SessionState?> = MutableStateFlow(null),
@@ -121,7 +112,7 @@ internal fun MainActivityContent(
                 viewModel = viewModel,
                 capsuleBinding = rememberCapsuleBinding(),
                 sessions = sessions,
-                currentModel = settingsState.selectedModel,
+                currentModel = settingsState.serverModelId,
                 onOpenSettings = { deepLink ->
                     pendingDeepLink = deepLink
                     onShowSettingsChange(true)
@@ -149,14 +140,7 @@ internal fun MainActivityContent(
                 color = MaterialTheme.colorScheme.surface,
             ) {
                 SettingsSheet(
-                    llmBackend = settingsState.llmBackend,
-                    onBackendChange = modelLoadingStatusHolder::updateBackend,
-                    selectedModel = settingsState.selectedModel,
-                    onModelChange = settingsState::updateModel,
-                    modelCatalog = modelCatalog,
-                    selectedLocalModel = settingsState.localModel.id,
-                    onLocalModelChange = modelLoadingStatusHolder::updateLocalModel,
-                    modelLoadingStatus = modelLoadingStatusHolder.status,
+                    settings = settingsState,
                     perceptionMode = settingsState.perceptionMode,
                     onPerceptionModeChange = settingsState::updatePerceptionMode,
                     debugMode = settingsState.debugMode,
@@ -172,21 +156,11 @@ internal fun MainActivityContent(
                     platformMode = settingsState.platformMode,
                     effectivePlatformMode = effectivePlatformMode,
                     onPlatformModeChange = settingsState::updatePlatformMode,
-                    openAiAuthUiState = openAiAuthUiState,
-                    onStartOAuth = onStartOAuth,
-                    onCancelOAuth = onCancelOAuth,
-                    onSignOut = onSignOut,
                     onDismiss = dismissSettings,
                     initialPage = when (pendingDeepLink?.page) {
-                        DeepLinkPage.LLM_AUTH -> SettingsPage.LLM_AUTH
+                        DeepLinkPage.MODEL_SERVER -> SettingsPage.MODEL_SERVER
                         DeepLinkPage.HOME, null -> SettingsPage.HOME
                     },
-                    initialAuthTab = pendingDeepLink?.authTab,
-                    initialProvider = pendingDeepLink?.provider,
-                    otherBaseUrl = settingsState.otherBaseUrl,
-                    otherModelId = settingsState.otherModelId,
-                    onOtherBaseUrlChange = settingsState::updateOtherBaseUrl,
-                    onOtherModelIdChange = settingsState::updateOtherModelId,
                     appClassifier = appClassifier,
                     isSessionRunning = isSessionRunning,
                     memoryStore = memoryStore,

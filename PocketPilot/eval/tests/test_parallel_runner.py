@@ -186,7 +186,7 @@ class TestCreateWorkerConfig:
                 "grpc_port": 8554,
                 "auto_start_emulator": True,
             },
-            "bridge": {"llm_backend": "openai"},
+            "bridge": {"server_base_url": "http://localhost:8000/v1"},
         }
 
     @staticmethod

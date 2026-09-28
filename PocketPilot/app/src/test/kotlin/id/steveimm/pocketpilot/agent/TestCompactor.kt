@@ -1,9 +1,7 @@
 package id.steveimm.pocketpilot.agent
 
 import id.steveimm.pocketpilot.history.Compactor
-import id.steveimm.pocketpilot.llm.ApiType
 import id.steveimm.pocketpilot.llm.LLMClient
-import id.steveimm.pocketpilot.llm.LLMProvider
 import id.steveimm.pocketpilot.llm.LLMStreamEvent
 import id.steveimm.pocketpilot.llm.ModelEntry
 import id.steveimm.pocketpilot.llm.ResponsesResult
@@ -21,8 +19,6 @@ internal fun noopCompactor(
     model = ModelEntry(
         name = "test-model",
         displayName = "Test Model",
-        provider = LLMProvider.OPENAI_API,
-        api = ApiType.RESPONSE,
         modelId = "test-model",
         contextWindow = contextWindow,
     ),

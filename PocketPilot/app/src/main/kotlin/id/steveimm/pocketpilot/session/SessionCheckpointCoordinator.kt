@@ -8,10 +8,8 @@ import id.steveimm.pocketpilot.history.model.ConversationConfigSnapshot
 import id.steveimm.pocketpilot.history.model.HistoryItemConverter
 import id.steveimm.pocketpilot.history.model.SessionRuntimeSnapshot
 import id.steveimm.pocketpilot.history.model.TodoSnapshot
-import id.steveimm.pocketpilot.llm.LocalLLMConfig
 import id.steveimm.pocketpilot.perception.PerceptionConfig
 import id.steveimm.pocketpilot.protocol.ApprovalMode
-import id.steveimm.pocketpilot.protocol.LLMBackendType
 import id.steveimm.pocketpilot.protocol.PlatformMode
 import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.protocol.SessionLlmConfig
@@ -82,9 +80,7 @@ internal fun SessionConfig.toConfigSnapshot() = ConversationConfigSnapshot(
     mainModel = mainModel,
     perceptionMode = perceptionConfig.toModeString(),
     platformMode = platformMode.name,
-    llmBackendType = llm.backendType.name,
-    localModelSlug = llm.localConfig?.modelSlug,
-    localQuantizationSlug = llm.localConfig?.quantizationSlug,
+    serverBaseUrl = llm.baseUrl,
     actionDelayMs = actionDelayMs,
     approvalMode = approvalMode.name,
     debugMode = debugMode,
@@ -109,22 +105,7 @@ internal fun ConversationConfigSnapshot.toSessionConfig(): SessionConfig = Sessi
     platformMode = try { PlatformMode.valueOf(platformMode) } catch (_: Exception) {
         Log.w(SNAPSHOT_TAG, "Unknown PlatformMode in snapshot: $platformMode"); PlatformMode.ACCESSIBILITY
     },
-    llm = SessionLlmConfig(
-        backendType = try {
-            LLMBackendType.valueOf(llmBackendType)
-        } catch (_: Exception) {
-            Log.w(SNAPSHOT_TAG, "Unknown LLMBackendType in snapshot: $llmBackendType")
-            LLMBackendType.OPENAI
-        },
-        localConfig = if (llmBackendType == LLMBackendType.LOCAL.name) {
-            LocalLLMConfig(
-                modelSlug = localModelSlug ?: LocalLLMConfig().modelSlug,
-                quantizationSlug = localQuantizationSlug ?: LocalLLMConfig().quantizationSlug
-            )
-        } else {
-            null
-        }
-    ),
+    llm = SessionLlmConfig(baseUrl = serverBaseUrl),
     actionDelayMs = actionDelayMs,
     approvalMode = try { ApprovalMode.valueOf(approvalMode) } catch (_: Exception) {
         Log.w(SNAPSHOT_TAG, "Unknown ApprovalMode in snapshot: $approvalMode"); ApprovalMode.SMART

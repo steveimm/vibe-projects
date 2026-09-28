@@ -138,7 +138,7 @@ Use `rg` to locate prompt or tool definition text before edits.
     --config eval/config/remote.yaml \
     --tasks-file eval/config/<task_file>
   ```
-  Requires SSH reverse tunnel for gpt-* models; OpenRouter models work without it.
+Configure POCKETPILOT_SERVER_URL and POCKETPILOT_MODEL_ID for the reachable model server.
 - Parallel runs still write canonical `eval/results/<timestamp>/summary.json` and
   `per_task.jsonl`; shard-specific debug data lives under `parallel/`.
 - Recompute/compare metrics:

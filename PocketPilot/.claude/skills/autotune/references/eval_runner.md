@@ -50,7 +50,7 @@ All remote commands below assume they run in that same shell after the snippet a
 
 A stale checkout is a silent failure mode — eval runs but produces wrong results.
 
-For `gpt-*` models, ensure the SSH proxy tunnel is up (OpenRouter models don't need it):
+Configure POCKETPILOT_SERVER_URL and POCKETPILOT_MODEL_ID for the reachable model server.
 
 ```bash
 ssh "$REMOTE" "cd $REMOTE_DIR && ./scripts/remote/proxy_tunnel.sh status"

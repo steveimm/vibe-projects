@@ -102,8 +102,7 @@ class ChatViewModelTest {
         val session = fakeSession()
         val vm = ChatViewModel(sessionProvider = { session })
         val deepLink = SettingsDeepLink(
-            page = SettingsPage.LLM_AUTH,
-            authTab = id.steveimm.pocketpilot.llm.AuthMode.ApiKey,
+            page = SettingsPage.MODEL_SERVER,
         )
 
         vm.reportStartupFailure("Open Settings", "missing key", deepLink)
@@ -117,23 +116,6 @@ class ChatViewModelTest {
         assertThat(vm.startupError.value).isNull()
         // pending input is preserved on dismiss
         assertThat(vm.pendingInput.value).isEqualTo("Open Settings")
-    }
-
-    @Test
-    fun `reportStartupFailure preserves provider field on SettingsDeepLink`() = runTest {
-        val session = fakeSession()
-        val vm = ChatViewModel(sessionProvider = { session })
-        val deepLink = SettingsDeepLink(
-            page = SettingsPage.LLM_AUTH,
-            authTab = id.steveimm.pocketpilot.llm.AuthMode.ApiKey,
-            provider = id.steveimm.pocketpilot.llm.LLMProvider.OTHER,
-        )
-
-        vm.reportStartupFailure("Open Settings", "needs other config", deepLink)
-
-        assertThat(vm.startupErrorDeepLink.value).isEqualTo(deepLink)
-        assertThat(vm.startupErrorDeepLink.value?.provider)
-            .isEqualTo(id.steveimm.pocketpilot.llm.LLMProvider.OTHER)
     }
 
     @Test

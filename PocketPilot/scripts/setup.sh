@@ -51,27 +51,8 @@ else
     ok "Selected physical device: $DEVICE"
 fi
 
-# 2. Load .env file and check backend.
-# Capture caller-provided LLM_BACKEND before sourcing .env so an env-var override
-# (e.g. from debug-run.sh --local) wins over whatever .env sets.
-REQUESTED_LLM_BACKEND="${LLM_BACKEND:-}"
 if [[ -f "$PROJECT_ROOT/.env" ]]; then
     source "$PROJECT_ROOT/.env"
-fi
-
-# Determine LLM backend: caller env var > .env value > openai default.
-LLM_BACKEND="${REQUESTED_LLM_BACKEND:-${LLM_BACKEND:-openai}}"
-log "LLM Backend: $LLM_BACKEND"
-
-# Check API key only for OpenAI backend
-if [[ "$LLM_BACKEND" == "openai" ]]; then
-    log "Checking API Key..."
-    if [[ -z "$OPENAI_API_KEY" || ! "$OPENAI_API_KEY" =~ ^sk- ]]; then
-        err "Invalid API Key. Please set OPENAI_API_KEY=sk-xxx in .env, or use LLM_BACKEND=local"
-    fi
-    ok "API Key configured"
-else
-    ok "Using local LLM backend (no API key required)"
 fi
 
 # 3. Build APK

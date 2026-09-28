@@ -1,8 +1,6 @@
 package id.steveimm.pocketpilot.history
 
-import id.steveimm.pocketpilot.llm.ApiType
 import id.steveimm.pocketpilot.llm.LLMClient
-import id.steveimm.pocketpilot.llm.LLMProvider
 import id.steveimm.pocketpilot.llm.LLMStreamEvent
 import id.steveimm.pocketpilot.llm.ModelEntry
 import id.steveimm.pocketpilot.llm.ResponsesResult
@@ -23,8 +21,6 @@ class CompactorTest {
     private fun model(window: Int = 1000) = ModelEntry(
         name = "test-model",
         displayName = "Test Model",
-        provider = LLMProvider.OPENAI_API,
-        api = ApiType.RESPONSE,
         modelId = "test-model",
         contextWindow = window,
     )
@@ -437,8 +433,6 @@ class CompactorTest {
         val aliasedModel = ModelEntry(
             name = "alias",
             displayName = "Aliased Model",
-            provider = LLMProvider.OPENAI_API,
-            api = ApiType.RESPONSE,
             modelId = "provider/model",
             contextWindow = 2_000,
         )

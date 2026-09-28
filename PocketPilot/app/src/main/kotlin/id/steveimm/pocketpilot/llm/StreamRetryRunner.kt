@@ -27,7 +27,7 @@ internal data class StreamRetryRunResult(
     }
 }
 
-/** Shared retry scaffold for cloud streaming calls. */
+/** Shared retry scaffold for streaming calls. */
 internal suspend fun streamWithRetry(
     tag: String,
     emitToFlow: (LLMStreamEvent) -> Unit,
@@ -73,7 +73,7 @@ internal suspend fun streamWithRetry(
             lastException = classified
             when (
                 val retryAction =
-                    CloudStreamRetryPolicy.decide(
+                    StreamRetryPolicy.decide(
                         tag = tag,
                         classified = classified,
                         attempt = attempt,

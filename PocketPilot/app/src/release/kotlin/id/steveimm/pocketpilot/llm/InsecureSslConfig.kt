@@ -10,9 +10,4 @@ object InsecureSslConfig {
 
     val sslSocketFactory: SSLSocketFactory? = null
 
-    fun validateBaseUrl(url: String?) {
-        require(url == null || url.startsWith("https://")) {
-            "Non-HTTPS base URL is not allowed in release builds: $url"
-        }
-    }
 }

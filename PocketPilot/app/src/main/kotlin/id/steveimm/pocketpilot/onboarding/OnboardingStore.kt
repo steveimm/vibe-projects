@@ -44,7 +44,7 @@ class OnboardingStore(private val context: Context) {
             accessibility = p.readOutcome(KEY_STEP_ACCESSIBILITY),
             overlay = p.readOutcome(KEY_STEP_OVERLAY),
             battery = p.readOutcome(KEY_STEP_BATTERY),
-            apiKey = p.readOutcome(KEY_STEP_API_KEY),
+            modelServer = p.readOutcome(KEY_STEP_API_KEY),
             demo = p.readOutcome(KEY_STEP_DEMO)
         )
     }
@@ -55,7 +55,7 @@ class OnboardingStore(private val context: Context) {
             WizardStep.Accessibility -> KEY_STEP_ACCESSIBILITY
             WizardStep.Overlay -> KEY_STEP_OVERLAY
             WizardStep.Battery -> KEY_STEP_BATTERY
-            WizardStep.ApiKey -> KEY_STEP_API_KEY
+            WizardStep.ModelServer -> KEY_STEP_API_KEY
             WizardStep.Demo -> KEY_STEP_DEMO
             WizardStep.Complete -> return // not persisted as a step outcome
         }

@@ -7,7 +7,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
-class CloudStreamRetryRunnerTest {
+class StreamRetryRunnerTest {
 
     @Test
     fun `successful attempt returns completed=true`() = runTest {

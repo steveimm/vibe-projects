@@ -129,7 +129,7 @@ Dependency-injection container for all session-scoped services. Created via fact
 | `policyEngine` | Tool approval decisions |
 | `platform` | Android operations |
 | `config` | Session configuration |
-| `llmClient` | LLM client (OpenAI or local LFM) |
+| `llmClient` | Chat Completions client for the configured server |
 | `modelCatalog` | Database of available models and providers |
 | `llmClientFactory` | Factory for creating LLM clients (cached by provider) |
 | `traceRecorder` | Trace persistence sink |
@@ -147,7 +147,7 @@ Creation is split into three bootstrappers:
 
 | Bootstrapper | Creates |
 |-------------|---------|
-| `SessionLlmBootstrapper` | `ModelCatalog` (from `assets/llm_models.json`), `LLMClientFactory`, `LLMClient` |
+| `SessionLlmBootstrapper` | `ModelCatalog` (for the session endpoint and model ID), `LLMClientFactory`, `LLMClient` |
 | `SessionToolingBootstrapper` | `PolicyEngine`, `AgentSessionState`, `ToolRegistry`, `ToolRouter` |
 | `SessionHistoryBootstrapper` | `HistoryManager` (maxTokenBudget=18,000, AGGRESSIVE truncation), `SessionRecordingService` |
 

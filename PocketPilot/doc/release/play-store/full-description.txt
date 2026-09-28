@@ -15,7 +15,7 @@ FEATURES
 
 • Natural-language task execution across any Android app
 • Smart Capsule — a floating panel that works inside any app, so you never leave your current context
-• Choose your AI provider: OpenAI, OpenRouter, or any OpenAI-compatible endpoint
+• Connect to your own OpenAI-compatible Chat Completions server
 • Optional voice input — dictate tasks via Android's built-in SpeechRecognizer (microphone permission requested only when you use it)
 • Real-time action visualization — see exactly what the agent is doing
 • Full control — pause, take over, or stop any task instantly
@@ -37,7 +37,7 @@ REQUIREMENTS
 • Android 12 or later (API 31+)
 • Accessibility service permission (so PocketPilot can read the screen and tap on your behalf)
 • "Display over other apps" permission (for the Smart Capsule overlay)
-• An API key from OpenAI, OpenRouter, or any OpenAI-compatible endpoint you configure (microphone permission only if you want voice input)
+• A reachable model server URL and model ID. An API key is optional (microphone permission only if you want voice input)
 
 
 ABOUT THE ACCESSIBILITY SERVICE

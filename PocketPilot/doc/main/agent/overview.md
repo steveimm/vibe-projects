@@ -15,7 +15,7 @@
 | **Context Hygiene** | Text-first history with fresh screen state injected each turn. Older screens downgraded by `HistoryManager`; context-window pressure handled by per-turn `Compactor` summarization. No turn-count cap. |
 | **Planning State Tools** | `write_todos` and `scratchpad` persist intent and facts across turns/agents. |
 | **Cognition Layer** | Prompt/context/policy logic is isolated under `agent/cognition/`. |
-| **Catalog-Driven Models** | `ModelCatalog` + `LLMClientFactory` resolve models at runtime from `llm_models.json`. |
+| **Catalog-Driven Models** | `ModelCatalog` + `LLMClientFactory` resolve the manually configured model and optional server discovery metadata. |
 | **Error Recovery** | `TurnErrorClassifier` distinguishes recoverable (DNS, rate limit) from fatal errors. |
 | **Security Gates** | 4+1 layer model: app classification (AppTier), perception gate (screen masking), execution gate (PolicyEngine), memory gate, and LLM safety rules. See [tools.md](../infra/tools.md) for details. |
 

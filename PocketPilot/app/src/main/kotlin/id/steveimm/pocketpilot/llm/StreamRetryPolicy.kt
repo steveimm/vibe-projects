@@ -10,8 +10,8 @@ internal sealed interface StreamRetryAction {
     data object Stop : StreamRetryAction
 }
 
-/** Shared retry decision policy for cloud streaming clients. */
-internal object CloudStreamRetryPolicy {
+/** Shared retry decision policy for streaming clients. */
+internal object StreamRetryPolicy {
     fun decide(
             tag: String,
             classified: Exception,
@@ -41,7 +41,7 @@ internal object CloudStreamRetryPolicy {
             )
             return StreamRetryAction.Retry(
                     waitMs = waitMs,
-                    nextBackoffMs = CloudLlmRetry.advanceBackoff(backoffMs)
+                    nextBackoffMs = LlmRetry.advanceBackoff(backoffMs)
             )
         }
 

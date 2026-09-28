@@ -97,7 +97,7 @@ ui/
 │
 └── settings/
     ├── SettingsSheet.kt         # Full-screen page overlay + BackHandler
-    ├── SettingsModels.kt        # LocalModelOption, ModelLoadingStatus
+    ├── ModelServerForm.kt      # URL, model ID, optional API key
     ├── SettingsDropdowns.kt     # Backend/model/mode/turns dropdowns
     ├── SettingsDropdown.kt      # Generic reusable dropdown
     ├── SettingsWidgets.kt       # Header, Section, Row, StatusIndicator

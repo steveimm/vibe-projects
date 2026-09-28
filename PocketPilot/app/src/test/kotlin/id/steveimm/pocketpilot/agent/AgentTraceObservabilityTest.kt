@@ -1,14 +1,14 @@
 package id.steveimm.pocketpilot.agent
 
+import id.steveimm.pocketpilot.test.testModelCatalog
+
 import com.google.common.truth.Truth.assertThat
 import id.steveimm.pocketpilot.history.HistoryManager
 import id.steveimm.pocketpilot.llm.LLMClient
 import id.steveimm.pocketpilot.llm.LLMClientFactory
 import id.steveimm.pocketpilot.llm.LLMStreamEvent
-import id.steveimm.pocketpilot.llm.ModelCatalog
 import id.steveimm.pocketpilot.llm.ResponsesResult
 import id.steveimm.pocketpilot.model.ScreenSnapshot
-import id.steveimm.pocketpilot.protocol.LLMBackendType
 import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.protocol.SessionId
 import id.steveimm.pocketpilot.protocol.SessionLlmConfig
@@ -113,11 +113,11 @@ private fun buildServices(traceRecorder: TraceRecorder): SessionServices {
                 SessionConfig(
                         actionDelayMs = 0,
                         mainModel = "gpt-5.2",
-                        llm = SessionLlmConfig(backendType = LLMBackendType.OPENAI)
+                        llm = SessionLlmConfig(baseUrl = "http://localhost:8000/v1")
                 )
         val testCatalog =
-                ModelCatalog.fromJson(
-                        """{"gpt-5.2":{"display_name":"GPT-5.2","provider":"OPENAI_API","api":"response","model_id":"gpt-5.2"}}"""
+                testModelCatalog(
+                        """{"gpt-5.2":{"display_name":"GPT-5.2","model_id":"gpt-5.2"}}"""
                 )
         val noopClient = NoopLLMClient()
         return SessionServices(

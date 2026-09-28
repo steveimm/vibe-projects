@@ -24,13 +24,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import id.steveimm.pocketpilot.app.AppSettingsState
 import id.steveimm.pocketpilot.app.MemoryEditGate
-import id.steveimm.pocketpilot.llm.AuthMode
-import id.steveimm.pocketpilot.llm.LLMProvider
-import id.steveimm.pocketpilot.llm.ModelCatalog
 import id.steveimm.pocketpilot.memory.MemoryStore
 import id.steveimm.pocketpilot.protocol.ApprovalMode
-import id.steveimm.pocketpilot.protocol.LLMBackendType
 import id.steveimm.pocketpilot.protocol.PlatformMode
 import id.steveimm.pocketpilot.tool.AppClassifier
 import id.steveimm.pocketpilot.tool.AppClassifierHolder
@@ -39,7 +36,7 @@ import id.steveimm.pocketpilot.ui.theme.paperGrain
 
 enum class SettingsPage {
     HOME,
-    LLM_AUTH,
+    MODEL_SERVER,
     AGENT_BEHAVIOR,
     MEMORY,
     PERMISSIONS_ADVANCED,
@@ -49,14 +46,7 @@ enum class SettingsPage {
 
 @Composable
 fun SettingsSheet(
-    llmBackend: LLMBackendType,
-    onBackendChange: (LLMBackendType) -> Unit,
-    selectedModel: String,
-    onModelChange: (String) -> Unit,
-    modelCatalog: ModelCatalog,
-    selectedLocalModel: String,
-    onLocalModelChange: (LocalModelOption) -> Unit,
-    modelLoadingStatus: ModelLoadingStatus,
+    settings: AppSettingsState,
     perceptionMode: String,
     onPerceptionModeChange: (String) -> Unit,
     debugMode: Boolean,
@@ -72,19 +62,9 @@ fun SettingsSheet(
     platformMode: PlatformMode,
     effectivePlatformMode: PlatformMode?,
     onPlatformModeChange: (PlatformMode) -> Unit,
-    openAiAuthUiState: OpenAiAuthUiState,
-    onStartOAuth: () -> Unit,
-    onCancelOAuth: () -> Unit,
-    onSignOut: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     initialPage: SettingsPage = SettingsPage.HOME,
-    initialAuthTab: AuthMode? = null,
-    initialProvider: LLMProvider? = null,
-    otherBaseUrl: String = "",
-    otherModelId: String = "",
-    onOtherBaseUrlChange: (String) -> Unit = {},
-    onOtherModelIdChange: (String) -> Unit = {},
     appClassifier: AppClassifier = AppClassifierHolder.get(LocalContext.current.applicationContext),
     isSessionRunning: Boolean = false,
     memoryStore: MemoryStore,
@@ -139,11 +119,7 @@ fun SettingsSheet(
             ) { page ->
                 when (page) {
                     SettingsPage.HOME -> SettingsHomePage(
-                        llmBackend = llmBackend,
-                        selectedModel = selectedModel,
-                        modelOptions = catalogModelOptions(modelCatalog.all()),
-                        selectedLocalModel = selectedLocalModel,
-                        modelCatalog = modelCatalog,
+                        settings = settings,
                         perceptionMode = perceptionMode,
                         isAccessibilityEnabled = isAccessibilityEnabled,
                         isOverlayEnabled = isOverlayEnabled,
@@ -155,27 +131,10 @@ fun SettingsSheet(
                         onNavigate = { settingsPage = it },
                         onDismiss = onDismiss
                     )
-                    SettingsPage.LLM_AUTH -> LlmAuthSettingsPage(
-                        llmBackend = llmBackend,
-                        onBackendChange = onBackendChange,
-                        selectedModel = selectedModel,
-                        onModelChange = onModelChange,
-                        modelCatalog = modelCatalog,
-                        selectedLocalModel = selectedLocalModel,
-                        onLocalModelChange = onLocalModelChange,
-                        modelLoadingStatus = modelLoadingStatus,
-                        openAiAuthUiState = openAiAuthUiState,
-                        onStartOAuth = onStartOAuth,
-                        onCancelOAuth = onCancelOAuth,
-                        onSignOut = onSignOut,
+                    SettingsPage.MODEL_SERVER -> ModelServerSettingsPage(
+                        settings = settings,
                         onBack = { settingsPage = SettingsPage.HOME },
                         onClose = onDismiss,
-                        initialAuthTab = initialAuthTab,
-                        initialProvider = initialProvider,
-                        otherBaseUrl = otherBaseUrl,
-                        otherModelId = otherModelId,
-                        onOtherBaseUrlChange = onOtherBaseUrlChange,
-                        onOtherModelIdChange = onOtherModelIdChange,
                     )
                     SettingsPage.AGENT_BEHAVIOR -> AgentBehaviorSettingsPage(
                         perceptionMode = perceptionMode,

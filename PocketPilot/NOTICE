@@ -43,28 +43,3 @@ For the authoritative list, consult the generated report.
       CC0 1.0 Universal (Public Domain Dedication)
   * Lucide Icons for Compose Multiplatform (com.composables:icons-lucide-cmp)
       ISC License
-
-================================================================================
-LiquidAI LEAP SDK -- proprietary
-================================================================================
-
-PocketPilot embeds `ai.liquid.leap:leap-sdk` (version 0.9.2) for on-device LLM
-inference. The LEAP SDK is **not open source**. It is distributed under the
-LiquidAI "Leap Terms of Use", a proprietary developer license:
-
-    https://leap.liquid.ai/terms
-    POM-declared license: "Leap Terms of Use"
-
-Implications for downstream users of this repository:
-
-  1. The LEAP SDK binary is fetched from Maven Central but cannot be
-     redistributed under Apache 2.0; it remains governed by the LEAP terms.
-  2. Anyone building or shipping PocketPilot inherits LiquidAI's terms with
-     respect to the LEAP component. Review the linked terms before
-     redistributing builds that include this dependency.
-  3. To produce a fully Apache-2.0 distribution, remove the
-     `ai.liquid.leap:leap-sdk` dependency in `app/build.gradle.kts` and the
-     local-LLM backend code paths that depend on it.
-
-This NOTICE file is part of the Apache 2.0 attribution required by Section 4(d)
-of the License. Keep it intact in any redistribution.

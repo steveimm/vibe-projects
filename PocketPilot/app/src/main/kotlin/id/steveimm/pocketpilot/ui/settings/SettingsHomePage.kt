@@ -19,12 +19,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.BuildConfig
-import id.steveimm.pocketpilot.llm.AuthMode
-import id.steveimm.pocketpilot.llm.ModelCatalog
+import id.steveimm.pocketpilot.app.AppSettingsState
 import id.steveimm.pocketpilot.platform.AppManager
 import id.steveimm.pocketpilot.protocol.AppTier
 import id.steveimm.pocketpilot.protocol.ApprovalMode
-import id.steveimm.pocketpilot.protocol.LLMBackendType
 import id.steveimm.pocketpilot.protocol.PlatformMode
 import id.steveimm.pocketpilot.tool.AppClassifier
 import id.steveimm.pocketpilot.ui.theme.Fleuron
@@ -36,11 +34,7 @@ import kotlinx.coroutines.withContext
 
 @Composable
 internal fun SettingsHomePage(
-    llmBackend: LLMBackendType,
-    selectedModel: String,
-    modelOptions: List<Pair<String, String>>,
-    selectedLocalModel: String,
-    modelCatalog: ModelCatalog,
+    settings: AppSettingsState,
     perceptionMode: String,
     isAccessibilityEnabled: Boolean,
     isOverlayEnabled: Boolean,
@@ -64,9 +58,9 @@ internal fun SettingsHomePage(
         ) {
             SectionHeader("Behavior")
             SettingsNavigationRow(
-                title = "LLM & Authentication",
-                subtitle = llmSubtitle(llmBackend, selectedModel, modelOptions, selectedLocalModel, modelCatalog),
-                onClick = { onNavigate(SettingsPage.LLM_AUTH) }
+                title = "Model server",
+                subtitle = settings.serverModelId.ifBlank { "Configure your local server" },
+                onClick = { onNavigate(SettingsPage.MODEL_SERVER) }
             )
             SettingsNavigationRow(
                 title = "Agent Behavior",
@@ -111,25 +105,6 @@ internal fun SettingsHomePage(
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
-}
-
-private fun llmSubtitle(
-    llmBackend: LLMBackendType,
-    selectedModel: String,
-    modelOptions: List<Pair<String, String>>,
-    selectedLocalModel: String,
-    modelCatalog: ModelCatalog,
-): String = if (llmBackend == LLMBackendType.LOCAL) {
-    AVAILABLE_LOCAL_MODELS.find { it.id == selectedLocalModel }?.displayName ?: selectedLocalModel
-} else {
-    val modelName = modelOptions.find { it.first == selectedModel }?.second ?: selectedModel
-    val mode = modelCatalog.resolveOrNull(selectedModel)?.provider?.mode
-    val authLabel = when (mode) {
-        AuthMode.OAuth -> "OAuth"
-        AuthMode.ApiKey -> "API key"
-        AuthMode.Local, null -> "API key"
-    }
-    "$modelName · $authLabel"
 }
 
 private fun agentBehaviorSubtitle(

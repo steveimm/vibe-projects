@@ -1,106 +1,39 @@
 package id.steveimm.pocketpilot.llm
 
-import id.steveimm.pocketpilot.auth.AuthStore
 import com.google.common.truth.Truth.assertThat
-import io.mockk.every
-import io.mockk.mockk
+import com.openai.models.responses.EasyInputMessage
+import com.openai.models.responses.ResponseInputItem
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.buffer
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
-import org.junit.Assert.assertThrows
+import org.json.JSONObject
 import org.junit.Test
 import java.util.concurrent.TimeUnit
 
 class CustomServerHttpTest {
+    private fun message() = ResponseInputItem.ofEasyInputMessage(
+        EasyInputMessage.builder().role(EasyInputMessage.Role.USER).content("hello").build(),
+    )
 
-    @Test(timeout = 30_000)
-    fun `streaming preserves every delta when the collector is slower than the server`() = runBlocking {
+    @Test
+    fun `keyless server discovery and chat use only the supplied HTTP endpoint`() = runTest {
         MockWebServer().use { server ->
             server.start()
-            val client = ChatCompletionClient("local-test-key", server.url("/v1").toString(), allowHttp = true)
-            val expected = (1..200).joinToString("") { "$it," }
-            val response = buildString {
-                for (index in 1..200) {
-                    append("data: {\"id\":\"burst\",\"object\":\"chat.completion.chunk\",\"created\":1,\"model\":\"local-model\",")
-                    append("\"choices\":[{\"index\":0,\"delta\":{\"content\":\"$index,\"},\"finish_reason\":null}]}\n\n")
-                }
-                append("data: {\"id\":\"burst\",\"object\":\"chat.completion.chunk\",\"created\":1,\"model\":\"local-model\",")
-                append("\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n")
-            }
-            server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody(response))
-            try {
-                val events = client.chatWithToolsStreaming("test", emptyList(), emptyList(), "local-model")
-                    .buffer(1)
-                    .onEach { delay(1) }
-                    .toList()
-
-                assertThat(events.filterIsInstance<LLMStreamEvent.TextDelta>().joinToString("") { it.delta }).isEqualTo(expected)
-                assertThat(events.last()).isEqualTo(LLMStreamEvent.Completed)
-                assertThat(server.requestCount).isEqualTo(1)
-            } finally {
-                client.cleanup()
-            }
-        }
-    }
-
-    @Test(timeout = 30_000)
-    fun `custom HTTP server handles discovery chat and streaming with its own credentials`() = runBlocking {
-        MockWebServer().use { server ->
-            server.start()
-            val baseUrl = OtherBaseUrlValidator.validate(server.url("/v1").toString()).getOrThrow()
             server.enqueue(MockResponse().setBody("""{"data":[{"id":"local-model"}]}"""))
-            val models = ModelDiscovery.discover(LLMProvider.OTHER, baseUrl, "local-test-key")
-            assertThat(models.single().entry.baseUrl).isEqualTo(baseUrl)
-            assertThat(models.single().entry.modelId).isEqualTo("local-model")
-
-            val catalog = ModelCatalog.fromJson(
-                """{"other-custom":{"display_name":"Local","provider":"OTHER","api":"chat",
-                    "model_id":"local-model","base_url":"$baseUrl"}}"""
-            )
-            val authStore = mockk<AuthStore> {
-                every { generation(LLMProvider.OTHER) } returns 0L
-                every { requireApiKey(LLMProvider.OTHER) } returns "local-test-key"
-            }
-            val factory = LLMClientFactory(catalog, authStore)
+            val base = server.url("/v1").toString()
+            val models = ModelDiscovery.discover(base, "")
+            val discovery = server.takeRequest(5, TimeUnit.SECONDS)!!
+            assertThat(discovery.path).isEqualTo("/v1/models")
+            assertThat(discovery.getHeader("Authorization")).isNull()
+            val factory = LLMClientFactory(ModelCatalog.fromEntries(models), null, base)
             try {
-                val client = factory.create("other-custom")
-                server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(
-                    """{"id":"local-1","object":"chat.completion","created":1,"model":"local-model",
-                        "choices":[{"index":0,"message":{"role":"assistant","content":"Local reply"},
-                        "finish_reason":"stop"}]}"""
-                ))
-                val reply = client.chatWithTools("local private prompt", emptyList(), emptyList(), "local-model")
-                assertThat(reply.textContent).isEqualTo("Local reply")
-
-                server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody(
-                    """
-                    data: {"id":"local-2","object":"chat.completion.chunk","created":1,"model":"local-model","choices":[{"index":0,"delta":{"role":"assistant","content":"Streamed reply"},"finish_reason":null}]}
-
-                    data: {"id":"local-2","object":"chat.completion.chunk","created":1,"model":"local-model","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
-
-                    data: [DONE]
-
-
-                    """.trimIndent()
-                ))
-                val events = client.chatWithToolsStreaming("local private prompt", emptyList(), emptyList(), "local-model").toList()
-                assertThat(events.filterIsInstance<LLMStreamEvent.TextDelta>().joinToString("") { it.delta })
-                    .isEqualTo("Streamed reply")
-                assertThat(events.last()).isEqualTo(LLMStreamEvent.Completed)
-
-                for (path in listOf("/v1/models", "/v1/chat/completions", "/v1/chat/completions")) {
-                    val request = requireNotNull(server.takeRequest(2, TimeUnit.SECONDS))
-                    assertThat(request.path).isEqualTo(path)
-                    assertThat(request.getHeader("Authorization")).isEqualTo("Bearer local-test-key")
-                    if (path.endsWith("completions")) {
-                        assertThat(request.body.readUtf8()).contains("local private prompt")
-                    }
-                }
-                assertThat(server.requestCount).isEqualTo(3)
+                server.enqueue(MockResponse().setBody("""{"id":"answer","object":"chat.completion","created":0,"model":"local-model","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}]}"""))
+                factory.create("local-model").chatWithTools("help", listOf(message()), emptyList(), "local-model", null)
+                val chat = server.takeRequest(5, TimeUnit.SECONDS)!!
+                assertThat(chat.path).isEqualTo("/v1/chat/completions")
+                assertThat(chat.getHeader("Authorization")).isNull()
+                assertThat(JSONObject(chat.body.readUtf8()).getString("model")).isEqualTo("local-model")
             } finally {
                 factory.cleanupAll()
             }
@@ -108,10 +41,44 @@ class CustomServerHttpTest {
     }
 
     @Test
-    fun `HTTP opt in requires an explicit valid custom URL`() {
-        for (url in listOf(null, "", "ftp://server/v1", "http://user:secret@server/v1", "http://server/v1?key=secret")) {
-            assertThrows(IllegalArgumentException::class.java) {
-                ChatCompletionClient("local", url, allowHttp = true)
+    fun `explicit key is sent to the configured endpoint and full completion URLs are accepted`() = runTest {
+        MockWebServer().use { server ->
+            server.start()
+            server.enqueue(MockResponse().setBody("""{"id":"answer","object":"chat.completion","created":0,"model":"local-model","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}"""))
+            val client = ChatCompletionClient(server.url("/v1/chat/completions").toString(), "server-token")
+            try {
+                client.chatWithTools("help", listOf(message()), emptyList(), "local-model", null)
+                val request = server.takeRequest(5, TimeUnit.SECONDS)!!
+                assertThat(request.path).isEqualTo("/v1/chat/completions")
+                assertThat(request.getHeader("Authorization")).isEqualTo("Bearer server-token")
+            } finally {
+                client.cleanup()
+            }
+        }
+    }
+
+    @Test
+    fun `a slow collector receives every streaming delta from the configured server`() = runTest {
+        MockWebServer().use { server ->
+            server.start()
+            val body = buildString {
+                repeat(200) {
+                    append("data: {\"id\":\"stream\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"local-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"x\"}}]}\n\n")
+                }
+                append("data: {\"id\":\"stream\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"local-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n")
+            }
+            server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody(body))
+            val client = ChatCompletionClient(server.url("/v1").toString())
+            try {
+                val events = mutableListOf<LLMStreamEvent>()
+                client.chatWithToolsStreaming("help", listOf(message()), emptyList(), "local-model").collect {
+                    delay(1)
+                    events += it
+                }
+                assertThat(events.filterIsInstance<LLMStreamEvent.TextDelta>().joinToString("") { it.delta }).isEqualTo("x".repeat(200))
+                assertThat(events.any { it is LLMStreamEvent.Completed }).isTrue()
+            } finally {
+                client.cleanup()
             }
         }
     }

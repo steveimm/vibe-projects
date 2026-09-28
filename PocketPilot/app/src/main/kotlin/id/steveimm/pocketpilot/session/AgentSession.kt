@@ -5,7 +5,6 @@ package id.steveimm.pocketpilot.session
 import android.accessibilityservice.AccessibilityService
 import android.util.Log
 import id.steveimm.pocketpilot.agent.AgentStopReason
-import id.steveimm.pocketpilot.history.model.CheckpointState
 import id.steveimm.pocketpilot.history.model.HistoryItemConverter
 import id.steveimm.pocketpilot.history.model.SessionRuntimeSnapshot
 import id.steveimm.pocketpilot.history.model.isReloadable
@@ -17,7 +16,6 @@ import id.steveimm.pocketpilot.tool.AppClassifierHolder
 import id.steveimm.pocketpilot.trace.TraceRecorderFactory
 import id.steveimm.pocketpilot.ui.overlay.visualizer.ActionVisualizerManager
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -62,8 +60,7 @@ private constructor(
                 config: SessionConfig,
                 service: AccessibilityService,
                 scope: CoroutineScope,
-                authStore: id.steveimm.pocketpilot.auth.AuthStore?,
-                baseUrlOverrides: Map<id.steveimm.pocketpilot.llm.LLMProvider, String> = emptyMap(),
+                credentialStore: id.steveimm.pocketpilot.auth.ServerCredentialStore?,
                 visualizer: ActionVisualizerManager? = null,
                 overlayTouchGate: OverlayTouchGate? = null,
         ): AgentSession {
@@ -83,8 +80,7 @@ private constructor(
                     SessionServices.create(
                             config = config,
                             platform = platform,
-                            authStore = authStore,
-                            baseUrlOverrides = baseUrlOverrides,
+                            credentialStore = credentialStore,
                             context = service,
                             scope = scope,
                             traceRecorder = traceRecorder,
@@ -120,8 +116,7 @@ private constructor(
                 snapshot: SessionRuntimeSnapshot,
                 service: AccessibilityService,
                 scope: CoroutineScope,
-                authStore: id.steveimm.pocketpilot.auth.AuthStore?,
-                baseUrlOverrides: Map<id.steveimm.pocketpilot.llm.LLMProvider, String> = emptyMap(),
+                credentialStore: id.steveimm.pocketpilot.auth.ServerCredentialStore?,
                 visualizer: ActionVisualizerManager? = null,
                 overlayTouchGate: OverlayTouchGate? = null,
         ): AgentSession? {
@@ -154,8 +149,7 @@ private constructor(
                     SessionServices.create(
                             config = config,
                             platform = platform,
-                            authStore = authStore,
-                            baseUrlOverrides = baseUrlOverrides,
+                            credentialStore = credentialStore,
                             context = service,
                             scope = scope,
                             traceRecorder = traceRecorder,

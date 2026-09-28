@@ -34,7 +34,7 @@ object TraceRecorderFactory {
                 deviceSdkInt = Build.VERSION.SDK_INT,
                 config =
                     TraceRunConfig(
-                        llmBackend = config.llm.backendType.name,
+                        llmBackend = "chat_completions",
                         model = config.mainModel,
                         mainModel = config.mainModel,
                         debugMode = config.debugMode,

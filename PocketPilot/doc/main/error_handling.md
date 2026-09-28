@@ -58,7 +58,7 @@ When restoring from a persisted snapshot, unknown enum names default rather than
 - `app/src/main/kotlin/id/steveimm/pocketpilot/session/AgentSession.kt:202-207` — `TaskOutcome.valueOf(outcomeName)` → logs `"Unknown TaskOutcome in snapshot"` and skips setting the field. Logged but non-fatal.
 - `app/src/main/kotlin/id/steveimm/pocketpilot/session/SessionCheckpointCoordinator.kt:121` — `PlatformMode.valueOf(platformMode)` → falls back to `PlatformMode.ACCESSIBILITY`. Silent.
 
-(Two adjacent fallbacks — `LLMBackendType.valueOf` and `ApprovalMode.valueOf` in `ConversationConfigSnapshot.toSessionConfig()` — follow the same pattern.)
+Unknown saved approval modes use the default approval policy.
 
 **Why silent**: schema evolution. A snapshot written by an older build may contain enum names that no longer exist; restore should still succeed with reasonable defaults rather than orphan the session.
 

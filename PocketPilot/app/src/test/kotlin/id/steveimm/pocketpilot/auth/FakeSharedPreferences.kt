@@ -4,7 +4,7 @@ import android.content.SharedPreferences
 import java.util.concurrent.ConcurrentHashMap
 
 /** Minimal in-memory [SharedPreferences] for JVM tests. Only the String-keyed read/write/remove/contains paths are implemented — enough
- * for [AuthStore]. Listeners and getters for non-String types are no-ops / not supported. */
+ * for credential-storage tests. Listeners and getters for non-String types are no-ops / not supported. */
 internal class FakeSharedPreferences : SharedPreferences {
     private val map = ConcurrentHashMap<String, String>()
 

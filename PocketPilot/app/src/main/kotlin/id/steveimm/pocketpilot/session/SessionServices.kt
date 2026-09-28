@@ -10,20 +10,18 @@ import id.steveimm.pocketpilot.agent.cognition.prompt.AssetAppSkillRepository
 import id.steveimm.pocketpilot.agent.cognition.prompt.EmptyAppSkillRepository
 import id.steveimm.pocketpilot.agent.cognition.skills.AgentSkillManager
 import id.steveimm.pocketpilot.agent.cognition.skills.BundledAgentSkillInstaller
-import id.steveimm.pocketpilot.auth.AuthStore
+import id.steveimm.pocketpilot.auth.ServerCredentialStore
 import id.steveimm.pocketpilot.browser.script.BrowserSessionManager
 import id.steveimm.pocketpilot.history.HistoryManager
 import id.steveimm.pocketpilot.history.SessionRecordingService
 import id.steveimm.pocketpilot.llm.LLMClient
 import id.steveimm.pocketpilot.llm.LLMClientFactory
-import id.steveimm.pocketpilot.llm.LLMProvider
 import id.steveimm.pocketpilot.llm.ModelCatalog
 import id.steveimm.pocketpilot.llm.ModelCatalogRepositoryHolder
 import id.steveimm.pocketpilot.memory.MemoryRecaller
 import id.steveimm.pocketpilot.memory.MemoryStore
 import id.steveimm.pocketpilot.platform.AndroidPlatform
 import id.steveimm.pocketpilot.protocol.SessionConfig
-import id.steveimm.pocketpilot.protocol.SessionLlmConfig
 import id.steveimm.pocketpilot.termux.TermuxBridgeManager
 import id.steveimm.pocketpilot.termux.TermuxBridgeStatus
 import id.steveimm.pocketpilot.termux.TermuxCapabilitySnapshot
@@ -93,8 +91,7 @@ class SessionServices internal constructor(
         fun create(
                 config: SessionConfig,
                 platform: AndroidPlatform,
-                authStore: AuthStore?,
-                baseUrlOverrides: Map<LLMProvider, String> = emptyMap(),
+                credentialStore: ServerCredentialStore?,
                 context: Context,
                 scope: CoroutineScope,
                 traceRecorder: TraceRecorder,
@@ -106,9 +103,7 @@ class SessionServices internal constructor(
             val llmBootstrap = SessionLlmBootstrapper.create(
                     config = config,
                     catalogRepository = catalogRepository,
-                    context = context,
-                    authStore = authStore,
-                    baseUrlOverrides = baseUrlOverrides
+                    credentialStore = credentialStore,
             )
             val modelCatalog = llmBootstrap.modelCatalog
             val llmClientFactory = llmBootstrap.llmClientFactory

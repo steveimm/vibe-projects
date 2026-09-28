@@ -1,6 +1,5 @@
 package id.steveimm.pocketpilot.protocol
 
-import id.steveimm.pocketpilot.llm.LocalLLMConfig
 import id.steveimm.pocketpilot.perception.PerceptionConfig
 
 /** SessionConfig - Configuration for an agent session. */
@@ -9,12 +8,8 @@ data class SessionConfig(
         val actionDelayMs: Long = 2000,
         /** Approval mode for tool execution */
         val approvalMode: ApprovalMode = ApprovalMode.SMART,
-        /** Canonical LLM runtime routing config (backend + local model params). */
-        val llm: SessionLlmConfig =
-                SessionLlmConfig(
-                        backendType = LLMBackendType.OPENAI,
-                        localConfig = null
-                ),
+        /** Model server endpoint captured for this session. */
+        val llm: SessionLlmConfig = SessionLlmConfig(),
         /** Enable verbose debug logging */
         val debugMode: Boolean = false,
         /** Persist a full JSONL trace (for inspection_tool) */
@@ -23,9 +18,9 @@ data class SessionConfig(
         val traceRunId: String? = null,
         /** Controls which perception modalities (a11y tree, screenshot, both) are active */
         val perceptionConfig: PerceptionConfig = PerceptionConfig.DEFAULT,
-        /** Primary model name (key in llm_models.json) for the main agent. Subagents inherit this model — there is no separate subagent
+        /** Primary model ID on the configured server for the main agent. Subagents inherit this model — there is no separate subagent
          * model. */
-        val mainModel: String = "glm-5",
+        val mainModel: String = "",
         /** Platform mode: real screen (accessibility) or virtual display (Shizuku) */
         val platformMode: PlatformMode = PlatformMode.ACCESSIBILITY,
         /** Tool names to exclude from the agent's allowed tool set (e.g. for eval) */
@@ -36,10 +31,7 @@ data class SessionConfig(
 )
 
 /** Canonical LLM routing config used at runtime. */
-data class SessionLlmConfig(
-        val backendType: LLMBackendType = LLMBackendType.OPENAI,
-        val localConfig: LocalLLMConfig? = null
-)
+data class SessionLlmConfig(val baseUrl: String = "")
 
 /** Platform mode — which display the agent operates on. */
 enum class PlatformMode {
@@ -47,14 +39,6 @@ enum class PlatformMode {
         ACCESSIBILITY,
         /** Agent operates on a Shizuku-powered virtual display. */
         VIRTUAL_DISPLAY
-}
-
-/** LLM backend type - determines which LLM client to use. */
-enum class LLMBackendType {
-        /** Use OpenAI cloud API */
-        OPENAI,
-        /** Use local on-device LLM via Leap SDK */
-        LOCAL
 }
 
 /** ApprovalMode - How tool execution approvals are handled. */

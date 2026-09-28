@@ -25,7 +25,7 @@ PocketPilot is an open-source **agent harness for Android**. Give it a natural-l
 - 👀 **Watch every step, pause anytime.** Tap circles and swipe lines show exactly what the agent is doing. Pause, take over, or stop in one tap.
 - 📱 **On your phone, with your real accounts.** No laptop tethered over ADB, no cloud emulator with empty logins — PocketPilot runs locally against the apps you're already signed into.
 - 🪟 **Doesn't take your phone hostage.** Optional background mode lets the agent work on a virtual screen while you keep scrolling, texting, or watching video. *(Needs [Shizuku](https://shizuku.rikka.app/).)*
-- 🔓 **Use any AI.** Bring your own — OpenAI key, sign in with ChatGPT/Codex, OpenRouter, or any OpenAI-compatible endpoint. No vendor lock-in.
+- 🔓 **Use your model server.** Connect to your own OpenAI-compatible Chat Completions server over HTTP or HTTPS. API keys are optional.
 - 🛡️ **Safe by default.** Banking, authenticator, and crypto-wallet apps are hard-blocked — no setting can override. Unfamiliar apps prompt for per-app approval (always-allow / session-only / deny). Screens marked `FLAG_SECURE` are invisible to the agent's perception by design.
 - 🔐 **Private by design.** No telemetry, no third-party analytics. Traces stay on device. Apache 2.0.
 
@@ -38,7 +38,7 @@ PocketPilot is an open-source **agent harness for Android**. Give it a natural-l
   &nbsp;
   <img alt="Action visualizer showing taps and swipes in real time" src="doc/release/play-store/screenshots/phone-04-visualizer.png" width="22%" />
   &nbsp;
-  <img alt="Pluggable LLM provider settings" src="doc/release/play-store/screenshots/phone-06-models.png" width="22%" />
+  <img alt="Model server settings" src="doc/release/play-store/screenshots/phone-06-models.png" width="22%" />
 </p>
 
 <p align="center"><sub><em>Natural-language input · Smart Capsule overlay · Action visualizer · Bring-your-own LLM</em></sub></p>
@@ -61,7 +61,7 @@ PocketPilot is an open-source **agent harness for Android**. Give it a natural-l
   - 🐧 **`termux_shell`** — full Linux toolchain on the device: `python` / `git` / `curl` / `jq`, plus anything you `pkg install`. Needs [Termux](https://github.com/termux/termux-app).
   - 🌐 **`browser_script`** — JS automation against real Chrome via Chrome DevTools Protocol; loops, branches, and retries happen inside one tool call. Needs Chrome + [Shizuku](https://shizuku.rikka.app/).
 - 🪟 **Virtual display platform.** Hybrid background sessions via Shizuku — the agent operates a parallel Android display so the foreground stays yours.
-- 🔌 **Pluggable LLM layer.** OpenAI-compatible API is the contract. ChatGPT/Codex OAuth flow built in. First-class: OpenAI, OpenRouter; or any OpenAI-compatible endpoint via the *Other* slot (Anthropic, Groq, Together, your own proxy).
+- 🔌 **Local model server.** Supply the server URL and model ID. Discover models from `/models` or enter an ID manually. Requests have no cloud default or fallback.
 - 👁️ **Pluggable perception.** Accessibility tree by default; optional point-in-time screenshots in screenshot/hybrid modes.
 - 🔍 **Inspectable traces.** Every session writes LLM calls, tool calls, and perception snapshots to on-device storage; pull with `adb` for inspection.
 - 🔁 **Eval-driven agent-harness autotune loop.** Run an AndroidWorld task suite (`eval/`) against the agent; an autotune harness analyzes failures, proposes prompt / tool / skill fixes, and re-runs.
@@ -71,7 +71,7 @@ PocketPilot is an open-source **agent harness for Android**. Give it a natural-l
 ### Prerequisites
 
 - An Android device or emulator running **API 31+** (Android 12 or later)
-- An **OpenAI** or **OpenRouter** API key — or sign in with your ChatGPT account via OAuth — or any OpenAI-compatible endpoint (base URL + key) configured under *Other*
+- A self-hosted **OpenAI-compatible Chat Completions server** reachable from the phone
 - *(Optional, for Power Tools)* [Shizuku](https://shizuku.rikka.app/) and/or [Termux from F-Droid](https://f-droid.org/packages/com.termux/)
 
 ### Install the app
@@ -94,12 +94,12 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 1. Enable the **Accessibility** service so PocketPilot can read screens and dispatch taps
 2. Grant **Display over other apps** for the Smart Capsule overlay
 3. Disable **Battery optimization** so long-running tasks don't get killed
-4. Configure your **LLM** — paste an API key, **Sign in with ChatGPT/Codex**, or set up an OpenAI-compatible endpoint
+4. Configure your **model server** — enter its URL, the model ID, and an optional API key
 5. Run a quick **demo task** to confirm everything works end-to-end
 
 Then type a task on the home screen. The **Smart Capsule** overlay will follow the agent across apps so you can watch every step, pause, take over, or chime in from wherever you are.
 
-**Skipped onboarding, or want to change something later?** All the same controls live under **Settings** — accessibility / overlay / battery toggles, LLM credentials and provider switcher, and the Power Tools opt-ins below.
+**Skipped onboarding, or want to change something later?** All the same controls live under **Settings** — accessibility / overlay / battery toggles, model server configuration, and the Power Tools opt-ins below.
 
 ### 🔋 Optional: Power Tools
 
@@ -118,12 +118,10 @@ High-level layers:
 - **Agent loop** — ReAct turn engine, optional `delegate_task` subagent delegation, todo + scratchpad state, cross-session memory
 - **Tools** — UI primitives (`mobile_action`, `open_app`, `system_button`); working memory & control (`todo`, `scratchpad`, `remember_experience`, `delegate_task`, `activate_skill`); advanced (`shell`, `termux_shell` needs Termux, `browser_script` needs Shizuku)
 - **Platforms** — `AccessibilityPlatform` for normal use, `VirtualDisplayPlatform` (Shizuku) for hybrid background sessions
-- **LLM** — pluggable clients (OpenAI / OpenRouter / OpenAI-compatible "Other"), OAuth flow for ChatGPT sign-in, model catalog, retry infrastructure
+- **LLM** — Chat Completions client for the configured server, optional model discovery, and bounded retries
 
 Full design docs live under [`doc/main/`](doc/main/README.md). Start there for the agent loop, tool protocol contracts, and platform abstraction.
 
-> [!NOTE]
-> **On-device inference:** the codebase ships an `LFMLLMClient` (Liquid AI Leap SDK) path, but it's not exposed in the UI yet — on-device models are still too slow to be practically useful for a multi-turn agent loop. See [`doc/main/infra/llm.md`](doc/main/infra/llm.md).
 
 ## 🔒 Permissions & Privacy
 
@@ -132,7 +130,7 @@ The Android accessibility service is genuinely powerful access — it lets Pocke
 See the [Privacy Policy](PRIVACY_POLICY.md). In brief:
 
 - The accessibility service is used **only** to perceive on-screen content and execute the actions required by the task you typed.
-- LLM requests go directly to whichever provider **you** configured — PocketPilot has no server in the loop.
+- LLM requests go directly to the server **you** configured. PocketPilot has no default cloud endpoint or fallback.
 - The microphone is only active while you're actively dictating via the Smart Capsule.
 - **No third-party analytics or telemetry.**
 - Session traces and debug logs (which may include screenshots and the text you typed) are written **only to on-device storage** and can be cleared from Settings at any time.
@@ -142,7 +140,7 @@ See the [Privacy Policy](PRIVACY_POLICY.md). In brief:
 <!-- TODO(publish-contributing): link CONTRIBUTING.md once it lands. -->
 A `CONTRIBUTING.md` is on the way. Until then: open an issue to discuss non-trivial changes, follow Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`), and run `./gradlew clean assembleDebug lint test` before opening a PR.
 
-Good first contributions: new tools (look at how `termux_shell` and `browser_script` are wired up), additional LLM providers, perception improvements, and Smart Capsule UX polish.
+Good first contributions: new tools (look at how `termux_shell` and `browser_script` are wired up), model-server compatibility, perception improvements, and Smart Capsule UX polish.
 
 ### Dev tools tour
 

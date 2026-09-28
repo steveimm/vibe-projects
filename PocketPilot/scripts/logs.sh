@@ -21,7 +21,7 @@ case "$FILTER" in
         ;;
     llm|api)
         log "LLM/API logs (Ctrl+C to stop)..."
-        adb logcat -s OpenAILLMClient:* LFMLLMClient:* LLMClient:*
+        adb logcat -s ChatCompletionClient:* LLMClient:*
         ;;
     session)
         log "Session logs (Ctrl+C to stop)..."

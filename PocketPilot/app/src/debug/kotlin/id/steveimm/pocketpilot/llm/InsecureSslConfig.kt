@@ -34,7 +34,4 @@ object InsecureSslConfig {
         }
     }
 
-    fun validateBaseUrl(url: String?) {
-        // Debug builds allow any base URL (including HTTP for local testing)
-    }
 }

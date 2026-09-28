@@ -1,9 +1,10 @@
 package id.steveimm.pocketpilot.agent
 
+import id.steveimm.pocketpilot.test.testModelCatalog
+
 import com.google.common.truth.Truth.assertThat
 import id.steveimm.pocketpilot.history.HistoryManager
 import id.steveimm.pocketpilot.llm.LLMClientFactory
-import id.steveimm.pocketpilot.llm.ModelCatalog
 import id.steveimm.pocketpilot.model.ScreenSnapshot
 import id.steveimm.pocketpilot.platform.ActionResult
 import id.steveimm.pocketpilot.platform.AndroidPlatform
@@ -11,7 +12,6 @@ import id.steveimm.pocketpilot.platform.AppInfo
 import id.steveimm.pocketpilot.platform.DisplayInfo
 import id.steveimm.pocketpilot.platform.UIAction
 import id.steveimm.pocketpilot.protocol.ApprovalMode
-import id.steveimm.pocketpilot.protocol.LLMBackendType
 import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.protocol.SessionId
 import id.steveimm.pocketpilot.protocol.SessionLlmConfig
@@ -46,12 +46,12 @@ class ObservationFallbackTest {
         val policyEngine = PolicyEngine(appClassifier = AppClassifier(emptyMap())).apply {
             setApprovalMode(ApprovalMode.AUTO_APPROVE)
         }
-        val catalog = ModelCatalog.fromJson(
-            """{"gpt-5.2":{"display_name":"GPT-5.2","provider":"OPENAI_API","api":"response","model_id":"gpt-5.2"}}"""
+        val catalog = testModelCatalog(
+            """{"gpt-5.2":{"display_name":"GPT-5.2","model_id":"gpt-5.2"}}"""
         )
         val sessionConfig = SessionConfig(
             actionDelayMs = 0,
-            llm = SessionLlmConfig(backendType = LLMBackendType.OPENAI)
+            llm = SessionLlmConfig(baseUrl = "http://localhost:8000/v1")
         )
         val services = SessionServices(
             toolRegistry = registry,
@@ -64,7 +64,7 @@ class ObservationFallbackTest {
             config = sessionConfig,
             llmClient = mockk(relaxed = true),
             modelCatalog = catalog,
-            llmClientFactory = LLMClientFactory(catalog = catalog, authStore = null),
+            llmClientFactory = LLMClientFactory(catalog = catalog, credentialStore = null),
             traceRecorder = NoopTraceRecorder,
             recordingService = mockk(relaxed = true)
         )

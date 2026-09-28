@@ -1,5 +1,7 @@
 package id.steveimm.pocketpilot.agent
 
+import id.steveimm.pocketpilot.test.testModelCatalog
+
 import com.google.common.truth.Truth.assertThat
 import id.steveimm.pocketpilot.agent.cognition.policy.TurnToolPolicy
 import id.steveimm.pocketpilot.history.HistoryManager
@@ -9,11 +11,9 @@ import id.steveimm.pocketpilot.llm.LLMClient
 import id.steveimm.pocketpilot.llm.LLMClientFactory
 import id.steveimm.pocketpilot.llm.LLMStreamEvent
 import id.steveimm.pocketpilot.llm.LLMToolCall
-import id.steveimm.pocketpilot.llm.ModelCatalog
 import id.steveimm.pocketpilot.llm.ResponsesResult
 import id.steveimm.pocketpilot.model.ScreenSnapshot
 import id.steveimm.pocketpilot.protocol.AgentEvent
-import id.steveimm.pocketpilot.protocol.LLMBackendType
 import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.protocol.SessionId
 import id.steveimm.pocketpilot.protocol.SessionLlmConfig
@@ -124,7 +124,7 @@ class TurnPlanningPhaseRunnerTest {
     @Test
     fun `model resolution selects correct model for planning phase`() = runTest {
         val catalogJson =
-            """{"planner":{"display_name":"Planner","provider":"OPENAI_API","api":"response","model_id":"planner-actual-id"}}"""
+            """{"planner":{"display_name":"Planner","model_id":"planner-actual-id"}}"""
         val harness = PlanningHarness.build(
             catalogJson = catalogJson,
             modelName = "planner"
@@ -154,12 +154,12 @@ private class PlanningHarness(
             toolCalls: List<LLMToolCall> = emptyList(),
             textContent: String? = null,
             catalogJson: String =
-                """{"gpt-5.2":{"display_name":"GPT-5.2","provider":"OPENAI_API","api":"response","model_id":"gpt-5.2"}}""",
+                """{"gpt-5.2":{"display_name":"GPT-5.2","model_id":"gpt-5.2"}}""",
             modelName: String = "gpt-5.2"
         ): PlanningHarness {
             val events = CopyOnWriteArrayList<AgentEvent>()
             val llmClient = CapturingLLMClient(toolCalls = toolCalls, textContent = textContent)
-            val catalog = ModelCatalog.fromJson(catalogJson)
+            val catalog = testModelCatalog(catalogJson)
             val toolRegistry = ToolRegistry()
             val policyEngine = PolicyEngine(appClassifier = AppClassifier(emptyMap()))
             val services = SessionServices(
@@ -173,7 +173,7 @@ private class PlanningHarness(
                 config = SessionConfig(
                     actionDelayMs = 0,
                     mainModel = modelName,
-                    llm = SessionLlmConfig(backendType = LLMBackendType.OPENAI)
+                    llm = SessionLlmConfig(baseUrl = "http://localhost:8000/v1")
                 ),
                 llmClient = llmClient,
                 modelCatalog = catalog,

@@ -1,6 +1,10 @@
 package id.steveimm.pocketpilot.qa
 
-import id.steveimm.pocketpilot.protocol.LLMBackendType
+import id.steveimm.pocketpilot.app.AppSettingsState
+import id.steveimm.pocketpilot.app.AppSettingsStore
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.remember
+
 import id.steveimm.pocketpilot.protocol.PlatformMode
 import id.steveimm.pocketpilot.tool.AppClassifier
 import id.steveimm.pocketpilot.ui.settings.DisplaySection
@@ -8,7 +12,6 @@ import id.steveimm.pocketpilot.ui.settings.SettingsHomePage
 import id.steveimm.pocketpilot.ui.theme.PocketPilotTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsOff
@@ -103,12 +106,9 @@ private fun HomeUnderTest(
     effectivePlatformMode: PlatformMode?,
 ) {
     PocketPilotTheme {
+        val contextForSettings = LocalContext.current
         SettingsHomePage(
-            llmBackend = LLMBackendType.OPENAI,
-            selectedModel = "gpt-5.2",
-            modelOptions = listOf("gpt-5.2" to "GPT-5.2"),
-            selectedLocalModel = "LFM2.5-1.2B-Instruct",
-            modelCatalog = testModelCatalog(),
+            settings = remember { AppSettingsState(AppSettingsStore(contextForSettings)) },
             perceptionMode = "accessibility_only",
             isAccessibilityEnabled = false,
             isOverlayEnabled = false,

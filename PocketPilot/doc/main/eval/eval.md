@@ -61,10 +61,10 @@ Key fields: `suite_family`, `output_root`, `task_random_seed`,
 
 Per-task agent settings passed to `NativeAgentBridge`.
 
-Key fields: `package_name`, `activity`, `llm_backend`,
+Key fields: `package_name`, `activity`, `server_base_url`,
 `perception_mode`, `platform_mode`, `main_model`,
 `max_turns`, `auto_start`, `fresh_session`, `max_wait_seconds`,
-`excluded_tools`, `clear_memory_before_task`, `api_keys`.
+`excluded_tools`, `clear_memory_before_task`, `api_key`.
 
 The yaml-side `max_turns` key is preserved for backwards compatibility, but the
 runner now plumbs it through to `SessionConfig.evalTurnBudget` (intent extra
@@ -95,7 +95,7 @@ android_world:
   # ...
 
 bridge:
-  llm_backend: openai
+  server_base_url: http://10.0.2.2:8000/v1
   main_model: qwen3.5
   perception_mode: accessibility_only
   max_turns: 30

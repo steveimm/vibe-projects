@@ -45,7 +45,7 @@ data class AgentExecutionConfig(
     /** Parent delegate tool call id that spawned this agent. */
     val delegationCallId: String? = null,
 
-    /** Model name (key in llm_models.json) for this agent's LLM calls. Set by SessionAgentRunner based on agent role. */
+    /** Model ID on the configured server for this agent's LLM calls. Set by SessionAgentRunner based on agent role. */
     val modelName: String = "gpt-5.2",
 
     /** Eval-only safety net. */

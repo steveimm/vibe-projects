@@ -3,8 +3,8 @@ package id.steveimm.pocketpilot.llm
 import android.util.Log
 import kotlinx.coroutines.delay
 
-/** Shared retry/backoff policy for cloud LLM clients. */
-internal object CloudLlmRetry {
+/** Shared retry/backoff policy for LLM clients. */
+internal object LlmRetry {
     fun advanceBackoff(currentMs: Long): Long =
             (currentMs * LLMClient.BACKOFF_MULTIPLIER).toLong()
                     .coerceAtMost(LLMClient.MAX_BACKOFF_MS)

@@ -2,176 +2,50 @@ package id.steveimm.pocketpilot.app
 
 import android.content.Intent
 import id.steveimm.pocketpilot.protocol.ApprovalMode
-import id.steveimm.pocketpilot.protocol.LLMBackendType
 import id.steveimm.pocketpilot.protocol.PlatformMode
 
 data class MainActivityIntentPayload(
-        val apiKey: String?,
-        val openRouterApiKey: String?,
-        val openaiBaseUrl: String?,
-        val otherApiKey: String?,
-        val otherBaseUrl: String?,
-        val otherModelId: String?,
-        val backendType: LLMBackendType?,
-        val perceptionMode: String?,
-        val platformMode: PlatformMode?,
-        val mainModel: String?,
-        val approvalMode: ApprovalMode?,
-        val browserScriptEnabled: Boolean?,
-        val goalText: String?,
-        val freshSession: Boolean,
-        val debugMode: Boolean?,
-        val traceEnabled: Boolean?,
-        val traceRunId: String?,
-        val excludedTools: Set<String>,
-        val evalTurnBudget: Int?
+    val serverBaseUrl: String? = null,
+    val serverModelId: String? = null,
+    val serverApiKey: String? = null,
+    val perceptionMode: String? = null,
+    val platformMode: PlatformMode? = null,
+    val approvalMode: ApprovalMode? = null,
+    val browserScriptEnabled: Boolean? = null,
+    val goalText: String? = null,
+    val freshSession: Boolean = false,
+    val debugMode: Boolean? = null,
+    val traceEnabled: Boolean? = null,
+    val traceRunId: String? = null,
+    val excludedTools: Set<String> = emptySet(),
+    val evalTurnBudget: Int? = null,
 ) {
     companion object {
-        fun from(intent: Intent): MainActivityIntentPayload {
-            val apiKey =
-                    intent.getStringExtra(MainActivity.EXTRA_API_KEY)?.takeIf { it.isNotBlank() }
+        fun from(intent: Intent): MainActivityIntentPayload = MainActivityIntentPayload(
+            serverBaseUrl = intent.getStringExtra(MainActivity.EXTRA_SERVER_BASE_URL),
+            serverModelId = intent.getStringExtra(MainActivity.EXTRA_SERVER_MODEL_ID),
+            serverApiKey = intent.getStringExtra(MainActivity.EXTRA_SERVER_API_KEY),
+            perceptionMode = normalizePerceptionMode(intent.getStringExtra(MainActivity.EXTRA_PERCEPTION_MODE)),
+            platformMode = enumValue<PlatformMode>(intent.getStringExtra(MainActivity.EXTRA_PLATFORM_MODE)),
+            approvalMode = enumValue<ApprovalMode>(intent.getStringExtra(MainActivity.EXTRA_APPROVAL_MODE)),
+            browserScriptEnabled = intent.optionalBoolean(MainActivity.EXTRA_BROWSER_SCRIPT_ENABLED),
+            goalText = intent.getStringExtra(MainActivity.EXTRA_GOAL)?.takeIf { it.isNotBlank() },
+            freshSession = intent.getBooleanExtra(MainActivity.EXTRA_FRESH_SESSION, false),
+            debugMode = intent.optionalBoolean(MainActivity.EXTRA_DEBUG_MODE),
+            traceEnabled = intent.optionalBoolean(MainActivity.EXTRA_TRACE_ENABLED),
+            traceRunId = intent.getStringExtra(MainActivity.EXTRA_TRACE_RUN_ID)?.takeIf { it.isNotBlank() },
+            excludedTools = intent.getStringExtra(MainActivity.EXTRA_EXCLUDED_TOOLS)?.split(",")
+                ?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet().orEmpty(),
+            evalTurnBudget = intent.getIntExtra(MainActivity.EXTRA_EVAL_TURN_BUDGET, 0).takeIf { it > 0 },
+        )
 
-            val openRouterApiKey =
-                    intent.getStringExtra(MainActivity.EXTRA_OPENROUTER_API_KEY)?.takeIf {
-                        it.isNotBlank()
-                    }
-
-            val openaiBaseUrl =
-                    intent.getStringExtra(MainActivity.EXTRA_OPENAI_BASE_URL)?.takeIf {
-                        it.isNotBlank()
-                    }
-
-            val otherApiKey =
-                    intent.getStringExtra(MainActivity.EXTRA_OTHER_API_KEY)?.takeIf {
-                        it.isNotBlank()
-                    }
-
-            val otherBaseUrl =
-                    intent.getStringExtra(MainActivity.EXTRA_OTHER_BASE_URL)?.takeIf {
-                        it.isNotBlank()
-                    }
-
-            val otherModelId =
-                    intent.getStringExtra(MainActivity.EXTRA_OTHER_MODEL_ID)?.takeIf {
-                        it.isNotBlank()
-                    }
-
-            val backendType =
-                    intent.getStringExtra(MainActivity.EXTRA_LLM_BACKEND)?.lowercase()?.let {
-                            backend ->
-                        when (backend) {
-                            "local" -> LLMBackendType.LOCAL
-                            "openai" -> LLMBackendType.OPENAI
-                            else -> null
-                        }
-                    }
-
-            val goalText =
-                    intent.getStringExtra(MainActivity.EXTRA_GOAL)?.takeIf { it.isNotBlank() }
-
-            val perceptionMode =
-                    normalizePerceptionMode(
-                            intent.getStringExtra(MainActivity.EXTRA_PERCEPTION_MODE)
-                    )
-
-            val platformMode =
-                    intent.getStringExtra(MainActivity.EXTRA_PLATFORM_MODE)?.let { raw ->
-                        try {
-                            PlatformMode.valueOf(raw.uppercase())
-                        } catch (_: Exception) {
-                            null
-                        }
-                    }
-
-            val mainModel =
-                    intent.getStringExtra(MainActivity.EXTRA_MAIN_MODEL)?.takeIf { it.isNotBlank() }
-
-            val approvalMode =
-                    intent.getStringExtra(MainActivity.EXTRA_APPROVAL_MODE)?.let { raw ->
-                        try {
-                            ApprovalMode.valueOf(raw.uppercase())
-                        } catch (_: Exception) {
-                            null
-                        }
-                    }
-
-            val browserScriptEnabled =
-                    if (intent.hasExtra(MainActivity.EXTRA_BROWSER_SCRIPT_ENABLED)) {
-                        intent.getBooleanExtra(MainActivity.EXTRA_BROWSER_SCRIPT_ENABLED, false)
-                    } else {
-                        null
-                    }
-
-            val debugMode =
-                    if (intent.hasExtra(MainActivity.EXTRA_DEBUG_MODE)) {
-                        intent.getBooleanExtra(MainActivity.EXTRA_DEBUG_MODE, false)
-                    } else {
-                        null
-                    }
-
-            val traceEnabled =
-                    if (intent.hasExtra(MainActivity.EXTRA_TRACE_ENABLED)) {
-                        intent.getBooleanExtra(MainActivity.EXTRA_TRACE_ENABLED, false)
-                    } else {
-                        null
-                    }
-
-            val traceRunId =
-                    intent.getStringExtra(MainActivity.EXTRA_TRACE_RUN_ID)?.takeIf {
-                        it.isNotBlank()
-                    }
-
-            val excludedTools =
-                    intent.getStringExtra(MainActivity.EXTRA_EXCLUDED_TOOLS)
-                            ?.split(",")
-                            ?.map { it.trim() }
-                            ?.filter { it.isNotEmpty() }
-                            ?.toSet()
-                            ?: emptySet()
-
-            val evalTurnBudget =
-                    if (intent.hasExtra(MainActivity.EXTRA_EVAL_TURN_BUDGET)) {
-                        intent.getIntExtra(MainActivity.EXTRA_EVAL_TURN_BUDGET, 0)
-                                .takeIf { it > 0 }
-                    } else {
-                        null
-                    }
-
-            return MainActivityIntentPayload(
-                    apiKey = apiKey,
-                    openRouterApiKey = openRouterApiKey,
-                    openaiBaseUrl = openaiBaseUrl,
-                    otherApiKey = otherApiKey,
-                    otherBaseUrl = otherBaseUrl,
-                    otherModelId = otherModelId,
-                    backendType = backendType,
-                    perceptionMode = perceptionMode,
-                    platformMode = platformMode,
-                    mainModel = mainModel,
-                    approvalMode = approvalMode,
-                    browserScriptEnabled = browserScriptEnabled,
-                    goalText = goalText,
-                    freshSession = intent.getBooleanExtra(MainActivity.EXTRA_FRESH_SESSION, false),
-                    debugMode = debugMode,
-                    traceEnabled = traceEnabled,
-                    traceRunId = traceRunId,
-                    excludedTools = excludedTools,
-                    evalTurnBudget = evalTurnBudget
-            )
-        }
-
-        private fun normalizePerceptionMode(raw: String?): String? {
-            return when (raw?.trim()?.lowercase()) {
-                "accessibility_only",
-                "accessibility-only",
-                "accessibility",
-                "a11y_only",
-                "a11y-only",
-                "a11y" -> "accessibility_only"
-                "hybrid" -> "hybrid"
-                "screenshot_only", "screenshot-only", "screenshot" -> "screenshot_only"
-                else -> null
-            }
+        private fun Intent.optionalBoolean(key: String): Boolean? = if (hasExtra(key)) getBooleanExtra(key, false) else null
+        private inline fun <reified T : Enum<T>> enumValue(raw: String?): T? = enumValues<T>().firstOrNull { it.name == raw?.uppercase() }
+        private fun normalizePerceptionMode(raw: String?): String? = when (raw?.trim()?.lowercase()) {
+            "accessibility_only", "accessibility-only", "accessibility", "a11y_only", "a11y-only", "a11y" -> "accessibility_only"
+            "hybrid" -> "hybrid"
+            "screenshot_only", "screenshot-only", "screenshot" -> "screenshot_only"
+            else -> null
         }
     }
 }

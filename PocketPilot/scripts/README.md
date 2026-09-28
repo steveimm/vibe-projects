@@ -12,7 +12,6 @@ After code changes:
 
 Run agent:
     ./scripts/debug-run.sh "goal"                    # Run with OpenAI (default)
-    ./scripts/debug-run.sh --local "goal"            # Run with local model
 
 Perception mode:
     ./scripts/debug-run.sh --accessibility-only "goal"
@@ -36,7 +35,6 @@ Run this after code changes to deploy a new version.
 
 ```bash
 ./scripts/setup.sh                    # For OpenAI backend (requires API key)
-LLM_BACKEND=local ./scripts/setup.sh  # For local LLM backend (no API key needed)
 ```
 
 What it does:
@@ -47,7 +45,6 @@ What it does:
 - Launch app
 
 Environment variables:
-- `LLM_BACKEND`: `openai` (default) or `local` - skips API key check when set to `local`
 
 ### `debug-run.sh` - Run Agent with Debug Capture
 
@@ -59,7 +56,6 @@ Run the agent with full debug output: screenshots at each turn, trace artifacts,
 ./scripts/debug-run.sh "Open Chrome"
 
 # Local LLM backend
-./scripts/debug-run.sh --local "Open Chrome"
 
 # Perception mode
 ./scripts/debug-run.sh --accessibility-only "Open Chrome"  # A11y only
@@ -68,15 +64,13 @@ Run the agent with full debug output: screenshots at each turn, trace artifacts,
 ```
 
 Options:
-- `--local`, `-l`: Use local LLM backend instead of OpenAI
 - `--accessibility-only`, `--a11y-only`: Force accessibility-only perception
 - `--screenshot-only`: Force screenshot-only perception
 - `--hybrid`: Force hybrid perception
 - `--perception <mode>`: Set perception mode explicitly (`accessibility_only`, `screenshot_only`, `hybrid`)
-- `--main-model <name>`: Override main model (key in `llm_models.json`)
+- `--main-model <name>`: Override main model ID on the configured server
 
 Environment variables:
-- `LLM_BACKEND`: `openai` (default) or `local`
 - `PERCEPTION_MODE`: `accessibility_only` (default), `screenshot_only`, or `hybrid`
 - `MAIN_MODEL`: same as the flag above
 - `DEBUG_MAX_TURNS`: Max turn-start events to capture (default: 80)
@@ -153,23 +147,15 @@ What it does:
 
 ## Configuration
 
-### API Key (OpenAI Backend)
+### Model server
 
-Create `.env` file in project root:
-
-```
-OPENAI_API_KEY=sk-proj-your-key-here
-```
-
-### LLM Backend Selection
-
-Add to `.env` to persist backend selection:
-
-```
-LLM_BACKEND=local    # or "openai" (default)
+```bash
+POCKETPILOT_SERVER_URL=http://192.168.1.10:8000/v1
+POCKETPILOT_MODEL_ID=my-model
+# POCKETPILOT_API_KEY is optional.
 ```
 
-Or use inline: `LLM_BACKEND=local ./scripts/debug-run.sh "goal"`
+The setup script installs the debug build for test automation without requiring credentials. Configure the server in the app, or pass these environment values to `debug-run.sh`. Evaluation runs require an explicit server URL and model ID, with no cloud defaults.
 
 ## Troubleshooting
 

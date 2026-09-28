@@ -134,9 +134,7 @@ maybeCompact() runs at top of each agent turn:
 | `keepRecentTokens` (forced) | 10_000 | Reactive path uses half — more aggressive |
 | `maxSummaryTokens` | 5_000 | Per-summary call budget |
 
-`model.contextWindow` comes from `ModelEntry.contextWindow`, populated from
-`llm_models.json` with provider-mode-aware fallback (8_000 for `AuthMode.Local`,
-128_000 elsewhere).
+`model.contextWindow` comes from endpoint-scoped discovery metadata. Manually configured models without metadata use the application default of 128,000 tokens.
 
 ### `findSafeCutPoint(items, keepTokens)`
 

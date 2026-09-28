@@ -42,8 +42,7 @@ not by a turn count.
 
 ```kotlin
 data class SessionLlmConfig(
-    val backendType: LLMBackendType = LLMBackendType.OPENAI,
-    val localConfig: LocalLLMConfig? = null
+    val baseUrl: String = ""
 )
 ```
 
@@ -54,12 +53,6 @@ data class SessionLlmConfig(
 | `ACCESSIBILITY` | `AccessibilityPlatform` | Standard mode using Android Accessibility APIs |
 | `VIRTUAL_DISPLAY` | `VirtualDisplayPlatform` | Runs apps on virtual display via Shizuku |
 
-## LLMBackendType
-
-| Backend | Description |
-|---------|-------------|
-| `OPENAI` | Cloud API (OpenAI, OpenRouter, Novita via model catalog) |
-| `LOCAL` | On-device LLM via Leap SDK |
 
 ## ApprovalMode
 

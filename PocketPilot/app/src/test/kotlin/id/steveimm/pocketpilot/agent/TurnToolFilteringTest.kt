@@ -62,6 +62,7 @@ class TurnToolFilteringTest {
 
         val result =
                 turn.run(
+                        model = "test-model",
                         systemPrompt = "planner",
                         inputItems = minimalInputItems
                 )
@@ -104,6 +105,7 @@ class TurnToolFilteringTest {
 
         val result =
                 turn.run(
+                        model = "test-model",
                         systemPrompt = "planner",
                         inputItems = minimalInputItems
                 )
@@ -134,6 +136,7 @@ class TurnToolFilteringTest {
 
         val result =
                 turn.run(
+                        model = "test-model",
                         systemPrompt = "planner",
                         inputItems = minimalInputItems
                 )
@@ -160,6 +163,7 @@ class TurnToolFilteringTest {
 
         val result =
                 turn.run(
+                        model = "test-model",
                         systemPrompt = "standalone",
                         inputItems = minimalInputItems
                 )
@@ -195,6 +199,7 @@ class TurnToolFilteringTest {
 
         val result =
                 turn.run(
+                        model = "test-model",
                         systemPrompt = "standalone",
                         inputItems = minimalInputItems
                 )
@@ -224,6 +229,7 @@ class TurnToolFilteringTest {
 
         val result =
                 turn.run(
+                        model = "test-model",
                         systemPrompt = "standalone",
                         inputItems = minimalInputItems
                 )
@@ -249,6 +255,7 @@ class TurnToolFilteringTest {
 
         val result =
                 turn.run(
+                        model = "test-model",
                         systemPrompt = "standalone",
                         inputItems = minimalInputItems
                 )
@@ -294,6 +301,7 @@ class TurnToolFilteringTest {
 
         val events =
                 turn.runStreaming(
+                                model = "test-model",
                                 systemPrompt = "planner",
                                 inputItems = minimalInputItems
                         )

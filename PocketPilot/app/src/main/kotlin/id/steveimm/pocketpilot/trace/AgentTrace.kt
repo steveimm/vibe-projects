@@ -40,7 +40,7 @@ internal class AgentTrace(
                     config.parentSessionId?.let { put("parent_session_id", JsonPrimitive(it.value)) }
                     config.delegationCallId?.let { put("delegation_call_id", JsonPrimitive(it)) }
                     put("ui_settle_delay_ms", JsonPrimitive(config.uiSettleDelayMs))
-                    put("llm_backend", JsonPrimitive(services.config.llm.backendType.name))
+                    put("llm_backend", JsonPrimitive("chat_completions"))
                     put("model", JsonPrimitive(config.modelName))
                     put("main_model", JsonPrimitive(services.config.mainModel))
                     put("approval_mode", JsonPrimitive(services.config.approvalMode.name))
