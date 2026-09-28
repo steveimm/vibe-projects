@@ -76,7 +76,8 @@ From `ApiKey`, **Use a custom server** marks `apiKey` and `demo` as `Skipped`,
 completes onboarding, and opens **LLM & Authentication → API Key → Other**.
 It does not validate cloud credentials or run a demo. The action is disabled
 during authentication and after authentication succeeds. Custom servers use
-the existing base URL, model ID, and API key settings; release builds require HTTPS.
+the existing base URL, model ID, and API key settings. HTTP and HTTPS endpoints
+are supported. HTTP sends requests and API keys without transport encryption.
 
 ## Diagram
 

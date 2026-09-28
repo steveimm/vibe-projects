@@ -10,7 +10,7 @@ import ai.closepaw.llm.OtherBaseUrlValidator
  *
  * - `OPENROUTER` needs a non-blank API key (the URL is seed-fixed).
  * - `OTHER` needs a non-blank API key AND a base URL that passes
- *   [OtherBaseUrlValidator] (validated against debug-vs-release policy).
+ *   [OtherBaseUrlValidator].
  */
 object RefreshButtonGate {
 
@@ -23,7 +23,6 @@ object RefreshButtonGate {
         provider: LLMProvider,
         apiKey: String,
         otherBaseUrl: String,
-        allowDebugHttp: Boolean,
     ): State {
         return when (provider) {
             LLMProvider.OPENROUTER -> {
@@ -33,7 +32,7 @@ object RefreshButtonGate {
             LLMProvider.OTHER -> {
                 if (apiKey.isBlank()) State.Disabled("Enter your API key first")
                 else {
-                    val urlResult = OtherBaseUrlValidator.validate(otherBaseUrl, allowDebugHttp)
+                    val urlResult = OtherBaseUrlValidator.validate(otherBaseUrl)
                     if (urlResult.isFailure) State.Disabled(
                         urlResult.exceptionOrNull()?.message ?: "Base URL is invalid"
                     ) else State.Enabled

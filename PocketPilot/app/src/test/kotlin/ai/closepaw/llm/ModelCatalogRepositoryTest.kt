@@ -95,7 +95,7 @@ class ModelCatalogRepositoryTest {
 
     @Test
     fun `synthesizes other-custom when both otherBaseUrl + otherModelId are non-blank`() {
-        val store = fakeSettingsStore(otherBaseUrl = "https://api.example.com/v1", otherModelId = "vendor/model")
+        val store = fakeSettingsStore(otherBaseUrl = "http://192.168.1.10:11434/v1", otherModelId = "vendor/model")
         val repo = ModelCatalogRepository(
             context = contextReturningAsset(seedBytes()),
             settingsStore = store,
@@ -107,7 +107,7 @@ class ModelCatalogRepositoryTest {
         assertThat(entry!!.provider).isEqualTo(LLMProvider.OTHER)
         assertThat(entry.api).isEqualTo(ApiType.CHAT)
         assertThat(entry.modelId).isEqualTo("vendor/model")
-        assertThat(entry.baseUrl).isEqualTo("https://api.example.com/v1")
+        assertThat(entry.baseUrl).isEqualTo("http://192.168.1.10:11434/v1")
         assertThat(entry.supportsVision).isFalse()
         assertThat(entry.displayName).isEqualTo("vendor/model")
     }

@@ -11,11 +11,11 @@ Interpretation used for this draft: ClosePaw has no first-party backend in the a
   - The app stores credentials and local data on device, but the audited code does not show a ClosePaw-operated server receiving user data. LLM routing is to OpenAI API, OpenAI Codex/ChatGPT, OpenRouter, user-configured "Other", or local LFM (`app/src/main/kotlin/ai/closepaw/llm/LLMProvider.kt:25`, `app/src/main/kotlin/ai/closepaw/llm/LLMProvider.kt:32`, `app/src/main/kotlin/ai/closepaw/llm/LLMProvider.kt:39`, `app/src/main/kotlin/ai/closepaw/llm/LLMProvider.kt:46`, `app/src/main/kotlin/ai/closepaw/llm/LLMProvider.kt:59`).
   - User API keys/OAuth tokens are stored in encrypted preferences, not in plaintext prefs. Evidence: `AuthStore` uses `EncryptedSharedPreferences` with `MasterKey` AES-GCM/SIV schemes (`app/src/main/kotlin/ai/closepaw/auth/AuthStore.kt:45`, `app/src/main/kotlin/ai/closepaw/auth/AuthStore.kt:49`, `app/src/main/kotlin/ai/closepaw/auth/AuthStore.kt:53`, `app/src/main/kotlin/ai/closepaw/auth/AuthStore.kt:54`).
 
-- [x] **All data is encrypted in transit? -> Yes for Play release cloud traffic.**
+- [x] **All data is encrypted in transit? -> No when a custom HTTP server is used.**
   - OpenAI OAuth/token URLs and Codex runtime URL are HTTPS (`app/src/main/kotlin/ai/closepaw/auth/OpenAIOAuth.kt:19`, `app/src/main/kotlin/ai/closepaw/auth/OpenAIOAuth.kt:20`, `app/src/main/kotlin/ai/closepaw/llm/CodexResponseClient.kt:37`).
   - OpenRouter default base URL is HTTPS (`app/src/main/kotlin/ai/closepaw/llm/LLMProvider.kt:43`).
-  - Release builds reject non-HTTPS base URL overrides and disable insecure TLS hooks (`app/src/release/kotlin/ai/closepaw/llm/InsecureSslConfig.kt:7`, `app/src/release/kotlin/ai/closepaw/llm/InsecureSslConfig.kt:18`).
-  - Network security blocks cleartext by default and only permits cleartext to `127.0.0.1`; OAuth also uses a localhost redirect URI for the local callback only (`app/src/main/res/xml/network_security_config.xml:3`, `app/src/main/res/xml/network_security_config.xml:6`, `app/src/main/kotlin/ai/closepaw/auth/OpenAIOAuth.kt:21`).
+  - Release cloud clients require HTTPS and disable insecure TLS hooks. The `OTHER` provider supports user-configured HTTP endpoints, which transmit prompts, screen content, and API keys without encryption (`app/src/main/kotlin/ai/closepaw/llm/LLMClientFactory.kt`, `app/src/main/kotlin/ai/closepaw/llm/ChatCompletionClient.kt`, `app/src/release/kotlin/ai/closepaw/llm/InsecureSslConfig.kt`).
+  - Network security permits cleartext for custom servers and loopback, while OpenAI, ChatGPT, and OpenRouter domains require HTTPS (`app/src/main/res/xml/network_security_config.xml`).
   - Debug/eval builds can disable certificate validation when `INSECURE_SSL_FOR_EVAL` is enabled; do not describe that as a Play release behavior (`app/src/debug/kotlin/ai/closepaw/llm/InsecureSslConfig.kt:11`, `app/src/debug/kotlin/ai/closepaw/llm/InsecureSslConfig.kt:18`, `app/build.gradle.kts:48`, `app/build.gradle.kts:59`).
 
 - [x] **Users can request data deletion? -> N/A for server-side ClosePaw data; local deletion exists.**
@@ -78,7 +78,7 @@ Expected rating: **Everyone 3+ / PEGI 3** if honestly answering UGC=No. If Googl
 
 ## Privacy & Security Practices declarations
 
-- [x] **Independent security review? -> No.** No independent review artifact or declaration was found in the audited Play Store docs or source files. The code does implement credential encryption and release HTTPS enforcement (`app/src/main/kotlin/ai/closepaw/auth/AuthStore.kt:45`, `app/src/release/kotlin/ai/closepaw/llm/InsecureSslConfig.kt:18`), but that is not an independent security review.
+- [x] **Independent security review? -> No.** No independent review artifact or declaration was found in the audited Play Store docs or source files. The code implements credential encryption and HTTPS enforcement for cloud providers, with HTTP allowed for custom servers (`app/src/main/kotlin/ai/closepaw/auth/AuthStore.kt`, `app/src/main/kotlin/ai/closepaw/llm/ChatCompletionClient.kt`, `app/src/release/kotlin/ai/closepaw/llm/InsecureSslConfig.kt`). This is not an independent security review.
 - [x] **Follows Families Policy? -> No.** The target audience recommendation is 18+ and the app is not positioned for children (`doc/release/play-store/full-description.txt:34`, `doc/release/play-store/full-description.txt:39`).
 - [x] **Account deletion -> N/A.** No ClosePaw account is created in the audited code; provider credentials are local and can be cleared from settings (`app/src/main/kotlin/ai/closepaw/ui/settings/LlmAuthSettingsPage.kt:213`, `app/src/main/kotlin/ai/closepaw/ui/settings/LlmAuthSettingsPage.kt:298`, `app/src/main/kotlin/ai/closepaw/auth/AuthStore.kt:76`).
 

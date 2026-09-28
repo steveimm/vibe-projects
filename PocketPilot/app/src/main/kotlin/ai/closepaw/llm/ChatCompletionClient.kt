@@ -28,7 +28,8 @@ import java.util.concurrent.atomic.AtomicReference
  */
 class ChatCompletionClient(
     apiKey: String,
-    baseUrl: String? = null
+    baseUrl: String? = null,
+    allowHttp: Boolean = false,
 ) : LLMClient() {
 
     companion object {
@@ -36,7 +37,11 @@ class ChatCompletionClient(
     }
 
     init {
-        InsecureSslConfig.validateBaseUrl(baseUrl)
+        if (allowHttp) {
+            OtherBaseUrlValidator.validate(requireNotNull(baseUrl) { "A custom server URL is required" }).getOrThrow()
+        } else {
+            InsecureSslConfig.validateBaseUrl(baseUrl)
+        }
     }
 
     private val client: OpenAIClient = OpenAIOkHttpClient.builder()

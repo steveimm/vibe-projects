@@ -14,6 +14,20 @@ import org.junit.Test
  */
 class LlmAuthOtherAutoFlipTest {
 
+    @Test
+    fun `selects HTTP custom model when catalog matches configured server`() {
+        val baseUrl = "http://192.168.1.10:11434/v1"
+        val flip = shouldAutoFlipToOtherCustom(
+            selectedProvider = LLMProvider.OTHER,
+            apiKeyText = "local",
+            otherBaseUrlText = "$baseUrl/",
+            otherModelIdText = "local-model",
+            modelCatalog = catalogWith(baseUrl, "local-model"),
+            selectedModel = "glm-5",
+        )
+        assertThat(flip).isTrue()
+    }
+
     private fun catalogWith(baseUrl: String, modelId: String): ModelCatalog =
         ModelCatalog.fromJson(
             """{ "other-custom": {"display_name":"Custom","provider":"OTHER","api":"chat","model_id":"$modelId","base_url":"$baseUrl"} }"""

@@ -46,7 +46,6 @@ import ai.closepaw.protocol.LLMBackendType
 import ai.closepaw.ui.theme.Fleuron
 import ai.closepaw.ui.theme.PageMastheadDrillDown
 import ai.closepaw.ui.theme.closePaw
-import ai.closepaw.BuildConfig
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -458,7 +457,6 @@ private fun ApiKeyTabContent(
                 apiKey = apiKeyText,
                 otherBaseUrl = otherBaseUrlText,
                 discoveryState = discoveryState,
-                allowDebugHttp = BuildConfig.DEBUG,
                 onRefresh = {
                     // Pass the LIVE typed URL to the repo, not the persisted
                     // value: the 300ms persist debounce can lag the typed
@@ -612,6 +610,9 @@ private fun canonicalizeMainModel(
 @Composable
 private fun OtherBaseUrlField(value: String, onValueChange: (String) -> Unit) {
     val error = OtherBaseUrlValidator.validate(value).exceptionOrNull()?.message
+    val supportingMessage = error ?: if (value.trim().startsWith("http://", ignoreCase = true)) {
+        "HTTP sends requests and API keys without encryption. Use a trusted network."
+    } else null
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -625,7 +626,7 @@ private fun OtherBaseUrlField(value: String, onValueChange: (String) -> Unit) {
         },
         singleLine = true,
         isError = error != null,
-        supportingText = error?.let { message ->
+        supportingText = supportingMessage?.let { message ->
             { Text(message) }
         },
         shape = MaterialTheme.shapes.small,

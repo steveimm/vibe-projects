@@ -7,7 +7,7 @@ import javax.net.ssl.X509TrustManager
  * Release no-op stub for InsecureSslConfig.
  *
  * Returns null for all SSL properties — no insecure TLS is possible in
- * release builds. Enforces HTTPS for base URL overrides.
+ * release builds. Enforces HTTPS for cloud provider base URL overrides.
  */
 object InsecureSslConfig {
 

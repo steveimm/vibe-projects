@@ -117,7 +117,7 @@ class LLMClientFactory(
                 if (otherBaseUrl.isNullOrBlank()) {
                     throw MissingCredential(LLMProvider.OTHER)
                 }
-                ChatCompletionClient(store.requireApiKey(LLMProvider.OTHER), otherBaseUrl)
+                ChatCompletionClient(store.requireApiKey(LLMProvider.OTHER), otherBaseUrl, allowHttp = true)
             }
             LLMProvider.LOCAL_LFM ->
                     throw IllegalStateException(

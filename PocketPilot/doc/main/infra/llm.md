@@ -135,7 +135,9 @@ Fallback: if `llm_models.json` missing/malformed, uses built-in catalog (`glm-5`
 
 ## Supporting Files
 
-**InsecureSslConfig** (`debug/llm/InsecureSslConfig.kt` and `release/llm/InsecureSslConfig.kt`): SSL bypass for debug builds when emulator clock is frozen (AndroidWorld eval). Debug source set has a trust-all manager + no-op certificate validation. Release source set has a no-op stub (null trust manager + null factory) plus `validateBaseUrl()` that rejects any non-HTTPS base URL override.
+**InsecureSslConfig** (`debug/llm/InsecureSslConfig.kt` and `release/llm/InsecureSslConfig.kt`): SSL bypass for debug builds when emulator clock is frozen (AndroidWorld eval). Debug source set has a trust-all manager + no-op certificate validation. Release source set has a no-op stub (null trust manager + null factory) plus `validateBaseUrl()` that requires HTTPS for cloud provider overrides. The `OTHER` provider explicitly enables HTTP in `ChatCompletionClient` and validates its endpoint with `OtherBaseUrlValidator`. HTTPS certificate validation remains enabled in release builds.
+
+Custom servers accept URLs such as `http://192.168.1.10:11434/v1`. HTTP transmits requests and API keys without encryption, as shown below the URL field. Android permits cleartext for user-configured server addresses, while OpenAI, ChatGPT, and OpenRouter domains require HTTPS.
 
 **LlmLogger**: Debug logging for LLM I/O. **LeapFunctionInterop**: OpenAI ↔ Leap tool schema adapters. **ChatCompletionInterop.extractStringContent**: Typed text extraction from `EasyInputMessage.Content`. **ToolParameterExtractor**: Shared tool parameter extraction from FunctionTool schema. **LocalLlmSemantics**: Declares Leap backend limitations (role dropping, random IDs, no correlation, content flattening).
 

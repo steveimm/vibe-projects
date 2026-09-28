@@ -1,6 +1,5 @@
 package ai.closepaw.termux
 
-import ai.closepaw.BuildConfig
 import android.security.NetworkSecurityPolicy
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.net.InetAddress
@@ -27,22 +26,20 @@ class TermuxLocalhostCleartextTest {
             "network security config must permit 127.0.0.1 for the Termux bridge",
             networkPolicy.isCleartextTrafficPermitted(LOOPBACK_HOST),
         )
-        assertFalse(
-            "network security config must keep non-loopback cleartext blocked by base-config",
+        assertTrue(
+            "network security config must permit user-configured HTTP servers",
             networkPolicy.isCleartextTrafficPermitted(NON_LOOPBACK_HOST),
         )
-
-        // Release permits only 127.0.0.1. Instrumentation runs against the debug
-        // variant here, so the example.com assertion above covers base-config=false
-        // while these checks document the debug-only developer-tooling exceptions.
-        if (BuildConfig.DEBUG) {
+        for (host in listOf(EMULATOR_HOST, LOCALHOST_HOST, "192.168.1.10")) {
             assertTrue(
-                "debug network security config must permit emulator-host cleartext",
-                networkPolicy.isCleartextTrafficPermitted(EMULATOR_HOST),
+                "network security config must permit HTTP for $host",
+                networkPolicy.isCleartextTrafficPermitted(host),
             )
-            assertTrue(
-                "debug network security config must permit localhost cleartext",
-                networkPolicy.isCleartextTrafficPermitted(LOCALHOST_HOST),
+        }
+        for (host in listOf("api.openai.com", "auth.openai.com", "chatgpt.com", "openrouter.ai")) {
+            assertFalse(
+                "network security config must require HTTPS for $host",
+                networkPolicy.isCleartextTrafficPermitted(host),
             )
         }
 

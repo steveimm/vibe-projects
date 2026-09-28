@@ -239,14 +239,12 @@ internal fun RefreshModelsRow(
     apiKey: String,
     otherBaseUrl: String,
     discoveryState: ModelCatalogRepository.DiscoveryState,
-    allowDebugHttp: Boolean,
     onRefresh: () -> Unit,
 ) {
     val gate = RefreshButtonGate.evaluate(
         provider = provider,
         apiKey = apiKey,
         otherBaseUrl = otherBaseUrl,
-        allowDebugHttp = allowDebugHttp,
     )
     val refreshing = provider in discoveryState.refreshing
     val enabled = gate is RefreshButtonGate.State.Enabled && !refreshing
