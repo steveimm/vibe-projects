@@ -403,17 +403,8 @@ class ChromeCdpDialogTrackingTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `callback receives explicit sessionId even when activeSessionId has drifted`() = runTest {
-        // Codex HIGH: the OLD callback took no arguments and the production wiring then read
-        // `activeSessionId` from the client to bind Page.enable. Two interleaved cdp(...,
-        // {targetId}) calls would let the second attach overwrite `activeSessionId` while the
-        // first call's callback is suspended inside its enable batch — so the first call's
-        // remaining enables would land on the SECOND session and the first session would
-        // silently lose dialog tracking.
-        //
-        // The new callback receives `(sessionId, targetId)` captured at the activation site so
-        // a follow-on attach cannot redirect the bound enable. This test exercises the race by
-        // gating the first activation until a second attach has changed `activeSessionId`,
-        // then asserts the callback still saw the original explicit sessionId.
+        // Codex HIGH: the OLD callback took no arguments and the production wiring then read `activeSessionId` from the client to bind
+        // Page.enable.
         val pendingAttachA = CompletableDeferred<Int>()
         val pendingAttachB = CompletableDeferred<Int>()
         val conn = FakeCdpConnection()
@@ -433,9 +424,8 @@ class ChromeCdpDialogTrackingTest {
         client.connect("ws://test")
 
         val gateA = CompletableDeferred<Unit>()
-        // Capture both the explicit arg AND the global activeSessionId observed inside the
-        // callback so the assertion can prove the race actually occurred (otherwise the test
-        // would silently degrade to the non-racy single-coroutine case and pass trivially).
+        // Capture both the explicit arg AND the global activeSessionId observed inside the callback so the assertion can prove the race
+        // actually occurred (otherwise the test would silently degrade to the non-racy single-coroutine case and pass trivially).
         val observed = java.util.Collections.synchronizedList(
             mutableListOf<Triple<String?, String?, String?>>(),  // explicit sid, explicit tid, active sid at observe-time
         )
@@ -455,9 +445,6 @@ class ChromeCdpDialogTrackingTest {
         val idB = pendingAttachB.await()
 
         // Resolve A first → dispatch T1 so it enters the callback and BLOCKS on gateA.
-        // Without runCurrent here, both responses would be injected and gateA completed
-        // before any continuation ran, and T1 would breeze through the callback observing
-        // its own activeSessionId — the race window we are exercising would never open.
         conn.injectResponse(idA, buildJsonObject { put("sessionId", "session-A") })
         runCurrent()
 
@@ -480,20 +467,16 @@ class ChromeCdpDialogTrackingTest {
         assertThat(a.first).isEqualTo("session-A")
         assertThat(b.first).isEqualTo("session-B")
 
-        // Sanity: the race actually happened — T1's callback observed activeSessionId =
-        // session-B at the moment it ran. If this assertion fails, the test no longer
-        // proves what it claims and needs new sequencing.
+        // Sanity: the race actually happened — T1's callback observed activeSessionId = session-B at the moment it ran. If this assertion
+        // fails, the test no longer proves what it claims and needs new sequencing.
         assertThat(a.third).isEqualTo("session-B")
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `callback's bound send lands on explicit session not on globally active session`() = runTest {
-        // The complement to the activation-args test: when production wiring uses the
-        // explicit sessionId in CdpOptions, the resulting Page.enable on the wire must
-        // carry that session — not whatever activeSessionId happens to be at dispatch
-        // time. Without this, the production fix would still miss its target even if the
-        // callback args were correct.
+        // The complement to the activation-args test: when production wiring uses the explicit sessionId in CdpOptions, the resulting
+        // Page.enable on the wire must carry that session — not whatever activeSessionId happens to be at dispatch time.
         val pendingAttachA = CompletableDeferred<Int>()
         val pendingAttachB = CompletableDeferred<Int>()
         val conn = FakeCdpConnection()

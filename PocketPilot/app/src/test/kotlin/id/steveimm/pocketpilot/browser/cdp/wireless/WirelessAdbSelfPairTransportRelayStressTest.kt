@@ -26,19 +26,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-/**
- * Stress / leak coverage for the in-process WebSocket relay run by
- * [WirelessAdbSelfPairTransport]. The wireless-self-pair path on real devices opens one TCP
- * relay [java.net.ServerSocket], then proxies every accepted client through a fresh
- * [AdbStream]. A leak in the accept loop or per-connection cleanup would burn one fd per
- * `browser_script` round-trip and eventually hit `EMFILE` ("Too many open files") — a class of
- * failure that only surfaces after dozens of calls and that the existing per-call tests cannot
- * catch.
- *
- * These tests cover the control-plane invariants of the relay (idempotency, single-flight
- * bootstrap, per-connection thread cleanup). End-to-end fd-count assertions on the wire
- * protocol require a real device and are exercised by `scripts/ws-relay-stress.sh`.
- */
+/** Stress / leak coverage for the in-process WebSocket relay run by [WirelessAdbSelfPairTransport]. */
 class WirelessAdbSelfPairTransportRelayStressTest {
 
     private lateinit var transport: WirelessAdbSelfPairTransport
@@ -53,9 +41,8 @@ class WirelessAdbSelfPairTransportRelayStressTest {
         wireClient = mockk(relaxed = true)
         keyStore = mockk(relaxed = true)
 
-        // Bootstrap arrangement: pretend wireless ADB is up and our pubkey is already in
-        // adb_keys. This skips real Shizuku binder + TLS PSK pairing — both of which would
-        // need a real device.
+        // Bootstrap arrangement: pretend wireless ADB is up and our pubkey is already in adb_keys. This skips real Shizuku binder + TLS
+        // PSK pairing — both of which would need a real device.
         coEvery { wirelessManager.enableWirelessDebugging() } returns Result.success(Unit)
         coEvery { wirelessManager.getAdbWirelessPort() } returns FAKE_TLS_PORT
         coEvery { wirelessManager.isPubkeyAuthorized(any()) } returns true
@@ -93,17 +80,7 @@ class WirelessAdbSelfPairTransportRelayStressTest {
 
     @Test
     fun `bootstrap is single-flight under 20 truly concurrent callers (barrier-gated)`() = runBlocking {
-        // Barrier-gated single-flight assertion. The previous shape (20 immediate `async` blocks
-        // with non-suspending mocks) passed even if `bootstrapBlocking` had run 20 times in
-        // sequence — `runBlocking`'s default dispatcher serializes by default, so "concurrent"
-        // wasn't really concurrent. Here we:
-        //   1. Suspend bootstrap inside a CompletableDeferred barrier.
-        //   2. Launch 20 callers on Dispatchers.Default (real worker threads).
-        //   3. Wait until at least one caller has entered bootstrap (counter > 0) and the
-        //      remaining callers have piled up on the bootstrapLock Mutex.
-        //   4. Assert the counter is still 1 — proving 19 callers parked on the lock.
-        //   5. Release the barrier; assert all 20 return the same port and the counter is
-        //      still 1 (the late callers find cachedTlsPort populated and skip bootstrap).
+        // Barrier-gated single-flight assertion.
         val barrier = CompletableDeferred<Unit>()
         val callCounter = AtomicInteger(0)
 
@@ -172,9 +149,8 @@ class WirelessAdbSelfPairTransportRelayStressTest {
 
     @Test
     fun `accept loop drains 20 sequential client cycles without thread leak (success path)`() = runBlocking {
-        // The streamed open returns immediately-EOF input + a no-op output sink so each
-        // proxy connection's downstream pump exits as soon as the client connects, then the
-        // upstream pump exits when the test closes its socket.
+        // The streamed open returns immediately-EOF input + a no-op output sink so each proxy connection's downstream pump exits as soon
+        // as the client connects, then the upstream pump exits when the test closes its socket.
         coEvery { wireClient.openLocalAbstract(any(), any(), any(), any()) } answers {
             mockk<AdbStream>(relaxed = true).also { stream ->
                 every { stream.inputStream } returns ByteArrayInputStream(ByteArray(0))
@@ -201,9 +177,8 @@ class WirelessAdbSelfPairTransportRelayStressTest {
 
     @Test
     fun `accept loop drains 20 cycles when openLocalAbstract fails (failure path)`() = runBlocking {
-        // Failure-path leak check: a thrown exception from the wire layer must not leak
-        // sockets or per-connection threads. proxyConnection's outer try/finally is the only
-        // thing standing between us and an fd leak per failed call.
+        // Failure-path leak check: a thrown exception from the wire layer must not leak sockets or per-connection threads.
+        // proxyConnection's outer try/finally is the only thing standing between us and an fd leak per failed call.
         coEvery {
             wireClient.openLocalAbstract(any(), any(), any(), any())
         } throws IOException("simulated post-mTLS failure")
@@ -299,10 +274,8 @@ class WirelessAdbSelfPairTransportRelayStressTest {
     private fun countWirelessAdbThreads(): Int =
         Thread.getAllStackTraces().keys.count { it.name.startsWith("wireless-adb-") }
 
-    /**
-     * Brief poll loop — gives the JVM up to 2 seconds to drain transient pump/proxy threads
-     * before we sample. Without this the test is racy under CI load.
-     */
+    /** Brief poll loop — gives the JVM up to 2 seconds to drain transient pump/proxy threads before we sample. Without this the test is
+     * racy under CI load. */
     private fun awaitThreadDelta(baseline: Int) {
         val deadline = System.currentTimeMillis() + 2_000
         while (System.currentTimeMillis() < deadline) {
@@ -314,9 +287,8 @@ class WirelessAdbSelfPairTransportRelayStressTest {
     private companion object {
         const val FAKE_TLS_PORT = 41089
         const val TEST_TOKEN = "test-token-deadbeefcafebabe1234567890abcdef"
-        // Tolerate the accept-loop thread plus at most two in-flight pumps from the last
-        // connection that may not have unwound by the time we sample. Any leak that scales
-        // with cycle count blows past this.
+        // Tolerate the accept-loop thread plus at most two in-flight pumps from the last connection that may not have unwound by the time
+        // we sample. Any leak that scales with cycle count blows past this.
         const val MAX_TRANSIENT_THREADS = 3
 
         val NULL_SINK = object : OutputStream() {

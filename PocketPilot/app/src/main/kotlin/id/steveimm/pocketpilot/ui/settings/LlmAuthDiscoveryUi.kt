@@ -52,13 +52,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * Searchable grouped model picker for OPENROUTER + OTHER. Renders the pure
- * state from [ModelPicker.buildState] — the Compose layer is a thin
- * presentation shell so all sort, filter, and grouping behavior is covered
- * by [ModelPickerTest]. On open the selected row's group is auto-expanded
- * and the list scrolls so the selected row is visible without manual scroll.
- */
+/** Searchable grouped model picker for OPENROUTER + OTHER. */
 @Composable
 internal fun SearchableGroupedModelPicker(
     entries: List<ModelEntry>,
@@ -187,9 +181,8 @@ private fun PickerRow(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    // Primary selection signal is the leading check icon (left-aligned, like a
-    // settled-state checklist). A faint primaryContainer tint stays as a
-    // secondary cue; the previous full-fill orange row read as a hover.
+    // Primary selection signal is the leading check icon (left-aligned, like a settled-state checklist). A faint primaryContainer tint
+    // stays as a secondary cue; the previous full-fill orange row read as a hover.
     val background = if (selected) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
     } else {
@@ -227,12 +220,7 @@ private fun PickerRow(
     }
 }
 
-/**
- * Refresh-models button + status row for [provider]. Gating uses
- * [RefreshButtonGate] so the disabled tooltip names the missing piece. On
- * tap the caller's [onRefresh] launches the repo's suspend refresh; the
- * row renders the latest spinner / timestamp / error from [discoveryState].
- */
+/** Refresh-models button + status row for [provider]. */
 @Composable
 internal fun RefreshModelsRow(
     provider: LLMProvider,

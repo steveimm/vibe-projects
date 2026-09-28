@@ -1,26 +1,9 @@
 #!/bin/bash
-#
-# setup.sh - Build, Install & Setup Permissions
-#
-# Purpose: Deploy a new version of the app with all permissions configured
-#
-# What it does:
-#   - Build APK
-#   - Install APK (replacement install, preserves data)
-#   - Grant Overlay permission
-#   - Enable Accessibility service
-#   - Launch app
-#
-# Usage: ./scripts/setup.sh
-#
-# Environment Variables:
-#   LLM_BACKEND: "openai" (default) or "local" - selects LLM backend
-#                Set to "local" to skip API key requirement
-#
-# Note: Run this after code changes before using debug-run.sh
-#
+# setup.sh: Build, Install & Setup Permissions
 
 set -e
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -38,38 +21,6 @@ log() { echo -e "${BLUE}> $1${NC}"; }
 ok() { echo -e "${GREEN}✓ $1${NC}"; }
 warn() { echo -e "${YELLOW}! $1${NC}"; }
 err() { echo -e "${RED}x $1${NC}"; exit 1; }
-
-list_connected_devices() {
-    adb devices | awk 'NR > 1 && $2 == "device" {print $1}'
-}
-
-select_device() {
-    local preferred_serial="${ANDROID_SERIAL:-}"
-    local devices
-    local physical_devices
-
-    devices="$(list_connected_devices)"
-    if [[ -z "$devices" ]]; then
-        return 1
-    fi
-
-    if [[ -n "$preferred_serial" ]]; then
-        if printf "%s\n" "$devices" | grep -Fxq "$preferred_serial"; then
-            printf "%s\n" "$preferred_serial"
-            return 0
-        fi
-        warn "ANDROID_SERIAL=$preferred_serial not found; auto-selecting device."
-    fi
-
-    physical_devices="$(printf "%s\n" "$devices" | grep -v '^emulator-' || true)"
-    if [[ -n "$physical_devices" ]]; then
-        printf "%s\n" "$physical_devices" | head -n 1
-        return 0
-    fi
-
-    printf "%s\n" "$devices" | head -n 1
-    return 0
-}
 
 echo -e "${GREEN}"
 echo "=============================================================="

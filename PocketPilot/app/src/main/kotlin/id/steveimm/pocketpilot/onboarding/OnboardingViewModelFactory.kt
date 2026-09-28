@@ -6,12 +6,7 @@ import id.steveimm.pocketpilot.app.AuthStoreHolder
 import id.steveimm.pocketpilot.llm.ModelCatalog
 import kotlinx.coroutines.CoroutineScope
 
-/**
- * Assembles an [OnboardingViewModel] with the app-scoped [id.steveimm.pocketpilot.auth.AuthStore].
- *
- * MainActivity uses this factory so it doesn't need to know how [AuthStoreHolder]
- * is wired. Tests can skip the factory and construct the view model directly.
- */
+/** Assembles an [OnboardingViewModel] with the app-scoped [id.steveimm.pocketpilot.auth.AuthStore]. */
 object OnboardingViewModelFactory {
     fun create(
         context: Context,

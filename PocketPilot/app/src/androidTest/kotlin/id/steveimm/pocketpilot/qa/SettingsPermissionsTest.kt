@@ -20,10 +20,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/**
- * Dialog body copy is unique in this page and stable across redraws — use it as
- * the dialog-visible marker.
- */
+/** Dialog body copy is unique in this page and stable across redraws — use it as the dialog-visible marker. */
 private const val CLEAR_TRACES_DIALOG_BODY =
     "All recorded execution traces will be permanently deleted. This cannot be undone."
 

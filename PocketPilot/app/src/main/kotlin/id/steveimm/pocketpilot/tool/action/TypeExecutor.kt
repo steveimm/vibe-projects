@@ -8,21 +8,7 @@ import id.steveimm.pocketpilot.platform.UIAction
 import id.steveimm.pocketpilot.tool.AppClassifier
 import kotlinx.coroutines.delay
 
-/**
- * Type executor: set text on target node, with tap-to-focus fallback.
- *
- * Fallback table:
- *   With semantic target (or pure coordinate):
- *     Attempt 1: SetTextOnNodeAt(x, y, text, clear)
- *     Attempt 2: TapAt(x, y) → delay → SetTextOnFocused(text, clear)
- *   With coordinate fallback (semantic miss + coordinateHint):
- *     Attempt 1: TapAt(x, y) → delay → SetTextOnFocused(text, clear)
- *     (SetTextOnNodeAt skipped — no semantic node was resolved.)
- *   Without target:
- *     Attempt 1: SetTextOnFocused(text, clear)
- *
- * Type success = ACTION_SET_TEXT returns true. UI change detection is supplementary.
- */
+/** Type executor: set text on target node, with tap-to-focus fallback. */
 class TypeExecutor(
     private val targetResolver: TargetResolver = TargetResolver
 ) {

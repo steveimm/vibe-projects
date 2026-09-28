@@ -185,8 +185,6 @@ class ChromeCdpRecoveryTest {
         }
     }
 
-    // -- shared helpers --
-
     private fun staleSessionError(id: Int): JsonObject = buildJsonObject {
         put("id", id)
         put("error", buildJsonObject {

@@ -1,22 +1,14 @@
 package id.steveimm.pocketpilot.llm
 
-/**
- * How a provider is authenticated. Drives UI grouping (OAuth / API Key / Local tabs) and
- * factory routing.
- */
+/** How a provider is authenticated. Drives UI grouping (OAuth / API Key / Local tabs) and factory routing. */
 enum class AuthMode {
     OAuth,
     ApiKey,
     Local,
 }
 
-/**
- * Flat LLM provider — encodes both the backend and the auth mode. One entry per (backend, mode)
- * pair so the catalog, factory, and credential store can all key off a single enum value.
- *
- * `defaultApiKeyEnv` and `defaultBaseUrl` are retained for the current factory/catalog wiring;
- * OAuth and Local entries populate them with placeholders (unused on their code paths).
- */
+/** Flat LLM provider — encodes both the backend and the auth mode. One entry per (backend, mode) pair so the catalog, factory, and
+ * credential store can all key off a single enum value. */
 enum class LLMProvider(
     val mode: AuthMode,
     val defaultApiKeyEnv: String,
@@ -43,13 +35,7 @@ enum class LLMProvider(
         defaultBaseUrl = "https://openrouter.ai/api/v1",
     ),
 
-    /**
-     * User-configured OpenAI-compatible endpoint. Base URL and model id live in
-     * [id.steveimm.pocketpilot.app.AppSettingsState] (`otherBaseUrl`, `otherModelId`) and are
-     * surfaced as a synthesized `other-custom` catalog entry. No hardcoded URL — the
-     * factory hard-requires a non-blank `entry.baseUrl` to avoid leaking the user's
-     * key to the OpenAI SDK's default base URL.
-     */
+    /** User-configured OpenAI-compatible endpoint. */
     OTHER(
         mode = AuthMode.ApiKey,
         defaultApiKeyEnv = "OTHER_API_KEY",

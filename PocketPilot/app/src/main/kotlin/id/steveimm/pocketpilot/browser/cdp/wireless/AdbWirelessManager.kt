@@ -8,13 +8,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
 
-/**
- * App-side facade for the wireless-ADB management calls exposed by [IChromeDevtoolsUserService].
- * The binder runs in the Shizuku-spawned shell-UID process which holds MANAGE_DEBUGGING; from
- * the app UID these IAdbManager calls would all SecurityException. [binderProvider] is supplied
- * by the caller (typically wired to [ShizukuUserServiceProvider]) so binding only happens when
- * the manager is actually used.
- */
+/** App-side facade for the wireless-ADB management calls exposed by [IChromeDevtoolsUserService]. */
 class AdbWirelessManager(
     private val binderProvider: suspend () -> IChromeDevtoolsUserService,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -22,11 +16,8 @@ class AdbWirelessManager(
 
     suspend fun currentBssid(): String? = onBinder { it.getCurrentBssid() }
 
-    /**
-     * Looks up the current Wi-Fi BSSID then calls
-     * `IAdbManager.allowWirelessDebugging(true, bssid)` via the shell-UID service. Wireless ADB
-     * is BSSID-scoped on Android 14+, so a missing BSSID (Wi-Fi off, cellular only) is fatal.
-     */
+    /** Looks up the current Wi-Fi BSSID then calls `IAdbManager.allowWirelessDebugging(true, bssid)` via the shell-UID service.
+     * Wireless ADB is BSSID-scoped on Android 14+, so a missing BSSID (Wi-Fi off, cellular only) is fatal. */
     suspend fun enableWirelessDebugging(): Result<Unit> = runCatching {
         val bssid = currentBssid()
             ?: throw IOException("No Wi-Fi BSSID available; cannot enable wireless ADB")
@@ -37,11 +28,8 @@ class AdbWirelessManager(
     /** -1 when wireless ADB is not listening. */
     suspend fun getAdbWirelessPort(): Int = onBinder { it.getAdbWirelessPort() }
 
-    /**
-     * Calls `IAdbManager.enablePairingByQrCode(name, psk)` then discovers the listening pair
-     * port via `/proc/net/tcp` diff. `psk` is taken as bytes (caller may use a binary PSK) and
-     * rendered as the UTF-8 string adb's TLS-PSK pairing accepts.
-     */
+    /** Calls `IAdbManager.enablePairingByQrCode(name, psk)` then discovers the listening pair port via `/proc/net/tcp` diff. `psk` is
+     * taken as bytes (caller may use a binary PSK) and rendered as the UTF-8 string adb's TLS-PSK pairing accepts. */
     suspend fun openPairPort(name: String, psk: ByteArray): Int {
         require(psk.isNotEmpty()) { "psk must not be empty" }
         val pskStr = String(psk, Charsets.UTF_8)
@@ -54,26 +42,12 @@ class AdbWirelessManager(
         onBinder { it.disablePairing() }
     }
 
-    /**
-     * True iff [pubkeyBase64] (base64 of the 524-byte AOSP `android_pubkey` blob) is present in
-     * `/data/misc/adb/adb_keys`. Substring match is safe — RSA-2048 base64 is ~700 chars and
-     * collisions across distinct keys are cryptographically impossible. Returns false on
-     * unreadable adb_keys; caller re-pairs (idempotent on adbd).
-     */
+    /** True iff [pubkeyBase64] (base64 of the 524-byte AOSP `android_pubkey` blob) is present in `/data/misc/adb/adb_keys`. */
     suspend fun isPubkeyAuthorized(pubkeyBase64: String): Boolean =
         pubkeyAuthorizationStatus(pubkeyBase64) == AuthorizationStatus.AUTHORIZED
 
-    /**
-     * Tri-state variant of [isPubkeyAuthorized] that distinguishes "adb_keys exists but our
-     * key is not in it" from "adb_keys was unreadable to us" (locked OEMs whose shell uid is
-     * dropped from the `adb` group). Callers that maintain a pair-once cache need the
-     * distinction: only the [UNREADABLE] outcome justifies trusting the cache, because that's
-     * the case where re-pairing every cold session is the bug we're working around.
-     *
-     * "Unreadable" here means **EACCES specifically** — see [IChromeDevtoolsUserService.adbKeysReadStatus].
-     * A missing file (ENOENT) or other IO failure must NOT be conflated with EACCES: in those
-     * cases adbd has likely forgotten our key, and trusting a stale cache would lock us out.
-     */
+    /** Tri-state variant of [isPubkeyAuthorized] that distinguishes "adb_keys exists but our key is not in it" from "adb_keys was
+     * unreadable to us" (locked OEMs whose shell uid is dropped from the `adb` group). */
     suspend fun pubkeyAuthorizationStatus(pubkeyBase64: String): AuthorizationStatus {
         if (pubkeyBase64.isEmpty()) return AuthorizationStatus.NOT_AUTHORIZED
         val readStatus = onBinder { it.adbKeysReadStatus() }
@@ -81,9 +55,8 @@ class AdbWirelessManager(
             ChromeDevtoolsUserService.ADB_KEYS_STATUS_READABLE -> {
                 val content = onBinder { it.readAdbKeys() }
                 when {
-                    // adbKeysReadStatus said READABLE but readAdbKeys returned null → race or
-                    // partial failure between the two calls. Treat as NOT_AUTHORIZED — safer
-                    // to re-pair than to short-circuit on uncertain state.
+                    // adbKeysReadStatus said READABLE but readAdbKeys returned null → race or partial failure between the two calls. Treat
+                    // as NOT_AUTHORIZED — safer to re-pair than to short-circuit on uncertain state.
                     content == null -> AuthorizationStatus.NOT_AUTHORIZED
                     content.contains(pubkeyBase64) -> AuthorizationStatus.AUTHORIZED
                     else -> AuthorizationStatus.NOT_AUTHORIZED
@@ -107,22 +80,8 @@ class AdbWirelessManager(
         UNREADABLE,
     }
 
-    /**
-     * Removes accumulated `PocketPilot@*` entries from `/data/misc/adb/adb_keys`, retaining
-     * exactly one — the line whose pubkey equals [retainPubkeyBase64]. Non-PocketPilot lines pass
-     * through unchanged.
-     *
-     * Returns true iff the file was actually rewritten. Returns false defensively when the
-     * current pubkey isn't found as a first-token in any line — never delete the only PocketPilot
-     * entry we cannot verify is current.
-     *
-     * Hard ceiling: if any single pubkey already appears > [MAX_DUPLICATE_PUBKEY_LINES] times
-     * the file is in pathological growth (typically the pair-once fallback firing every cold
-     * start on OEMs whose shell uid can't read adb_keys, see
-     * [WirelessAdbSelfPairTransport.ensurePaired]). The prune itself would still help, but
-     * silently churning the file masks the underlying bug — return false instead so logs surface
-     * the condition for manual investigation.
-     */
+    /** Removes accumulated `PocketPilot@*` entries from `/data/misc/adb/adb_keys`, retaining exactly one — the line whose pubkey equals
+     * [retainPubkeyBase64]. Non-PocketPilot lines pass through unchanged. */
     suspend fun pruneAdbKeys(retainPubkeyBase64: String): Boolean {
         require(retainPubkeyBase64.isNotEmpty()) { "retainPubkeyBase64 must not be empty" }
         val content = onBinder { it.readAdbKeys() } ?: return false
@@ -166,11 +125,8 @@ class AdbWirelessManager(
         // Hard ceiling for [pruneAdbKeys] — see KDoc on that function.
         internal const val MAX_DUPLICATE_PUBKEY_LINES = 10
 
-        /**
-         * Largest count of any single first-token pubkey across all non-blank lines. Matches
-         * adbd's `\s+` tokenization so tab-separated and space-separated entries collide as
-         * intended.
-         */
+        /** Largest count of any single first-token pubkey across all non-blank lines. Matches adbd's `\s+` tokenization so
+         * tab-separated and space-separated entries collide as intended. */
         internal fun mostFrequentPubkeyCount(content: String): Int {
             val counts = HashMap<String, Int>()
             var max = 0
@@ -185,12 +141,7 @@ class AdbWirelessManager(
             return max
         }
 
-        /**
-         * Drop blank lines and any `PocketPilot@*`-named line whose pubkey is not
-         * [retainPubkeyBase64]. The first surviving copy of [retainPubkeyBase64] is kept once;
-         * duplicates are dropped. Non-PocketPilot lines pass through unchanged. Caller filters by
-         * `foundCurrent && changed` to decide whether a write-back is needed.
-         */
+        /** Drop blank lines and any `PocketPilot@*`-named line whose pubkey is not [retainPubkeyBase64]. */
         internal fun prunePocketPilotEntries(
             content: String,
             retainPubkeyBase64: String,

@@ -14,18 +14,7 @@ sealed interface OpenAiSignInResult {
     data class Error(val message: String) : OpenAiSignInResult
 }
 
-/**
- * Run the full OpenAI OAuth sign-in sequence as a suspend function.
- *
- * Steps: PKCE generation -> callback server start -> browser launch ->
- * callback wait -> auth-code exchange -> cleanup.
- *
- * [launchBrowser] is called with the authorization URL; the host is
- * responsible for opening it (e.g. via an Activity intent or effect channel).
- *
- * Cancellation closes the server socket immediately, unblocking the
- * blocking `accept()` call and freeing the port for retry.
- */
+/** Run the full OpenAI OAuth sign-in sequence as a suspend function. */
 suspend fun openAiSignIn(
     launchBrowser: suspend (url: String) -> Unit,
     onCallbackReceived: () -> Unit = {},
@@ -62,9 +51,8 @@ suspend fun openAiSignIn(
                 OpenAiSignInResult.Error(callbackResult.message)
             }
             is OAuthCallbackServer.CallbackResult.Success -> {
-                // Browser handed control back — notify host so UI can switch from
-                // "waiting for browser" to "finishing handshake". The token exchange
-                // POST below typically takes ~20s.
+                // Browser handed control back — notify host so UI can switch from "waiting for browser" to "finishing handshake". The
+                // token exchange POST below typically takes ~20s.
                 onCallbackReceived()
                 // 5. Exchange code for tokens
                 when (val exchange = OAuthTokenExchange.exchange(callbackResult.code, pkce.verifier)) {

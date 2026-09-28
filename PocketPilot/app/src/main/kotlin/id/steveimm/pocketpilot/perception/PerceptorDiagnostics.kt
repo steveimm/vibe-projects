@@ -8,15 +8,7 @@ data class PerceptorBoundsDiagnostics(
     val negativeCoordinateCount: Int = 0
 )
 
-/**
- * Collects suspicious bounds counters while traversing a11y nodes.
- *
- * Counters are best-effort diagnostics and intentionally cheap to compute.
- *
- * **Threading contract**: Instances are created and used within a single
- * [Perceptor.snapshot] call, which runs synchronously on a single thread.
- * Do not share instances across coroutines or threads.
- */
+/** Collects suspicious bounds counters while traversing a11y nodes. */
 class PerceptorDiagnosticsCollector {
     private var rightOutOfBoundsCount: Int = 0
     private var bottomOutOfBoundsCount: Int = 0

@@ -205,8 +205,6 @@ class ToolRouterTest {
         assertThat(router.getActiveCallIds()).isEmpty()
     }
 
-    // === Phase 4: Per-call cancellation tests ===
-
     @Test
     fun `cancel(callId) propagates to executing tool via per-call token`() = runTest {
         val registry = ToolRegistry().apply { register(CancellableToolSpec()) }
@@ -384,9 +382,7 @@ private class DelayingToolSpec(
     }
 }
 
-/**
- * Tool that cooperatively polls isCancelled() and returns Cancelled when signalled.
- */
+/** Tool that cooperatively polls isCancelled() and returns Cancelled when signalled. */
 private class CancellableToolSpec : ToolSpec {
     override val name: String = "cancellable_tool"
     override val description: String = "Cancellable tool"

@@ -10,15 +10,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import org.junit.Test
 
-/**
- * Coverage for the `browser_script` enable gate. The Agent Behavior → Tools toggle is the
- * single UI surface that flips the pref, and every gate branch matters: a regression here
- * re-opens the back-door where the toggle persists ON without the gating contract holding.
- *
- * The gate now requests Shizuku permission inline when binder is alive but consent is missing
- * (recovers from the post-`adb install -r` UID-mismatch trap). The new tests pin the inline
- * request behavior so we never quietly revert to the old "send user to Shizuku Manager" path.
- */
+/** Coverage for the `browser_script` enable gate. */
 class BrowserScriptToggleGateTest {
 
     @Test
@@ -73,9 +65,8 @@ class BrowserScriptToggleGateTest {
     @Test
     fun `permission check is short-circuited — never queries permission when binder unavailable`() =
         runTest {
-            // Counts to ensure short-circuit: if hasShizukuPermission ran, we'd see a non-zero
-            // count and the assertion below would fail. This guards against re-ordering
-            // accidents that would make the gate query permission against a dead binder.
+            // Counts to ensure short-circuit: if hasShizukuPermission ran, we'd see a non-zero count and the assertion below would fail.
+            // This guards against re-ordering accidents that would make the gate query permission against a dead binder.
             var permissionCallCount = 0
             gateBrowserScriptEnable(
                 isShizukuAvailable = { false },
@@ -100,8 +91,6 @@ class BrowserScriptToggleGateTest {
 
             assertThat(writeCallCount).isEqualTo(0)
         }
-
-    // ── Inline permission request paths ─────────────────────────────────────────────────
 
     @Test
     fun `denied permission triggers inline request — granted result proceeds to write`() =
@@ -164,9 +153,8 @@ class BrowserScriptToggleGateTest {
     @Test
     fun `granted result with stale checkSelfPermission re-check returns ShizukuPermissionDenied`() =
         runTest {
-            // Paranoia path: listener fires GRANTED but the underlying UID consent row was not
-            // written. Should not happen on a healthy Shizuku install, but if it does we must
-            // not silently proceed — the user needs actionable feedback.
+            // Paranoia path: listener fires GRANTED but the underlying UID consent row was not written. Should not happen on a healthy
+            // Shizuku install, but if it does we must not silently proceed — the user needs actionable feedback.
             val result = gateBrowserScriptEnable(
                 isShizukuAvailable = { true },
                 hasShizukuPermission = { false },
@@ -223,8 +211,6 @@ class BrowserScriptToggleGateTest {
         assertThat(writeCount).isEqualTo(0)
     }
 
-    // ── BrowserScriptToggleGate (Compose state holder) ──────────────────────────────────
-
     @Test
     fun `clearError wipes a stale error from a prior failed gate run`() = runTest {
         val persisted = mutableListOf<Boolean>()
@@ -256,9 +242,8 @@ class BrowserScriptToggleGateTest {
             scope = backgroundScope,
             onPersist = { persisted += it },
             gate = {
-                // First attempt fails (e.g., Shizuku not yet granted), second succeeds (user
-                // returned and granted). Mirrors the call-site contract:
-                //     onCheckedChange = { gate.clearError(); gate.setEnabled(it) }
+                // First attempt fails (e.g., Shizuku not yet granted), second succeeds (user returned and granted). Mirrors the call-site
+                // contract: onCheckedChange = { gate.clearError(); gate.setEnabled(it) }
                 attempt++
                 if (attempt == 1) BrowserScriptToggleError.ShizukuPermissionDenied else null
             },

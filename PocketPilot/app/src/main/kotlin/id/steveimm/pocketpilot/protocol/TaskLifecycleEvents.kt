@@ -8,14 +8,7 @@ data class TaskStarted(
         val input: String
 ) : TaskLifecycleEvent
 
-/**
- * A task has completed.
- *
- * [outcome] indicates how the task ended — goal achieved, max turns, error, etc.
- *
- * [handoff] is populated only for Virtual Display completions so chat can render
- * the "Open <App>" CTA. Null for accessibility completions.
- */
+/** A task has completed. */
 data class TaskCompleted(
         override val sessionId: SessionId,
         override val timestamp: Long,

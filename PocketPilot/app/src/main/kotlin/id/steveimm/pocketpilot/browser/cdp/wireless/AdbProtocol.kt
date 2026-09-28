@@ -7,11 +7,8 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-/**
- * AOSP `system/core/adb/protocol.txt` wire framing. Six little-endian uint32 fields
- * followed by an optional payload. Checksum is unused since A_VERSION_SKIP_CHECKSUM
- * (0x01000001) — adbd always sends 0 and ignores the field on reads.
- */
+/** AOSP `system/core/adb/protocol.txt` wire framing. Six little-endian uint32 fields followed by an optional payload. Checksum is
+ * unused since A_VERSION_SKIP_CHECKSUM (0x01000001) — adbd always sends 0 and ignores the field on reads. */
 internal object AdbProtocol {
     const val A_CNXN = 0x4E584E43
     const val A_OPEN = 0x4E45504F

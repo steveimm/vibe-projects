@@ -39,16 +39,8 @@ internal class AgentMessageBuffer {
         contentBlocks.add(ContentBlockRecord.Thought(text))
     }
 
-    /**
-     * Append a final-answer block (TaskCompleted with non-blank result that
-     * carries the agent's closing answer). Mirrors `ChatViewModel`'s live
-     * reducer rule — only call this when there is a real answer to surface.
-     *
-     * If the streaming text buffer or the last committed Text block already
-     * holds this same answer (text-completion path emits the answer through
-     * MessageDelta events first, then resurfaces it via TaskCompleted),
-     * promote in place instead of duplicating.
-     */
+    /** Append a final-answer block (TaskCompleted with non-blank result that carries the agent's closing answer). Mirrors
+     * `ChatViewModel`'s live reducer rule — only call this when there is a real answer to surface. */
     fun recordFinalAnswer(text: String) {
         // Drain any pending streamed text — TaskCompleted is replacing it
         // with the canonical answer.

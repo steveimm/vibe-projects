@@ -22,15 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.ui.theme.PageMasthead
 
-/**
- * ChatHeader — Bound Edition running head.
- *
- * Layout: [Menu] PageMasthead("PocketPilot") [+]
- *
- * Renders WITHOUT a backing Surface so the EmptyState paw glyph can bleed
- * upward into the masthead row. Status-bar inset is applied so the row sits
- * below the system status bar.
- */
+/** ChatHeader — Bound Edition running head. */
 @Composable
 fun ChatHeader(
     onMenuClick: () -> Unit,

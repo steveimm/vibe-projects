@@ -85,10 +85,8 @@ class AgentMessageBufferTest {
 
     @Test
     fun `recordFinalAnswer drains streamed text buffer to avoid duplication`() {
-        // Tool-less text completion: deltas stream the answer into textBuffer,
-        // then TaskCompleted resurfaces it as the FinalText. Without draining,
-        // the snapshot would contain Text("Done") + FinalText("Done"). uxfb-3
-        // codex final review HIGH.
+        // Tool-less text completion: deltas stream the answer into textBuffer, then TaskCompleted resurfaces it as the FinalText. Without
+        // draining, the snapshot would contain Text("Done") + FinalText("Done"). uxfb-3 codex final review HIGH.
         val buffer = AgentMessageBuffer()
         buffer.start("msg", timestamp = 1L)
         buffer.appendText("Hello, here is the answer.")

@@ -27,14 +27,8 @@ class ChromeCdpEventBuffer(private val maxSize: Int = 500) {
     }
 }
 
-/**
- * Tracks pending JavaScript dialogs (`alert`/`confirm`/`prompt`/`beforeunload`) per target so
- * agent helpers can surface dialog state before attempting `Runtime.evaluate` — page JS is
- * frozen while a modal dialog is open and any evaluate would silently hang.
- *
- * Keyed by sessionId in attach mode and by targetId in direct-page mode (one WS per target).
- * Both are unique within the session so a single string key is sufficient.
- */
+/** Tracks pending JavaScript dialogs (`alert`/`confirm`/`prompt`/`beforeunload`) per target so agent helpers can surface dialog state
+ * before attempting `Runtime.evaluate` — page JS is frozen while a modal dialog is open and any evaluate would silently hang. */
 class DialogStateTracker {
 
     data class DialogState(
@@ -44,12 +38,7 @@ class DialogStateTracker {
         /** Only present for `prompt`-type dialogs. */
         val defaultPrompt: String?,
         val hasBrowserHandler: Boolean,
-        /**
-         * Frame URL that owns the dialog, copied verbatim from `Page.javascriptDialogOpening`.
-         * Surfaced so recovery helpers can show the agent which page raised the modal — the
-         * page's own JS is frozen while a dialog is open, so `pageInfo()` cannot read
-         * `location.href` until the dialog is dismissed.
-         */
+        /** Frame URL that owns the dialog, copied verbatim from `Page.javascriptDialogOpening`. */
         val url: String?,
     )
 

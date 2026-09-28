@@ -29,14 +29,7 @@ internal const val MEMORY_SETTINGS_BANNER_TAG = "memory-settings-banner"
 internal const val MEMORY_SETTINGS_USER_ROW_TAG = "memory-settings-user-row"
 internal const val MEMORY_SETTINGS_DEVICE_ROW_TAG = "memory-settings-device-row"
 
-/**
- * Settings → Memory. Lists User and Device memory entries. Per-app memory
- * is reached from App Access, not here.
- *
- * Internal navigation swaps between the list and [MemoryFileEditorPage]; Back
- * collapses the editor before exiting the page so callers see a single
- * `onBack` event per tap-out.
- */
+/** Settings → Memory. Lists User and Device memory entries. Per-app memory is reached from App Access, not here. */
 @Composable
 internal fun MemorySettingsPage(
     memoryStore: MemoryStore,

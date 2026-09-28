@@ -1,14 +1,6 @@
 package id.steveimm.pocketpilot.tool.action
 
-/**
- * Targeting method for mobile actions. Parsed from LLM JSON params.
- * Resolved to coordinates by TargetResolver.
- *
- * Semantic targets (ElementIndex, Text) may carry an optional coordinateHint
- * supplied by the model. The semantic target is primary; the hint is used
- * only as fallback when semantic resolution fails, or as a consistency check
- * against the resolved bounds.
- */
+/** Targeting method for mobile actions. Parsed from LLM JSON params. Resolved to coordinates by TargetResolver. */
 sealed interface Target {
     data class ElementIndex(
         val index: Int,

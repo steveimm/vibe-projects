@@ -2,12 +2,7 @@ package id.steveimm.pocketpilot.agent
 
 import org.json.JSONObject
 
-/**
- * Normalized representation of which UI element a mobile_action targets.
- *
- * Decoded once from the raw JSON arguments, then consumed by
- * [ActionDescriptionFormatter] for human-readable action descriptions.
- */
+/** Normalized representation of which UI element a mobile_action targets. */
 data class ActionTarget(
     val text: String,
     val textIndex: Int,
@@ -19,17 +14,7 @@ data class ActionTarget(
     data class Point(val x: Int, val y: Int)
 }
 
-/**
- * Decode the UI-element targeting fields from a mobile_action's JSON arguments.
- *
- * The [action] parameter controls how the `text` field is resolved for the
- * "type" action, where `text` is overloaded (it can mean "target element label"
- * or "text to type" depending on whether `input_text` is present).
- *
- * - **type + input_text present**: `text` → target element, `input_text` → content to type
- * - **type + no input_text** (legacy): `target_text` → target element, `text` → content to type
- * - **all other actions**: `text` → target element
- */
+/** Decode the UI-element targeting fields from a mobile_action's JSON arguments. */
 fun decodeActionTarget(args: JSONObject, action: String = ""): ActionTarget {
     val (text, textIndex) = when {
         action == "type" && args.has("input_text") ->

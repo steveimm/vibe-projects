@@ -10,30 +10,12 @@ import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.trace.TraceRecorder
 import id.steveimm.pocketpilot.ui.overlay.visualizer.ActionVisualizerManager
 
-/**
- * PlatformFactory — Single decision point for platform selection.
- *
- * Decides whether to use AccessibilityPlatform (real screen) or VirtualDisplayPlatform (Shizuku
- * virtual display) based on:
- * 1. SessionConfig.platformMode (user preference)
- * 2. Shizuku availability (runtime check)
- *
- * If the user requests VIRTUAL_DISPLAY but Shizuku is unavailable, falls back to ACCESSIBILITY and
- * logs a warning.
- */
+/** PlatformFactory — Single decision point for platform selection. */
 object PlatformFactory {
 
     private const val TAG = "PlatformFactory"
 
-    /**
-     * Create the appropriate AndroidPlatform for this session.
-     *
-     * @param config Session configuration (includes platformMode)
-     * @param service AccessibilityService for both platform types
-     * @param visualizer Optional visualizer for AccessibilityPlatform
-     * @param traceRecorder Trace recorder for AccessibilityPlatform
-     * @return The selected AndroidPlatform (not yet started)
-     */
+    /** Create the appropriate AndroidPlatform for this session. */
     fun create(
             config: SessionConfig,
             service: AccessibilityService,

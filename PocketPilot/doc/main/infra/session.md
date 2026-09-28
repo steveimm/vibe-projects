@@ -183,7 +183,7 @@ snapshot remains fixed for the session, including Hot Idle follow-up tasks.
 
 `SessionServices.cleanup()` cancels active tools, closes `browserSessionManager`, then calls
 `platform.stop()` to release platform resources (virtual display teardown, `ImageReader` release).
-Each cleanup step is wrapped in try-catch so one teardown failure does not skip later cleanup.
+Every cleanup step, including initial tool cancellation and history clearing, is attempted even when an earlier step fails. Factory-owned LLM clients close through the factory, and externally owned clients close directly. Failures are returned together as `CleanupResult.PartialFailure`.
 
 ### Creation
 

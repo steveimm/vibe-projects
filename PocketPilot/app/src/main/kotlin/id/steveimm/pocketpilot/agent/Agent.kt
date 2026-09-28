@@ -206,10 +206,8 @@ class Agent(
         return finalReason
     }
 
-    /**
-     * Request pause. Returns a [Deferred] that completes when the agent
-     * actually enters the paused state (i.e. the current turn finishes).
-     */
+    /** Request pause. Returns a [Deferred] that completes when the agent actually enters the paused state (i.e. the current turn
+     * finishes). */
     suspend fun pause(): Deferred<Unit> {
         val confirmed = CompletableDeferred<Unit>()
         lifecycleMutex.withLock {

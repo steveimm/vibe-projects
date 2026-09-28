@@ -29,16 +29,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
-/**
- * Runs a throwaway demo session during onboarding.
- *
- * Goal: "Open the Settings app"
- * Success: GOAL_ACHIEVED + last captured package == com.android.settings
- * Timeout: 60 seconds
- *
- * Pulls credentials from the app-scoped [id.steveimm.pocketpilot.auth.AuthStore] — no
- * synthesized bridge, no legacy settings fields.
- */
+/** Runs a throwaway demo session during onboarding. */
 class OnboardingDemoController(
     private val settingsState: AppSettingsState,
     private val scope: CoroutineScope
@@ -50,13 +41,7 @@ class OnboardingDemoController(
         private const val TIMEOUT_MS = 60_000L
         private const val SETTINGS_PACKAGE = "com.android.settings"
 
-        /**
-         * Mirrors MainActivity.createOrReloadSession: a non-blank
-         * [AppSettingsState.openaiBaseUrl] (set from `.env` / debug-run intent)
-         * must override the catalog's OPENAI_API base URL, otherwise the demo
-         * session would talk to api.openai.com even though onboarding validated
-         * a proxy.
-         */
+        /** Use the same custom OpenAI URL as session creation so onboarding validation and the demo reach the same server. */
         internal fun resolveBaseUrlOverrides(openaiBaseUrl: String): Map<LLMProvider, String> =
             if (openaiBaseUrl.isNotBlank()) {
                 mapOf(LLMProvider.OPENAI_API to openaiBaseUrl)

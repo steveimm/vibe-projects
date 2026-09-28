@@ -1,14 +1,18 @@
 from __future__ import annotations
 
-from dataclasses import replace
 import json
 import logging
-from pathlib import Path
 import subprocess
 import time
+from dataclasses import replace
+from pathlib import Path
 from typing import Any
 
-from eval.aw_bridge.native_agent_bridge import BridgeConfig, BridgeOutcome, NativeAgentBridge
+from eval.aw_bridge.native_agent_bridge import (
+    BridgeConfig,
+    BridgeOutcome,
+    NativeAgentBridge,
+)
 from eval.aw_bridge.result_schema import ArtifactPaths, TaskResult
 from eval.aw_bridge.task_loader import TaskInstance
 from eval.aw_bridge.trace_parser import empty_trace_result, parse_trace
@@ -27,6 +31,21 @@ def run_one_task_instance(
     per_task_jsonl: Path,
     all_attempt_results: list[TaskResult],
 ) -> TaskResult:
+    """Initialize, execute, score, and clean up a task, retrying infrastructure failures.
+
+    Args:
+        bridge: Configured interface to the Android agent.
+        suite_family: AndroidWorld task registry family.
+        task_instance: Initialized task metadata and task implementation.
+        task_index: Task position used in logging and artifact identifiers.
+        run_prefix: Prefix shared by task run identifiers.
+        artifact_root: Root directory for task artifacts.
+        runner_log: Path to the full runner log.
+        max_infra_retries: Maximum retries after infrastructure failures.
+        env: AndroidWorld device environment.
+        per_task_jsonl: Destination for per-attempt result records.
+        all_attempt_results: Result collection extended with each attempt.
+    """
     attempt = 0
     while True:
         run_id = f"{run_prefix}_{safe_token(task_instance.task_name)}_{task_index}_{attempt}"
@@ -80,9 +99,7 @@ def run_one_task_instance(
                 scoring_ctx = capture_scoring_context(bridge, run_id)
                 scripted_score = float(task.is_successful(env))
                 scoring_ctx["score"] = scripted_score
-                scoring_ctx["scoring_duration_ms"] = int(
-                    (time.time() - scoring_ctx["scoring_timestamp"]) * 1000
-                )
+                scoring_ctx["scoring_duration_ms"] = int((time.time() - scoring_ctx["scoring_timestamp"]) * 1000)
                 scripted_success = scripted_score > 0.5
                 task_status = "success" if scripted_success else "failure"
                 logging.info(
@@ -121,9 +138,7 @@ def run_one_task_instance(
             run_id=run_id,
             attempt=attempt,
             bridge_status=bridge_outcome.bridge_status,
-            agent_completion_reason=(
-                trace_parse.completion_reason or bridge_outcome.agent_completion_reason
-            ),
+            agent_completion_reason=(trace_parse.completion_reason or bridge_outcome.agent_completion_reason),
             task_status=task_status,
             answer=trace_parse.answer,
             scripted_score=scripted_score,
@@ -160,6 +175,13 @@ def resolve_task_bridge_config(
     task_name: str,
     overrides: dict[str, dict[str, Any]],
 ) -> BridgeConfig:
+    """Apply the longest matching task-prefix override to bridge settings.
+
+    Args:
+        base: Settings to preserve unless overridden.
+        task_name: AndroidWorld task name.
+        overrides: Bridge settings indexed by task-name prefix.
+    """
     for prefix, fields in sorted(overrides.items(), key=lambda kv: -len(kv[0])):
         if task_name.startswith(prefix):
             logging.info("Applying task override for %s (prefix=%s): %s", task_name, prefix, fields)
@@ -168,12 +190,23 @@ def resolve_task_bridge_config(
 
 
 def append_jsonl(path: Path, row: dict[str, Any]) -> None:
+    """Append one result as a JSONL record.
+
+    Args:
+        path: File path to read or write.
+        row: Record to serialize or render.
+    """
     with path.open("a", encoding="utf-8") as stream:
         stream.write(json.dumps(row, ensure_ascii=True))
         stream.write("\n")
 
 
 def safe_token(value: str) -> str:
+    """Normalize a task name to a bounded file-name component.
+
+    Args:
+        value: Input value to validate or normalize.
+    """
     chars = []
     for ch in value:
         if ch.isalnum() or ch in ("-", "_"):
@@ -188,6 +221,12 @@ def capture_scoring_context(
     bridge: NativeAgentBridge,
     run_id: str,
 ) -> dict[str, Any]:
+    """Capture device state to explain a task's scripted score.
+
+    Args:
+        bridge: Configured interface to the Android agent.
+        run_id: Identifier used to associate logs and trace artifacts.
+    """
     ctx: dict[str, Any] = {
         "scoring_timestamp": time.time(),
         "run_id": run_id,
@@ -253,6 +292,12 @@ def capture_scoring_context(
 
 
 def write_scoring_context(artifact_dir: Path, ctx: dict[str, Any]) -> None:
+    """Write the scoring context beside the task artifacts.
+
+    Args:
+        artifact_dir: Directory for this task's artifacts.
+        ctx: Captured scoring diagnostics.
+    """
     try:
         artifact_dir.mkdir(parents=True, exist_ok=True)
         path = artifact_dir / "scoring_context.json"

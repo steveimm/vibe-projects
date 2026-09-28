@@ -2,17 +2,10 @@ package id.steveimm.pocketpilot.protocol
 
 import org.json.JSONObject
 
-/**
- * ApprovalScope - Lifetime of a user's app-level allow decision.
- *
- * SESSION: Allow all actions for this package for the rest of the session.
- * ALWAYS: Persist the allow-list entry across sessions (SharedPreferences).
- */
+/** ApprovalScope - Lifetime of a user's app-level allow decision. */
 enum class ApprovalScope { SESSION, ALWAYS }
 
-/**
- * ApprovalDecision - User's response to an approval request.
- */
+/** ApprovalDecision - User's response to an approval request. */
 enum class ApprovalDecision {
     /** User approved the action */
     APPROVED,
@@ -24,9 +17,7 @@ enum class ApprovalDecision {
     ABORT
 }
 
-/**
- * ApprovalDetails - Information about what is being approved.
- */
+/** ApprovalDetails - Information about what is being approved. */
 data class ApprovalDetails(
     /** Unique ID for this approval request (from ToolRouter) */
     val callId: String,

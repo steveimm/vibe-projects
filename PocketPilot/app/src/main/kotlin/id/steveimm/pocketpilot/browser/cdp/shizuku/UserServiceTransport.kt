@@ -4,13 +4,7 @@ import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
 
-/**
- * Adapter wrapping an [IChromeDevtoolsUserService] binder as a [DevtoolsSocketTransport].
- * Binder calls are not coroutine-cancellable from the client side — [runInterruptible] gives a
- * best-effort by interrupting the IO thread carrying the binder transaction. The remote socket
- * also enforces `soTimeout` inside [ChromeDevtoolsUserService.exchange] so a wedged remote
- * eventually unwinds even without cancellation.
- */
+/** Adapter wrapping an [IChromeDevtoolsUserService] binder as a [DevtoolsSocketTransport]. */
 class UserServiceTransport(
     // Public so [AdbWirelessManager] can share the same Shizuku binder for IAdbManager calls
     // without spawning a second user service.
@@ -19,15 +13,7 @@ class UserServiceTransport(
 
     override val label: TransportLabel = TransportLabel.USER_SERVICE
 
-    /**
-     * Lazily start the device-side TCP relay (one process == one relay) and return its
-     * 127.0.0.1 port. Required because Chrome's `webSocketDebuggerUrl` has no port (defaults to
-     * 80, unreachable from the app UID), so the WebSocket has to tunnel through the relay.
-     *
-     * [authToken] gates relay access — see [id.steveimm.pocketpilot.browser.cdp.RelayAuthToken]. The remote
-     * binder side is idempotent for a matching token and rejects token rotation, so calling
-     * this with the same per-session token across multiple resolve cycles is safe.
-     */
+    /** Start the local relay with its per-session auth token. Reuse that token on retries because the binder rejects rotation. */
     suspend fun ensureRelayPortSuspend(authToken: String): Int = runInterruptible(Dispatchers.IO) {
         require(authToken.isNotEmpty()) { "authToken must not be empty" }
         val port = binder.startTcpRelay(authToken)

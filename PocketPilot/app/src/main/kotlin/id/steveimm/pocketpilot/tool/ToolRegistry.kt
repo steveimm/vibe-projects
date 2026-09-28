@@ -4,32 +4,16 @@ import android.util.Log
 import com.openai.models.responses.FunctionTool
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * ToolRegistry - Manages tool discovery, registration, and lookup.
- * 
- * Provides:
- * - Tool registration and lookup by name
- * - Schema generation for LLM function calling
- * - Tool filtering based on configuration
- * 
- * Pattern from Gemini CLI's ToolRegistry.
- */
+/** ToolRegistry - Manages tool discovery, registration, and lookup. */
 class ToolRegistry {
-    
+
     companion object {
         private const val TAG = "ToolRegistry"
     }
-    
+
     private val tools = ConcurrentHashMap<String, ToolSpec>()
-    
-    /**
-     * Register a tool.
-     * 
-     * If a tool with the same name already exists, logs a warning and overwrites it.
-     * This allows easy re-registration during development/testing.
-     * 
-     * @param tool The tool specification to register
-     */
+
+    /** Register a tool. */
     fun register(tool: ToolSpec) {
         if (tools.containsKey(tool.name)) {
             Log.w(TAG, "Overwriting existing tool: ${tool.name}")
@@ -37,20 +21,13 @@ class ToolRegistry {
         tools[tool.name] = tool
         Log.d(TAG, "Registered tool: ${tool.name}")
     }
-    
-    /**
-     * Register multiple tools at once.
-     */
+
+    /** Register multiple tools at once. */
     fun registerAll(vararg toolSpecs: ToolSpec) {
         toolSpecs.forEach { register(it) }
     }
-    
-    /**
-     * Unregister a tool by name.
-     * 
-     * @param name The name of the tool to remove
-     * @return true if the tool was removed, false if it didn't exist
-     */
+
+    /** Unregister a tool by name. */
     fun unregister(name: String): Boolean {
         val removed = tools.remove(name) != null
         if (removed) {
@@ -58,46 +35,29 @@ class ToolRegistry {
         }
         return removed
     }
-    
-    /**
-     * Get a tool by name.
-     * 
-     * @param name The tool name
-     * @return The tool specification or null if not found
-     */
+
+    /** Get a tool by name. */
     fun get(name: String): ToolSpec? = tools[name]
-    
-    /**
-     * Get all registered tool names.
-     */
+
+    /** Get all registered tool names. */
     fun getNames(): Set<String> = tools.keys.toSet()
-    
-    /**
-     * Get all registered tools.
-     */
+
+    /** Get all registered tools. */
     fun getAll(): List<ToolSpec> = tools.values.toList()
-    
-    /**
-     * Check if a tool is registered.
-     */
+
+    /** Check if a tool is registered. */
     fun contains(name: String): Boolean = tools.containsKey(name)
-    
-    /**
-     * Get the count of registered tools.
-     */
+
+    /** Get the count of registered tools. */
     fun size(): Int = tools.size
-    
-    /**
-     * Clear all registered tools.
-     */
+
+    /** Clear all registered tools. */
     fun clear() {
         tools.clear()
         Log.d(TAG, "Cleared all tools")
     }
 
-    /**
-     * Create a new registry containing only allowed tools, minus explicitly excluded names.
-     */
+    /** Create a new registry containing only allowed tools, minus explicitly excluded names. */
     fun createFilteredCopy(
         allowedNames: Set<String>,
         excludedNames: Set<String> = emptySet()
@@ -108,10 +68,8 @@ class ToolRegistry {
             .forEach { filtered.register(it) }
         return filtered
     }
-    
-    /**
-     * Get a human-readable summary of registered tools.
-     */
+
+    /** Get a human-readable summary of registered tools. */
     fun getSummary(): String {
         return buildString {
             appendLine("Registered Tools (${tools.size}):")
@@ -120,16 +78,8 @@ class ToolRegistry {
             }
         }
     }
-    
-    /**
-     * Generate FunctionTool objects for the OpenAI Responses API.
-     * 
-     * Note: strict mode is disabled because it requires ALL properties to be
-     * in the required array, which doesn't work well with optional parameters.
-     * 
-     * @param filter Optional filter to include only specific tools
-     * @return List of FunctionTool objects ready for the Responses API
-     */
+
+    /** Generate FunctionTool objects for the OpenAI Responses API. */
     fun generateResponsesApiTools(filter: ((ToolSpec) -> Boolean)? = null): List<FunctionTool> {
         return tools.values
             .filter { filter?.invoke(it) != false }
@@ -147,5 +97,5 @@ class ToolRegistry {
                     .build()
             }
     }
-    
+
 }

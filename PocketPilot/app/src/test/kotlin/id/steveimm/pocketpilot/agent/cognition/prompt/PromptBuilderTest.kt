@@ -46,8 +46,6 @@ class PromptBuilderTest {
     private val observationWithElements = TurnObservation.capture(snapshotWithElements, PerceptionConfig.DEFAULT)
     private val screenshotOnlyObservation = TurnObservation.capture(snapshotWithElements, PerceptionConfig.ScreenshotOnly())
 
-    // ── Memory Section ──────────────────────────────────────────────────
-
     @Test
     fun `buildMemoryText returns null when both empty`() {
         val builder = createBuilder()
@@ -103,8 +101,6 @@ class PromptBuilderTest {
         val scratchIdx = text.indexOf("### Scratchpad")
         assertThat(todoIdx).isLessThan(scratchIdx)
     }
-
-    // ── Observation Section ─────────────────────────────────────────────
 
     @Test
     fun `buildObservationText includes screen state when accessibility available`() {
@@ -180,8 +176,6 @@ class PromptBuilderTest {
         assertThat(text).doesNotContain("</system_reminder>")
     }
 
-    // ── TurnObservation canonical block ─────────────────────────────────
-
     @Test
     fun `TurnObservation screenBlock matches between prompt and history`() {
         val observation = TurnObservation.capture(snapshotWithElements, PerceptionConfig.DEFAULT)
@@ -255,8 +249,6 @@ class PromptBuilderTest {
         assertThat(text).doesNotContain("FINAL TURN")
     }
 
-    // ── COMPACTION_SUMMARY rendering ────────────────────────────────────
-
     @Test
     fun `COMPACTION_SUMMARY content is prefixed with context checkpoint banner`() {
         val historyManager = HistoryManager()
@@ -301,8 +293,6 @@ class PromptBuilderTest {
         assertThat(intentText).doesNotContain("Context checkpoint")
         assertThat(assistantText).doesNotContain("Context checkpoint")
     }
-
-    // ── Full buildInputItems ────────────────────────────────────────────
 
     @Test
     fun `buildInputItems produces history then memory then observation`() {
@@ -420,8 +410,6 @@ class PromptBuilderTest {
         assertThat(items[4].asEasyInputMessage().content().asTextInput())
             .contains("Screen state")
     }
-
-    // ── Helpers ──────────────────────────────────────────────────────────
 
     private fun createBuilder(
         historyManager: HistoryManager = HistoryManager(),

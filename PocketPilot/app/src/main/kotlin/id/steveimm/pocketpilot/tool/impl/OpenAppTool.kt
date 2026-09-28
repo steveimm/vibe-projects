@@ -15,9 +15,7 @@ import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * Well-known app aliases for name → package resolution.
- */
+/** Well-known app aliases for name → package resolution. */
 internal object AppAliases {
     val PACKAGE_MAP = mapOf(
         "google maps" to "com.google.android.apps.maps",
@@ -54,20 +52,7 @@ internal object AppAliases {
     )
 }
 
-/**
- * OpenAppTool — Launch an app by name.
- *
- * Simplified from the former AppControlTool (which also had list_apps, package_name, filter).
- * Aligned with every reference repo: single `app_name` parameter, no agent-facing package names.
- *
- * Resolution strategy (ordered):
- * 1. Foreground check — skip if already open
- * 2. Exact label match (case-insensitive)
- * 3. Label contains search term
- * 4. Well-known alias → package
- * 5. Package-name-shaped input → direct launch
- * 6. Fuzzy suggestions on failure
- */
+/** OpenAppTool — Launch an app by name. */
 class OpenAppTool : ToolSpec {
 
     companion object {
@@ -118,11 +103,7 @@ If the app is not found, suggestions will be provided.
     }
 }
 
-/**
- * Executable invocation for opening an app.
- *
- * Handles name resolution, foreground check, launch, and post-launch screen capture.
- */
+/** Executable invocation for opening an app. */
 private class OpenAppInvocation(
     override val params: JSONObject,
     private val description: String,
@@ -146,8 +127,6 @@ private class OpenAppInvocation(
 
         val apps = context.platform.getInstalledApps()
         val searchTerm = appName.lowercase().trim()
-
-        // --- Resolve package name ---
 
         // Strategy 1: Exact label match
         var match = apps.find { it.label.equals(appName, ignoreCase = true) }
@@ -187,7 +166,6 @@ private class OpenAppInvocation(
         val targetPackage = match.packageName
         Log.d(TAG, "Resolved '$appName' -> $targetPackage (${match.label})")
 
-        // --- Destination tier check: deny launch into BLOCKED apps ---
         val classifier = context.appClassifier
         if (classifier != null && classifier.classify(targetPackage) == AppTier.BLOCKED) {
             Log.w(TAG, "Denied open_app to BLOCKED package: $targetPackage")
@@ -196,7 +174,6 @@ private class OpenAppInvocation(
             )
         }
 
-        // --- Foreground check: skip re-launch if already open ---
         val currentPackage = context.platform.getCurrentPackageName()
         if (currentPackage != null && currentPackage == targetPackage) {
             Log.d(TAG, "'${match.label}' is already in the foreground, skipping launch")
@@ -205,7 +182,6 @@ private class OpenAppInvocation(
             )
         }
 
-        // --- Launch ---
         val result = context.platform.launchApp(targetPackage)
 
         return when (result) {
@@ -235,20 +211,12 @@ private class OpenAppInvocation(
         }
     }
 
-    // ---- Helpers ----
-
-    /**
-     * Check if input looks like a package name (e.g. "com.google.android.gm").
-     */
+    /** Check if input looks like a package name (e.g. "com.google.android.gm"). */
     private fun looksLikePackageName(input: String): Boolean {
         return input.contains('.') && input.split('.').size >= 2
     }
 
-    /**
-     * Find similar app names for error suggestions.
-     *
-     * Uses simple heuristics: prefix match, substring overlap, character similarity.
-     */
+    /** Find similar app names for error suggestions. */
     private fun findSimilarApps(
         searchTerm: String,
         apps: List<id.steveimm.pocketpilot.platform.AppInfo>,

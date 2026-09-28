@@ -67,10 +67,7 @@ data class OAuthTokens(
     val idToken: String? = null
 )
 
-/**
- * Local HTTP server that listens on localhost:1455 for the OAuth callback.
- * Same approach as the official Codex CLI.
- */
+/** Local HTTP server that listens on localhost:1455 for the OAuth callback. Same approach as the official Codex CLI. */
 class OAuthCallbackServer(private val expectedState: String) {
     private val TAG = "OAuthCallbackServer"
     private var serverSocket: ServerSocket? = null
@@ -339,11 +336,8 @@ object OAuthTokenExchange {
     private fun List<Pair<String, String>>.toFormBody(): String =
         joinToString("&") { (k, v) -> "$k=${java.net.URLEncoder.encode(v, "UTF-8")}" }
 
-    /**
-     * Retry on transient DNS failure (UnknownHostException). The auth code / refresh
-     * token is still valid because the request never reached the server. HTTP errors
-     * and post-connect failures are NOT retried — they may have side effects.
-     */
+    /** Retry on transient DNS failure (UnknownHostException). The auth code / refresh token is still valid because the request never
+     * reached the server. HTTP errors and post-connect failures are NOT retried — they may have side effects. */
     private inline fun <T> withDnsRetry(block: () -> T): T {
         var delay = 1000L
         repeat(2) {
@@ -380,10 +374,8 @@ private fun base64UrlDecode(s: String): ByteArray {
     return java.util.Base64.getDecoder().decode(withPad)
 }
 
-/**
- * Validate OAuth access token by making a minimal call to ChatGPT backend-api.
- * This is the same endpoint OpenClaw uses (chatgpt.com/backend-api/codex/responses).
- */
+/** Validate OAuth access token by making a minimal call to ChatGPT backend-api. This is the same endpoint OpenClaw uses
+ * (chatgpt.com/backend-api/codex/responses). */
 object OAuthCodexValidator {
     private const val TAG = "OAuthCodexValidator"
     private const val CODEX_URL = "https://chatgpt.com/backend-api/codex/responses"

@@ -1,10 +1,6 @@
 package id.steveimm.pocketpilot.protocol
 
-/**
- * AgentEvent - Events emitted by the agent session to the UI layer.
- *
- * All state changes, progress updates, and results are emitted as immutable event objects.
- */
+/** AgentEvent - Events emitted by the agent session to the UI layer. */
 sealed interface AgentEvent {
     /** Session this event belongs to */
     val sessionId: SessionId

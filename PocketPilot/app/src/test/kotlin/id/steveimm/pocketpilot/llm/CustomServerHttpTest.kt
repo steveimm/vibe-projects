@@ -4,6 +4,9 @@ import id.steveimm.pocketpilot.auth.AuthStore
 import com.google.common.truth.Truth.assertThat
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
@@ -13,6 +16,36 @@ import org.junit.Test
 import java.util.concurrent.TimeUnit
 
 class CustomServerHttpTest {
+
+    @Test(timeout = 30_000)
+    fun `streaming preserves every delta when the collector is slower than the server`() = runBlocking {
+        MockWebServer().use { server ->
+            server.start()
+            val client = ChatCompletionClient("local-test-key", server.url("/v1").toString(), allowHttp = true)
+            val expected = (1..200).joinToString("") { "$it," }
+            val response = buildString {
+                for (index in 1..200) {
+                    append("data: {\"id\":\"burst\",\"object\":\"chat.completion.chunk\",\"created\":1,\"model\":\"local-model\",")
+                    append("\"choices\":[{\"index\":0,\"delta\":{\"content\":\"$index,\"},\"finish_reason\":null}]}\n\n")
+                }
+                append("data: {\"id\":\"burst\",\"object\":\"chat.completion.chunk\",\"created\":1,\"model\":\"local-model\",")
+                append("\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n")
+            }
+            server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody(response))
+            try {
+                val events = client.chatWithToolsStreaming("test", emptyList(), emptyList(), "local-model")
+                    .buffer(1)
+                    .onEach { delay(1) }
+                    .toList()
+
+                assertThat(events.filterIsInstance<LLMStreamEvent.TextDelta>().joinToString("") { it.delta }).isEqualTo(expected)
+                assertThat(events.last()).isEqualTo(LLMStreamEvent.Completed)
+                assertThat(server.requestCount).isEqualTo(1)
+            } finally {
+                client.cleanup()
+            }
+        }
+    }
 
     @Test(timeout = 30_000)
     fun `custom HTTP server handles discovery chat and streaming with its own credentials`() = runBlocking {

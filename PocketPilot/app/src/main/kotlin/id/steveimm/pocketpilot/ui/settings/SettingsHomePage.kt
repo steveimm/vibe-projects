@@ -11,7 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
@@ -175,18 +175,11 @@ private fun permissionsSubtitle(
     return "$permSummary · Debug ${if (debugMode) "on" else "off"}"
 }
 
-/**
- * Subtitle for the App Access entry on the Settings home page.
- *
- * Counts installed apps per effective tier (allow / ask / reject). The installed
- * app set is effectively constant, but tier classification depends on the live
- * `userOverrides` map, so we re-scan when overrides change. While the IO scan
- * is in flight, render `…` rather than block.
- */
+/** Subtitle for the App Access entry on the Settings home page. */
 @Composable
 private fun appAccessSubtitle(classifier: AppClassifier, approvalMode: ApprovalMode): String {
     val context = LocalContext.current
-    val overrides by classifier.userOverrides.collectAsState()
+    val overrides by classifier.userOverrides.collectAsStateWithLifecycle()
     val counts by produceState<Triple<Int, Int, Int>?>(
         initialValue = null, context, classifier, overrides,
     ) {

@@ -163,8 +163,6 @@ class MobileActionToolTest {
         assertThat(result).isInstanceOf(ValidationResult.Invalid::class.java)
     }
 
-    // ---------- Coordinate-hint normalization (Codex dual target) ----------
-
     @Test
     fun `click element_index plus xy is valid`() {
         val tool = MobileActionTool()

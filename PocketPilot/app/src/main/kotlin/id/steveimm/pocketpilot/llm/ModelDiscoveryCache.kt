@@ -7,23 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
 
-/**
- * Persistent on-disk cache for discovered model entries.
- *
- * Stored at `filesDir/model_discovery_cache.json` as a single JSON object
- * keyed by `"{provider.name}:{normalizedBaseUrl}"`. Each bucket carries the
- * fetch timestamp, the source `baseUrl`, and a SLIM list of model fields.
- * Rich upstream metadata (pricing, description, modality details) is
- * dropped before persist so a ~440KB OpenRouter response collapses to ~30KB
- * on disk. Field names are intentionally compact and per-entry `baseUrl`
- * is folded onto the bucket — every entry in a bucket shares the bucket's
- * baseUrl by construction.
- *
- * Stale buckets remain on disk after the user changes `otherBaseUrl` so they
- * reappear when the user reverts. The visible catalog scopes by current
- * effective baseUrl (see [ModelCatalogRepository]) so stale buckets cannot
- * leak credentials.
- */
+/** Persistent on-disk cache for discovered model entries. */
 class ModelDiscoveryCache(context: Context) {
 
     private val file: File = File(context.filesDir, FILE_NAME)
@@ -44,15 +28,8 @@ class ModelDiscoveryCache(context: Context) {
     /** Bucket for a single cache key, or null if absent. */
     fun read(key: String): Bucket? = readAll()[key]
 
-    /**
-     * Overwrite the bucket at [key] with [discovered] and [fetchedAt]. Each
-     * entry is slimmed to its persisted shape before write; rich upstream
-     * metadata never reaches disk.
-     *
-     * The bucket's `baseUrl` is taken from the first entry; all entries in
-     * a single refresh share the same source URL by construction (see
-     * [ModelDiscovery]).
-     */
+    /** Overwrite the bucket at [key] with [discovered] and [fetchedAt]. Each entry is slimmed to its persisted shape before write; rich
+     * upstream metadata never reaches disk. */
     fun write(key: String, fetchedAt: Long, discovered: List<DiscoveredModel>) {
         synchronized(lock) {
             val current = readAll().toMutableMap()
@@ -103,11 +80,8 @@ class ModelDiscoveryCache(context: Context) {
         @SerialName("u") val baseUrl: String? = null,
         @SerialName("e") val entries: List<SlimEntry> = emptyList(),
     ) {
-        /**
-         * Materialize [DiscoveredModel] rows for the given [provider]. The
-         * provider is needed because the wire format intentionally omits it
-         * — it's already encoded in the cache key.
-         */
+        /** Materialize [DiscoveredModel] rows for the given [provider]. The provider is needed because the wire format intentionally
+         * omits it — it's already encoded in the cache key. */
         fun toDiscovered(provider: LLMProvider): List<DiscoveredModel> = entries.map { slim ->
             val displayName = slim.displayName ?: slim.modelId
             val created = slim.created ?: 0L

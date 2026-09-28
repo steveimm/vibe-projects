@@ -34,11 +34,8 @@ import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
 import org.junit.Test
 
-/**
- * Regression coverage for er-harden-cleanup: when captureObservationWithSnapshot()
- * throws (e.g. platform.captureScreen fails), the tool is still marked executed
- * and execution continues without propagating the exception.
- */
+/** Regression coverage for er-harden-cleanup: when captureObservationWithSnapshot() throws (e.g. platform.captureScreen fails), the
+ * tool is still marked executed and execution continues without propagating the exception. */
 class ObservationFallbackTest {
 
     @Test

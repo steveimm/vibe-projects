@@ -7,12 +7,7 @@ import com.openai.models.responses.ResponseCreateParams
 import com.openai.models.responses.ResponseInputItem
 import org.junit.Test
 
-/**
- * Direct unit tests for [OpenAIResponseClient].
- *
- * Asserts that [OpenAIResponseClient.buildResponseParams] threads the
- * optional max-output-tokens cap into the Responses API request.
- */
+/** Direct unit tests for [OpenAIResponseClient]. */
 class OpenAIResponseClientTest {
 
     private val apiKey = "sk-test-abc123"

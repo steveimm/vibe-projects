@@ -28,25 +28,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Test
 
-/**
- * Verifies the reactive auto-compaction path in [Turn.runStreaming].
- *
- * Scenario A: provider throws [ContextWindowExceededException] on the first
- * streaming attempt; [Compactor.forceCompactNow] returns Compacted; the
- * caller-supplied rebuildInputItems lambda is invoked to produce a smaller
- * payload; the retry succeeds.
- *
- * Scenario B: provider throws on both attempts. Compactor returns Compacted;
- * the Turn must propagate the second exception as an Error event (no
- * infinite retry).
- *
- * Scenario C: no compactor wiring (null). The first exception propagates
- * immediately as an Error event.
- *
- * Scenario D: compactor returns NothingToCompact (or Failed/Stale). The
- * original exception is propagated wrapped with a clear message — never
- * retried with the same payload.
- */
+/** Verifies the reactive auto-compaction path in [Turn.runStreaming]. */
 class TurnReactiveCompactionTest {
 
     private val minimalInputItems = listOf(
@@ -248,8 +230,6 @@ class TurnReactiveCompactionTest {
         assertThat(error.error.message).contains("Compaction could not reduce history")
     }
 
-    // ── Test helpers ──────────────────────────────────────────────────────
-
     private fun registryWith(vararg names: String): ToolRegistry =
         ToolRegistry().apply { names.forEach { register(TestStubTool(it)) } }
 }
@@ -259,11 +239,8 @@ private sealed interface StreamAttempt {
     data class Throw(val error: Throwable) : StreamAttempt
 }
 
-/**
- * Plays a scripted sequence of streaming attempts. Each call to
- * [chatWithToolsStreaming] consumes the next [StreamAttempt]; an extra attempt
- * past the scripted list fails the test.
- */
+/** Plays a scripted sequence of streaming attempts. Each call to [chatWithToolsStreaming] consumes the next [StreamAttempt]; an extra
+ * attempt past the scripted list fails the test. */
 private class SequencingStreamingLLMClient(
     private val attempts: List<StreamAttempt>
 ) : LLMClient() {

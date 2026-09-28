@@ -15,10 +15,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/**
- * S1-S4: Settings sheet navigation — home entry, dismiss, back from sub-page,
- * and page state survival across saved-instance-state restoration.
- */
+/** S1-S4: Settings sheet navigation — home entry, dismiss, back from sub-page, and page state survival across saved-instance-state
+ * restoration. */
 @RunWith(AndroidJUnit4::class)
 class SettingsNavTest {
 

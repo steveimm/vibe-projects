@@ -11,13 +11,7 @@ internal data class AgentModelResolution(
         val supportsVision: Boolean
 )
 
-/**
- * Resolves model runtime details for an agent execution.
- *
- * Preferred path is catalog-driven (provider/api/model_id/supports_vision). If a model is missing
- * from catalog (legacy/local path), fall back to the prebuilt session client and treat model name
- * as the API model id.
- */
+/** Resolves model runtime details for an agent execution. */
 internal class AgentModelResolver(
         private val sessionLlmClient: LLMClient,
         private val modelCatalog: ModelCatalog,

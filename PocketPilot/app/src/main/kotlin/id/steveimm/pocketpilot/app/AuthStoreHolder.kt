@@ -4,15 +4,7 @@ import android.content.Context
 import id.steveimm.pocketpilot.auth.AuthCredential
 import id.steveimm.pocketpilot.auth.AuthStore
 
-/**
- * Application-scoped [AuthStore] singleton.
- *
- * The AuthStore owns per-provider generation counters and an in-memory fallback
- * cache. Creating it per-Activity (or per-session, per-reload) would cause the
- * UI layer and the session layer to observe divergent state on configuration
- * change, service rebind, or process reattach. One instance per process keeps
- * writes and reads coherent.
- */
+/** Application-scoped [AuthStore] singleton. */
 object AuthStoreHolder {
     @Volatile private var instance: AuthStore? = null
 

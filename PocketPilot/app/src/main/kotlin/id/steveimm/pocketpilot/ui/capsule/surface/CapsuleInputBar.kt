@@ -57,15 +57,7 @@ import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 import kotlinx.coroutines.launch
 
-/**
- * Dependencies needed for the mic leadingIcon. Callers in MAIN_APP supply a real [activity];
- * overlay callers pass [activity] = null and implement [requestOverlayPermission] to route the
- * RECORD_AUDIO prompt through MainActivity (since overlays cannot host an ActivityResultLauncher).
- *
- * [isPermissionGranted] lets the overlay branch skip the MainActivity hop when RECORD_AUDIO is
- * already granted — otherwise tapping mic with permission would yank the user into MainActivity
- * just for the permission check to no-op.
- */
+/** Dependencies needed for the mic leadingIcon. */
 interface VoiceMicDeps {
     val factory: RecognizerFactory
     val activity: Activity?
@@ -75,22 +67,8 @@ interface VoiceMicDeps {
 
 internal val LocalVoiceFeedback = staticCompositionLocalOf<(String) -> Unit> { {} }
 
-/**
- * CapsuleInputBar — text field with the send button as a trailing icon and an optional
- * voice-mic leadingIcon when [voice] is wired by the caller.
- *
- * The send button lives inside `TextField.trailingIcon` so the field reads as
- * one object. Material3 TextField merges its trailingIcon subtree into the
- * field's own semantics root, so tests must address the send button by its
- * `qa-capsule-send` testTag rather than by contentDescription.
- *
- * Owns its own draft state (`inputText`) plus the lifecycle effects that mutate it:
- *  - seed from `pendingInputText` after a session bootstrap failure (then signal consume),
- *  - clear on transitions into `WaitingForInput` (per `InputSpec.clearDraft`).
- *
- * Submit-intent routing (Hidden → onSend / WaitingForInput → onUserResponse / else → onSupplement)
- * lives at the surface level, not here — the bar exposes a single `onSubmit(text)` callback.
- */
+/** CapsuleInputBar — text field with the send button as a trailing icon and an optional voice-mic leadingIcon when [voice] is wired by
+ * the caller. */
 @Composable
 internal fun CapsuleInputBar(
     spec: CapsuleRenderSpec.InputSpec,

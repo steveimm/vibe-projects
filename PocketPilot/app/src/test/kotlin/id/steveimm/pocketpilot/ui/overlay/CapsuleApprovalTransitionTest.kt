@@ -10,12 +10,8 @@ import kotlinx.coroutines.test.TestScope
 import org.junit.Before
 import org.junit.Test
 
-/**
- * Gap-filling transitions for [CapsuleStateHolder] not covered by
- * [CapsuleStateHolderTest]: approval flow, takeover-without-pending shortcut, and
- * stop-request guard semantics. Locks the documented contract in
- * doc/main/state_machines/ui_capsule.md.
- */
+/** Gap-filling transitions for [CapsuleStateHolder] not covered by [CapsuleStateHolderTest]: approval flow, takeover-without-pending
+ * shortcut, and stop-request guard semantics. Locks the documented contract in doc/main/state_machines/ui_capsule.md. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CapsuleApprovalTransitionTest {
 
@@ -27,8 +23,6 @@ class CapsuleApprovalTransitionTest {
         scope = TestScope()
         holder = CapsuleStateHolder(scope)
     }
-
-    // ── Approval flow ──
 
     @Test
     fun `onApprovalRequired from Running sets WaitingForApproval`() {
@@ -102,8 +96,6 @@ class CapsuleApprovalTransitionTest {
         assertThat((mode as CapsuleMode.Running).thought).isEqualTo("Processing response...")
     }
 
-    // ── Takeover shortcut ──
-
     @Test
     fun `onTakeoverConfirmed from Running directly transitions to Takeover`() {
         holder.onTaskStarted("task1", "input")
@@ -121,8 +113,6 @@ class CapsuleApprovalTransitionTest {
         holder.onResumed()
         assertThat(holder.mode.value).isInstanceOf(CapsuleMode.Running::class.java)
     }
-
-    // ── Stop guards ──
 
     @Test
     fun `onStopRequested rejected from Hidden`() {
@@ -195,8 +185,6 @@ class CapsuleApprovalTransitionTest {
         holder.onSessionEnded(SessionEndReason.INTERRUPTED)
         assertThat(holder.isStopPending.value).isFalse()
     }
-
-    // ── Session end coverage ──
 
     @Test
     fun `onSessionEnded INTERRUPTED hides capsule`() {

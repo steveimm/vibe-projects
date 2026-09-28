@@ -15,6 +15,7 @@ import io.mockk.mockkConstructor
 import io.mockk.unmockkConstructor
 import java.io.ByteArrayInputStream
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Test
@@ -91,8 +92,6 @@ class ModelCatalogRepositoryTest {
         }
     }
 
-    // ── Synthesized OTHER entry ──────────────────────────────────────────
-
     @Test
     fun `synthesizes other-custom when both otherBaseUrl + otherModelId are non-blank`() {
         val store = fakeSettingsStore(otherBaseUrl = "http://192.168.1.10:11434/v1", otherModelId = "vendor/model")
@@ -163,9 +162,8 @@ class ModelCatalogRepositoryTest {
 
     @Test
     fun `no other-custom entry when otherBaseUrl fails validation`() {
-        // OtherBaseUrlValidator rejects non-http(s); see HIGH #2 in the Sub 1c review.
-        // synth must refuse to materialize so ensureRequiredCredentials reports a clean
-        // MissingCredential(OTHER) instead of leaking through to the client builder.
+        // OtherBaseUrlValidator rejects non-http(s); see HIGH #2 in the Sub 1c review. synth must refuse to materialize so
+        // ensureRequiredCredentials reports a clean MissingCredential(OTHER) instead of leaking through to the client builder.
         val store = fakeSettingsStore(otherBaseUrl = "not-a-url", otherModelId = "vendor/model")
         val repo = ModelCatalogRepository(
             context = contextReturningAsset(seedBytes()),
@@ -192,8 +190,6 @@ class ModelCatalogRepositoryTest {
         assertThat(entry).isNotNull()
         assertThat(entry!!.baseUrl).isEqualTo("https://api.example.com/v1")
     }
-
-    // ── Discovery integration ────────────────────────────────────────────
 
     @Test
     fun `refresh writes cache, emits new catalog containing discovered entries`() = runTest {
@@ -250,6 +246,27 @@ class ModelCatalogRepositoryTest {
         assertThat(state.lastError[LLMProvider.OPENROUTER]).contains("503")
         assertThat(state.refreshing).isEmpty()
         // Cache is empty — no successful refresh happened.
+        assertThat(cache.readAll()).isEmpty()
+    }
+
+    @Test
+    fun `cancelled refresh clears loading without reporting failure or writing cache`() = runTest {
+        val cache = ModelDiscoveryCache(context = realContextForCache())
+        val cancellation = CancellationException("Settings closed")
+        val repo = ModelCatalogRepository(
+            context = contextReturningAsset(seedBytes()),
+            settingsStore = fakeSettingsStore(otherBaseUrl = "", otherModelId = ""),
+            discoveryCache = cache,
+            discoverFn = { _, _, _ -> throw cancellation },
+        )
+
+        val error = runCatching {
+            repo.refresh(LLMProvider.OPENROUTER, "sk-fake", LLMProvider.OPENROUTER.defaultBaseUrl!!)
+        }.exceptionOrNull()
+
+        assertThat(error).isSameInstanceAs(cancellation)
+        assertThat(repo.discoveryState.value.refreshing).isEmpty()
+        assertThat(repo.discoveryState.value.lastError).isEmpty()
         assertThat(cache.readAll()).isEmpty()
     }
 
@@ -383,8 +400,6 @@ class ModelCatalogRepositoryTest {
         every { ctx.filesDir } returns tmp
         return ctx
     }
-
-    // ── Fixtures ──
 
     private fun seedBytes(): ByteArray = seedAssetFile.readBytes()
 

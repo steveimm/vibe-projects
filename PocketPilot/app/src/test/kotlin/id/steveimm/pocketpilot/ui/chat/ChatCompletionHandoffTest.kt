@@ -12,9 +12,8 @@ import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Test
 
-/** Covers `vd-handoff-event-model` acceptance: reducer threads
- *  [TaskCompleted.handoff] into the completed agent row, and absence (the
- *  non-VD default) is preserved as null. */
+/** Covers `vd-handoff-event-model` acceptance: reducer threads [TaskCompleted.handoff] into the completed agent row, and absence (the
+ * non-VD default) is preserved as null. */
 class ChatCompletionHandoffTest {
 
     private val sessionId = SessionId("s1")

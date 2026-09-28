@@ -13,9 +13,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-// The single thin extension surface beyond Material. Carries D1 residue that
-// Material slots do not model: extra text roles, identity/mono styles, and
-// the four spacing tiers Material does not standardize.
+// The single thin extension surface beyond Material. Carries D1 residue that Material slots do not model: extra text roles, identity/mono
+// styles, and the four spacing tiers Material does not standardize.
 @Immutable
 data class PocketPilotTokens(
     val inkFaint: Color,
@@ -65,9 +64,8 @@ internal fun darkPocketPilotTokens() = PocketPilotTokens(
     spacing = PocketPilotSpacing(),
 )
 
-// D1 §4.4: subtle warm under-shadow only — the "lift" effect. (The earlier
-// top hairline read as a divider on small cards after foldedPaper was
-// extended to Settings rows in Phase 3, so it was removed.)
+// D1 §4.4: subtle warm under-shadow only — the "lift" effect. (The earlier top hairline read as a divider on small cards after foldedPaper
+// was extended to Settings rows in Phase 3, so it was removed.)
 @Composable
 fun Modifier.foldedPaper(shape: Shape = MaterialTheme.shapes.large): Modifier {
     val warm = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.22f)

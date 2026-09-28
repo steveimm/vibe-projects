@@ -32,8 +32,6 @@ class TermuxRunCommandAdapterTest {
         unmockkAll()
     }
 
-    // --- Throwable.toRunCommandStartError (start-stage error mapping) ---
-
     @Test
     fun `ForegroundServiceStartNotAllowed maps to TermuxProcessNotRunning`() {
         val fgs = ForegroundServiceStartNotAllowedException("BG-FGS-START denied")
@@ -44,9 +42,8 @@ class TermuxRunCommandAdapterTest {
 
     @Test
     fun `forbidden 3rd process SecurityException also maps to TermuxProcessNotRunning`() {
-        // Vendor restriction surfaces as a SecurityException whose message names the
-        // 3rd-process rule rather than the FGS exception. Must be distinguished from
-        // a true permission denial below.
+        // Vendor restriction surfaces as a SecurityException whose message names the 3rd-process rule rather than the FGS exception. Must
+        // be distinguished from a true permission denial below.
         val securityNumeric =
             SecurityException("It is forbidden to start a 3rd process by service")
         val securityWord =
@@ -68,18 +65,12 @@ class TermuxRunCommandAdapterTest {
 
     @Test
     fun `Play-Store Termux without RunCommandService maps to TermuxNotAvailable`() {
-        // 6f06c64c — the Play-Store Termux build strips RunCommandService per Play
-        // Store policies. An explicit startForegroundService against a missing
-        // component surfaces as ActivityNotFoundException or IllegalArgumentException;
-        // both must funnel to TermuxNotAvailable so the bridge can surface the
-        // TERMUX_RUN_COMMAND_UNAVAILABLE NeedsSetup hint to the user.
+        // 6f06c64c — the Play-Store Termux build strips RunCommandService per Play Store policies.
         assertThat(ActivityNotFoundException("RunCommandService").toRunCommandStartError())
             .isEqualTo(RunCommandError.TermuxNotAvailable)
         assertThat(IllegalArgumentException("Service Intent must be explicit").toRunCommandStartError())
             .isEqualTo(RunCommandError.TermuxNotAvailable)
     }
-
-    // --- toRunCommandError / toRunCommandResult (broadcast parsing) ---
 
     @Test
     fun `success result with stdout, stderr, and zero exit code is parsed`() {
@@ -101,10 +92,8 @@ class TermuxRunCommandAdapterTest {
 
     @Test
     fun `non-zero exit code returns Success result, not a transport error`() {
-        // Exit 127 = command-not-found at the script level. The broadcast still
-        // completed successfully — the parser must NOT promote it to a
-        // RunCommandError. Callers see exitCode in the RunCommandResult and decide
-        // whether to treat it as a script-level failure.
+        // Exit 127 = command-not-found at the script level. The broadcast still completed successfully — the parser must NOT promote it to
+        // a RunCommandError. Callers see exitCode in the RunCommandResult and decide whether to treat it as a script-level failure.
         val intent = makeBroadcastIntent {
             stdout = ""
             stderr = "/bin/foo: not found\n"
@@ -122,10 +111,7 @@ class TermuxRunCommandAdapterTest {
 
     @Test
     fun `errmsg containing allow-external-apps maps to AllowExternalAppsMissing`() {
-        // Termux's RunCommandService rejects unauthorised callers with errmsg that
-        // names the allow-external-apps setting. Distinct from FGS rejection
-        // (which is a start-time Throwable, not a broadcast) and from
-        // PermissionMissing (which the broadcast names PluginErrorCode_PERMISSION).
+        // Termux's RunCommandService rejects unauthorised callers with errmsg that names the allow-external-apps setting.
         val intent = makeBroadcastIntent {
             err = "100"
             errmsg = "Termux app is not allowing external apps; set allow-external-apps=true"
@@ -139,9 +125,6 @@ class TermuxRunCommandAdapterTest {
     @Test
     fun `err -1 with blank errmsg is treated as success not transport failure`() {
         // cdfe52a0: Termux v0.118+ uses err=-1 to mean "no execution-stage error".
-        // Only positive err codes (or any non-empty errmsg) signal a real failure.
-        // Without this case every successful command (including the bootstrap probe)
-        // was rejected with RunCommandError.Other on the QA emulator.
         val intent = makeBroadcastIntent {
             err = -1
             stdout = "ok\n"
@@ -156,17 +139,10 @@ class TermuxRunCommandAdapterTest {
         assertThat(result.exitCode).isEqualTo(0)
     }
 
-    // --- Receiver-level filter (stale / unrelated broadcast) ---
-
     @Test
     fun `broadcast with stale request id is silently dropped by receiver`() = runTest {
-        // The receiver filters EXTRA_REQUEST_ID before parsing — a broadcast for a
-        // cancelled or unrelated call must not race-resume the continuation. To
-        // isolate the request-id guard (and not the upstream action filter), the
-        // stale broadcast carries the SAME resultAction the receiver expects but a
-        // different request id. We recover the real request id by capturing the
-        // EXTRA_REQUEST_ID value production puts onto the PendingIntent, then
-        // rebuild resultAction the same way production does.
+        // The receiver filters EXTRA_REQUEST_ID before parsing — a broadcast for a cancelled or unrelated call must not race-resume the
+        // continuation.
         mockkStatic(PendingIntent::class)
         every { PendingIntent.getBroadcast(any(), any(), any(), any()) } returns mockk(relaxed = true)
 
@@ -207,18 +183,14 @@ class TermuxRunCommandAdapterTest {
         receiverSlot.captured.onReceive(context, staleIntent)
         runCurrent()
 
-        // Continuation must still be suspended — only the timeout resolves it.
-        // If the request-id guard were removed, the receiver would parse the stale
-        // broadcast (default empty Bundle) and resume successfully, failing this
-        // assertion.
+        // Continuation must still be suspended — only the timeout resolves it. If the request-id guard were removed, the receiver would
+        // parse the stale broadcast (default empty Bundle) and resume successfully, failing this assertion.
         advanceTimeBy(6_000L)
         runCurrent()
 
         val outcome = deferred.await()
         assertThat(outcome.exceptionOrNull()).isInstanceOf(RunCommandError.Timeout::class.java)
     }
-
-    // --- helpers ---
 
     private fun newAdapter(): TermuxRunCommandAdapter = TermuxRunCommandAdapter(mockContext())
 

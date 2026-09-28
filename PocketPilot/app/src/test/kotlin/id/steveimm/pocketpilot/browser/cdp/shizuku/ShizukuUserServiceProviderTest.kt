@@ -17,12 +17,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
-/**
- * Coverage for the bind/lifecycle hardening in [ShizukuUserServiceProvider] (review round 3,
- * remaining HIGH). Uses the internal [ShizukuUserServiceProvider.Binder] indirection so the
- * test can drive every [ServiceConnection] callback and timeout path without a real Shizuku
- * binder.
- */
+/** Coverage for the bind/lifecycle hardening in [ShizukuUserServiceProvider] (review round 3, remaining HIGH). */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ShizukuUserServiceProviderTest {
 
@@ -169,12 +164,8 @@ class ShizukuUserServiceProviderTest {
         assertThat(err.cause?.message).contains("closed")
     }
 
-    /**
-     * Round 4 hardening: a callback delivered AFTER [ShizukuUserServiceProvider.close]
-     * must be silently dropped — it cannot resume a continuation that no longer exists,
-     * and it must not trigger an extra unbind on top of the one [close] already
-     * performed.
-     */
+    /** Round 4 hardening: a callback delivered AFTER [ShizukuUserServiceProvider.close] must be silently dropped — it cannot resume a
+     * continuation that no longer exists, and it must not trigger an extra unbind on top of the one [close] already performed. */
     @Test
     fun stale_callback_after_close_is_ignored() = runTest(UnconfinedTestDispatcher()) {
         supervisorScope {
@@ -206,12 +197,7 @@ class ShizukuUserServiceProviderTest {
         }
     }
 
-    /**
-     * Round 4 hardening: when [obtain] times out, [withTimeout] cancels the bind cycle
-     * and `invokeOnCancellation` releases the binding. A late callback from the now-dead
-     * bind cycle must be dropped — it cannot corrupt provider state or resume any later
-     * caller.
-     */
+    /** Timeouts release the binding. Late callbacks must not mutate provider state or resume another caller. */
     @Test
     fun stale_callback_after_timeout_is_ignored() = runTest {
         val binder = ManualBinder()
@@ -236,11 +222,8 @@ class ShizukuUserServiceProviderTest {
         assertThat(binder.unbinds).isEqualTo(1)
     }
 
-    /**
-     * Round 4 hardening: a stale callback from a prior, already-failed bind cycle must
-     * not resume a newer pending [obtain]. Verifies the per-bind generation token
-     * isolates each bind cycle's callbacks.
-     */
+    /** Round 4 hardening: a stale callback from a prior, already-failed bind cycle must not resume a newer pending [obtain]. Verifies
+     * the per-bind generation token isolates each bind cycle's callbacks. */
     @Test
     fun stale_callback_does_not_resume_a_later_obtain() =
         runTest(UnconfinedTestDispatcher()) {
@@ -267,9 +250,8 @@ class ShizukuUserServiceProviderTest {
                 val conn2 = checkNotNull(binder.captured)
                 assertThat(conn2).isNotSameInstanceAs(conn1)
 
-                // Late callbacks from conn1 (the prior, failed cycle) must be dropped:
-                // they must NOT resume deferred2, must NOT mutate provider state, and
-                // must NOT trigger an extra unbind.
+                // Late callbacks from conn1 (the prior, failed cycle) must be dropped: they must NOT resume deferred2, must NOT mutate
+                // provider state, and must NOT trigger an extra unbind.
                 conn1.onBindingDied(componentName)
                 conn1.onNullBinding(componentName)
                 val staleBinder = mockk<IBinder>(relaxed = true)
@@ -289,14 +271,7 @@ class ShizukuUserServiceProviderTest {
             }
         }
 
-    /**
-     * Round 5 hardening (HIGH): two concurrent obtain() callers must share a single
-     * in-flight bind cycle. Without single-flight, the second caller would create a
-     * fresh ServiceConnection and overwrite the first cycle's connection field —
-     * leaving the first connection bound but unreachable through provider state.
-     * When the first caller later cancelled or timed out, the per-cycle generation
-     * check would skip unbind, and the helper process would leak until close().
-     */
+    /** Round 5 hardening (HIGH): two concurrent obtain() callers must share a single in-flight bind cycle. */
     @Test
     fun concurrent_obtain_calls_share_a_single_bind_cycle() =
         runTest(UnconfinedTestDispatcher()) {
@@ -311,9 +286,8 @@ class ShizukuUserServiceProviderTest {
                 val conn1 = checkNotNull(binder.captured) { "first bind not started" }
                 assertThat(binder.bindCalls).isEqualTo(1)
 
-                // Second obtain arrives before any callback fires. Single-flight: must
-                // reuse the existing ServiceConnection rather than spawn a second
-                // bind cycle (which would leak conn1).
+                // Second obtain arrives before any callback fires. Single-flight: must reuse the existing ServiceConnection rather than
+                // spawn a second bind cycle (which would leak conn1).
                 val deferred2 = async(start = CoroutineStart.UNDISPATCHED) {
                     provider.obtain()
                 }
@@ -337,11 +311,8 @@ class ShizukuUserServiceProviderTest {
             }
         }
 
-    /**
-     * Round 5 hardening (HIGH refcount path): when one of two concurrent awaiters
-     * cancels before delivery, the bind cycle MUST continue for the remaining
-     * awaiter. The cycle is only torn down when the last awaiter abandons it.
-     */
+    /** Round 5 hardening (HIGH refcount path): when one of two concurrent awaiters cancels before delivery, the bind cycle MUST
+     * continue for the remaining awaiter. The cycle is only torn down when the last awaiter abandons it. */
     @Test
     fun cancellation_of_one_awaiter_keeps_bind_alive_for_the_other() =
         runTest(UnconfinedTestDispatcher()) {
@@ -374,11 +345,8 @@ class ShizukuUserServiceProviderTest {
             }
         }
 
-    /**
-     * Round 5 hardening (HIGH refcount terminal path): when ALL awaiters cancel
-     * before delivery, the bind cycle is torn down — no helper process is leaked
-     * waiting for callers that no longer exist.
-     */
+    /** Round 5 hardening (HIGH refcount terminal path): when ALL awaiters cancel before delivery, the bind cycle is torn down — no
+     * helper process is leaked waiting for callers that no longer exist. */
     @Test
     fun bind_is_unbound_when_all_awaiters_cancel_before_delivery() =
         runTest(UnconfinedTestDispatcher()) {
@@ -404,18 +372,8 @@ class ShizukuUserServiceProviderTest {
             }
         }
 
-    /**
-     * Round 5 hardening (MEDIUM): a cancellation that arrives AFTER
-     * onServiceConnected has delivered the transport must NOT unbind the now-active
-     * service. The old single-cont design had a race where the cancellation handler
-     * could pass the generation check (success path didn't bump it) and unbind the
-     * live connection while leaving `transport` cached — future obtain() would
-     * then return a transport backed by a dead binder.
-     *
-     * The single-flight design forecloses the race: the success path atomically
-     * transitions the cycle out of "in-flight" before completing the deferred,
-     * so any subsequent cancellation finds no inflight to tear down.
-     */
+    /** Round 5 hardening (MEDIUM): a cancellation that arrives AFTER onServiceConnected has delivered the transport must NOT unbind the
+     * now-active service. */
     @Test
     fun cancellation_after_delivery_does_not_unbind_active_transport() =
         runTest(UnconfinedTestDispatcher()) {

@@ -1,10 +1,29 @@
 package id.steveimm.pocketpilot.browser.setup
 
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class CommandLineWriterTest {
+
+    @Test
+    fun `cancelling the read prevents a subsequent shell write`() = runTest {
+        val cancellation = CancellationException("Settings closed")
+        var calls = 0
+        val shell = object : ShellRunner {
+            override suspend fun run(command: Array<String>): ShellRunner.ShellResult {
+                calls++
+                throw cancellation
+            }
+        }
+
+        val error = runCatching { CommandLineWriter(shell).ensureWritten() }.exceptionOrNull()
+
+        assertThat(error).isInstanceOf(CancellationException::class.java)
+        assertThat(error?.message).isEqualTo(cancellation.message)
+        assertThat(calls).isEqualTo(1)
+    }
 
     @Test
     fun `ensureWritten skips write when current content already matches desired`() = runTest {

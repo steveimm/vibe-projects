@@ -60,15 +60,7 @@ import id.steveimm.pocketpilot.ui.theme.AppWindowInsets
 import id.steveimm.pocketpilot.ui.theme.PageMastheadIdentity
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
-/**
- * NavigationDrawer - Side drawer containing session history and settings access.
- * 
- * Structure:
- * - Header with close button
- * - "New Conversation" button
- * - Scrollable session list
- * - Settings entry at bottom
- */
+/** NavigationDrawer - Side drawer containing session history and settings access. */
 @Composable
 fun NavigationDrawerContent(
     sessions: List<SessionInfo>,
@@ -80,9 +72,8 @@ fun NavigationDrawerContent(
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Use ModalDrawerSheet's built-in windowInsets parameter for proper system bar handling
-    // This ensures consistent inset behavior at the component level
-    // Width: 85% of screen width, max 320dp (responsive design)
+    // Use ModalDrawerSheet's built-in windowInsets parameter for proper system bar handling This ensures consistent inset behavior at the
+    // component level Width: 85% of screen width, max 320dp (responsive design)
     ModalDrawerSheet(
         modifier = modifier.fillMaxWidth(0.85f).widthIn(max = 320.dp),
         drawerContainerColor = MaterialTheme.colorScheme.surface,
@@ -94,15 +85,15 @@ fun NavigationDrawerContent(
         ) {
             // Header
             DrawerHeader(onClose = onClose)
-            
+
             // New session button
             NewSessionButton(
                 onClick = onNewSession,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             // Recent sessions header
             if (sessions.isNotEmpty()) {
                 Text(
@@ -111,13 +102,13 @@ fun NavigationDrawerContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-                
+
                 HorizontalDivider(
                     modifier = Modifier.padding(horizontal = 16.dp),
                     color = MaterialTheme.colorScheme.outlineVariant
                 )
             }
-            
+
             // Session list (scrollable, takes remaining space)
             Box(modifier = Modifier.weight(1f)) {
                 if (sessions.isEmpty()) {
@@ -144,7 +135,7 @@ fun NavigationDrawerContent(
                     }
                 }
             }
-            
+
             // Settings entry at bottom - no divider, uses surface background to distinguish
             SettingsEntry(
                 currentModel = currentModel,
@@ -157,9 +148,7 @@ fun NavigationDrawerContent(
     }
 }
 
-/**
- * Drawer header — Bound Edition running head + close affordance.
- */
+/** Drawer header — Bound Edition running head + close affordance. */
 @Composable
 private fun DrawerHeader(
     onClose: () -> Unit
@@ -171,9 +160,7 @@ private fun DrawerHeader(
     )
 }
 
-/**
- * New session button — D1 §6.6: the one Claw-accented new-entry affordance.
- */
+/** New session button — D1 §6.6: the one Claw-accented new-entry affordance. */
 @Composable
 private fun NewSessionButton(
     onClick: () -> Unit,
@@ -202,9 +189,7 @@ private fun NewSessionButton(
     }
 }
 
-/**
- * Individual session item in drawer.
- */
+/** Individual session item in drawer. */
 @Composable
 private fun DrawerSessionItem(
     session: SessionInfo,
@@ -314,9 +299,9 @@ private fun DrawerSessionItem(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(4.dp))
-                
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -366,9 +351,7 @@ private fun DrawerSessionItem(
     }
 }
 
-/**
- * Empty state message.
- */
+/** Empty state message. */
 @Composable
 private fun EmptySessionsMessage(
     modifier: Modifier = Modifier
@@ -391,10 +374,7 @@ private fun EmptySessionsMessage(
     }
 }
 
-/**
- * Settings entry at bottom of drawer.
- * Uses surface color (no fill) to distinguish from session items above.
- */
+/** Settings entry at bottom of drawer. Uses surface color (no fill) to distinguish from session items above. */
 @Composable
 private fun SettingsEntry(
     currentModel: String,
@@ -414,9 +394,9 @@ private fun SettingsEntry(
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        
+
         Spacer(modifier = Modifier.width(12.dp))
-        
+
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "Settings",

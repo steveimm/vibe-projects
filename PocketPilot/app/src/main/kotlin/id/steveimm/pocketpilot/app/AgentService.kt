@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.lang.ref.WeakReference
 
 class AgentService : AccessibilityService() {
 
@@ -45,8 +46,13 @@ class AgentService : AccessibilityService() {
         private const val SHUTDOWN_TIMEOUT_MS = 5_000L
 
         @Volatile
-        var instance: AgentService? = null
-            private set
+        private var serviceReference = WeakReference<AgentService>(null)
+
+        var instance: AgentService?
+            get() = serviceReference.get()
+            private set(value) {
+                serviceReference = WeakReference(value)
+            }
 
         private val _statusFlow = MutableStateFlow<String>("")
         val statusFlow: StateFlow<String> = _statusFlow.asStateFlow()
@@ -55,17 +61,7 @@ class AgentService : AccessibilityService() {
     private val _effectivePlatformMode = MutableStateFlow<PlatformMode?>(null)
     val effectivePlatformMode: StateFlow<PlatformMode?> = _effectivePlatformMode.asStateFlow()
 
-    /**
-     * Signal that the VirtualDisplayViewerActivity should finish itself. Emitted by the
-     * overlay controller when the agent reaches a terminal idle state with the viewer
-     * still in front (see [shouldFinishViewerOnIdle]). The activity collects this in its
-     * lifecycle scope and calls finish() so the user lands back on MainActivity instead
-     * of being stranded on a frozen VD surface.
-     *
-     * SharedFlow with replay=0 + buffer=1 + DROP_OLDEST so a missed signal during
-     * activity recreation doesn't leak — the next emit replaces it, and we only ever
-     * care about the most recent finish request.
-     */
+    /** Signal that the VirtualDisplayViewerActivity should finish itself. */
     private val _viewerFinishSignal = MutableSharedFlow<Unit>(
         replay = 0,
         extraBufferCapacity = 1,
@@ -73,14 +69,7 @@ class AgentService : AccessibilityService() {
     )
     val viewerFinishSignal: SharedFlow<Unit> = _viewerFinishSignal.asSharedFlow()
 
-    /**
-     * Long-lived service-owned coroutine scope. Cancelled in [onDestroy].
-     *
-     * Exposed as `internal` so [AgentSession] callers in the app module can
-     * scope sessions to the service's lifetime instead of an Activity's. This
-     * is essential: a session created against `MainActivity.sessionScope`
-     * dies on rotation/recreation, killing in-flight LLM streams.
-     */
+    /** Long-lived service-owned coroutine scope. Cancelled in [onDestroy]. */
     internal val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val serviceLifecycleOwner = ServiceLifecycleOwner()
     private var session: AgentSession? = null
@@ -256,16 +245,18 @@ class AgentService : AccessibilityService() {
 
     override fun onDestroy() {
         isServiceActive = false
-        instance = null
+        if (instance === this) {
+            instance = null
+            _statusFlow.value = ""
+        }
 
         eventCollectorJob?.cancel()
         eventCollectorJob = null
 
         val currentSession = session
         if (currentSession != null) {
-            // Detach shutdown onto a scope that outlives `serviceScope`. The session handles
-            // its own checkpoint persistence via NonCancellable, so the main goal here
-            // is to avoid blocking the main thread (ANR risk).
+            // Detach shutdown onto a scope that outlives `serviceScope`. The session handles its own checkpoint persistence via
+            // NonCancellable, so the main goal here is to avoid blocking the main thread (ANR risk).
             val shutdownScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
             shutdownScope.launch {
                 try {
@@ -293,7 +284,6 @@ class AgentService : AccessibilityService() {
         unregisterDebugMobileActionReceiverIfNeeded(this, debugMobileActionReceiver)
         serviceLifecycleOwner.onDestroy()
         super.onDestroy()
-        _statusFlow.value = ""
         serviceScope.cancel()
     }
 
@@ -423,12 +413,7 @@ class AgentService : AccessibilityService() {
         viewerBridge.onViewerOpened()
     }
 
-    /**
-     * Synchronous version of the [shouldFinishViewerOnIdle] rule. Used by
-     * VirtualDisplayViewerActivity at onStart to race-proof the SharedFlow path: if the
-     * agent is already idle when the user opens the viewer, the SharedFlow emit may
-     * happen before the activity's collector subscribes, so we also poll directly here.
-     */
+    /** Synchronous version of the [shouldFinishViewerOnIdle] rule. */
     fun shouldFinishViewerNow(): Boolean = overlayController?.shouldFinishViewerNow() == true
 
     fun onViewerClosed() {
@@ -439,12 +424,7 @@ class AgentService : AccessibilityService() {
         viewerBridge.onMainAppVisible()
     }
 
-    /**
-     * Bring MainActivity to the foreground and ask it to prompt for RECORD_AUDIO. Used by the
-     * overlay path — `RequestPermission` is an Activity-result contract, so the prompt cannot
-     * be launched from this Service. MainActivity reads the extra in onCreate/onNewIntent and
-     * fires the launcher once Compose is mounted.
-     */
+    /** Bring MainActivity to the foreground and ask it to prompt for RECORD_AUDIO. */
     fun requestVoicePermissionViaMainActivity() {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or

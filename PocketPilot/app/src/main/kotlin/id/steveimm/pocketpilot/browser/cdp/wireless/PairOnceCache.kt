@@ -8,18 +8,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Persistent witness that the local pubkey was, at some recent point, accepted by adbd's pair
- * service on this device. Lets [WirelessAdbSelfPairTransport] skip a SPAKE2 re-pair on every
- * cold session when `/data/misc/adb/adb_keys` is unreadable to the Shizuku-spawned shell uid
- * (locked OEMs like nubia P0110): if the persisted pubkey hasn't rotated and we already paired
- * once, the immediately-following mTLS handshake is the authoritative test of trust — no need
- * to burn a fresh PSK round-trip just to re-confirm something we already know.
- *
- * Stores only a SHA-256 of the base64 pubkey blob, never the pubkey itself: the cache file is
- * world-readable as far as the app's `prefs/` directory goes, and the digest is enough to detect
- * key rotation.
- */
+/** Persistent witness that the local pubkey was, at some recent point, accepted by adbd's pair service on this device. */
 class PairOnceCache(
     private val context: Context,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -59,13 +48,7 @@ class PairOnceCache(
         private const val KEY_FINGERPRINT = "pubkey_fingerprint_sha256_b64"
         private const val KEY_LAST_PAIRED_AT_MS = "last_paired_at_ms"
 
-        /**
-         * SHA-256 of the US-ASCII bytes of [pubkeyBase64], rendered as unpadded base64. Two
-         * sessions of the same RSA keypair produce identical fingerprints; rotation of the
-         * persisted keypair flips the fingerprint and forces a re-pair. Trailing whitespace is
-         * stripped before hashing so a stray newline from one writer doesn't fork the cache key
-         * from the same logical pubkey.
-         */
+        /** SHA-256 of the US-ASCII bytes of [pubkeyBase64], rendered as unpadded base64. */
         fun fingerprintOf(pubkeyBase64: String): String {
             require(pubkeyBase64.isNotEmpty()) { "pubkeyBase64 must not be empty" }
             val canonical = pubkeyBase64.trim()

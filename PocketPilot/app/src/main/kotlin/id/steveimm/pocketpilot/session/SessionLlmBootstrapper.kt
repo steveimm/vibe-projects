@@ -83,10 +83,7 @@ internal object SessionLlmBootstrapper {
     ) {
         if (authStore == null) return
         if (config.mainModel == ModelCatalogRepository.OTHER_CUSTOM_NAME) {
-            // Short-circuit BEFORE catalog.resolve: when otherBaseUrl or otherModelId is
-            // blank the synth entry isn't in the catalog, so catalog.resolve would throw
-            // "unknown model". Surface a clean MissingCredential(OTHER) instead so the
-            // banner deep-links to the OTHER tab.
+            // Check missing custom-server settings before catalog lookup so the error opens the correct authentication tab.
             if (catalog.resolveOrNull(config.mainModel) == null ||
                 !authStore.has(LLMProvider.OTHER)) {
                 throw MissingCredential(LLMProvider.OTHER)

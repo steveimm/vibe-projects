@@ -6,7 +6,6 @@ import android.content.Intent
 import android.util.Log
 import id.steveimm.pocketpilot.app.AgentService
 import id.steveimm.pocketpilot.model.ScreenSnapshot
-import id.steveimm.pocketpilot.perception.Perceptor
 import id.steveimm.pocketpilot.platform.AccessibilityPlatform
 import id.steveimm.pocketpilot.platform.AndroidPlatform
 import id.steveimm.pocketpilot.protocol.SessionConfig
@@ -20,27 +19,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 
-/**
- * Debug receiver for direct MobileActionTool invocation with raw JSON args.
- *
- * Intent: `id.steveimm.pocketpilot.ACTION_DEBUG_MOBILE_ACTION`
- * Extras:
- *   --es args '<JSON>'  // mobile_action params object
- *
- * Writes result to /sdcard/Android/data/id.steveimm.pocketpilot/files/mobile-action-debug/latest/.
- * Registered dynamically in [AgentService.onServiceConnected], gated by BuildConfig.DEBUG.
- *
- * Used by `scripts/mobile-action-test.sh` to QA targeting-normalization scenarios on device.
- */
+/** Debug receiver for direct MobileActionTool invocation with raw JSON args. */
 class MobileActionDebugReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -84,26 +67,23 @@ class MobileActionDebugReceiver : BroadcastReceiver() {
     }
 }
 
-/**
- * Builds platform + snapshot from a live [AgentService], validates a raw mobile_action
- * params object, runs the tool through its normal validate→createInvocation→execute path,
- * and persists the result for the test harness.
- */
+/** Builds platform + snapshot from a live [AgentService], validates a raw mobile_action params object, runs the tool through its normal
+ * validate→createInvocation→execute path, and persists the result for the test harness. */
 private class MobileActionDebugRunner(private val service: AgentService) {
 
     suspend fun run(intent: Intent, context: Context) {
-        val dir = prepareOutputDir(context)
+        val artifacts = DebugActionArtifacts(File(context.getExternalFilesDir(null), OUTPUT_DIR), TAG).reset()
 
         val argsJson = intent.getStringExtra("args")
         if (argsJson.isNullOrBlank()) {
-            finish(dir, errorJson("Missing 'args' extra (JSON mobile_action params)"))
+            artifacts.finish(errorJson("Missing 'args' extra (JSON mobile_action params)"))
             return
         }
 
         val params = try {
             JSONObject(argsJson)
         } catch (e: Exception) {
-            finish(dir, errorJson("Invalid JSON in 'args': ${e.message}"))
+            artifacts.finish(errorJson("Invalid JSON in 'args': ${e.message}"))
             return
         }
 
@@ -111,8 +91,7 @@ private class MobileActionDebugRunner(private val service: AgentService) {
 
         val validation = tool.validate(params)
         if (validation is ValidationResult.Invalid) {
-            finish(
-                dir,
+            artifacts.finish(
                 resultJson(
                     params = params,
                     phase = "validation",
@@ -125,8 +104,8 @@ private class MobileActionDebugRunner(private val service: AgentService) {
         }
 
         // Snapshot first so we can record element count + serve as currentSnapshot to executors.
-        val preSnapshot = captureSnapshot()
-        if (preSnapshot != null) writeTree(dir, "pre_tree.json", preSnapshot)
+        val preSnapshot = artifacts.captureSnapshot(service)
+        if (preSnapshot != null) artifacts.writeTree("pre_tree.json", preSnapshot)
 
         val appClassifier = try {
             AppClassifier.fromAssets(service.assets)
@@ -160,8 +139,8 @@ private class MobileActionDebugRunner(private val service: AgentService) {
         val toolResult = invocation.execute(ctx)
         val elapsedMs = System.currentTimeMillis() - startMs
 
-        val postSnapshot = captureSnapshot()
-        if (postSnapshot != null) writeTree(dir, "post_tree.json", postSnapshot)
+        val postSnapshot = artifacts.captureSnapshot(service)
+        if (postSnapshot != null) artifacts.writeTree("post_tree.json", postSnapshot)
 
         val (status, message) = when (toolResult) {
             is ToolExecutionResult.Success -> "success" to toolResult.output
@@ -169,8 +148,7 @@ private class MobileActionDebugRunner(private val service: AgentService) {
             is ToolExecutionResult.Cancelled -> "cancelled" to toolResult.reason
         }
 
-        finish(
-            dir,
+        artifacts.finish(
             resultJson(
                 params = params,
                 phase = "execute",
@@ -183,19 +161,6 @@ private class MobileActionDebugRunner(private val service: AgentService) {
         )
 
         Log.i(TAG, "mobile_action status=$status elapsed=${elapsedMs}ms msg=${message.take(200)}")
-    }
-
-    private suspend fun captureSnapshot(): ScreenSnapshot? {
-        return try {
-            withContext(Dispatchers.Main) {
-                val root = service.rootInActiveWindow
-                val dm = service.resources.displayMetrics
-                Perceptor.snapshot(root, dm.widthPixels, dm.heightPixels)
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "snapshot failed", e)
-            null
-        }
     }
 
     private fun resultJson(
@@ -219,32 +184,8 @@ private class MobileActionDebugRunner(private val service: AgentService) {
             put("elements_before", preElementCount)
             put("elements_after", postElementCount)
             put("elapsed_ms", elapsedMs)
-            put("timestamp", isoTimestamp())
+            put("timestamp", debugActionTimestamp())
             put("device", android.os.Build.MODEL)
-        }
-    }
-
-    private fun prepareOutputDir(context: Context): File {
-        val dir = File(context.getExternalFilesDir(null), OUTPUT_DIR)
-        if (dir.exists()) dir.deleteRecursively()
-        dir.mkdirs()
-        return dir
-    }
-
-    private fun writeTree(dir: File, filename: String, snapshot: ScreenSnapshot) {
-        try {
-            File(dir, filename).writeText(Perceptor.toPromptJson(snapshot))
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to write $filename", e)
-        }
-    }
-
-    private fun finish(dir: File, json: JSONObject) {
-        try {
-            File(dir, "result.json").writeText(json.toString(2))
-            File(dir, ".done").createNewFile()
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to write result", e)
         }
     }
 
@@ -256,11 +197,10 @@ private class MobileActionDebugRunner(private val service: AgentService) {
 
 private fun writeErrorResult(context: Context, error: String) {
     try {
-        val dir = File(context.applicationContext.getExternalFilesDir(null), "mobile-action-debug/latest")
-        if (dir.exists()) dir.deleteRecursively()
-        dir.mkdirs()
-        File(dir, "result.json").writeText(errorJson(error).toString(2))
-        File(dir, ".done").createNewFile()
+        DebugActionArtifacts(
+            File(context.applicationContext.getExternalFilesDir(null), "mobile-action-debug/latest"),
+            "MobileActionDebugRx",
+        ).reset().finish(errorJson(error))
     } catch (e: Exception) {
         Log.e("MobileActionDebugRx", "Failed to write error result", e)
     }
@@ -275,12 +215,6 @@ private fun errorJson(error: String): JSONObject {
             put("status", "error")
             put("message", error)
         })
-        put("timestamp", isoTimestamp())
+        put("timestamp", debugActionTimestamp())
     }
-}
-
-private fun isoTimestamp(): String {
-    val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
-    fmt.timeZone = TimeZone.getTimeZone("UTC")
-    return fmt.format(Date())
 }

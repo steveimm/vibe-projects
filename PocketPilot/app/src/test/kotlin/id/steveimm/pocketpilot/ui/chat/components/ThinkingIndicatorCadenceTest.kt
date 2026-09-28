@@ -3,11 +3,8 @@ package id.steveimm.pocketpilot.ui.chat.components
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-/**
- * Pin: paw-toe thinking indicator cadence (motion spec §4 / commit 4d0e1168).
- * Four elements light cumulatively (toe₁ → toe₂ → toe₃ → pad) with
- * unlit elements at 0.30 alpha and lit at 1.0.
- */
+/** Pin: paw-toe thinking indicator cadence (motion spec §4 / commit 4d0e1168). Four elements light cumulatively (toe₁ → toe₂ → toe₃ →
+ * pad) with unlit elements at 0.30 alpha and lit at 1.0. */
 class ThinkingIndicatorCadenceTest {
 
     @Test
@@ -43,9 +40,8 @@ class ThinkingIndicatorCadenceTest {
 
     @Test
     fun `tint role pinned to onSurface`() {
-        // ThinkingIndicator() resolves its tint via THINKING_INDICATOR_TINT.
-        // Pin the role so theme refactors that swap to e.g. primary or Claw
-        // trip this test. Color value itself is theme-resolved at runtime.
+        // ThinkingIndicator() resolves its tint via THINKING_INDICATOR_TINT. Pin the role so theme refactors that swap to e.g. primary or
+        // Claw trip this test. Color value itself is theme-resolved at runtime.
         assertThat(THINKING_INDICATOR_TINT).isEqualTo(ThinkingTintRole.OnSurface)
     }
 }

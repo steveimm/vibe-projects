@@ -9,8 +9,6 @@ import org.junit.Test
 
 class OpenAIErrorClassifierTest {
 
-    // ── Rate-limit detection ──────────────────────────────────────────────
-
     @Test
     fun `429 in message is classified as RateLimitException`() {
         val result = OpenAIErrorClassifier.classify(RuntimeException("HTTP 429 Too Many Requests"))
@@ -56,8 +54,6 @@ class OpenAIErrorClassifierTest {
         assertThat(result).isInstanceOf(RateLimitException::class.java)
         assertThat((result as RateLimitException).retryAfterMs).isEqualTo(5_000L)
     }
-
-    // ── False-positive rejection (word-boundary matching) ────────────────
 
     @Test
     fun `14291 does NOT match 429 substring`() {
@@ -107,8 +103,6 @@ class OpenAIErrorClassifierTest {
         assertThat(result).isNotInstanceOf(RateLimitException::class.java)
     }
 
-    // ── Domain exception preservation ───────────────────────────────────
-
     @Test
     fun `RateLimitException is preserved with retryAfterMs intact`() {
         // Fixed: classify() now preserves existing domain exceptions
@@ -128,8 +122,6 @@ class OpenAIErrorClassifierTest {
         assertThat(result).isSameInstanceAs(original)
         assertThat(result).isInstanceOf(TransientException::class.java)
     }
-
-    // ── Typed SDK exceptions ──────────────────────────────────────────────
 
     @Test
     fun `OpenAI SDK RateLimitException maps to domain RateLimitException`() {
@@ -160,8 +152,6 @@ class OpenAIErrorClassifierTest {
         assertThat(result).isInstanceOf(TransientException::class.java)
     }
 
-    // ── Server errors (5xx) ───────────────────────────────────────────────
-
     @Test
     fun `500 server error is TransientException`() {
         val result = OpenAIErrorClassifier.classify(RuntimeException("HTTP 500 Internal Server Error"))
@@ -185,8 +175,6 @@ class OpenAIErrorClassifierTest {
         val result = OpenAIErrorClassifier.classify(RuntimeException("504 Gateway Timeout"))
         assertThat(result).isInstanceOf(TransientException::class.java)
     }
-
-    // ── Timeout / connectivity ────────────────────────────────────────────
 
     @Test
     fun `SocketTimeoutException is TransientException`() {
@@ -214,8 +202,6 @@ class OpenAIErrorClassifierTest {
         val result = OpenAIErrorClassifier.classify(IOException("Connection reset"))
         assertThat(result).isInstanceOf(TransientException::class.java)
     }
-
-    // ── Fallback ──────────────────────────────────────────────────────────
 
     @Test
     fun `unknown exception type becomes RuntimeException`() {

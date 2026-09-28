@@ -5,12 +5,7 @@ import id.steveimm.pocketpilot.platform.AndroidPlatform
 import id.steveimm.pocketpilot.platform.UIAction
 import id.steveimm.pocketpilot.tool.AppClassifier
 
-/**
- * Long press executor: thin wrapper over [executePointAction].
- *
- * Primary path for semantic targets: ACTION_LONG_CLICK on the resolved node.
- * Fallback: gesture long-press at resolved coordinates.
- */
+/** Long press executor: thin wrapper over [executePointAction]. */
 class LongPressExecutor(
     private val targetResolver: TargetResolver = TargetResolver
 ) {

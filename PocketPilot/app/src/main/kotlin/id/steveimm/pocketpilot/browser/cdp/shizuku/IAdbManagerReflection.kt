@@ -5,13 +5,8 @@ import android.util.Log
 import java.io.IOException
 import java.lang.reflect.Method
 
-/**
- * Reflection wrapper around the hidden `android.debug.IAdbManager` AIDL. Cached lookups,
- * methods invoked on the proxy returned by `IAdbManager$Stub.asInterface(ServiceManager.getService("adb"))`.
- *
- * Caller MUST hold MANAGE_DEBUGGING — i.e. run inside the Shizuku-spawned shell-UID process.
- * From the app UID every IAdbManager call returns SecurityException.
- */
+/** Reflection wrapper around the hidden `android.debug.IAdbManager` AIDL. Cached lookups, methods invoked on the proxy returned by
+ * `IAdbManager$Stub.asInterface(ServiceManager.getService("adb"))`. */
 internal class IAdbManagerReflection {
 
     @Volatile private var cached: Proxy? = null

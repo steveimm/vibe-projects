@@ -1,23 +1,6 @@
 package id.steveimm.pocketpilot.llm
 
-/**
- * Single validation rule for user-supplied or discovered model identifiers.
- *
- * Applied at every entry point (OTHER synth, intent extras, discovery
- * namespacing, settings auto-flip) so the catalog never holds a model id
- * that could collide with the `provider:` namespacing scheme or break the
- * `selectedModel` storage format. Rules:
- *
- *  - non-blank after trim.
- *  - no whitespace anywhere — model ids are URL-safe atoms in the request
- *    body and whitespace round-tripping is a known footgun.
- *  - must not start with `/` or `:` — `:` would clash with the discovery
- *    namespace separator (`provider:modelId`); `/` would look like an
- *    absolute path prefix and confuse url construction.
- *
- * Returns the trimmed value (no other normalization — case is meaningful
- * for some upstreams).
- */
+/** Single validation rule for user-supplied or discovered model identifiers. */
 object ModelIdValidator {
     fun validate(input: String): Result<String> {
         val trimmed = input.trim()

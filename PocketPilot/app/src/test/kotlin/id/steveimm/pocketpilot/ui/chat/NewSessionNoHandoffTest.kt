@@ -26,12 +26,8 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-/**
- * Regression guard for the `vd_completion_handoff` design (guards section):
- * tapping "New Session" must clear the chat and drop any handoff-bearing row,
- * so the "Open <App>" CTA on a prior completion can never be re-triggered
- * after reset.
- */
+/** Regression guard for the `vd_completion_handoff` design (guards section): tapping "New Session" must clear the chat and drop any
+ * handoff-bearing row, so the "Open <App>" CTA on a prior completion can never be re-triggered after reset. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NewSessionNoHandoffTest {
 
@@ -112,9 +108,8 @@ class NewSessionNoHandoffTest {
 
     @Test
     fun `startNewSession does not retain any handoff-bearing agent row`() {
-        // Direct controller-level check: even when prior messages include a
-        // completed agent row with valid handoff metadata, the reset clears
-        // the list entirely — no row survives that could re-trigger the CTA.
+        // Direct controller-level check: even when prior messages include a completed agent row with valid handoff metadata, the reset
+        // clears the list entirely — no row survives that could re-trigger the CTA.
         val messages = androidx.compose.runtime.mutableStateListOf<ChatMessage>(
             ChatMessage.User(id = "u1", timestamp = 1L, text = "open camera on vd"),
             ChatMessage.Agent(

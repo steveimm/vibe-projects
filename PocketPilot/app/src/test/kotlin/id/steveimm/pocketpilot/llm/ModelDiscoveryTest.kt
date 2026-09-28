@@ -23,8 +23,6 @@ class ModelDiscoveryTest {
         server.shutdown()
     }
 
-    // ── Field-priority reader: three fixture types ───────────────────────
-
     @Test
     fun `OpenRouter fixture parses name + context_length + image modality + tool support`() {
         val body = """
@@ -94,8 +92,6 @@ class ModelDiscoveryTest {
         assertThat(e.supportsVision).isFalse()
     }
 
-    // ── Mandatory tool-calling filter ────────────────────────────────────
-
     @Test
     fun `entry without tools in supported_parameters is dropped`() {
         val body = """
@@ -116,8 +112,6 @@ class ModelDiscoveryTest {
         val entries = ModelDiscovery.parse(LLMProvider.OPENAI_API, BASE, body)
         assertThat(entries.map { it.entry.modelId }).containsExactly("chat/unknown")
     }
-
-    // ── Non-chat filter ──────────────────────────────────────────────────
 
     @Test
     fun `OpenRouter embedding model dropped by id substring`() {
@@ -158,8 +152,6 @@ class ModelDiscoveryTest {
         assertThat(ids).containsExactly("gpt-4o")
     }
 
-    // ── Namespacing ──────────────────────────────────────────────────────
-
     @Test
     fun `discovered name is provider colon modelId, lowercase enum`() {
         val body = """{"data":[{"id":"vendor/x"}]}"""
@@ -198,8 +190,6 @@ class ModelDiscoveryTest {
         assertThat(ids).containsExactly("vendor/ok-model")
     }
 
-    // ── displayName sanitization ─────────────────────────────────────────
-
     @Test
     fun `displayName strips control characters and caps at 80`() {
         val longName = "A".repeat(120)
@@ -215,8 +205,6 @@ class ModelDiscoveryTest {
         assertThat(entries["vendor/b"]?.length).isEqualTo(80)
     }
 
-    // ── baseUrl always == sourceBaseUrl ───────────────────────────────────
-
     @Test
     fun `every discovered ModelEntry baseUrl equals sourceBaseUrl for OTHER`() {
         val body = """
@@ -229,8 +217,6 @@ class ModelDiscoveryTest {
         assertThat(entries).hasSize(2)
         entries.forEach { assertThat(it.entry.baseUrl).isEqualTo(BASE) }
     }
-
-    // ── Vision default ───────────────────────────────────────────────────
 
     @Test
     fun `supportsVision defaults false, true only when modality declares image`() {
@@ -245,8 +231,6 @@ class ModelDiscoveryTest {
         assertThat(map["a/plain"]).isFalse()
         assertThat(map["a/with-image"]).isTrue()
     }
-
-    // ── HTTP integration via MockWebServer ───────────────────────────────
 
     @Test
     fun `discover hits baseUrl slash models with bearer auth`() = runTest {
@@ -266,13 +250,7 @@ class ModelDiscoveryTest {
 
     @Test
     fun `non-2xx error message contains host only, never URL secrets (Codex r2)`() {
-        // The validator would normally block user-info / query / fragment
-        // base URLs (covered by OtherBaseUrlValidatorTest). This test pins
-        // ModelDiscovery's defence-in-depth: even if a sensitive segment
-        // slipped through into a baseUrl that discover() actually fetches,
-        // the surfaced error must not contain the segment. We do that by
-        // building a baseUrl that includes a sentinel-looking path segment
-        // and asserting it doesn't reach the error message.
+        // The validator would normally block user-info / query / fragment base URLs (covered by OtherBaseUrlValidatorTest).
         server.enqueue(MockResponse().setResponseCode(503).setBody("upstream is down"))
 
         val sentinel = "SUPERSECRET-do-not-leak"

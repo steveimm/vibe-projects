@@ -85,13 +85,7 @@ private data class VoiceFeedbackAlert(
     val message: String,
 )
 
-/**
- * ChatScreen - Main chat interface composable.
- *
- * Orchestrates all chat components into a cohesive conversation experience.
- * Includes navigation drawer for session history and settings access.
- * Uses SmartCapsuleSurface as bottomBar (replaces old InputDock).
- */
+/** ChatScreen - Main chat interface composable. */
 @Composable
 fun ChatScreen(
     viewModel: ChatViewModel,
@@ -154,14 +148,14 @@ fun ChatScreen(
             voiceFeedback = null
         }
     }
-    
+
     // Load sessions when drawer opens
     LaunchedEffect(drawerState.isOpen) {
         if (drawerState.isOpen) {
             onLoadSessions()
         }
     }
-    
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         modifier = modifier.fillMaxSize(),
@@ -194,17 +188,12 @@ fun ChatScreen(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surface),
         ) {
-            // Draw one continuous grain pass behind every Scaffold slot so the
-            // masthead, page body, dock, and capsule shell share the same paper
-            // without placing grain over text or controls.
+            // Draw one continuous grain pass behind every Scaffold slot so the masthead, page body, dock, and capsule shell share the same
+            // paper without placing grain over text or controls.
             Box(modifier = Modifier.matchParentSize().paperGrain())
 
-            // Empty-state paw mark — hoisted out of EmptyState so its TOP can
-            // bleed up through the masthead band (Scaffold renders ON TOP, so
-            // "PocketPilot" wordmark stays in front). Positioned low enough that
-            // the paw body never lands on title text. Uses ic_paw_hero (thin
-            // stroke) and the Claw brand accent so the empty page isn't all
-            // ink-on-paper.
+            // Empty-state paw mark — hoisted out of EmptyState so its TOP can bleed up through the masthead band (Scaffold renders ON TOP,
+            // so "PocketPilot" wordmark stays in front).
             if (messages.isEmpty() && uiState.showEmptyState) {
                 Icon(
                     painter = painterResource(R.drawable.ic_paw_hero),
@@ -322,13 +311,7 @@ fun ChatScreen(
     }
 }
 
-/**
- * MessageList - Scrollable list of chat messages with stick-to-bottom policy.
- *
- * Auto-scrolls only when the user is near the bottom of the list (following the
- * conversation). Shows a scroll-to-bottom FAB when user has scrolled up and new
- * content arrives below the fold.
- */
+/** MessageList - Scrollable list of chat messages with stick-to-bottom policy. */
 @Composable
 private fun MessageList(
     messages: List<ChatMessage>,
@@ -457,12 +440,8 @@ private fun MessageList(
     }
 }
 
-/**
- * Routes a Done/response tap from chat through the capsule before falling
- * back to the ViewModel send. Pinned by ChatDoneBridgeTest — the capsule
- * step must run first so a stale WaitingFor* state clears (see commit
- * d23537e8).
- */
+/** Routes a Done/response tap from chat through the capsule before falling back to the ViewModel send. Pinned by ChatDoneBridgeTest —
+ * the capsule step must run first so a stale WaitingFor* state clears (see commit d23537e8). */
 internal fun forwardUserResponse(
     binding: id.steveimm.pocketpilot.ui.capsule.CapsuleBinding,
     sendUserResponse: (String, String) -> Unit,

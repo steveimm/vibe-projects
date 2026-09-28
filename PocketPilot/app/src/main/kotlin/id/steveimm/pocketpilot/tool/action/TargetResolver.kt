@@ -8,14 +8,7 @@ import id.steveimm.pocketpilot.platform.SemanticTargetHint
 import id.steveimm.pocketpilot.perception.mergedText
 import id.steveimm.pocketpilot.perception.normalizeForMatching
 
-/**
- * Resolves a Target to screen coordinates.
- *
- * Pure function: no Android dependencies, no side effects.
- *
- * Semantic targets are primary. An optional coordinateHint provides fallback
- * only when semantic resolution fails. See design_codex.md.
- */
+/** Resolves a Target to screen coordinates. */
 object TargetResolver {
     sealed interface ResolveResult {
         data class Resolved(

@@ -17,6 +17,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -35,9 +36,7 @@ import id.steveimm.pocketpilot.ui.theme.Fraunces
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 import id.steveimm.pocketpilot.ui.theme.foldedPaper
 
-/**
- * Model loading status indicator.
- */
+/** Model loading status indicator. */
 @Composable
 internal fun ModelLoadingStatusIndicator(status: ModelLoadingStatus) {
     when (status) {
@@ -345,5 +344,49 @@ private fun RecommendedChip() {
             color = MaterialTheme.colorScheme.secondary,
             modifier = Modifier.padding(horizontal = MaterialTheme.pocketPilot.spacing.sm, vertical = 2.dp),
         )
+    }
+}
+
+@Composable
+internal fun SettingsNoticeCard(
+    title: String,
+    message: String,
+    modifier: Modifier = Modifier,
+    loading: Boolean = false,
+    action: (@Composable () -> Unit)? = null,
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .foldedPaper(MaterialTheme.shapes.medium),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Row(
+            modifier = Modifier.padding(MaterialTheme.pocketPilot.spacing.cardPadding),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.md),
+        ) {
+            if (loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 2.dp,
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            action?.invoke()
+        }
     }
 }

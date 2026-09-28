@@ -12,18 +12,12 @@ import id.steveimm.pocketpilot.util.recycleCompat
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * Perceptor - The Perception Engine. Converts raw AccessibilityNodeInfo tree into a semantic
- * ScreenSnapshot.
- */
+/** Perceptor - The Perception Engine. Converts raw AccessibilityNodeInfo tree into a semantic ScreenSnapshot. */
 object Perceptor {
 
     private class PoolCounters(var interactive: Int = 0, var nonInteractive: Int = 0)
 
-    /**
-     * Create a ScreenSnapshot from a single accessibility tree root.
-     * Delegates to the multi-root overload.
-     */
+    /** Create a ScreenSnapshot from a single accessibility tree root. Delegates to the multi-root overload. */
     fun snapshot(
         root: AccessibilityNodeInfo?,
         screenWidthPx: Int? = null,
@@ -41,16 +35,7 @@ object Perceptor {
         )
     }
 
-    /**
-     * Create a ScreenSnapshot from multiple accessibility tree roots (multi-window).
-     *
-     * Traverses every root once, collecting interactive and content-bearing nodes
-     * with shared dedup state. applyTruncation handles interactive priority
-     * downstream via interactiveKeepRatio.
-     *
-     * Does not store AccessibilityNodeInfo references to prevent memory leaks.
-     * Roots are NOT recycled — caller is responsible for lifecycle.
-     */
+    /** Create a ScreenSnapshot from multiple accessibility tree roots (multi-window). */
     fun snapshot(
         roots: List<AccessibilityNodeInfo>,
         screenWidthPx: Int? = null,
@@ -65,9 +50,8 @@ object Perceptor {
         val seenKeys = mutableSetOf<String>()
         val counters = PoolCounters()
 
-        // Over-collect both pools so applyTruncation has score-based headroom
-        // even when a screen is almost entirely interactive or almost entirely
-        // non-interactive. Matches the pre-refactor two-pass collection pool.
+        // Over-collect both pools so applyTruncation has score-based headroom even when a screen is almost entirely interactive or almost
+        // entirely non-interactive. Matches the pre-refactor two-pass collection pool.
         val interactiveCap = filterConfig.maxElements * 2
         val nonInteractiveCap = filterConfig.maxElements * 2
 

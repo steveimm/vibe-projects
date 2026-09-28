@@ -9,9 +9,7 @@ import id.steveimm.pocketpilot.tool.handlers.UIActionInvocation
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * SystemButtonTool - deterministic system-key actions without screen targeting.
- */
+/** SystemButtonTool - deterministic system-key actions without screen targeting. */
 class SystemButtonTool : ToolSpec {
     companion object {
         private val VALID_BUTTONS = listOf("back", "home", "enter", "recents")

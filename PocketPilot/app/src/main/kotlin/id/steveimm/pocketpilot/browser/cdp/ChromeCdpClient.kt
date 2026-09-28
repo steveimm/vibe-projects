@@ -23,44 +23,18 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class ChromeCdpClient(
     private val connectionFactory: CdpConnectionFactory,
-    /**
-     * Per-CDP-command timeout. Each `cdp(method, ...)` from the agent script is wrapped in
-     * `withTimeout(commandTimeoutMs)`; the script's outer `timeout_ms` is a separate, larger
-     * budget for the whole script. Default is generous because the wireless-ADB self-pair
-     * relay adds adbd-loopback latency on top of Chrome's response time — 10s was empirically
-     * too tight on nubia P0110, where `Page.loadEventFired` for a cellular network-fetched
-     * page can run >10s.
-     */
+    /** Per-CDP-command timeout. */
     private val commandTimeoutMs: Long = DEFAULT_COMMAND_TIMEOUT_MS,
     private val onTransportFailure: (Throwable) -> Unit = {},
 ) {
     private val nextId = AtomicInteger(1)
     private val recoveryMutex = Mutex()
-    /**
-     * Serializes the entire `switchDirectPageTarget` body — concurrent CDP calls with
-     * `targetId` set must not both capture the same `previous`, open two WS independently,
-     * and let last-write-to-`current` win (orphaning the loser). Without this, a tab-heavy
-     * script that issues parallel `cdp(..., {targetId: ...})` calls leaks WS+fds per race.
-     */
+    /** Serializes the entire `switchDirectPageTarget` body — concurrent CDP calls with `targetId` set must not both capture the same
+     * `previous`, open two WS independently, and let last-write-to-`current` win (orphaning the loser). */
     private val switchMutex = Mutex()
 
-    /**
-     * Invoked after a successful target switch — either via the `targetId` option in [send]
-     * (direct-page mode opens a fresh WS, attach mode opens a fresh CDP session). The callback
-     * receives the EXPLICIT session/target the activation produced, NOT a snapshot of mutable
-     * `activeSessionId`/`activeTargetId` — those globals can drift to a different value between
-     * the activation and the callback when another coroutine concurrently issues
-     * `cdp(..., {targetId: ...})`. The callback runs on the same coroutine that issued [send]
-     * and is awaited before the user's command hits the wire, so the new target has core
-     * domains (`Page`/`Runtime`/`DOM`/`Network`) enabled before any command observes its events.
-     * Without explicit identifiers the enable would race onto a sibling session and dialog
-     * tracking would silently go dark on the session the caller actually wanted.
-     *
-     * Bootstrap (`attachToFirstRealPage` / `useDirectPageTarget`) is NOT routed through this
-     * callback because [BrowserSessionManager] runs `enableCoreDomains` immediately after.
-     * Settable post-construction so the production wiring can install the hook without
-     * pushing it through every test factory override.
-     */
+    /** Invoked after a successful target switch — either via the `targetId` option in [send] (direct-page mode opens a fresh WS, attach
+     * mode opens a fresh CDP session). */
     @Volatile
     var onTargetActivated: (suspend (sessionId: String?, targetId: String?) -> Unit)? = null
 
@@ -211,10 +185,7 @@ class ChromeCdpClient(
             if (targetId == activeTargetId) return false
             val previous = current
             val wsUrl = "$base/$targetId"
-            // Open new first, then swap `current` so the previous connection's incoming callbacks
-            // observe `current !== this` and drop. closeQuietly then drains the previous pending
-            // map with CdpException("CDP connection switched") so any in-flight requests on the
-            // dead WS reject immediately rather than waiting commandTimeoutMs.
+            // Swap connections before closing the old one. Stale callbacks are ignored and pending requests fail immediately.
             current = openConnection(wsUrl)
             isBroken = false
             activeTargetId = targetId
@@ -233,15 +204,12 @@ class ChromeCdpClient(
         val id = nextId.getAndIncrement()
         val deferred = CompletableDeferred<JsonElement>()
         if (!live.addPending(id, deferred)) {
-            // Connection was closed (e.g., by a concurrent switchDirectPageTarget) before
-            // we could register. addPending already completed the deferred exceptionally
-            // so await() throws CdpException("CDP connection no longer active") here.
+            // Connection was closed (e.g., by a concurrent switchDirectPageTarget) before we could register. addPending already completed
+            // the deferred exceptionally so await() throws CdpException("CDP connection no longer active") here.
             return deferred.await()
         }
-        // Defense-in-depth: a switch may have completed between our `live = current` read
-        // and addPending — addPending succeeded only because closeQuietly hadn't yet flipped
-        // active. Skip the send so we don't issue a CDP frame on a soon-to-be-closed WS;
-        // closeQuietly will fail our deferred via its drain.
+        // Defense-in-depth: a switch may have completed between our `live = current` read and addPending — addPending succeeded only
+        // because closeQuietly hadn't yet flipped active.
         if (current !== live) {
             live.pending.remove(id)
             throw CdpException(-1, "CDP connection switched")
@@ -258,9 +226,8 @@ class ChromeCdpClient(
             return try {
                 withTimeout(commandTimeoutMs) { deferred.await() }
             } catch (e: TimeoutCancellationException) {
-                // Surface the offending CDP method + the actual cap so the agent (and trace)
-                // can see exactly what blew the budget, instead of the bare kotlinx.coroutines
-                // "Timed out waiting for X ms" which leaks no context.
+                // Surface the offending CDP method + the actual cap so the agent (and trace) can see exactly what blew the budget, instead
+                // of the bare kotlinx.coroutines "Timed out waiting for X ms" which leaks no context.
                 throw CdpException(
                     -1,
                     "CDP command '$method' timed out after ${commandTimeoutMs}ms " +
@@ -275,9 +242,8 @@ class ChromeCdpClient(
     private fun handleMessage(source: LiveConnection, text: String) {
         when (val msg = parseCdpMessage(text)) {
             is CdpIncoming.Response -> {
-                // Per-connection pending map naturally isolates response handling — a stale
-                // response on a switched-away WS targets its own (already-drained) map and
-                // can never complete a deferred owned by the new connection.
+                // Per-connection pending map naturally isolates response handling — a stale response on a switched-away WS targets its own
+                // (already-drained) map and can never complete a deferred owned by the new connection.
                 val deferred = source.pending.remove(msg.id) ?: return
                 if (msg.error != null) {
                     deferred.completeExceptionally(CdpException(msg.error.code, msg.error.message))
@@ -318,13 +284,7 @@ class ChromeCdpClient(
         }
     }
 
-    /**
-     * Resolves the synthetic `PocketPilot.getDialog` query against the in-memory tracker. Returns
-     * `JsonNull` when no dialog is open for the resolved target so the JS-side helper can
-     * `if (resp)` without further unpacking. The query never leaves the device — it does NOT
-     * round-trip to Chrome — because the source of truth is the per-target dialog tracker
-     * fed by `Page.javascriptDialogOpening` / `Closed` events.
-     */
+    /** Resolves the synthetic `PocketPilot.getDialog` query against the in-memory tracker. */
     private fun resolveDialogState(options: CdpOptions): JsonElement {
         val key = dialogTargetKey(options.sessionId, options.targetId) ?: return JsonNull
         val state = eventBuffer.dialogTracker.get(key) ?: return JsonNull
@@ -337,12 +297,7 @@ class ChromeCdpClient(
         }
     }
 
-    /**
-     * Picks the per-target tracker key. Attach mode emits events with a non-null `sessionId`
-     * (one session per attached target); direct mode opens one WS per target so events have
-     * no `sessionId` and we fall back to `activeTargetId`. Explicit overrides take priority
-     * for `cdp(method, _, { sessionId | targetId })` calls.
-     */
+    /** Picks the per-target tracker key. */
     private fun dialogTargetKey(
         explicitSessionId: String? = null,
         explicitTargetId: String? = null,
@@ -390,13 +345,7 @@ class ChromeCdpClient(
     private fun isStaleSessionError(e: CdpException): Boolean =
         "Session with given id not found" in e.message
 
-    /**
-     * One CDP WebSocket plus its own pending-request map. The per-connection map plus the
-     * `lock`-guarded transition between "active, accepting" and "closed, drained" is the
-     * atomicity boundary: addPending and closeQuietly are mutually exclusive, so a sendRaw
-     * cannot register on a connection that has just been drained (would silently hang
-     * waiting for a response on a dead WS until commandTimeoutMs).
-     */
+    /** One CDP WebSocket plus its own pending-request map. */
     private class LiveConnection {
         private val lock = Any()
 
@@ -406,12 +355,7 @@ class ChromeCdpClient(
         @Volatile var raw: CdpConnection? = null
         val pending = ConcurrentHashMap<Int, CompletableDeferred<JsonElement>>()
 
-        /**
-         * Atomically registers `deferred` under `id` if the connection is still active.
-         * Returns true if registered; false if the connection was already closed (in which
-         * case `deferred` has already been completed exceptionally with a CdpException so
-         * the caller's `await()` will throw immediately).
-         */
+        /** Atomically registers `deferred` under `id` if the connection is still active. */
         fun addPending(id: Int, deferred: CompletableDeferred<JsonElement>): Boolean {
             synchronized(lock) {
                 if (!active) {
@@ -430,9 +374,8 @@ class ChromeCdpClient(
             synchronized(lock) {
                 if (!active) return
                 active = false
-                // Snapshot under lock to guarantee no addPending can interleave between
-                // our drain and the active-flip. Complete the deferreds OUTSIDE the lock
-                // so caller continuations don't run under it.
+                // Snapshot under lock to guarantee no addPending can interleave between our drain and the active-flip. Complete the
+                // deferreds OUTSIDE the lock so caller continuations don't run under it.
                 toFail = pending.values.toList()
                 pending.clear()
             }
@@ -458,22 +401,10 @@ class ChromeCdpClient(
     }
 
     companion object {
-        /**
-         * Default per-CDP-command cap. Picked to comfortably cover the wireless-ADB self-pair
-         * relay: every CDP frame goes through our in-app TCP relay → adbd → Chrome's abstract
-         * socket, which adds adbd-loopback latency on top of Chrome's own response time.
-         * Empirically 10s was too tight on nubia P0110 for `Page.loadEventFired` waiting on a
-         * fresh page navigation; 30s leaves headroom for cellular page loads without making
-         * transient hangs invisible.
-         */
+        /** Default per-CDP-command cap. */
         const val DEFAULT_COMMAND_TIMEOUT_MS: Long = 30_000L
 
-        /**
-         * Synthetic CDP-shaped method name resolved by [resolveDialogState] without touching
-         * the wire. Lets `page.js` query the in-memory dialog tracker through the existing
-         * `cdp()` channel — no new JS interface or bridge surface — and gives helpers a
-         * stable key to avoid colliding with real CDP namespaces (`Page.*`, `Runtime.*`).
-         */
+        /** Synthetic CDP-shaped method name resolved by [resolveDialogState] without touching the wire. */
         const val DIALOG_QUERY_METHOD: String = "PocketPilot.getDialog"
 
         const val DIALOG_OPENING_EVENT: String = "Page.javascriptDialogOpening"

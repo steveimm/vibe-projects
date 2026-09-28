@@ -14,11 +14,7 @@ import java.io.OutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
 
-/**
- * Minimal mTLS client for the AOSP wireless ADB protocol after pairing. Speaks just enough of
- * the wire protocol to open one local-abstract stream — enough to relay DevTools traffic to
- * `chrome_devtools_remote`. Single-stream by design (localId always 1); re-open per call.
- */
+/** Minimal mTLS client for the AOSP wireless ADB protocol after pairing. */
 class AdbWireProtocolClient(
     private val keyStore: AdbCryptoKeyStore,
 ) {
@@ -47,12 +43,7 @@ class AdbWireProtocolClient(
         openOnChannel(channel, destination)
     }
 
-    /**
-     * Test seam + post-handshake setup for long-lived streams. The handshake (A_CNXN read,
-     * A_OPEN/OKAY round-trip) inherits the channel's bounded handshake timeout. Once the
-     * stream is OPEN the timeout is cleared (0 = infinite) so idle CDP/WebSocket gaps —
-     * which can be tens of seconds between frames — don't kill the relay socket.
-     */
+    /** Test seam + post-handshake setup for long-lived streams. */
     internal fun openOnChannel(channel: AdbTlsClient.TlsChannel, destination: String): AdbStream {
         return try {
             val (remoteId, maxPayload) = handshakeAndOpen(channel.inputStream, channel.outputStream, destination)
@@ -73,25 +64,20 @@ class AdbWireProtocolClient(
         val (remoteId, maxPayload) = handshakeAndOpen(input, out, destination)
         sendChunked(input, out, LOCAL_ID, remoteId, request, maxPayload)
         val response = readUntilHttpComplete(input, out, LOCAL_ID, remoteId)
-        // Best-effort: the response is already in hand and the TLS channel is about to close in
-        // the caller's `finally`. A failed A_CLSE here means the peer beat us to the teardown —
-        // no failure mode worth surfacing.
+        // Best-effort: the response is already in hand and the TLS channel is about to close in the caller's `finally`. A failed A_CLSE
+        // here means the peer beat us to the teardown — no failure mode worth surfacing.
         runCatching { AdbProtocol.Message.write(out, A_CLSE, LOCAL_ID, remoteId, EMPTY) }
         return response
     }
 
     private fun handshakeAndOpen(input: InputStream, out: OutputStream, destination: String): Pair<Int, Int> {
-        // Post-mTLS the daemon SPEAKS FIRST: adbd_wifi_secure_connect calls send_connect() which
-        // writes A_CNXN to us. We must NOT pre-emptively send our own A_CNXN — adbd's
-        // handle_packet for a duplicate runs handle_offline, fires the disconnect callback, and
-        // emits A_STLS over the encrypted channel ("unexpected reply to OPEN: cmd=0x534c5453").
+        // Post-mTLS the daemon SPEAKS FIRST: adbd_wifi_secure_connect calls send_connect() which writes A_CNXN to us.
         val peerCnxn = readExpecting(input, A_CNXN, allowAuth = false)
         android.util.Log.i(TAG, "post-TLS got A_CNXN bannerLen=${peerCnxn.payload.size}")
         val maxPayload = minOf(A_MAX_PAYLOAD, peerCnxn.arg1.takeIf { it > 0 } ?: A_MAX_PAYLOAD)
 
-        // Settle so adbd finishes attaching the transport (registering with the asocket service
-        // map) before we OPEN — otherwise the OPEN can race adbd's post-send_connect setup and
-        // the local-abstract proxy never starts forwarding.
+        // Settle so adbd finishes attaching the transport (registering with the asocket service map) before we OPEN — otherwise the OPEN
+        // can race adbd's post-send_connect setup and the local-abstract proxy never starts forwarding.
         Thread.sleep(POST_CNXN_SETTLE_MS)
 
         val open = AdbProtocol.openLocalAbstract(LOCAL_ID, destination)
@@ -154,16 +140,7 @@ class AdbWireProtocolClient(
         }
     }
 
-    /**
-     * Drain incoming A_WRTE frames until the embedded HTTP/1.1 response is complete or the peer
-     * closes. Chrome's `/json/version` ignores `Connection: close` and leaves the socket idle
-     * after responding, so adbd never sees chrome's EOF and never sends A_CLSE; falling back to
-     * Content-Length lets us return as soon as the body is fully drained — same as host adb's
-     * curl behavior.
-     *
-     * Synchronous DevTools HTTP only; streaming clients should use [openLocalAbstract] /
-     * [AdbStream].
-     */
+    /** Drain incoming A_WRTE frames until the embedded HTTP/1.1 response is complete or the peer closes. */
     private fun readUntilHttpComplete(input: InputStream, out: OutputStream, localId: Int, remoteId: Int): ByteArray {
         val sink = ByteArrayOutputStream()
         var headerEnd = -1
@@ -235,20 +212,13 @@ class AdbWireProtocolClient(
         const val LOCAL_ID = 1
         private val EMPTY = ByteArray(0)
         private const val TAG = "AdbWireProto"
-        // Empirical worst-case for the post-mTLS A_CNXN→A_OPEN race described above. Production
-        // agent chain PASS recorded with this sleep on both emulator-5556 (Android 14) and
-        // nubia P0110; no per-device "comment-out" minimization has been done yet, so 200ms is
-        // a ceiling rather than a measured minimum. If shaving it later, re-validate on the
-        // slower of the two (nubia).
+        // Empirical worst-case for the post-mTLS A_CNXN→A_OPEN race described above.
         private const val POST_CNXN_SETTLE_MS = 200L
     }
 }
 
-/**
- * Bidirectional byte channel over a single ADB local-abstract stream. Reads and writes are
- * serialized through the underlying TLS channel from a single reader thread; concurrent writes
- * from multiple threads are not supported.
- */
+/** Bidirectional byte channel over a single ADB local-abstract stream. Reads and writes are serialized through the underlying TLS
+ * channel from a single reader thread; concurrent writes from multiple threads are not supported. */
 class AdbStream internal constructor(
     private val socket: AdbTlsClient.TlsChannel,
     private val localId: Int,

@@ -19,28 +19,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/**
- * CapsuleStateHolder — single source of truth for Smart Capsule state.
- *
- * All UI renderers (CapsuleOverlayHost, SmartCapsuleCompose, IslandOverlayHost)
- * read from this holder. State transitions happen here and only here.
- *
- * ## State Machine
- * See system_design_claude.md Section 3A for the exhaustive state × event matrix.
- * Every transition is guarded — invalid events are silently ignored with a log message.
- *
- * ## Threading
- * All mutations must happen on the Main dispatcher (enforced by StateFlow usage from
- * coroutine scope or direct main-thread calls from ServiceOverlayController).
- */
+/** CapsuleStateHolder — single source of truth for Smart Capsule state. */
 class CapsuleStateHolder(private val scope: CoroutineScope) {
 
     companion object {
         private const val TAG = "CapsuleStateHolder"
         private const val AUTO_HIDE_DELAY_MS = 3000L
     }
-
-    // ── Core state ──
 
     private val _mode = MutableStateFlow<CapsuleMode>(CapsuleMode.Hidden)
     val mode: StateFlow<CapsuleMode> = _mode.asStateFlow()
@@ -61,12 +46,7 @@ class CapsuleStateHolder(private val scope: CoroutineScope) {
     private val _isAgentMidTurn = MutableStateFlow(false)
     val isAgentMidTurn: StateFlow<Boolean> = _isAgentMidTurn.asStateFlow()
 
-    /**
-     * Transient stop feedback flag.
-     *
-     * Not part of CapsuleMode state machine. Drives immediate "Stopping..." disabled UI
-     * until a terminal/new-task event clears it.
-     */
+    /** Transient stop feedback flag. */
     private val _isStopPending = MutableStateFlow(false)
     val isStopPending: StateFlow<Boolean> = _isStopPending.asStateFlow()
 
@@ -94,8 +74,6 @@ class CapsuleStateHolder(private val scope: CoroutineScope) {
 
     private var autoHideJob: Job? = null
 
-    // ── Configuration ──
-
     fun setPlatformMode(mode: PlatformMode) { _platformMode.value = mode }
 
     fun setTurnPhase(phase: TurnPhase) { _turnPhase.value = phase }
@@ -105,8 +83,6 @@ class CapsuleStateHolder(private val scope: CoroutineScope) {
     fun setContext(ctx: CapsuleContext) { _context.value = ctx }
 
     fun setHasIsland(enabled: Boolean) { _hasIsland.value = enabled }
-
-    // ── Universal events (any state → target) ──
 
     fun onTaskStarted(taskId: String, input: String) {
         cancelAutoHide()
@@ -156,8 +132,6 @@ class CapsuleStateHolder(private val scope: CoroutineScope) {
         setMode(CapsuleMode.Running("Processing..."))
         return true
     }
-
-    // ── Guarded events (specific states only) ──
 
     fun onThoughtUpdate(thought: String) {
         if (_mode.value !is CapsuleMode.Running) return
@@ -213,10 +187,7 @@ class CapsuleStateHolder(private val scope: CoroutineScope) {
         return true
     }
 
-    /**
-     * Mark stop as pending for immediate UI feedback.
-     * Valid only when current mode has a Stop action.
-     */
+    /** Mark stop as pending for immediate UI feedback. Valid only when current mode has a Stop action. */
     fun onStopRequested(): Boolean {
         val mode = _mode.value
         if (mode !is CapsuleMode.Running &&
@@ -272,8 +243,6 @@ class CapsuleStateHolder(private val scope: CoroutineScope) {
         _isStopPending.value = false
         setMode(CapsuleMode.Hidden)
     }
-
-    // ── Internal ──
 
     private fun setMode(new: CapsuleMode) {
         previousMode = _mode.value

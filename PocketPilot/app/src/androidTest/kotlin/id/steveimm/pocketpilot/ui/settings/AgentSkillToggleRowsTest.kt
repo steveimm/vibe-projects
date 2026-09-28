@@ -33,19 +33,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.json.JSONArray
 
-/**
- * Compose UI tests for [AgentSkillToggleRows].
- *
- * Strategy:
- * - Inject a deterministic `skillsLoader` so the test does not depend on filesDir/skills
- *   or the bundled installer running. Two synthetic skills cover toggle, info viewer,
- *   and next-session subtitle scenarios.
- * - Use the real prefs-backed [AppSettingsStore]; clear `agent_prefs` in @Before so
- *   toggle persistence can be asserted directly against the stored JSON array.
- * - Render `AgentSkillToggleRows` directly (internal visibility crosses main +
- *   androidTest), not via [AgentBehaviorSettingsPage], to keep the test scoped and to
- *   pass `isSessionRunning` for the subtitle assertion.
- */
+/** Compose UI tests for [AgentSkillToggleRows]. */
 @RunWith(AndroidJUnit4::class)
 class AgentSkillToggleRowsTest {
 

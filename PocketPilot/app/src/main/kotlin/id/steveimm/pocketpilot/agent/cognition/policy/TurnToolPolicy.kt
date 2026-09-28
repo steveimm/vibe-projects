@@ -12,12 +12,7 @@ private val HOISTABLE_TOOL_NAMES =
                 ToolName.RememberExperience.canonical
         )
 
-/**
- * Result of choosing which tool calls from one LLM turn should actually execute.
- *
- * The runtime may execute multiple cognitive and screen-changing tools per turn.
- * Navigation isolation (single-action for click/back/open_app) is enforced at the prompt layer.
- */
+/** Result of choosing which tool calls from one LLM turn should actually execute. */
 internal data class ToolArbitrationResult(
         val selectedToolCalls: List<ToolCallRequest>,
         val hasCompletionTool: Boolean,
@@ -32,21 +27,11 @@ internal data class CompletionDecision(
         val success: Boolean
 )
 
-/**
- * Turn-level policy for two questions: 1) If the model returned multiple tool calls, which one do
- * we execute? 2) Should this turn be treated as task completion?
- */
+/** Turn-level policy for two questions: 1) If the model returned multiple tool calls, which one do we execute? 2) Should this turn be
+ * treated as task completion? */
 internal class TurnToolPolicy {
-    /**
-     * Arbitration rule:
-     * - Hoist only cognitive tools.
-     * - Keep other selected tools in model order.
-     * - Keep `complete_task` only when no screen-changing tool is selected.
-     *
-     * Shell-like tools are not hoistable; they keep the LLM's ordering.
-     * Navigation isolation (click-to-navigate, back, open_app should be alone)
-     * is enforced at the prompt layer, not here.
-     */
+    /** Arbitration rule: - Hoist only cognitive tools. - Keep other selected tools in model order. - Keep `complete_task` only when no
+     * screen-changing tool is selected. */
     fun arbitrateToolCalls(
         toolCalls: List<ToolCallRequest>
     ): ToolArbitrationResult {
@@ -95,10 +80,7 @@ internal class TurnToolPolicy {
         )
     }
 
-    /**
-     * Completion rule:
-     * - Only complete when model says complete AND no screen action is selected this turn.
-     */
+    /** Completion rule: - Only complete when model says complete AND no screen action is selected this turn. */
     fun decideCompletion(
             turnResult: TurnResult,
             arbitration: ToolArbitrationResult

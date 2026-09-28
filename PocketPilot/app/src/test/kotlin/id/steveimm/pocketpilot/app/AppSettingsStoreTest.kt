@@ -39,6 +39,39 @@ class AppSettingsStoreTest {
     }
 
     @Test
+    fun `invalid saved enums and legacy approval mode fall back without losing other settings`() {
+        backing["llm_backend"] = "removed_backend"
+        backing["platform_mode"] = "removed_platform"
+        backing["approval_mode"] = "ALWAYS_ASK"
+        backing["other_base_url"] = "http://192.168.1.20:8000/v1"
+        backing["screenshot_input"] = true
+
+        val settings = AppSettingsStore(context).load()
+
+        assertThat(settings.llmBackend).isEqualTo(AppSettingsStore.DEFAULT_LLM_BACKEND)
+        assertThat(settings.platformMode).isEqualTo(AppSettingsStore.DEFAULT_PLATFORM_MODE)
+        assertThat(settings.approvalMode).isEqualTo(AppSettingsStore.DEFAULT_APPROVAL_MODE)
+        assertThat(settings.perceptionMode).isEqualTo("hybrid")
+        assertThat(settings.otherBaseUrl).isEqualTo("http://192.168.1.20:8000/v1")
+    }
+
+    @Test
+    fun `state reload replaces the snapshot without overwriting later persisted changes`() {
+        val store = AppSettingsStore(context)
+        val state = AppSettingsState(store)
+        state.updateOtherModelId("local/model")
+        state.updateTraceEnabled(true)
+        store.saveTraceEnabled(false)
+        store.saveOtherBaseUrl("http://192.168.1.20:8000/v1")
+
+        state.load()
+
+        assertThat(state.otherModelId).isEqualTo("local/model")
+        assertThat(state.otherBaseUrl).isEqualTo("http://192.168.1.20:8000/v1")
+        assertThat(state.traceEnabled).isFalse()
+    }
+
+    @Test
     fun `browser_script setting round-trips through store`() {
         val store = AppSettingsStore(context)
 
@@ -162,8 +195,6 @@ class AppSettingsStoreTest {
 
         assertThat(AppSettingsStore(context).loadUserAppOverrides()).isEmpty()
     }
-
-    // ===== Disabled agent skills =====
 
     @Test
     fun `disabled agent skills default to empty`() {

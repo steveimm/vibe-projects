@@ -103,9 +103,8 @@ class Spake25519(
         // Ed25519 prime-order subgroup order L = 2^252 + 27742317777372353535851937790883648493
         private val L: BigInteger = BigInteger("7237005577332262213973186563042994240857116359379907606001950938285454250989")
 
-        // Extracted from BoringSSL kSpakeMSmallPrecomp / kSpakeNSmallPrecomp row 0 (which encodes
-        // 1·M / 1·N per the table doc-comment): bytes [0..32]=field-element x, [32..64]=field-
-        // element y. RFC-8032 compressed = LE y with top bit of byte 31 = LSB(x). Both have x_lsb=0.
+        // Extracted from BoringSSL kSpakeMSmallPrecomp / kSpakeNSmallPrecomp row 0 (which encodes 1·M / 1·N per the table doc-comment):
+        // bytes [0..32]=field-element x, [32..64]=field- element y.
         private val M_ENCODED = hex("5ada7e4bf6ddd9adb6626d32131c6b5c51a1e347a3478f53cfcf441b88eed12e")
         private val N_ENCODED = hex("10e3df0ae37d8e7a99b5fe74b44672103dbddcbd06af680d71329a11693bc778")
 
@@ -118,12 +117,7 @@ class Spake25519(
         /** 3 doublings = ×8. Cheaper than scalarMultiply with scalar 8. */
         private fun mul8(p: GroupElement): GroupElement = p.dbl().toP3().dbl().toP3().dbl().toP3()
 
-        /**
-         * LSB-first double-and-add scalar mult. eddsa's `GroupElement.scalarMultiply` requires a
-         * precomputed lookup table that is only set up for `createPoint(_, true)` points; per-
-         * handshake mask/peer points have none, so we add directly via dbl()/add(cached)/toP3().
-         * Variable-time per scalar bit — acceptable for a single-pair handshake on a personal device.
-         */
+        /** Use double-and-add for handshake points because they lack the lookup table required by scalarMultiply. */
         private fun scalarMul(scalarLE: ByteArray, point: GroupElement): GroupElement {
             require(scalarLE.size == 32)
             var result = curve.getZero(GroupElement.Representation.P3)
@@ -143,12 +137,8 @@ class Spake25519(
             require(x.size == 64); return scalarOps.reduce(x)
         }
 
-        /**
-         * BoringSSL's "password scalar hack": original cofactor-clear pass omitted the ×8 multiply
-         * after `x25519_sc_reduce` (copy-paste error). Compatibility fix: add δL (δ ∈ {0..7})
-         * picked from the low 3 bits so the result becomes a multiple of 8 while staying ≡ s (mod L).
-         * We then divide by 8 to keep the scalar < L (avoids eddsa's < 2^255 scalarmult ceiling).
-         */
+        /** BoringSSL's "password scalar hack": original cofactor-clear pass omitted the ×8 multiply after `x25519_sc_reduce`
+         * (copy-paste error). */
         internal fun passwordScalarHackDiv8(scalarLE32: ByteArray): ByteArray {
             require(scalarLE32.size == 32)
             var s = BigInteger(1, scalarLE32.reversedArray())  // BigInteger wants big-endian

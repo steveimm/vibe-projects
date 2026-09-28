@@ -7,15 +7,7 @@ import id.steveimm.pocketpilot.model.PerceptionElement
 import id.steveimm.pocketpilot.model.ScreenImage
 import id.steveimm.pocketpilot.model.ScreenSnapshot
 
-/**
- * Detects UI changes by comparing snapshot fingerprints.
- *
- * Primary signal: FNV-1a hash of accessibility elements (fast, stable).
- * Fallback signal: 8×8 perceptual hash of screenshot (for empty a11y trees).
- *
- * Key design decision: Unverifiable is a DISTINCT outcome — not silently
- * treated as Changed. Callers decide how to handle it.
- */
+/** Detects UI changes by comparing snapshot fingerprints. */
 object UiChangeDetector {
 
     enum class ChangeResult { Changed, Unchanged, Unverifiable }
@@ -27,12 +19,7 @@ object UiChangeDetector {
         return if (preHash != postHash) ChangeResult.Changed else ChangeResult.Unchanged
     }
 
-    /**
-     * Composite fingerprint: a11y elements when available, screenshot fallback when empty.
-     *
-     * This ensures change detection works even when the accessibility tree returns zero
-     * elements (games, custom GL views, WebView content, etc.).
-     */
+    /** Composite fingerprint: a11y elements when available, screenshot fallback when empty. */
     private fun fingerprint(snapshot: ScreenSnapshot): Long {
         var hash = FNV_OFFSET_BASIS
         hash = mix(hash, snapshot.keyboardVisible.hashCode().toLong())
@@ -45,13 +32,7 @@ object UiChangeDetector {
         return snapshot.image?.let { mix(hash, fingerprintFromImage(it)) } ?: hash
     }
 
-    /**
-     * FNV-1a hash over sorted elements' structural fields.
-     *
-     * Excludes transient state (isFocused) — a focus shift after click does NOT
-     * indicate meaningful UI navigation and causes false-positive change detection
-     * (e.g. RecyclerView item gains focus without opening).
-     */
+    /** FNV-1a hash over sorted elements' structural fields. */
     private fun fingerprintFromElements(elements: List<PerceptionElement>, seed: Long): Long {
         var hash = seed
         for (element in elements.sortedBy { it.index }) {
@@ -79,20 +60,7 @@ object UiChangeDetector {
         return hash
     }
 
-    /**
-     * 8×8 average perceptual hash of a screenshot.
-     *
-     * Algorithm:
-     * 1. Decode JPEG → scale to 8×8 grayscale
-     * 2. Compute average luminance across 64 pixels
-     * 3. Threshold each pixel: above average = 1, below = 0
-     * 4. Encode as 64-bit hash
-     *
-     * Properties:
-     * - Sensitive to page navigation and layout changes
-     * - Insensitive to clock/signal/battery icon changes (too small at 8×8)
-     * - Fast: single BitmapFactory decode + 64 pixel comparisons
-     */
+    /** 8×8 average perceptual hash of a screenshot. */
     private fun fingerprintFromImage(image: ScreenImage): Long {
         val grayscale = decodeToGrayscale8x8(image.bytes) ?: return 0L
         val average = grayscale.sum() / grayscale.size.toDouble()
@@ -105,10 +73,7 @@ object UiChangeDetector {
         return hash
     }
 
-    /**
-     * Decode JPEG bytes to an 8×8 grayscale array (64 luminance values).
-     * Returns null if decoding fails.
-     */
+    /** Decode JPEG bytes to an 8×8 grayscale array (64 luminance values). Returns null if decoding fails. */
     private fun decodeToGrayscale8x8(jpegBytes: ByteArray): IntArray? {
         // Subsample during decode for efficiency: request nearest power-of-2 reduction
         val options = BitmapFactory.Options().apply {

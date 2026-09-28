@@ -30,15 +30,7 @@ class BrowserScriptRunner(
     context: Context,
     private val cdpClient: ChromeCdpClient,
     private val traceRecorder: TraceRecorder,
-    /**
-     * Cumulative decoded-byte counter shared with the session-scoped owner
-     * (BrowserSessionManager). Threaded through to [BrowserScriptJsInterface] so a
-     * runaway script issuing repeated browser_script tool calls cannot bypass
-     * [BrowserScriptJsInterface.MAX_BYTES_PER_SESSION] — a per-call counter would
-     * reset every run() and turn the documented 500 MiB session cap into a
-     * 500 MiB per-call cap. Defaults to a fresh counter so the androidTest
-     * harness (single-run) works without plumbing.
-     */
+    /** Cumulative decoded-byte counter shared with the session-scoped owner (BrowserSessionManager). */
     private val sessionDecodedBytes: AtomicLong = AtomicLong(0L),
 ) {
     private val appContext: Context = context.applicationContext
@@ -47,9 +39,8 @@ class BrowserScriptRunner(
         val mainHandler = Handler(Looper.getMainLooper())
         val bridgeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val webViewSlot = AtomicReference<WebView?>()
-        // Set in finally BEFORE the drain post so any earlier-queued main-thread post
-        // sees cancelled and either skips work or self-destroys a freshly-built WebView,
-        // closing the leak window between "post queued" and "post executes".
+        // Set in finally BEFORE the drain post so any earlier-queued main-thread post sees cancelled and either skips work or
+        // self-destroys a freshly-built WebView, closing the leak window between "post queued" and "post executes".
         val cancelled = AtomicBoolean(false)
         var bridge: BrowserScriptBridge? = null
 
@@ -123,9 +114,8 @@ class BrowserScriptRunner(
         } finally {
             cancelled.set(true)
             bridgeScope.cancel()
-            // Drain post is FIFO-ordered AFTER any earlier-queued posts. By the time it
-            // runs, any post that built a WebView has already either stored it in the
-            // slot or self-destroyed it. The slot is the single source of truth.
+            // Drain post is FIFO-ordered AFTER any earlier-queued posts. By the time it runs, any post that built a WebView has already
+            // either stored it in the slot or self-destroyed it. The slot is the single source of truth.
             val drained = CompletableDeferred<Unit>()
             mainHandler.post {
                 try {
@@ -226,14 +216,7 @@ class BrowserScriptRunner(
     }
 }
 
-/**
- * Page-load orchestration extracted for JVM-testable cancellation-guard coverage.
- *
- * Two guards close a race: a queued onPageFinished or prelude-eval callback can fire
- * after run()'s finally block has set [cancelled] but before the WebView is destroyed.
- * Without these checks, that window would inject the prelude (and then arbitrary user
- * script) into a WebView that's about to be torn down.
- */
+/** Page-load orchestration extracted for JVM-testable cancellation-guard coverage. */
 internal fun handlePageFinished(
     cancelled: AtomicBoolean,
     initialLoaded: AtomicBoolean,

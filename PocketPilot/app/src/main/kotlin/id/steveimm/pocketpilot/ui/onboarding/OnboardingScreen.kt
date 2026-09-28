@@ -13,12 +13,7 @@ import id.steveimm.pocketpilot.onboarding.StepOutcomes
 import id.steveimm.pocketpilot.onboarding.WizardStep
 import kotlinx.coroutines.flow.Flow
 
-/**
- * Full-screen onboarding wizard.
- *
- * Routes to per-step composables based on [currentStep]. Uses [OnboardingShell]
- * for shared scaffold (progress bar, step count, title, back arrow).
- */
+/** Full-screen onboarding wizard. */
 @Composable
 fun OnboardingScreen(
     currentStep: WizardStep,

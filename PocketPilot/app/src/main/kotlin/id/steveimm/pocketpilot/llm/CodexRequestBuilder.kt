@@ -6,16 +6,7 @@ import com.openai.models.responses.ResponseInputItem
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * Serializes OpenAI SDK types to JSON for the ChatGPT Codex endpoint
- * (`chatgpt.com/backend-api/codex/responses`).
- *
- * Codex requires specific wire formats that differ from the standard Responses API:
- * - `stream` must be `true`
- * - `instructions` must be present
- * - `max_output_tokens` must NOT be present
- * - Message content must be wrapped arrays: user → `input_text`, assistant → `output_text`
- */
+/** Serializes OpenAI SDK types to JSON for the ChatGPT Codex endpoint (`chatgpt.com/backend-api/codex/responses`). */
 internal object CodexRequestBuilder {
 
     private const val TAG = "CodexRequestBuilder"
@@ -38,8 +29,6 @@ internal object CodexRequestBuilder {
         }
         return body.toString()
     }
-
-    // ── Internal (visible for testing) ──────────────────────────────────
 
     internal fun convertInputItems(items: List<ResponseInputItem>): JSONArray {
         val result = JSONArray()
@@ -91,8 +80,6 @@ internal object CodexRequestBuilder {
         }
         return result
     }
-
-    // ── Private ─────────────────────────────────────────────────────────
 
     private fun convertMessage(
         role: String,

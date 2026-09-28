@@ -5,12 +5,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import id.steveimm.pocketpilot.app.AgentService
 
-/**
- * Live permission state checks.
- *
- * Used by OnboardingViewModel during the wizard and by PermissionRepairCard
- * after onboarding completes. All checks are synchronous (no suspend).
- */
+/** Live permission state checks. */
 class PermissionStateMonitor(private val context: Context) {
 
     fun isAccessibilityEnabled(): Boolean = AgentService.instance != null
@@ -41,12 +36,7 @@ class PermissionStateMonitor(private val context: Context) {
             }
     }
 
-    /**
-     * Derive repair model for post-onboarding state.
-     *
-     * @param batteryWasDone true if the user granted battery during onboarding (not skipped)
-     * @return null if everything is fine
-     */
+    /** Derive repair model for post-onboarding state. */
     fun deriveRepairModel(batteryWasDone: Boolean): PermissionRepairModel? =
         deriveRepairModel(
             accessibilityEnabled = isAccessibilityEnabled(),

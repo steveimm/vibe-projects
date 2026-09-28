@@ -6,10 +6,12 @@ import id.steveimm.pocketpilot.auth.CodexHeaders
 import id.steveimm.pocketpilot.auth.FakeSharedPreferences
 import id.steveimm.pocketpilot.auth.MissingCredential
 import android.content.Context
+import com.openai.client.OpenAIClient
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
+import io.mockk.verify
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -156,6 +158,53 @@ class LLMClientFactoryTest {
     }
 
     @Test
+    fun `key rotation retains existing clients until session teardown`() = runBlocking {
+        val store = realStore()
+        store.set(LLMProvider.OPENAI_API, AuthCredential.ApiKey("sk-one"))
+        val factory = LLMClientFactory(catalog, store)
+        val previous = factory.create("gpt-5.2-chat")
+        val previousSdk = replaceSdk(previous)
+
+        store.set(LLMProvider.OPENAI_API, AuthCredential.ApiKey("sk-two"))
+        val current = factory.create("gpt-5.2-chat")
+        val currentSdk = replaceSdk(current)
+
+        assertNotSame(previous, current)
+        assertTrue(factory.owns(previous))
+        assertTrue(factory.owns(current))
+        verify(exactly = 0) { previousSdk.close() }
+        verify(exactly = 0) { currentSdk.close() }
+
+        factory.cleanupAll()
+        factory.cleanupAll()
+
+        assertThrows(IllegalStateException::class.java) { factory.create("gpt-5.2-chat") }
+        verify(exactly = 1) { previousSdk.close() }
+        verify(exactly = 1) { currentSdk.close() }
+    }
+
+    @Test
+    fun `teardown closes all owned clients even when a retired client fails cleanup`() = runBlocking {
+        val store = realStore()
+        store.set(LLMProvider.OPENAI_API, AuthCredential.ApiKey("sk-one"))
+        val factory = LLMClientFactory(catalog, store)
+        val retiredSdk = replaceSdk(factory.create("gpt-5.2-chat"))
+        val failure = IllegalStateException("close failed")
+        every { retiredSdk.close() } throws failure
+
+        store.set(LLMProvider.OPENAI_API, AuthCredential.ApiKey("sk-two"))
+        val currentSdk = replaceSdk(factory.create("gpt-5.2-chat"))
+        val anotherModelSdk = replaceSdk(factory.create("gpt-5.2"))
+
+        val error = runCatching { factory.cleanupAll() }.exceptionOrNull()
+
+        assertEquals(failure.message, generateSequence(error) { it.cause }.lastOrNull()?.message)
+        verify(exactly = 1) { retiredSdk.close() }
+        verify(exactly = 1) { currentSdk.close() }
+        verify(exactly = 1) { anotherModelSdk.close() }
+    }
+
+    @Test
     fun `Codex generation bump invalidates cached client`() = runBlocking {
         val store = realStore()
         store.set(
@@ -242,8 +291,6 @@ class LLMClientFactoryTest {
         assertEquals("https://openrouter.ai/api/v1", entry.effectiveBaseUrl)
     }
 
-    // ── OTHER provider ──────────────────────────────────────────────────
-
     private val otherCatalogWithBaseUrl = ModelCatalog.fromJson(catalogJson).withExtraEntries(
         listOf(
             ModelEntry(
@@ -309,5 +356,11 @@ class LLMClientFactoryTest {
         val f = CodexResponseClient::class.java.getDeclaredField("headerSupplier")
         f.isAccessible = true
         return f.get(client) as suspend () -> CodexHeaders
+    }
+
+    private fun replaceSdk(client: LLMClient): OpenAIClient {
+        val field = client.javaClass.getDeclaredField("client").apply { isAccessible = true }
+        (field.get(client) as OpenAIClient).close()
+        return mockk<OpenAIClient>(relaxed = true).also { field.set(client, it) }
     }
 }

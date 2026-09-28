@@ -11,11 +11,7 @@ import id.steveimm.pocketpilot.tool.ToolObservation
 import kotlinx.coroutines.delay
 import org.json.JSONObject
 
-/**
- * UIActionInvocation — executes a UIAction for SystemButtonTool and WaitTool.
- *
- * For mobile_action (click/type/swipe/long_press), MobileActionInvocation is used instead.
- */
+/** UIActionInvocation — executes a UIAction for SystemButtonTool and WaitTool. */
 class UIActionInvocation(
     override val toolName: String,
     override val params: JSONObject,

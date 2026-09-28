@@ -2,11 +2,8 @@ package id.steveimm.pocketpilot.ui.settings
 
 import id.steveimm.pocketpilot.protocol.PlatformMode
 
-/**
- * Unified card state for the Display Mode toggle. Carries everything the composable needs
- * to render — status pill, switch checked + enabled flags, and an optional row action — so
- * the Compose layer never re-derives state from raw inputs.
- */
+/** Unified card state for the Display Mode toggle. Carries everything the composable needs to render — status pill, switch checked +
+ * enabled flags, and an optional row action — so the Compose layer never re-derives state from raw inputs. */
 internal data class VirtualDisplayCardState(
     val status: ToolStatusUi,
     val switchChecked: Boolean,
@@ -14,35 +11,18 @@ internal data class VirtualDisplayCardState(
     val rowAction: VirtualDisplayRowAction?,
 )
 
-/**
- * What a tap on the card row should do, decided by the mapper. Composables translate these
- * into concrete calls (gate methods, direct Shizuku request). Null means the row is
- * non-interactive; the Switch remains independently tappable.
- */
+/** What a tap on the card row should do, decided by the mapper. Composables translate these into concrete calls (gate methods, direct
+ * Shizuku request). Null means the row is non-interactive; the Switch remains independently tappable. */
 internal sealed interface VirtualDisplayRowAction {
     /** Re-attempt OFF→ON gate. Composable calls `gate.clearError(); gate.setEnabled(true)`. */
     data object RetryEnable : VirtualDisplayRowAction
-    /**
-     * Request Shizuku permission directly; bypasses the gate. Composable calls
-     * `ShizukuRuntimeGateway().requestPermissionAndAwait()` on a coroutine scope.
-     */
+    /** Request Shizuku permission directly; bypasses the gate. Composable calls `ShizukuRuntimeGateway().requestPermissionAndAwait()`
+     * on a coroutine scope. */
     data object RequestPermission : VirtualDisplayRowAction
 }
 
-/**
- * Pure mapper: collapse the five observable inputs (persisted mode, effective mode, Shizuku
- * status, gate pending, gate error) into the unified card's [VirtualDisplayCardState].
- * First-match-wins ordering is the source of truth.
- *
- * Invariants:
- * - `switchChecked` strictly mirrors `persistedMode == VIRTUAL_DISPLAY` — never the last
- *   gesture, never optimistic during pending.
- * - Gate errors only surface when `persistedMode == ACCESSIBILITY`; once persisted has
- *   already flipped to VD, the error is stale and the Shizuku-status rows take over.
- * - Row 10 says "configured for" not "running on": `effectiveMode == VIRTUAL_DISPLAY` only
- *   proves the session selected `VirtualDisplayPlatform`, not that `platform.start()`
- *   succeeded.
- */
+/** Pure mapper: collapse the five observable inputs (persisted mode, effective mode, Shizuku status, gate pending, gate error) into the
+ * unified card's [VirtualDisplayCardState]. First-match-wins ordering is the source of truth. */
 internal fun virtualDisplayCardState(
     persistedMode: PlatformMode,
     effectiveMode: PlatformMode?,

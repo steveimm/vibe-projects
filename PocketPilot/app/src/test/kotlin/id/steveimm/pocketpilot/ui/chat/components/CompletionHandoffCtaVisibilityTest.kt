@@ -4,11 +4,8 @@ import id.steveimm.pocketpilot.protocol.CompletionHandoff
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-/**
- * Covers the visibility guard for [CompletionHandoffCtaRow] via the pure-Kotlin
- * helper [shouldShowOpenAppCta]. The composable wraps the same guard with a real
- * `PackageManager` lookup as the resolver.
- */
+/** Covers the visibility guard for [CompletionHandoffCtaRow] via the pure-Kotlin helper [shouldShowOpenAppCta]. The composable wraps
+ * the same guard with a real `PackageManager` lookup as the resolver. */
 class CompletionHandoffCtaVisibilityTest {
 
     private val resolveAlways: (String) -> Boolean = { true }

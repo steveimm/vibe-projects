@@ -148,12 +148,8 @@ class BrowserSessionManagerTest {
 
     @Test
     fun `storeArtifact session quota persists across browser_script invocations within one session`() = runTest {
-        // Reproduces the P6 final-gate scope bug: before the fix, BrowserScriptJsInterface
-        // owned the AtomicLong, but the JsInterface was rebuilt per BrowserScriptRunner.run().
-        // Two run() calls thus saw two independent counters, turning the documented 500 MiB
-        // session cap into a 500 MiB per-call cap and reopening the /sdcard DoS vector.
-        // The session manager hands the same AtomicLong to every runnerFactory invocation;
-        // assert that the same instance is reused across at least two run() calls.
+        // Reproduces the P6 final-gate scope bug: before the fix, BrowserScriptJsInterface owned the AtomicLong, but the JsInterface was
+        // rebuilt per BrowserScriptRunner.run().
         val countersHandedOut = mutableListOf<AtomicLong>()
         val manager = BrowserSessionManager(
             context = testContext(),

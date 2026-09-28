@@ -12,9 +12,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import id.steveimm.pocketpilot.ui.theme.PocketPilotTheme
 
-/**
- * Small utility for WindowManager overlays backed by ComposeView.
- */
+/** Small utility for WindowManager overlays backed by ComposeView. */
 class OverlayComposeHost(
     private val context: Context,
     private val lifecycleOwner: LifecycleOwner,

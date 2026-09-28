@@ -3,9 +3,11 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 
 def main() -> None:
+    """Print metric changes between two evaluation run summaries."""
     parser = argparse.ArgumentParser(description="Compare two eval run summaries")
     parser.add_argument("--base", required=True, help="Path to base run directory")
     parser.add_argument("--new", required=True, help="Path to new run directory")
@@ -58,7 +60,12 @@ def main() -> None:
     print(json.dumps(payload, ensure_ascii=True, indent=2))
 
 
-def _load_summary(run_dir: Path) -> dict:
+def _load_summary(run_dir: Path) -> dict[str, Any]:
+    """Read a run summary, rejecting a missing summary file.
+
+    Args:
+        run_dir: Directory containing this run's artifacts and summaries.
+    """
     summary_path = run_dir / "summary.json"
     if not summary_path.exists():
         raise FileNotFoundError(f"Missing summary.json: {summary_path}")
@@ -66,6 +73,12 @@ def _load_summary(run_dir: Path) -> dict:
 
 
 def _delta(base_value: float | None, new_value: float | None) -> float | None:
+    """Subtract the baseline metric when both runs provide a value.
+
+    Args:
+        base_value: Metric from the baseline run.
+        new_value: Metric from the comparison run.
+    """
     if base_value is None or new_value is None:
         return None
     return float(new_value) - float(base_value)

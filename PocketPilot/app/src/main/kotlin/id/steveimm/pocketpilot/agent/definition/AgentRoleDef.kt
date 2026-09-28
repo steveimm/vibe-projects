@@ -6,13 +6,7 @@ import id.steveimm.pocketpilot.tool.ToolName
 
 private const val SUBAGENT_TERMUX_TIMEOUT_MS = 150_000L
 
-/**
- * Unified definition of one agent role.
- *
- * Used by both top-level agent startup (SessionAgentRunner) and sub-agent delegation
- * (DelegateTaskTool / IsolatedSubAgentRunner). Prompt, tools, and delegation properties
- * live in one place — no bridge objects or parallel type hierarchies.
- */
+/** Unified definition of one agent role. */
 internal data class AgentRoleDef(
     val name: String,
     val executionRole: AgentExecutionRole,

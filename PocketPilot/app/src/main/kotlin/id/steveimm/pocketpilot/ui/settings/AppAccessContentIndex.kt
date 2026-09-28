@@ -20,15 +20,7 @@ data class AppContentSummary(val hasMemory: Boolean, val hasSkill: Boolean) {
     }
 }
 
-/**
- * Page-scoped preload index telling each App Access row whether a package has
- * memory and/or a bundled app skill.
- *
- * Built once via [load] on [Dispatchers.IO] when the page mounts; rows then read
- * via [summaryFor] (O(1), synchronous, safe to call during composition) or
- * observe the [summaries] flow. Save / delete handlers call [update] to keep
- * the index in sync without re-scanning the filesystem / asset tree.
- */
+/** Page-scoped preload index telling each App Access row whether a package has memory and/or a bundled app skill. */
 class AppAccessContentIndex(
     private val memoryPackages: PackageLister,
     private val skillPackages: PackageLister,
@@ -49,12 +41,8 @@ class AppAccessContentIndex(
     fun summaryFor(packageName: String): AppContentSummary =
         _summaries.value[packageName] ?: AppContentSummary.NONE
 
-    /**
-     * Single IO pass: lists memory + skill packages, merges into a map. Safe to
-     * call repeatedly; later calls replace prior state. Serialized with
-     * [update] via [mutex] so an in-flight scan cannot clobber a concurrent
-     * row-level update.
-     */
+    /** Single IO pass: lists memory + skill packages, merges into a map. Safe to call repeatedly; later calls replace prior state.
+     * Serialized with [update] via [mutex] so an in-flight scan cannot clobber a concurrent row-level update. */
     suspend fun load(): Map<String, AppContentSummary> = withContext(ioDispatcher) {
         mutex.withLock {
             val memory = memoryPackages.list()
@@ -67,11 +55,8 @@ class AppAccessContentIndex(
         }
     }
 
-    /**
-     * Incremental update after a save / delete in the row editor. Passing
-     * [AppContentSummary.NONE] drops the entry so it no longer surfaces chips.
-     * Suspends to share [mutex] with [load].
-     */
+    /** Incremental update after a save / delete in the row editor. Passing [AppContentSummary.NONE] drops the entry so it no longer
+     * surfaces chips. Suspends to share [mutex] with [load]. */
     suspend fun update(packageName: String, summary: AppContentSummary) {
         mutex.withLock {
             val current = _summaries.value
@@ -91,12 +76,8 @@ class AppAccessContentIndex(
         fun memoryLister(store: MemoryStore): PackageLister =
             PackageLister { store.listAppPackages().toSet() }
 
-        /**
-         * Lists asset subdirectories under `app_skills/` whose `SKILL.md` parses
-         * cleanly — matching the gating used by `AssetAppSkillRepository`, so
-         * the index reports skill presence iff the repository would actually
-         * load one.
-         */
+        /** Lists asset subdirectories under `app_skills/` whose `SKILL.md` parses cleanly — matching the gating used by
+         * `AssetAppSkillRepository`, so the index reports skill presence iff the repository would actually load one. */
         fun assetSkillLister(assets: AssetManager): PackageLister = PackageLister {
             val entries = try {
                 assets.list(APP_SKILLS_ROOT).orEmpty()

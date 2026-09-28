@@ -16,10 +16,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 
-// Canonical Settings card primitive. Settings sub-pages live as folded leaves
-// in the bound book; any card that represents a navigable or tappable
-// page-of-the-book uses this surface so the chrome (color, shape, padding,
-// folded-paper shadow) stays unified.
+// Canonical Settings card primitive. Settings sub-pages live as folded leaves in the bound book; any card that represents a navigable or
+// tappable page-of-the-book uses this surface so the chrome (color, shape, padding, folded-paper shadow) stays unified.
 @Composable
 internal fun SettingsCard(
     modifier: Modifier = Modifier,

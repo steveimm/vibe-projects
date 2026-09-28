@@ -48,13 +48,7 @@ class SessionRecordingService(
     /** Monotonically increasing revision for checkpoint disk writes. */
     private val checkpointRevision = AtomicLong(0)
 
-    /**
-     * Initialize a new session.
-     *
-     * @param model The LLM model being used (e.g., "gpt-5.2")
-     * @param appVersion The app version creating this session
-     * @return The session ID
-     */
+    /** Initialize a new session. */
     fun initializeNewSession(
             sessionId: String? = null,
             model: String? = null,
@@ -90,11 +84,7 @@ class SessionRecordingService(
         return finalSessionId
     }
 
-    /**
-     * Resume an existing session.
-     *
-     * @param data The session data to resume from
-     */
+    /** Resume an existing session. */
     fun resumeSession(data: ResumedSessionData) {
         synchronized(stateLock) {
             currentSession = data.session
@@ -236,14 +226,7 @@ class SessionRecordingService(
         scheduleSave()
     }
 
-    /**
-     * Append the agent's closing answer to the active agent message
-     * (`TaskCompleted` with a real answer). Persists as `FinalText` so reload
-     * matches the live reducer's classification — see
-     * `ChatViewModel.applyCompletionToBlocks`. No-answer completions
-     * (USER_STOPPED, side-effect-only) intentionally skip this call so the
-     * persisted row has no final region.
-     */
+    /** Append the agent's closing answer to the active agent message (`TaskCompleted` with a real answer). */
     fun recordFinalAnswer(text: String) {
         synchronized(stateLock) {
             if (!agentMessageBuffer.hasActiveMessage()) {
@@ -342,13 +325,7 @@ class SessionRecordingService(
     /** Get current session ID. */
     fun getCurrentSessionId(): String? = synchronized(stateLock) { currentSession?.sessionId }
 
-    /**
-     * Clear session tracking (called when session ends).
-     *
-     * Suspends until any pending save/checkpoint jobs complete, then clears
-     * in-memory state synchronously before returning. No fire-and-forget —
-     * callers can safely create a new session immediately after this returns.
-     */
+    /** Clear session tracking (called when session ends). */
     suspend fun clearSessionAndAwait() {
         val (pendingSave, pendingCheckpoint) =
                 synchronized(stateLock) {
@@ -374,15 +351,10 @@ class SessionRecordingService(
         Log.d(TAG, "Session tracking cleared")
     }
 
-    // ===== Checkpoint (LLM context snapshot) =====
-
     private var contextFileName: String? = null
     private var checkpointSaveJob: Job? = null
 
-    /**
-     * Schedule a debounced checkpoint save. Called when HistoryManager, TodoState,
-     * or ScratchpadState mutates.
-     */
+    /** Schedule a debounced checkpoint save. Called when HistoryManager, TodoState, or ScratchpadState mutates. */
     fun scheduleCheckpoint(snapshotProvider: () -> SessionRuntimeSnapshot) {
         synchronized(stateLock) {
             checkpointSaveJob?.cancel()
@@ -401,10 +373,8 @@ class SessionRecordingService(
         }
     }
 
-    /**
-     * Force-flush a checkpoint immediately (no debounce).
-     * Preempts any pending debounced checkpoint — cancels it, then writes under mutex.
-     */
+    /** Force-flush a checkpoint immediately (no debounce). Preempts any pending debounced checkpoint — cancels it, then writes under
+     * mutex. */
     suspend fun forceCheckpoint(snapshot: SessionRuntimeSnapshot): Boolean {
         synchronized(stateLock) {
             checkpointSaveJob?.cancel()
@@ -479,10 +449,7 @@ class SessionRecordingService(
         }
     }
 
-    /**
-     * Update the current agent message in the session without finalizing. Used for incremental
-     * updates (action state changes).
-     */
+    /** Update the current agent message in the session without finalizing. Used for incremental updates (action state changes). */
     private fun updateAgentMessageInSession() {
         synchronized(stateLock) {
             val snapshot = agentMessageBuffer.buildPartialSnapshot() ?: return

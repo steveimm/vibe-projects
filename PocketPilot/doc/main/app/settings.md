@@ -11,6 +11,12 @@ The app manages user preferences through `AppSettingsState` + `AppSettingsStore`
 
 ---
 
+## State and lifecycle
+
+`AppSettingsState` exposes one immutable `AppSettings` snapshot to Compose. Loading replaces that snapshot, and individual updates copy it while preserving unrelated fields. `AppSettingsStore` owns the preferences handle without retaining the caller's Context. Enum loading and optional-string persistence share one implementation each.
+
+`SettingsAuthController` runs credential reads and writes on IO in the activity's lifecycle scope. It presents storage failures through auth error state and propagates cancellation. Browser Script and Virtual Display use `SettingsToggleGate` for permission checks. Turning a toggle off cancels the pending attempt, so a late permission result cannot enable it again.
+
 ## Settings Categories
 
 ### LLM Backend

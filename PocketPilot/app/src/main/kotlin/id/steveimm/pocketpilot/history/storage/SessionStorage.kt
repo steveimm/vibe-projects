@@ -13,40 +13,30 @@ import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-/**
- * Low-level storage operations for session files.
- * 
- * Files are stored in: /data/data/{package}/files/sessions/
- * File naming: session-{yyyy-MM-ddTHH-mm-ss}-{uuid_8chars}.json
- * 
- * This class handles all file I/O operations and is the only component
- * that should directly interact with the filesystem for session data.
- */
+/** Low-level storage operations for session files. */
 class SessionStorage(
     private val context: Context,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
-    
+
     companion object {
         private const val TAG = "SessionStorage"
         private const val SESSIONS_DIR = "sessions"
         private const val SESSION_PREFIX = "session-"
         private const val CONTEXT_PREFIX = "context-"
         private const val SESSION_SUFFIX = ".json"
-        
+
         // DateTimeFormatter is thread-safe unlike SimpleDateFormat
         private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH-mm-ss")
     }
-    
+
     private val json = Json {
         prettyPrint = true
         ignoreUnknownKeys = true
         encodeDefaults = true
     }
-    
-    /**
-     * Get the sessions directory, creating if needed.
-     */
+
+    /** Get the sessions directory, creating if needed. */
     fun getSessionsDir(): File {
         val dir = File(context.filesDir, SESSIONS_DIR)
         if (!dir.exists()) {
@@ -55,25 +45,14 @@ class SessionStorage(
         }
         return dir
     }
-    
-    /**
-     * Generate a filename for a new session.
-     * 
-     * Format: session-{timestamp}-{uuid}.json
-     * Example: session-2024-01-21T14-30-45-a1b2c3d4-e5f6-7890-abcd-ef1234567890.json
-     */
+
+    /** Generate a filename for a new session. */
     fun generateFileName(sessionId: String): String {
         val timestamp = LocalDateTime.now().format(dateFormatter)
         return "$SESSION_PREFIX$timestamp-$sessionId$SESSION_SUFFIX"
     }
-    
-    /**
-     * Write a session record to disk.
-     * 
-     * @param fileName The name of the file to write to
-     * @param record The session record to persist
-     * @return Result indicating success or failure
-     */
+
+    /** Write a session record to disk. */
     suspend fun writeSession(fileName: String, record: SessionRecord): Result<Unit> = withContext(ioDispatcher) {
         try {
             val dir = getSessionsDir()
@@ -92,13 +71,8 @@ class SessionStorage(
             Result.failure(e)
         }
     }
-    
-    /**
-     * Read a session record from disk.
-     * 
-     * @param fileName The name of the file to read
-     * @return Result containing the session record or an error
-     */
+
+    /** Read a session record from disk. */
     suspend fun readSession(fileName: String): Result<SessionRecord> = withContext(ioDispatcher) {
         try {
             val file = File(getSessionsDir(), fileName)
@@ -114,29 +88,20 @@ class SessionStorage(
             Result.failure(e)
         }
     }
-    
-    /**
-     * List all session files (sorted by modification time, newest first).
-     * 
-     * @return List of session files, sorted by last modified descending
-     */
+
+    /** List all session files (sorted by modification time, newest first). */
     suspend fun listSessionFiles(): List<File> = withContext(ioDispatcher) {
         val dir = getSessionsDir()
         val files = dir.listFiles { file ->
-            file.isFile && 
-            file.name.startsWith(SESSION_PREFIX) && 
+            file.isFile &&
+            file.name.startsWith(SESSION_PREFIX) &&
             file.name.endsWith(SESSION_SUFFIX)
         } ?: emptyArray()
-        
+
         files.sortedByDescending { it.lastModified() }
     }
-    
-    /**
-     * Delete a session file.
-     * 
-     * @param fileName The name of the file to delete
-     * @return Result indicating success or failure
-     */
+
+    /** Delete a session file. */
     suspend fun deleteSession(fileName: String): Result<Unit> = withContext(ioDispatcher) {
         try {
             val file = File(getSessionsDir(), fileName)
@@ -157,33 +122,25 @@ class SessionStorage(
             Result.failure(e)
         }
     }
-    
-    /**
-     * Check if a session file exists.
-     */
+
+    /** Check if a session file exists. */
     fun sessionExists(fileName: String): Boolean {
         return File(getSessionsDir(), fileName).exists()
     }
-    
-    /**
-     * Get the full path to a session file.
-     */
+
+    /** Get the full path to a session file. */
     fun getSessionFile(fileName: String): File {
         return File(getSessionsDir(), fileName)
     }
 
-    /**
-     * Generate context snapshot filename that pairs with a session filename.
-     * Shares the same `{ts}-{uuid}` suffix so files can be correlated.
-     */
+    /** Generate context snapshot filename that pairs with a session filename. Shares the same `{ts}-{uuid}` suffix so files can be
+     * correlated. */
     fun contextFileNameFor(sessionFileName: String): String {
         val suffix = sessionFileName.removePrefix(SESSION_PREFIX)
         return "$CONTEXT_PREFIX$suffix"
     }
 
-    /**
-     * Write a runtime snapshot atomically (temp file + rename).
-     */
+    /** Write a runtime snapshot atomically (temp file + rename). */
     suspend fun writeSnapshot(
         fileName: String,
         snapshot: SessionRuntimeSnapshot
@@ -206,9 +163,7 @@ class SessionStorage(
         }
     }
 
-    /**
-     * Read a runtime snapshot from disk.
-     */
+    /** Read a runtime snapshot from disk. */
     suspend fun readSnapshot(fileName: String): Result<SessionRuntimeSnapshot> = withContext(ioDispatcher) {
         try {
             val file = File(getSessionsDir(), fileName)
@@ -225,9 +180,7 @@ class SessionStorage(
         }
     }
 
-    /**
-     * List context snapshot files (newest first).
-     */
+    /** List context snapshot files (newest first). */
     suspend fun listSnapshotFiles(): List<File> = withContext(ioDispatcher) {
         val dir = getSessionsDir()
         val files = dir.listFiles { file ->
@@ -238,9 +191,7 @@ class SessionStorage(
         files.sortedByDescending { it.lastModified() }
     }
 
-    /**
-     * Delete both session record and context snapshot for a given session file name.
-     */
+    /** Delete both session record and context snapshot for a given session file name. */
     suspend fun deleteSessionPair(sessionFileName: String): Result<Unit> = withContext(ioDispatcher) {
         val contextFileName = contextFileNameFor(sessionFileName)
         val sessionResult = deleteSession(sessionFileName)

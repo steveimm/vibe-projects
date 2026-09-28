@@ -1,16 +1,9 @@
 #!/usr/bin/env bash
-#
-# action-test.sh — Direct action execution debug harness
-#
-# Usage:
-#   ./scripts/action-test.sh click --x 540 --y 1200
-#   ./scripts/action-test.sh tap --x 540 --y 1200 --adb
-#   ./scripts/action-test.sh scroll --direction down
-#   ./scripts/action-test.sh swipe --start-x 540 --start-y 1400 --end-x 540 --end-y 600
-#   ./scripts/action-test.sh long_press --x 540 --y 800 --duration 1500
-#   ./scripts/action-test.sh click --x 540 --y 1200 --compare
-#
+# action-test.sh: Direct action execution debug harness
+
 set -euo pipefail
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 
 PACKAGE="id.steveimm.pocketpilot"
 ACTION_INTENT="id.steveimm.pocketpilot.ACTION_DEBUG_EXEC"
@@ -27,32 +20,6 @@ err()  { echo -e "${RED}✗ $1${NC}"; }
 bold() { echo -e "${BOLD}$1${NC}"; }
 
 # ── Device selection (reused from debug-run.sh) ──
-
-list_connected_devices() {
-    adb devices | awk 'NR > 1 && $2 == "device" {print $1}'
-}
-
-select_device() {
-    local preferred_serial="${ANDROID_SERIAL:-}"
-    local devices physical_devices
-    devices="$(list_connected_devices)"
-    [[ -z "$devices" ]] && return 1
-
-    if [[ -n "$preferred_serial" ]]; then
-        if printf "%s\n" "$devices" | grep -Fxq "$preferred_serial"; then
-            printf "%s\n" "$preferred_serial"
-            return 0
-        fi
-        warn "ANDROID_SERIAL=$preferred_serial not found; auto-selecting."
-    fi
-
-    physical_devices="$(printf "%s\n" "$devices" | grep -v '^emulator-' || true)"
-    if [[ -n "$physical_devices" ]]; then
-        printf "%s\n" "$physical_devices" | head -n 1
-    else
-        printf "%s\n" "$devices" | head -n 1
-    fi
-}
 
 # ── ADB helpers ──
 
@@ -149,6 +116,7 @@ log "Device: $DEVICE"
 # Determine output dir
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 if [[ -n "$TAG" ]]; then
+    validate_output_tag "$TAG" || exit 1
     OUT_DIR="$SCRIPT_DIR/debug-output/action-test/$TAG"
 else
     OUT_DIR="$SCRIPT_DIR/debug-output/action-test/latest"

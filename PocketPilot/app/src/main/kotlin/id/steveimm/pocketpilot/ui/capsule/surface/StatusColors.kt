@@ -6,13 +6,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 import id.steveimm.pocketpilot.ui.overlay.model.GlowState
 
-/**
- * Theme-driven color resolver for semantic capsule status states.
- *
- * Render models carry [GlowState] (semantic), Compose maps it to the active
- * theme's color slot here. Used by the capsule status dot, edge glow, and
- * status island so all three stay in sync.
- */
+/** Theme-driven color resolver for semantic capsule status states. */
 @Composable
 @ReadOnlyComposable
 fun GlowState.toStatusColor(): Color = when (this) {

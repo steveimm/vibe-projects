@@ -17,10 +17,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Test
 
-/**
- * JVM unit tests for AuthStore. Uses [FakeSharedPreferences] via the
- * [AuthStore.prefsProvider] hook, so no Android Keystore is needed.
- */
+/** JVM unit tests for AuthStore. Uses [FakeSharedPreferences] via the [AuthStore.prefsProvider] hook, so no Android Keystore is needed. */
 class AuthStoreTest {
 
     private lateinit var context: Context

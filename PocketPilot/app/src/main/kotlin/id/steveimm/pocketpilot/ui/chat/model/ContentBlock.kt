@@ -1,14 +1,6 @@
 package id.steveimm.pocketpilot.ui.chat.model
 
-/**
- * ContentBlock - A unit of content in an agent message.
- *
- * Enables interleaved display of text, thoughts, and action cards in the order
- * they occurred. [FinalText] is a tagged variant of [Text] reserved for the
- * agent loop's concluding answer (per Turn.kt:205-209 stop criteria) — either
- * the `complete_task.answer` argument or the last text block in a tool-less
- * turn. It renders in a separate, always-visible "final" region of the row.
- */
+/** ContentBlock - A unit of content in an agent message. */
 sealed interface ContentBlock {
     /** Streaming text from the LLM mid-turn (narrative, may be interrupted). */
     data class Text(val text: String) : ContentBlock

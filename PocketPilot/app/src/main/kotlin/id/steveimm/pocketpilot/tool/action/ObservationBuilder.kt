@@ -11,12 +11,7 @@ import id.steveimm.pocketpilot.tool.ToolObservation
 
 private const val TAG = "ObservationBuilder"
 
-/**
- * Build a ToolObservation from a post-action snapshot. Mode-aware for screenshot-only.
- *
- * When [appClassifier] is provided, BLOCKED-app snapshots are masked before building
- * the observation (defense-in-depth — the capture layer should already mask).
- */
+/** Build a ToolObservation from a post-action snapshot. Mode-aware for screenshot-only. */
 internal fun buildObservation(
     snapshot: ScreenSnapshot,
     platform: AndroidPlatform,

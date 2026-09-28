@@ -19,20 +19,7 @@ internal data class MainActivityIntentApplyResult(
     val pendingEvalTurnBudget: Int?,
 )
 
-/**
- * Apply intent extras to runtime state. Credential writes go to [authStore]
- * on [Dispatchers.IO] because [AuthStore.set] performs EncryptedSharedPreferences
- * init + disk I/O and must not block the main thread. Base URL override goes to
- * [AppSettingsState.openaiBaseUrl] (debug-only). Release builds no-op on every extra.
- *
- * Toggling `browser_script` ON via intent goes through the same gate the UI toggle uses
- * (Shizuku reachable + permission + writable command-line file). Persisting ON without the
- * gate would leave the toggle UI showing ON for an unusable tool — same trap the UI gates
- * against. Toggle OFF stays unconditional, mirroring the UI.
- *
- * This function is `suspend`; callers must invoke it inside a coroutine so that
- * any session launch observing the credential state happens-after the writes.
- */
+/** Apply intent extras to runtime state. */
 internal suspend fun applyIntentPayloadToSettings(
     payload: MainActivityIntentPayload,
     settingsState: AppSettingsState,
@@ -80,10 +67,7 @@ internal suspend fun applyIntentPayloadToSettings(
         log("OpenAI base URL override set from intent: $url")
     }
     payload.otherBaseUrl?.let { url ->
-        // Validate at the intent boundary so we never persist junk into settings.
-        // synthOtherEntry also re-validates, but rejecting here keeps both
-        // AppSettingsState.otherBaseUrl and the on-disk preference clean — so a
-        // later UI render doesn't show the user a bad value they didn't type.
+        // Validate before persisting so malformed intent values never become visible settings.
         val validation = OtherBaseUrlValidator.validate(url)
         validation.onSuccess { normalized ->
             settingsState.updateOtherBaseUrl(normalized)
@@ -95,9 +79,8 @@ internal suspend fun applyIntentPayloadToSettings(
         }
     }
     payload.otherModelId?.let { modelId ->
-        // Validate at the intent boundary so a bad id (whitespace, leading
-        // ":" / "/") never reaches settings — discovery and the synth path
-        // would otherwise enforce the same rule and silently drop the entry.
+        // Validate at the intent boundary so a bad id (whitespace, leading ":" / "/") never reaches settings — discovery and the synth
+        // path would otherwise enforce the same rule and silently drop the entry.
         ModelIdValidator.validate(modelId).onSuccess { trimmed ->
             settingsState.updateOtherModelId(trimmed)
             otherChanged = true
@@ -107,10 +90,7 @@ internal suspend fun applyIntentPayloadToSettings(
             log("OTHER model id from intent rejected: ${err.message}")
         }
     }
-    // Make absolutely sure the catalog reflects OTHER writes. The settings updates already
-    // call `onOtherSettingsChanged()` (which invalidates the repo), but the OTHER api key
-    // write goes through AuthStore directly — invalidate here so any synth entry that
-    // depended on the new key/url/modelId trio is fresh in `catalog.value`.
+    // Make absolutely sure the catalog reflects OTHER writes.
     if (otherChanged) invalidateCatalog()
     payload.backendType?.let {
         modelLoadingStatusHolder.updateBackend(it)
@@ -138,10 +118,7 @@ internal suspend fun applyIntentPayloadToSettings(
             settingsState.updateBrowserScriptEnabled(false)
             log("browser_script enabled set from intent: false")
         } else {
-            // ON must clear the same gate the UI uses (Shizuku reachable + permission +
-            // writable command-line file). Otherwise QA can persist ON via adb intent on a
-            // device with no Shizuku, and the toggle UI later lies about a tool that can't
-            // run. Same contract as BrowserScriptToggleGate.
+            // ON must clear the same gate the UI uses (Shizuku reachable + permission + writable command-line file).
             val gateError = browserScriptGate()
             if (gateError == null) {
                 settingsState.updateBrowserScriptEnabled(true)

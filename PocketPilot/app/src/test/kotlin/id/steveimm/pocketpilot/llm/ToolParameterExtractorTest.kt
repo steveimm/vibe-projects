@@ -10,10 +10,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Test
 
-/**
- * Verifies ToolParameterExtractor handles the three representations the OpenAI
- * SDK exposes for a FunctionTool's parameters: known, unknown-object, missing.
- */
+/** Verifies ToolParameterExtractor handles the three representations the OpenAI SDK exposes for a FunctionTool's parameters: known,
+ * unknown-object, missing. */
 class ToolParameterExtractorTest {
 
     @Test

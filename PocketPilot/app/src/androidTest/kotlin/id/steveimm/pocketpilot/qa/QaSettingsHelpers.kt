@@ -32,10 +32,8 @@ internal fun testModelCatalog(): ModelCatalog = ModelCatalog.fromJson(
     """.trimIndent()
 )
 
-/**
- * Render the real SettingsSheet with sensible defaults; callers override what they need.
- * Used by navigation tests (S1-S4) that exercise the full sheet.
- */
+/** Render the real SettingsSheet with sensible defaults; callers override what they need. Used by navigation tests (S1-S4) that
+ * exercise the full sheet. */
 @Composable
 internal fun TestSettingsSheet(
     llmBackend: LLMBackendType = LLMBackendType.OPENAI,
@@ -86,9 +84,7 @@ internal fun TestSettingsSheet(
     }
 }
 
-/**
- * Render LlmAuthSettingsPage directly. Callers supply the callbacks they assert on.
- */
+/** Render LlmAuthSettingsPage directly. Callers supply the callbacks they assert on. */
 @Composable
 internal fun TestLlmAuthPage(
     llmBackend: LLMBackendType = LLMBackendType.OPENAI,

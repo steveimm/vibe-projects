@@ -2,16 +2,7 @@ package id.steveimm.pocketpilot.ui.overlay.model
 
 import id.steveimm.pocketpilot.protocol.PlatformMode
 
-/**
- * CapsuleRenderSpec — pure rendering specification derived from CapsuleMode.
- *
- * Maps CapsuleMode → visual properties. Both overlay and in-app Compose renderers
- * read from this spec. This is the SINGLE source of truth for "what does the
- * capsule look like in each mode."
- *
- * No business logic. No callbacks. No state management.
- * Just data that renderers mechanically apply to their UI framework.
- */
+/** CapsuleRenderSpec — pure rendering specification derived from CapsuleMode. */
 data class CapsuleRenderSpec(
     val dot: DotSpec?,
     val thought: ThoughtSpec,
@@ -49,11 +40,8 @@ data class CapsuleRenderSpec(
     )
 
     companion object {
-        /**
-         * Derive the render spec from a CapsuleMode.
-         * [previousMode] is used to decide whether to clear the input-bar draft
-         * on transitions into WaitingForInput.
-         */
+        /** Derive the render spec from a CapsuleMode. [previousMode] is used to decide whether to clear the input-bar draft on
+         * transitions into WaitingForInput. */
         fun from(
             mode: CapsuleMode,
             previousMode: CapsuleMode? = null,
@@ -173,12 +161,7 @@ data class CapsuleRenderSpec(
     }
 }
 
-/**
- * NavSpec — navigation button visibility derived from context.
- *
- * Separate from CapsuleRenderSpec because nav visibility depends on
- * CapsuleContext + PlatformMode, not CapsuleMode.
- */
+/** NavSpec — navigation button visibility derived from context. */
 data class NavSpec(
     val showMinimize: Boolean,
     val showApp: Boolean,

@@ -9,11 +9,7 @@ import id.steveimm.pocketpilot.util.recycleCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Shared node-action executor for both Accessibility and VirtualDisplay platforms.
- *
- * The only platform-specific dependency is [rootProvider].
- */
+/** Shared node-action executor for both Accessibility and VirtualDisplay platforms. */
 class NodeActionPerformer(
         private val rootProvider: () -> AccessibilityNodeInfo?,
         private val sdkIntProvider: () -> Int = { Build.VERSION.SDK_INT }
@@ -40,12 +36,7 @@ class NodeActionPerformer(
         }
     }
 
-    /**
-     * Perform a scroll action on the scrollable node at (x, y).
-     *
-     * Direction is content direction: "down" = reveal content below.
-     * Tries API 23+ directional action first, falls back to FORWARD/BACKWARD.
-     */
+    /** Perform a scroll action on the scrollable node at (x, y). */
     @Suppress("DEPRECATION")
     suspend fun performScrollAt(x: Int, y: Int, direction: String): ActionResult {
         return onMain {
@@ -261,11 +252,8 @@ class NodeActionPerformer(
         return withContext(Dispatchers.Main) { block() }
     }
 
-    /**
-     * Log intended vs found node identity. If hint is non-null and the found node
-     * doesn't match, return [ActionResult.Failure] to trigger gesture fallback.
-     * Returns null when the click should proceed.
-     */
+    /** Log intended vs found node identity. If hint is non-null and the found node doesn't match, return [ActionResult.Failure] to
+     * trigger gesture fallback. Returns null when the click should proceed. */
     private fun logAndGuard(
         node: AccessibilityNodeInfo,
         x: Int,
@@ -282,10 +270,8 @@ class NodeActionPerformer(
         val foundDesc = node.contentDescription?.toString() ?: ""
         val foundClass = node.className?.toString() ?: ""
 
-        // Bounds match is the strongest identity signal: if the found node occupies exactly
-        // the same rect as the intended element, it IS the correct node. Label mismatches
-        // are expected for container nodes (CardView, LinearLayout) where the Perceptor
-        // aggregates child text but the a11y node itself has no text/contentDescription.
+        // Bounds match is the strongest identity signal: if the found node occupies exactly the same rect as the intended element, it IS
+        // the correct node.
         val boundsMatch = bounds.left == hint.bounds.left && bounds.top == hint.bounds.top &&
                 bounds.right == hint.bounds.right && bounds.bottom == hint.bounds.bottom
         val identityMatch = matchesIntended(foundId, foundText, foundDesc, foundClass, hint)
@@ -313,11 +299,8 @@ class NodeActionPerformer(
     companion object {
         private const val TAG = "NodeActionPerformer"
 
-        /**
-         * Check if the found node matches the intended element.
-         * For each identity field provided by hint, the found node must match.
-         * If no identity fields are available, we trust the finder.
-         */
+        /** Check if the found node matches the intended element. For each identity field provided by hint, the found node must match.
+         * If no identity fields are available, we trust the finder. */
         internal fun matchesIntended(
             foundId: String,
             foundText: String,
@@ -345,9 +328,8 @@ class NodeActionPerformer(
 
             if (expectedLabels.isNotEmpty()) {
                 val foundLabels = listOf(foundText, foundDesc).map { it.trim() }.filter { it.isNotBlank() }
-                // If the found node has no labels at all, it is a container node (CardView,
-                // LinearLayout) whose text comes from children aggregated by the Perceptor.
-                // Only reject when the found node has DIFFERENT text, not when it has NONE.
+                // If the found node has no labels at all, it is a container node (CardView, LinearLayout) whose text comes from children
+                // aggregated by the Perceptor. Only reject when the found node has DIFFERENT text, not when it has NONE.
                 if (foundLabels.isNotEmpty()) {
                     val hasAnyExpectedLabel = expectedLabels.any { expected ->
                         foundLabels.any { found -> found == expected }

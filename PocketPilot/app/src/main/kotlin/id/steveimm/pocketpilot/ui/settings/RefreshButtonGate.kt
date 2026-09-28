@@ -3,15 +3,8 @@ package id.steveimm.pocketpilot.ui.settings
 import id.steveimm.pocketpilot.llm.LLMProvider
 import id.steveimm.pocketpilot.llm.OtherBaseUrlValidator
 
-/**
- * Pure refresh-button gating logic — when discovery's prerequisites are met
- * for [provider]. Designed so the Compose layer renders a disabled button
- * with a tooltip naming the missing piece without re-doing validation.
- *
- * - `OPENROUTER` needs a non-blank API key (the URL is seed-fixed).
- * - `OTHER` needs a non-blank API key AND a base URL that passes
- *   [OtherBaseUrlValidator].
- */
+/** Pure refresh-button gating logic — when discovery's prerequisites are met for [provider]. Designed so the Compose layer renders a
+ * disabled button with a tooltip naming the missing piece without re-doing validation. */
 object RefreshButtonGate {
 
     sealed interface State {

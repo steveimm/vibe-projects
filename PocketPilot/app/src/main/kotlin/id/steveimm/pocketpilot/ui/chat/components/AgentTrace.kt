@@ -34,15 +34,7 @@ import id.steveimm.pocketpilot.ui.chat.model.AgentMessageState
 import id.steveimm.pocketpilot.ui.chat.model.ContentBlock
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
-/**
- * AgentTrace — UXFB-4 ThoughtGroup layout.
- *
- * A turn emits one Thought + ≥1 Actions (TurnPlanningPhaseRunner.kt:217-238).
- * Each [ContentBlock.Thought] opens a group; subsequent [ContentBlock.Action]
- * (and any mid-stream [ContentBlock.Text]) belong to it until the next Thought.
- * Actions before the first Thought form a header-less preface group — still
- * gets the left rule.
- */
+/** AgentTrace — UXFB-4 ThoughtGroup layout. */
 
 internal data class ThoughtGroup(
     val thought: ContentBlock.Thought?,
@@ -161,11 +153,8 @@ private fun ThoughtHeader(text: String) {
     }
 }
 
-/**
- * ActionRow — inline trace row for an action. UXFB-4: monoSmall + onSurfaceVariant
- * inside a ThoughtGroup; status glyph stays right-aligned. Caller supplies the
- * group's start indent via [modifier].
- */
+/** ActionRow — inline trace row for an action. UXFB-4: monoSmall + onSurfaceVariant inside a ThoughtGroup; status glyph stays
+ * right-aligned. Caller supplies the group's start indent via [modifier]. */
 @Composable
 internal fun ActionRow(
     data: ActionCardData,

@@ -72,14 +72,7 @@ internal object DevtoolsHttpProtocol {
         throw DevtoolsSetupError.MalformedResponse("/json/version parse failed: ${e.message}", e)
     }
 
-    /**
-     * Parse `/json/list` payload (array of targets).
-     *
-     * Page targets that lack a `webSocketDebuggerUrl` are silently dropped — Chrome
-     * occasionally lists ephemeral page targets (omnibox popups, tear-downs) that have no
-     * attachable WebSocket and would be useless to surface. Non-page targets are kept even
-     * without a WS URL because workers/iframes legitimately have one only after attach.
-     */
+    /** Parse `/json/list` payload (array of targets). */
     fun parsePageTargets(body: String): List<PageTarget> = try {
         val arr = json.parseToJsonElement(body) as? JsonArray
             ?: throw DevtoolsSetupError.MalformedResponse("/json/list expected JSON array")

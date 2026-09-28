@@ -4,13 +4,7 @@ import id.steveimm.pocketpilot.agent.cognition.context.LoopWarning
 import id.steveimm.pocketpilot.agent.cognition.context.NavigationState
 import id.steveimm.pocketpilot.agent.cognition.context.ScreenSignature
 
-/**
- * Thresholds for deciding whether the agent is stuck on UI navigation.
- *
- * Only detects stable-screen (near-identical screens for N consecutive turns).
- * All advisory warnings (cycle detection, tool dominance, scroll spam, action repetition)
- * have been removed — they caused false positives that poisoned multi-item workflows.
- */
+/** Thresholds for deciding whether the agent is stuck on UI navigation. */
 internal data class LoopDetectionConfig(
     val similarityThreshold: Double = 0.95,
     val stableScreenWindow: Int = 5
@@ -21,16 +15,7 @@ internal data class LoopDetectionResult(
     val warning: LoopWarning?
 )
 
-/**
- * Detects "stuck" patterns from navigation history.
- *
- * Single check: if the last [LoopDetectionConfig.stableScreenWindow] screens are nearly identical
- * (Jaccard similarity >= [LoopDetectionConfig.similarityThreshold]), emit a factual warning.
- * The warning states a fact ("screen has not changed") — no strategy suggestions.
- * The LLM decides what to do with the information.
- *
- * Turn limit is the only hard stop mechanism. Advisory warnings are facts, not opinions.
- */
+/** Detects "stuck" patterns from navigation history. */
 internal class LoopDetectionPolicy(
     private val config: LoopDetectionConfig = LoopDetectionConfig()
 ) {

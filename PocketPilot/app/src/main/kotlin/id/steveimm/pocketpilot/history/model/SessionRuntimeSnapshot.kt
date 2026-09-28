@@ -19,13 +19,7 @@ data class SessionRuntimeSnapshot(
     val lastTaskOutcome: String? = null
 )
 
-/**
- * Serializable mirror of [id.steveimm.pocketpilot.history.ResponseItem] for checkpoint persistence.
- *
- * Exists because [ResponseItem.FunctionCall.arguments] is a [org.json.JSONObject] (not
- * kotlinx-serializable). This type stores it as [FunctionCall.argumentsRawJson] instead.
- * Conversion is handled by [HistoryItemConverter] (two call-sites: save and reload).
- */
+/** Serializable mirror of [id.steveimm.pocketpilot.history.ResponseItem] for checkpoint persistence. */
 @Serializable
 sealed interface PersistedHistoryItem {
     @Serializable
@@ -33,9 +27,8 @@ sealed interface PersistedHistoryItem {
         val kind: String? = null,
         val content: String,
         val name: String? = null,
-        // Legacy fields for backward compatibility with pre-MessageKind checkpoints.
-        // New writes always set `kind` and omit these. HistoryItemConverter.fromRecord
-        // uses role+isScreenObservation to infer kind when kind is absent.
+        // Legacy fields for backward compatibility with pre-MessageKind checkpoints. New writes always set `kind` and omit these.
+        // HistoryItemConverter.fromRecord uses role+isScreenObservation to infer kind when kind is absent.
         val role: String? = null,
         val isScreenObservation: Boolean = false
     ) : PersistedHistoryItem

@@ -24,15 +24,7 @@ import androidx.compose.ui.unit.em
 import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
-/**
- * StreamingText — read-only Text with an inlineContent cursor while streaming.
- *
- * Track D2 §2 (streaming cursor): the cursor lives inside the text layout via
- * `inlineContent`, so it follows reflow and lands on the correct visual line.
- * Blink cadence is the shared [PocketPilotMotion.CursorBlink] (480ms, Linear,
- * Reverse). Per the reduced-motion contract the cursor keeps blinking — it is
- * a liveness signal, not decoration.
- */
+/** StreamingText — read-only Text with an inlineContent cursor while streaming. */
 @Composable
 fun StreamingText(
     text: String,

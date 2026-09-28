@@ -8,19 +8,28 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def find_project_root(start: Path) -> Path:
+    """Find the parent repository containing the required debug and setup scripts.
+
+    Args:
+        start: Directory from which to search parent directories.
+    """
     for candidate in [start] + list(start.parents):
         if (candidate / "scripts" / "debug-run.sh").exists() and (candidate / "scripts" / "setup.sh").exists():
             return candidate
     raise RuntimeError("Cannot locate project root containing scripts/debug-run.sh and scripts/setup.sh")
 
 
-def list_debug_run_dirs(project_root: Path) -> List[Path]:
+def list_debug_run_dirs(project_root: Path) -> list[Path]:
+    """List debug runs ordered by their modification time.
+
+    Args:
+        project_root: Repository containing debug-output.
+    """
     debug_root = project_root / "debug-output"
     if not debug_root.exists():
         return []
@@ -33,9 +42,9 @@ class AgentLinkState:
     mode: str
     goal: str
     setup_ran: bool
-    setup_exit: Optional[int]
+    setup_exit: int | None
     debug_run_started: bool
-    debug_run_exit: Optional[int]
+    debug_run_exit: int | None
     debug_run_log: str
     debug_output_dir: str
     status: str
@@ -48,14 +57,14 @@ class AgentLink:
         *,
         project_root: Path,
         run_dir: Path,
-        serial: Optional[str],
+        serial: str | None,
         goal: str,
         mode: str,
         run_setup: bool,
-        debug_args: List[str],
+        debug_args: list[str],
         join_timeout_sec: int,
         start_delay_ms: int,
-    ):
+    ) -> None:
         self.project_root = project_root
         self.serial = serial
         self.goal = goal.strip()
@@ -70,8 +79,8 @@ class AgentLink:
         self.log_path = run_dir / "agent_debug_run.log"
         self.setup_log_path = run_dir / "agent_setup.log"
 
-        self.proc: Optional[subprocess.Popen] = None
-        self.before_debug_dirs: List[Path] = []
+        self.proc: subprocess.Popen[str] | None = None
+        self.before_debug_dirs: list[Path] = []
 
         self.state = AgentLinkState(
             enabled=bool(self.goal),
@@ -87,13 +96,15 @@ class AgentLink:
             error="",
         )
 
-    def _env(self) -> Dict[str, str]:
+    def _env(self) -> dict[str, str]:
+        """Copy the process environment with the selected Android device serial."""
         env = os.environ.copy()
         if self.serial:
             env["ANDROID_SERIAL"] = self.serial
         return env
 
     def _scan_log_for_debug_dir(self) -> str:
+        """Find the debug output directory recorded by the linked runner."""
         if not self.log_path.exists():
             return ""
         lines = self.log_path.read_text(encoding="utf-8", errors="ignore").splitlines()
@@ -105,6 +116,7 @@ class AgentLink:
         return ""
 
     def _discover_debug_dir(self) -> str:
+        """Find a newly created debug directory, falling back to the runner log."""
         after = list_debug_run_dirs(self.project_root)
         before_set = {str(p) for p in self.before_debug_dirs}
         created = [str(p) for p in after if str(p) not in before_set]
@@ -113,6 +125,7 @@ class AgentLink:
         return self._scan_log_for_debug_dir()
 
     def _run_setup_if_needed(self) -> None:
+        """Run requested device setup and retain its output and exit status."""
         if not self.run_setup:
             return
         self.state.setup_ran = True
@@ -130,20 +143,22 @@ class AgentLink:
             raise RuntimeError(f"setup.sh failed (exit {result.returncode}). See {self.setup_log_path}")
 
     def _start_debug_run(self) -> None:
+        """Start the linked agent runner with its own log file."""
         self.before_debug_dirs = list_debug_run_dirs(self.project_root)
         cmd = ["bash", str(self.debug_script)] + self.debug_args + [self.goal]
-        log_fh = self.log_path.open("w", encoding="utf-8")
-        self.proc = subprocess.Popen(
-            cmd,
-            cwd=str(self.project_root),
-            env=self._env(),
-            stdout=log_fh,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
+        with self.log_path.open("w", encoding="utf-8") as log_fh:
+            self.proc = subprocess.Popen(
+                cmd,
+                cwd=str(self.project_root),
+                env=self._env(),
+                stdout=log_fh,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
         self.state.debug_run_started = True
 
     def start_before_scenario(self) -> None:
+        """Start the linked agent, waiting first when serial execution is requested."""
         if not self.state.enabled:
             return
 
@@ -159,6 +174,7 @@ class AgentLink:
         self.state.status = "RUNNING"
 
     def _finish_serial(self) -> None:
+        """Wait for a serial agent run and record its outcome."""
         if not self.proc:
             self.state.status = "ERROR"
             self.state.error = "debug-run process not started"
@@ -172,6 +188,7 @@ class AgentLink:
             self.state.error = f"debug-run.sh failed with exit {self.state.debug_run_exit}"
 
     def finish_after_scenario(self) -> None:
+        """Finish a parallel agent run, interrupting it after the configured deadline."""
         if not self.state.enabled or self.mode != "parallel":
             return
 
@@ -197,6 +214,7 @@ class AgentLink:
             self.state.error = f"debug-run exited with code {self.state.debug_run_exit}"
 
     def _wait_with_escalation(self) -> None:
+        """Escalate agent termination from waiting to terminate and kill."""
         if not self.proc:
             return
         try:

@@ -17,12 +17,8 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Test
 
-/**
- * Coverage for [PairOnceCache] (round-trip through SharedPreferences) plus its
- * [WirelessAdbSelfPairTransport.ensurePaired] integration. The transport tests reuse the same
- * fake [SharedPreferences] backing as the cache tests so the integration runs against a real
- * [PairOnceCache] — no subclass overrides, no parallel "in-memory cache" stand-in.
- */
+/** Coverage for [PairOnceCache] (round-trip through SharedPreferences) plus its [WirelessAdbSelfPairTransport.ensurePaired]
+ * integration. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PairOnceCacheTest {
 
@@ -32,8 +28,6 @@ class PairOnceCacheTest {
     fun tearDown() {
         unmockkAll()
     }
-
-    // ── PairOnceCache itself (SharedPreferences-backed) ──
 
     @Test
     fun `getCachedFingerprint returns null on cold cache`() = runTest {
@@ -109,9 +103,8 @@ class PairOnceCacheTest {
 
     @Test
     fun `fingerprintOf is invariant to surrounding whitespace`() {
-        // Defensive: a pubkey with a trailing newline (common when read from a file written by
-        // another tool) must produce the same fingerprint as the bare token, otherwise the
-        // cache forks per-writer.
+        // Defensive: a pubkey with a trailing newline (common when read from a file written by another tool) must produce the same
+        // fingerprint as the bare token, otherwise the cache forks per-writer.
         val bare = PairOnceCache.fingerprintOf(SAMPLE_PUBKEY)
         val padded = PairOnceCache.fingerprintOf("  ${SAMPLE_PUBKEY}\n")
         assertThat(padded).isEqualTo(bare)
@@ -126,8 +119,6 @@ class PairOnceCacheTest {
             assertThat(e.message).contains("pubkeyBase64")
         }
     }
-
-    // ── WirelessAdbSelfPairTransport ↔ PairOnceCache integration ──
 
     @Test
     fun `transport pairs and records fingerprint on cold cache when adb_keys is unreadable`() = runTest {
@@ -213,9 +204,8 @@ class PairOnceCacheTest {
 
     @Test
     fun `transport invalidates cache and re-pairs after exchange failure following short-circuit`() = runTest {
-        // Cache hit + UNREADABLE → first ensureBootstrapped short-circuits. wireClient.exchange
-        // then throws (adbd actually doesn't trust us → mTLS rejected). The catch path must
-        // invalidate the cache so the second ensureBootstrapped runs a real pair.
+        // Cache hit + UNREADABLE → first ensureBootstrapped short-circuits. wireClient.exchange then throws (adbd actually doesn't trust
+        // us → mTLS rejected). The catch path must invalidate the cache so the second ensureBootstrapped runs a real pair.
         val ctx = TransportCtx()
         ctx.cache.recordSuccessfulPair(PairOnceCache.fingerprintOf(SAMPLE_PUBKEY))
         ctx.stubPair()
@@ -244,12 +234,8 @@ class PairOnceCacheTest {
 
     @Test
     fun `transport does NOT cache fingerprint when fresh pair never confirms via mTLS`() = runTest {
-        // Critical safety property: a SPAKE2 pair handshake completes locally even if adbd's
-        // adb_keys reload is racing or our key gets dropped before the mTLS handshake. The cache
-        // MUST only commit after the next [wireClient.exchange] succeeds — otherwise an
-        // unconfirmed pair could lock us into a short-circuit loop on cold sessions where
-        // adb_keys is unreadable. Both the first and the retry exchange fail here; the cache
-        // must remain empty.
+        // Critical safety property: a SPAKE2 pair handshake completes locally even if adbd's adb_keys reload is racing or our key gets
+        // dropped before the mTLS handshake.
         val ctx = TransportCtx()
         ctx.stubPair()
         coEvery { ctx.wireless.isPubkeyAuthorized(any()) } returns false
@@ -270,8 +256,6 @@ class PairOnceCacheTest {
         assertThat(ctx.cache.getCachedFingerprint()).isNull()
         coVerify(atLeast = 1) { ctx.pairing.pair(any(), FAKE_PAIR_PORT, any()) }
     }
-
-    // ── AdbWirelessManager EACCES-vs-missing distinction (drives the cache gate) ──
 
     @Test
     fun `pubkeyAuthorizationStatus returns UNREADABLE only on EACCES`() = runTest {
@@ -338,8 +322,6 @@ class PairOnceCacheTest {
             .isEqualTo(AdbWirelessManager.AuthorizationStatus.AUTHORIZED)
     }
 
-    // ── Helpers ──
-
     private fun fakeContext(backing: MutableMap<String, Any?>): Context {
         val prefs = fakePrefs(backing)
         return mockk(relaxed = true) {
@@ -369,10 +351,8 @@ class PairOnceCacheTest {
         return prefs
     }
 
-    /**
-     * Per-test scaffolding for the transport ↔ cache integration. Holds mocked collaborators,
-     * a real [PairOnceCache] backed by an in-memory map, and the constructed transport.
-     */
+    /** Per-test scaffolding for the transport ↔ cache integration. Holds mocked collaborators, a real [PairOnceCache] backed by an
+     * in-memory map, and the constructed transport. */
     private inner class TransportCtx {
         val wireless = mockk<AdbWirelessManager>(relaxed = true)
         val pairing = mockk<AdbPairingClient>(relaxed = true)

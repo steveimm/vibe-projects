@@ -13,9 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
-/**
- * Security regression: external intent extras must be ignored in production builds.
- */
+/** Security regression: external intent extras must be ignored in production builds. */
 class MainActivityIntentApplierSecurityTest {
 
     private val settingsState = AppSettingsState(mockk(relaxed = true))
@@ -168,8 +166,6 @@ class MainActivityIntentApplierSecurityTest {
         assertThat(settingsState.browserScriptEnabled).isTrue()
     }
 
-    // ── browser_script gating (debug-only path) ─────────────────────────────────────────
-
     @Test
     fun `debug build does NOT persist browser_script ON when gate denies`() = runBlocking<Unit> {
         val payload = browserScriptPayload(enabled = true)
@@ -247,8 +243,6 @@ class MainActivityIntentApplierSecurityTest {
             assertThat(settingsState.browserScriptEnabled).isFalse()
         }
 
-    // ── OTHER provider trio ────────────────────────────────────────────────────────────
-
     @Test
     fun `debug build round-trips OTHER trio and invokes invalidateCatalog`() = runBlocking<Unit> {
         val payload = MainActivityIntentPayload(
@@ -293,11 +287,7 @@ class MainActivityIntentApplierSecurityTest {
         assertThat(cred).isEqualTo(AuthCredential.ApiKey("other-key"))
         assertThat(settingsState.otherBaseUrl).isEqualTo("https://api.example.com/v1")
         assertThat(settingsState.otherModelId).isEqualTo("vendor/model")
-        // invalidate is called once at the end of the apply path — that's enough for
-        // catalog.value to reflect the new trio on the next read; nothing in the contract
-        // requires once-per-field. (Settings updates also fire onOtherSettingsChanged,
-        // which would invalidate the production repo via the AppSettingsState factory; the
-        // test passes a bare AppSettingsState so only the applier's invalidate hook fires.)
+        // The bare settings state has no catalog callback. The intent applier must invalidate after applying the full update.
         assertThat(invalidateCount).isEqualTo(1)
     }
 
@@ -326,9 +316,8 @@ class MainActivityIntentApplierSecurityTest {
 
     @Test
     fun `debug build skips invalid OTHER base URL and leaves settings untouched`() = runBlocking<Unit> {
-        // Regression for Sub 1c Codex HIGH #3: invalid base URL from intent must NOT be
-        // written to AppSettingsStore. Validating only at synth-time still leaves junk in
-        // persistent settings that a later UI render would surface to the user.
+        // Regression for Sub 1c Codex HIGH #3: invalid base URL from intent must NOT be written to AppSettingsStore. Validating only at
+        // synth-time still leaves junk in persistent settings that a later UI render would surface to the user.
         val payload = MainActivityIntentPayload(
             apiKey = null,
             openRouterApiKey = null,
@@ -375,10 +364,8 @@ class MainActivityIntentApplierSecurityTest {
 
     @Test
     fun `debug build skips invalid OTHER model id and leaves settings untouched`() = runBlocking<Unit> {
-        // Codex review MEDIUM #4: model id from intent must be validated with
-        // the same rules discovery + synth use. A whitespace-containing id
-        // would otherwise be persisted, then silently dropped by synth, with
-        // no clue to the user.
+        // Codex review MEDIUM #4: model id from intent must be validated with the same rules discovery + synth use. A
+        // whitespace-containing id would otherwise be persisted, then silently dropped by synth, with no clue to the user.
         val payload = MainActivityIntentPayload(
             apiKey = null,
             openRouterApiKey = null,

@@ -3,7 +3,6 @@ package id.steveimm.pocketpilot.app
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
@@ -24,7 +23,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import id.steveimm.pocketpilot.BuildConfig
-import id.steveimm.pocketpilot.auth.AuthCredential
+import id.steveimm.pocketpilot.onboarding.StepOutcome
+import id.steveimm.pocketpilot.ui.chat.SettingsPage
+import id.steveimm.pocketpilot.ui.chat.SettingsDeepLink
 import id.steveimm.pocketpilot.auth.AuthStore
 import id.steveimm.pocketpilot.history.ResumedSessionData
 import id.steveimm.pocketpilot.history.SessionHistoryManager
@@ -60,6 +61,7 @@ import id.steveimm.pocketpilot.ui.onboarding.OnboardingScreen
 import id.steveimm.pocketpilot.ui.overlay.visualizer.ActionVisualizerManager
 import id.steveimm.pocketpilot.ui.settings.ModelLoadingStatus
 import id.steveimm.pocketpilot.ui.theme.PocketPilotTheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -119,15 +121,12 @@ class MainActivity : ComponentActivity() {
     private lateinit var sessionHistoryManager: SessionHistoryManager
     private lateinit var viewModel: ChatViewModel
     private var showSettings by mutableStateOf(false)
-    private var pendingSettingsDeepLink by mutableStateOf<id.steveimm.pocketpilot.ui.chat.SettingsDeepLink?>(null)
+    private var pendingSettingsDeepLink by mutableStateOf<SettingsDeepLink?>(null)
     private lateinit var onboardingStore: OnboardingStore
     private lateinit var authStore: AuthStore
     private var onboardingViewModel: OnboardingViewModel? = null
     private var onboardingRequired by mutableStateOf(false)
-    private var openAiAuthUiState by mutableStateOf<id.steveimm.pocketpilot.ui.settings.OpenAiAuthUiState>(
-        id.steveimm.pocketpilot.ui.settings.OpenAiAuthUiState.SignedOut
-    )
-    private var oauthJob: kotlinx.coroutines.Job? = null
+    private lateinit var settingsAuthController: SettingsAuthController
     private var pendingVoicePermissionRequest by mutableStateOf(false)
 
     internal fun isVoicePermissionRequestPending(): Boolean = pendingVoicePermissionRequest
@@ -168,7 +167,13 @@ class MainActivity : ComponentActivity() {
         onboardingStore.migrateIfNeeded {
             hasLegacyUsageEvidence()
         }
-        deriveOpenAiAuthUiState()
+        settingsAuthController = SettingsAuthController(
+            authStore = authStore,
+            scope = lifecycleScope,
+            launchBrowser = { url -> startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) },
+            onSignedIn = { settingsState.updateBackend(LLMBackendType.OPENAI) },
+        )
+        settingsAuthController.load()
 
         // Eval/debug bypass: EXTRA_FRESH_SESSION + EXTRA_GOAL → skip onboarding (debug only)
         onboardingRequired = !onboardingStore.isCompleted && !isEvalIntent(intent)
@@ -290,10 +295,10 @@ class MainActivity : ComponentActivity() {
                     onFixBattery = {
                         handleOnboardingEffect(OnboardingEffect.OpenBatteryOptimization)
                     },
-                    openAiAuthUiState = openAiAuthUiState,
-                    onStartOAuth = ::handleStartOAuth,
-                    onCancelOAuth = ::handleCancelOAuth,
-                    onSignOut = ::handleSignOut,
+                    openAiAuthUiState = settingsAuthController.state,
+                    onStartOAuth = settingsAuthController::startSignIn,
+                    onCancelOAuth = settingsAuthController::cancelSignIn,
+                    onSignOut = settingsAuthController::signOut,
                     effectivePlatformModeFlow = AgentService.instance?.effectivePlatformMode
                         ?: kotlinx.coroutines.flow.MutableStateFlow(null),
                     appClassifier = AppClassifierHolder.get(applicationContext),
@@ -359,11 +364,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        // Use onStop, NOT onPause: between onPause and onStop the activity is
-        // still drawn on screen (e.g. when launching another app, the new app's
-        // accessibility event fires before this activity is fully hidden). We
-        // want to keep the overlay suppressed for that whole window so the
-        // floating capsule does not flash over our own still-visible UI.
+        // Use onStop, NOT onPause: between onPause and onStop the activity is still drawn on screen (e.g. when launching another app, the
+        // new app's accessibility event fires before this activity is fully hidden).
         AgentService.instance?.onMainAppHidden()
     }
 
@@ -479,13 +481,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * Validate preconditions (permissions, services), then route input through
-     * the [SessionCoordinator]: submit to existing session, or create a new one.
-     *
-     * Input queuing and drain are handled by the coordinator (event-driven,
-     * no timer-loop).
-     */
+    /** Validate preconditions (permissions, services), then route input through the [SessionCoordinator]: submit to existing session,
+     * or create a new one. */
     private fun ensureSessionAndSend(
             text: String,
             launchPolicy: SessionLaunchPolicy = SessionLaunchPolicy.AUTO
@@ -558,6 +555,8 @@ class MainActivity : ComponentActivity() {
                         // Coordinator has cleared pendingInputs; do NOT enqueue.
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to create session", e)
                 if (settingsState.llmBackend == LLMBackendType.LOCAL) {
@@ -573,8 +572,8 @@ class MainActivity : ComponentActivity() {
                         val provider = (e as? id.steveimm.pocketpilot.auth.MissingCredential)?.provider
                             ?: (e as? id.steveimm.pocketpilot.auth.OAuthRefreshFailed)?.provider
                             ?: (e as? id.steveimm.pocketpilot.auth.WrongCredentialType)?.provider
-                        id.steveimm.pocketpilot.ui.chat.SettingsDeepLink(
-                            page = id.steveimm.pocketpilot.ui.chat.SettingsPage.LLM_AUTH,
+                        SettingsDeepLink(
+                            page = SettingsPage.LLM_AUTH,
                             authTab = provider?.mode,
                             provider = provider,
                         )
@@ -592,13 +591,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * Create or reload a session. Called inside the coordinator's creation lock.
-     * Returns null to abort creation (e.g. non-reloadable checkpoint).
-     *
-     * @param autoReload If true, reload failure falls back to a fresh session
-     *   silently instead of aborting with a toast (used for dead-session recovery).
-     */
+    /** Create or reload a session. Called inside the coordinator's creation lock. Returns null to abort creation (e.g. non-reloadable
+     * checkpoint). */
     private suspend fun createOrReloadSession(
             service: AgentService,
             launchPolicy: SessionLaunchPolicy,
@@ -791,87 +785,14 @@ class MainActivity : ComponentActivity() {
 
         Toast.makeText(this, "Missing credential(s): ${missing.joinToString("; ") { it.message }}", Toast.LENGTH_LONG)
                 .show()
-        pendingSettingsDeepLink = id.steveimm.pocketpilot.ui.chat.SettingsDeepLink(
-            page = id.steveimm.pocketpilot.ui.chat.SettingsPage.LLM_AUTH,
+        pendingSettingsDeepLink = SettingsDeepLink(
+            page = SettingsPage.LLM_AUTH,
             authTab = missing.first().provider.mode,
             provider = missing.first().provider,
         )
         showSettings = true
         return false
     }
-
-    // ── Settings OAuth handlers ──
-
-    private fun deriveOpenAiAuthUiState() {
-        val cred = kotlinx.coroutines.runBlocking { authStore.get(LLMProvider.OPENAI_CODEX) }
-        val oauthCred = cred as? AuthCredential.OAuth
-        openAiAuthUiState = if (oauthCred != null) {
-            id.steveimm.pocketpilot.ui.settings.OpenAiAuthUiState.SignedIn(oauthCred.email)
-        } else {
-            id.steveimm.pocketpilot.ui.settings.OpenAiAuthUiState.SignedOut
-        }
-    }
-
-    private fun handleStartOAuth() {
-        if (oauthJob?.isActive == true) return
-
-        openAiAuthUiState = id.steveimm.pocketpilot.ui.settings.OpenAiAuthUiState.InProgress
-        oauthJob = lifecycleScope.launch {
-            val result = id.steveimm.pocketpilot.auth.openAiSignIn(
-                launchBrowser = { url ->
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        startActivity(intent)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to launch OAuth browser", e)
-                        throw e
-                    }
-                },
-                onCallbackReceived = {
-                    openAiAuthUiState = id.steveimm.pocketpilot.ui.settings.OpenAiAuthUiState.Finishing
-                },
-            )
-
-            when (result) {
-                is id.steveimm.pocketpilot.auth.OpenAiSignInResult.Success -> {
-                    val tokens = result.tokens
-                    withContext(Dispatchers.IO) {
-                        authStore.set(
-                            LLMProvider.OPENAI_CODEX,
-                            AuthCredential.OAuth(
-                                accessToken = tokens.accessToken,
-                                refreshToken = tokens.refreshToken,
-                                expiresAt = tokens.expiresAt,
-                                email = tokens.email,
-                                idToken = tokens.idToken,
-                            )
-                        )
-                    }
-                    settingsState.updateBackend(id.steveimm.pocketpilot.protocol.LLMBackendType.OPENAI)
-                    openAiAuthUiState = id.steveimm.pocketpilot.ui.settings.OpenAiAuthUiState.SignedIn(tokens.email)
-                    Log.d(TAG, "Settings OAuth success")
-                }
-                is id.steveimm.pocketpilot.auth.OpenAiSignInResult.Error -> {
-                    openAiAuthUiState = id.steveimm.pocketpilot.ui.settings.OpenAiAuthUiState.Error(result.message)
-                    Log.w(TAG, "Settings OAuth error: ${result.message}")
-                }
-            }
-        }
-    }
-
-    private fun handleCancelOAuth() {
-        oauthJob?.cancel()
-        oauthJob = null
-        openAiAuthUiState = id.steveimm.pocketpilot.ui.settings.OpenAiAuthUiState.SignedOut
-    }
-
-    private fun handleSignOut() {
-        lifecycleScope.launch { authStore.clear(LLMProvider.OPENAI_CODEX) }
-        openAiAuthUiState = id.steveimm.pocketpilot.ui.settings.OpenAiAuthUiState.SignedOut
-        Log.d(TAG, "Settings OAuth sign-out, manual key preserved")
-    }
-
-    // ── Onboarding helpers ──
 
     private fun handleOnboardingEffect(effect: OnboardingEffect) {
         when (effect) {
@@ -880,8 +801,8 @@ class MainActivity : ComponentActivity() {
             OnboardingEffect.OpenOverlaySettings ->
                 openOverlaySettings(this)
             OnboardingEffect.OpenCustomServerSettings -> {
-                pendingSettingsDeepLink = id.steveimm.pocketpilot.ui.chat.SettingsDeepLink(
-                    page = id.steveimm.pocketpilot.ui.chat.SettingsPage.LLM_AUTH,
+                pendingSettingsDeepLink = SettingsDeepLink(
+                    page = SettingsPage.LLM_AUTH,
                     authTab = LLMProvider.OTHER.mode,
                     provider = LLMProvider.OTHER,
                 )
@@ -934,7 +855,7 @@ class MainActivity : ComponentActivity() {
     private fun deriveRepairModel(): PermissionStateMonitor.PermissionRepairModel? {
         if (!onboardingStore.isCompleted) return null
         val outcomes = onboardingStore.loadOutcomes()
-        val batteryWasDone = outcomes.battery == id.steveimm.pocketpilot.onboarding.StepOutcome.Done
+        val batteryWasDone = outcomes.battery == StepOutcome.Done
         return PermissionStateMonitor(applicationContext).deriveRepairModel(batteryWasDone)
     }
 

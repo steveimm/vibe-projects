@@ -8,39 +8,24 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
 
-/**
- * Parsed entry from an upstream `/models` response with the optional `created`
- * timestamp used for picker sort order. The discovery layer returns these so
- * callers can sort by recency before they collapse to plain [ModelEntry] for
- * the catalog.
- */
+/** Parsed entry from an upstream `/models` response with the optional `created` timestamp used for picker sort order. The discovery
+ * layer returns these so callers can sort by recency before they collapse to plain [ModelEntry] for the catalog. */
 data class DiscoveredModel(
     val entry: ModelEntry,
     /** Unix seconds upstream-reported model creation time. `0` when absent. */
     val created: Long,
 )
 
-/**
- * Single-file model discovery — GET `{baseUrl}/models` against an
- * OpenAI-compatible upstream, parse with a tolerant field-priority reader,
- * filter out non-chat / non-tool-calling models, and return namespaced
- * [DiscoveredModel] rows.
- *
- * Entries are namespaced `"{provider.name.lowercase(Locale.ROOT)}:{modelId}"`
- * so discovered entries never collide with the curated seed.
- */
+/** Single-file model discovery — GET `{baseUrl}/models` against an OpenAI-compatible upstream, parse with a tolerant field-priority
+ * reader, filter out non-chat / non-tool-calling models, and return namespaced [DiscoveredModel] rows. */
 object ModelDiscovery {
 
     private const val TAG = "ModelDiscovery"
@@ -49,24 +34,15 @@ object ModelDiscovery {
     private const val CONNECT_TIMEOUT_MS = 10_000
     private const val READ_TIMEOUT_MS = 30_000
 
-    /**
-     * Heuristic fallback for upstreams whose schema doesn't declare model type.
-     * Used only when no structured signal (`model_type`, `endpoints`, `modality`)
-     * is available — structured signals always win.
-     */
+    /** Heuristic fallback for upstreams whose schema doesn't declare model type. Used only when no structured signal (`model_type`,
+     * `endpoints`, `modality`) is available — structured signals always win. */
     private val NON_CHAT_ID_REGEX =
         Regex("(?i)(embedding|whisper|tts|moderation|dall-?e|audio|image-gen|stt|speech)")
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    /**
-     * Fetch and parse `{baseUrl}/models` for [provider] using [apiKey] as a
-     * bearer token. Returns the surviving discovered models after CHAT-only,
-     * tool-calling, and non-chat filters.
-     *
-     * Networking runs on [Dispatchers.IO]. Caller is responsible for handling
-     * cancellation and surfacing errors to the user.
-     */
+    /** Fetch and parse `{baseUrl}/models` for [provider] using [apiKey] as a bearer token. Returns the surviving discovered models
+     * after CHAT-only, tool-calling, and non-chat filters. */
     suspend fun discover(
         provider: LLMProvider,
         baseUrl: String,
@@ -79,10 +55,7 @@ object ModelDiscovery {
         parse(provider, normalizedBaseUrl, raw)
     }
 
-    /**
-     * Parse a `/models` response body into [DiscoveredModel]s. Exposed for
-     * fixture tests; HTTP is handled by [discover].
-     */
+    /** Parse a `/models` response body into [DiscoveredModel]s. Exposed for fixture tests; HTTP is handled by [discover]. */
     fun parse(
         provider: LLMProvider,
         sourceBaseUrl: String,
@@ -158,19 +131,8 @@ object ModelDiscovery {
         )
     }
 
-    /**
-     * Reject model ids that contain whitespace or start with `/` or `:`.
-     * Delegates to [ModelIdValidator] so the rule is identical for manually
-     * configured OTHER ids and discovered ids.
-     */
-    private fun isValidModelId(id: String): Boolean = ModelIdValidator.validate(id).isSuccess
-
-    /**
-     * Strip ASCII / Unicode control characters from the display name and cap
-     * its visible length at [MAX_DISPLAY_NAME_LEN]. Defensive: upstream-supplied
-     * text is rendered verbatim in dropdowns and can contain stray control
-     * sequences that break layout.
-     */
+    /** Strip ASCII / Unicode control characters from the display name and cap its visible length at [MAX_DISPLAY_NAME_LEN]. Defensive:
+     * upstream-supplied text is rendered verbatim in dropdowns and can contain stray control sequences that break layout. */
     internal fun sanitizeDisplayName(raw: String): String {
         val cleaned = raw.filter { ch -> !ch.isISOControl() }.trim()
         if (cleaned.length <= MAX_DISPLAY_NAME_LEN) return cleaned
@@ -217,9 +179,8 @@ object ModelDiscovery {
                 val s = (el as? JsonPrimitive)?.contentOrNull?.lowercase().orEmpty()
                 "chat" in s || "completions" in s
             }
-            // Decide one way or the other based on the structured field
-            // (skip the id heuristic). Drop only when the array is non-empty
-            // AND no chat-shape entry is present.
+            // Decide one way or the other based on the structured field (skip the id heuristic). Drop only when the array is non-empty AND
+            // no chat-shape entry is present.
             return if (endpoints.isEmpty()) false else !hasChat
         }
 
@@ -256,9 +217,8 @@ object ModelDiscovery {
             if (code !in 200..299) {
                 val err = (connection.errorStream ?: connection.inputStream)
                     ?.bufferedReader()?.use { it.readText() }.orEmpty()
-                // Surface a host-only identifier so a misconfigured URL
-                // with embedded credentials or query secrets never reaches
-                // the UI banner or log sink.
+                // Surface a host-only identifier so a misconfigured URL with embedded credentials or query secrets never reaches the UI
+                // banner or log sink.
                 throw IOException("HTTP $code from ${url.host}: ${err.take(200)}")
             }
             return connection.inputStream.bufferedReader().use { it.readText() }
@@ -267,8 +227,6 @@ object ModelDiscovery {
         }
     }
 }
-
-// ── Small JSON helpers ─────────────────────────────────────────────────────
 
 private fun JsonObject.stringOrNull(key: String): String? =
     (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull

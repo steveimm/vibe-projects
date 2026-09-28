@@ -19,8 +19,6 @@ class VdLifecycleArbiterTest {
         return VdState.Running(displayId = 42, imageReader = reader)
     }
 
-    // ── State Machine ────────────────────────────────────────────
-
     @Test
     fun `initial state is Stopped`() {
         assertThat(arbiter().state).isEqualTo(VdState.Stopped)
@@ -64,8 +62,6 @@ class VdLifecycleArbiterTest {
         assertThat((a.state as VdState.Broken).reason).isEqualTo("first")
     }
 
-    // ── Running Lease ────────────────────────────────────────────
-
     @Test
     fun `withRunningLease succeeds when Running`() = runTest {
         val a = arbiter()
@@ -90,8 +86,6 @@ class VdLifecycleArbiterTest {
         a.markBroken("dead")
         a.withRunningLease { "should not reach" }
     }
-
-    // ── Pre-drain State ──────────────────────────────────────────
 
     @Test
     fun `preDrainTransform blocks new ops before drain completes`() = runTest {
@@ -142,8 +136,6 @@ class VdLifecycleArbiterTest {
         }
     }
 
-    // ── Drain Behavior ───────────────────────────────────────────
-
     @Test
     fun `lifecycle transition waits for in-flight ops to drain`() = runTest {
         val a = arbiter()
@@ -172,8 +164,6 @@ class VdLifecycleArbiterTest {
         assertThat(opCompleted).isTrue()
         assertThat(transitionCompleted).isTrue()
     }
-
-    // ── Lifecycle Serialization ──────────────────────────────────
 
     @Test
     fun `concurrent lifecycle transitions are serialized`() = runTest {

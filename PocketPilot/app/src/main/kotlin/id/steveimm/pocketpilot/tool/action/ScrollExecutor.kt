@@ -6,12 +6,7 @@ import id.steveimm.pocketpilot.platform.ActionResult
 import id.steveimm.pocketpilot.platform.AndroidPlatform
 import id.steveimm.pocketpilot.platform.UIAction
 import id.steveimm.pocketpilot.tool.AppClassifier
-/**
- * Scroll executor: content-direction scroll with optional element targeting.
- *
- * Cascade: a11y scroll first → gesture swipe fallback (matching click/long_press pattern).
- * Uses TargetResolver for element resolution (unified targeting).
- */
+/** Scroll executor: content-direction scroll with optional element targeting. */
 class ScrollExecutor(
     private val targetResolver: TargetResolver = TargetResolver
 ) {
@@ -132,9 +127,8 @@ class ScrollExecutor(
             val resolved = targetResolver.resolve(target, snapshot)
             when (resolved) {
                 is TargetResolver.ResolveResult.Resolved -> {
-                    // Scroll is area-based: only a Resolved result with real bounds can drive it.
-                    // Coordinate-fallback Resolved (semantic miss -> hint point) carries no bounds
-                    // and must not synthesize any.
+                    // Scroll is area-based: only a Resolved result with real bounds can drive it. Coordinate-fallback Resolved (semantic
+                    // miss -> hint point) carries no bounds and must not synthesize any.
                     if (!resolved.coordinateFallback) {
                         val bounds = resolved.bounds
                         if (bounds != null && bounds.width > 0 && bounds.height > 0) {
@@ -206,15 +200,7 @@ class ScrollExecutor(
         )
     }
 
-    /**
-     * Compute center-to-edge swipe gesture within the scroll area.
-     *
-     * Direction is content direction:
-     * - "down" (reveal below) → finger swipes UP → start=center, end=top
-     * - "up" (reveal above) → finger swipes DOWN → start=center, end=bottom
-     * - "left" (reveal left) → finger swipes RIGHT → start=center, end=right
-     * - "right" (reveal right) → finger swipes LEFT → start=center, end=left
-     */
+    /** Compute center-to-edge swipe gesture within the scroll area. */
     private fun computeSwipeGesture(direction: String, area: Bounds): UIAction.Swipe {
         val cx = area.centerX
         val cy = area.centerY

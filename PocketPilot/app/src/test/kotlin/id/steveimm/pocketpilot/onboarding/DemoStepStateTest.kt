@@ -23,13 +23,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-/**
- * Characterization tests for the Demo step sub-FSM of [OnboardingViewModel].
- *
- * Covers the [DemoStepState] state machine: Ready → Preflight → (Running |
- * back-to-broken-step) → (Success | Failure | CredentialError) and the
- * Skipped + CredentialError → ApiKey recovery transitions.
- */
+/** Characterization tests for the Demo step sub-FSM of [OnboardingViewModel]. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class DemoStepStateTest {
 
@@ -112,8 +106,6 @@ class DemoStepStateTest {
         }
     }
 
-    // ── Initial state ──
-
     @Test
     fun `entering Demo step initializes state to Ready`() = runTest {
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job())
@@ -125,8 +117,6 @@ class DemoStepStateTest {
 
         scope.coroutineContext.job.cancel()
     }
-
-    // ── Guard rejections ──
 
     @Test
     fun `startDemo is no-op when not currently on Demo step`() = runTest {
@@ -199,11 +189,7 @@ class DemoStepStateTest {
 
     @Test
     fun `startDemo preflight bounces to ApiKey when apiKey outcome reverted to Pending`() = runTest {
-        // Reach the guard authentically: start on Demo with apiKey Done, then
-        // goBack() into ApiKey. enterStep(ApiKey) sees outcomes.apiKey == Done
-        // but no AuthStore credential, so it resets the outcome to Pending.
-        // continueForward() re-enters Demo (state=Ready, currentStep=Demo) with
-        // apiKey now Pending — startDemo() must hit the Preflight->ApiKey guard.
+        // Revisit API Key with no saved credential so entering Demo exercises the preflight authentication guard.
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job())
         val vm = makeVm(scope)
         drain(scope, this)
@@ -230,8 +216,6 @@ class DemoStepStateTest {
 
         scope.coroutineContext.job.cancel()
     }
-
-    // ── Happy path: Ready → Preflight → Running → Success ──
 
     @Test
     fun `startDemo with all gates green transitions Ready to Running and invokes controller`() = runTest {
@@ -339,8 +323,6 @@ class DemoStepStateTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ── Recovery: CredentialError → ApiKey ──
-
     @Test
     fun `goToAuthStep from CredentialError resets apiKey and demo outcomes and lands on ApiKey`() = runTest {
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job())
@@ -366,8 +348,6 @@ class DemoStepStateTest {
 
         scope.coroutineContext.job.cancel()
     }
-
-    // ── Skip path ──
 
     @Test
     fun `skipStep on Demo records Skipped outcome and advances to Complete`() = runTest {
@@ -428,8 +408,6 @@ class DemoStepStateTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ── Re-entry: Complete -> Demo via goBack, Failure -> Running ──
-
     @Test
     fun `goBack from Complete re-enters Demo step in Ready state`() = runTest {
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job())
@@ -448,8 +426,6 @@ class DemoStepStateTest {
 
         scope.coroutineContext.job.cancel()
     }
-
-    // ── Re-entry: starting demo again after Failure ──
 
     @Test
     fun `startDemo from Failure re-runs preflight and re-invokes controller`() = runTest {
@@ -472,8 +448,6 @@ class DemoStepStateTest {
 
         scope.coroutineContext.job.cancel()
     }
-
-    // ── Base URL override propagation ──
 
     @Test
     fun `resolveBaseUrlOverrides maps non-blank openaiBaseUrl to OPENAI_API`() {

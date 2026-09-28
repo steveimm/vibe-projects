@@ -17,7 +17,8 @@ internal object CloudStreamRetryPolicy {
             classified: Exception,
             attempt: Int,
             emittedEvent: Boolean,
-            backoffMs: Long
+            backoffMs: Long,
+            maxRetries: Int = LLMClient.MAX_RETRIES
     ): StreamRetryAction {
         val retryable = classified is RateLimitException || classified is TransientException
 
@@ -28,7 +29,7 @@ internal object CloudStreamRetryPolicy {
             )
         }
 
-        if (retryable && attempt < LLMClient.MAX_RETRIES) {
+        if (retryable && attempt < maxRetries) {
             val waitMs =
                     when (classified) {
                         is RateLimitException -> classified.retryAfterMs ?: backoffMs
@@ -36,7 +37,7 @@ internal object CloudStreamRetryPolicy {
                     }
             Log.w(
                     tag,
-                    "Retryable stream error (attempt $attempt/${LLMClient.MAX_RETRIES}), waiting ${waitMs}ms"
+                    "Retryable stream error (attempt $attempt/$maxRetries), waiting ${waitMs}ms"
             )
             return StreamRetryAction.Retry(
                     waitMs = waitMs,
@@ -44,7 +45,7 @@ internal object CloudStreamRetryPolicy {
             )
         }
 
-        Log.e(tag, "Streaming failed with non-retryable error", classified)
+        Log.e(tag, "Streaming failed after $attempt attempts", classified)
         return StreamRetryAction.Stop
     }
 }

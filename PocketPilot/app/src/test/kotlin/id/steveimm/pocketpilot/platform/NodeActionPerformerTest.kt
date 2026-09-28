@@ -161,8 +161,6 @@ class NodeActionPerformerTest {
         verify(exactly = 1) { root.recycle() }
     }
 
-    // ===== matchesIntended unit tests =====
-
     private val baseBounds = Bounds(left = 0, top = 0, right = 100, bottom = 100)
 
     @Test
@@ -287,8 +285,6 @@ class NodeActionPerformerTest {
         assertThat(result).isFalse()
     }
 
-    // ===== Mismatch guard integration tests =====
-
     @Test
     fun `performNodeClickAt returns failure on hint mismatch`() = runTest {
         val root = mockk<AccessibilityNodeInfo>(relaxed = true)
@@ -365,8 +361,6 @@ class NodeActionPerformerTest {
         assertThat(result).isEqualTo(ActionResult.Success("ACTION_CLICK at (296,978)"))
         verify(exactly = 1) { node.performAction(AccessibilityNodeInfo.ACTION_CLICK) }
     }
-
-    // ===== Hint text contamination tests (P1) =====
 
     @Test
     fun `performSetTextOnNodeAt clear=false with hint text treats existing as empty`() = runTest {

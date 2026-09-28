@@ -107,8 +107,6 @@ class AgentSessionTest {
                 job.cancel()
         }
 
-        // ===== Lifecycle Serialization Tests =====
-
         @Test
         fun `completion and shutdown back to back yields Shutdown`() = runTest {
                 val session = buildSession(scope = this, captureDelayMs = 50L, llmDelayMs = 0L)
@@ -166,8 +164,6 @@ class AgentSessionTest {
 
                 job.cancel()
         }
-
-        // ===== Takeover / TakeoverPending Tests =====
 
         @Test
         fun `resume rejected while takeover still pending`() = runTest {
@@ -283,7 +279,6 @@ class AgentSessionTest {
 
                 job.cancel()
         }
-        // ===== Shutdown Reason Semantics Tests =====
 
         @Test
         fun `manual shutdown from idle emits user stopped not idle timeout`() = runTest {
@@ -333,8 +328,6 @@ class AgentSessionTest {
 
                 job.cancel()
         }
-
-        // ===== Approval Policy Invariant =====
 
         @Test
         fun `stale Op Approve does not mutate allow-list`() = runTest {
@@ -393,8 +386,6 @@ class AgentSessionTest {
                 advanceUntilIdle()
         }
 
-        // ===== Checkpoint schema versioning =====
-
         @Test
         fun `reload returns null for v1 schema snapshot`() {
                 val snapshot = SessionRuntimeSnapshot(
@@ -423,12 +414,8 @@ class AgentSessionTest {
                 assertThat(result).isNull()
         }
 
-        // ===== FSM Transition Coverage =====
-        // Spec source: app/src/main/kotlin/id/steveimm/pocketpilot/protocol/SessionState.kt
-        // Guards live in AgentSession.handle*() — these tests exercise every valid
-        // transition and every guard rejection in the FSM.
-
-        // ---- Valid transitions ----
+        // Spec source: app/src/main/kotlin/id/steveimm/pocketpilot/protocol/SessionState.kt Guards live in AgentSession.handle*() — these
+        // tests exercise every valid transition and every guard rejection in the FSM.
 
         @Test
         fun `created to shutdown direct without task`() = runTest {
@@ -509,10 +496,7 @@ class AgentSessionTest {
 
         @Test
         fun `paused to running via resume`() = runTest {
-                // Deterministic Paused arrival: a gated LLM holds turn 1 inside the
-                // streaming call. We submit Takeover (sets pauseState), release the
-                // gate to let turn 1 finish, then the agent loops, observes pauseState,
-                // confirms the pause, and handleTakeover transitions to Paused.
+                // Deterministic Paused arrival: a gated LLM holds turn 1 inside the streaming call.
                 val gatedLlm = GatedStreamingLLMClient()
                 val session = buildSession(
                         scope = this,
@@ -604,8 +588,6 @@ class AgentSessionTest {
                 takeoverJob.cancel()
                 job.cancel()
         }
-
-        // ---- Guard rejections ----
 
         @Test
         fun `userinput rejected after shutdown`() = runTest {
@@ -1004,9 +986,8 @@ class AgentSessionTest {
 
         @Test
         fun `repeated reacquire failure from idle forces shutdown`() = runTest {
-                // Platform succeeds on first start (Created -> Running) but throws on
-                // every subsequent start (reacquire from Idle), simulating a broken
-                // VirtualDisplay.
+                // Platform succeeds on first start (Created -> Running) but throws on every subsequent start (reacquire from Idle),
+                // simulating a broken VirtualDisplay.
                 val platform = ReacquireFailingPlatform()
                 val session = buildSessionWith(
                         scope = this,
@@ -1160,12 +1141,8 @@ private class FailingStreamingSessionTestLLMClient : LLMClient() {
         }
 }
 
-/**
- * LLM whose streaming flow blocks on a per-call [kotlinx.coroutines.CompletableDeferred]
- * gate, allowing tests to deterministically hold the agent inside a turn until
- * release. [streamStarted] resolves the first time a stream is collected so the
- * test can synchronize.
- */
+/** LLM whose streaming flow blocks on a per-call [kotlinx.coroutines.CompletableDeferred] gate, allowing tests to deterministically
+ * hold the agent inside a turn until release. */
 private class GatedStreamingLLMClient : LLMClient() {
         val streamStarted = kotlinx.coroutines.CompletableDeferred<Unit>()
         private val gates = mutableListOf<kotlinx.coroutines.CompletableDeferred<Unit>>()
@@ -1201,10 +1178,8 @@ private class GatedStreamingLLMClient : LLMClient() {
                 val gate = nextGate()
                 if (!streamStarted.isCompleted) streamStarted.complete(Unit)
                 gate.await()
-                // Intentionally emit no TextDelta so the turn does NOT mark itself
-                // complete (TurnToolPolicy treats text-only output as goal-achieved).
-                // This keeps the agent in a Continue loop so we can deterministically
-                // observe the pause confirmation path.
+                // Intentionally emit no TextDelta so the turn does NOT mark itself complete (TurnToolPolicy treats text-only output as
+                // goal-achieved). This keeps the agent in a Continue loop so we can deterministically observe the pause confirmation path.
                 emit(LLMStreamEvent.Completed)
         }
 }

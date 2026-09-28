@@ -2,13 +2,7 @@ package id.steveimm.pocketpilot.history
 
 import org.json.JSONObject
 
-/**
- * Classification of [ResponseItem.Message] content.
- *
- * API role is derived: [USER_INTENT]/[SCREEN_OBSERVATION]/[COMPACTION_SUMMARY] → "user",
- * [ASSISTANT_TEXT] → "assistant". [COMPACTION_SUMMARY] is user-role because it is
- * context the runtime feeds back, not assistant output.
- */
+/** Classification of [ResponseItem.Message] content. */
 enum class MessageKind {
     USER_INTENT,
     SCREEN_OBSERVATION,

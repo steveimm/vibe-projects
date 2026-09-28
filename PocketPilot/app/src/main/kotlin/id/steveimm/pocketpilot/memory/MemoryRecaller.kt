@@ -2,14 +2,7 @@ package id.steveimm.pocketpilot.memory
 
 import android.util.Log
 
-/**
- * Selects and formats deterministic memory for prompt injection each turn.
- *
- * Files are read raw (side-effect-free). Blank files and files larger than the
- * configured per-file cap are skipped — blank to avoid empty `## Recalled Memory`
- * sections from `+ Memory`-created placeholders, oversize to keep stale pre-cap
- * files from silently inflating every prompt.
- */
+/** Selects and formats deterministic memory for prompt injection each turn. */
 class MemoryRecaller(private val store: MemoryStore) {
 
     companion object {

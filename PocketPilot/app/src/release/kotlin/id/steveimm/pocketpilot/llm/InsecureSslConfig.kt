@@ -3,12 +3,7 @@ package id.steveimm.pocketpilot.llm
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.X509TrustManager
 
-/**
- * Release no-op stub for InsecureSslConfig.
- *
- * Returns null for all SSL properties — no insecure TLS is possible in
- * release builds. Enforces HTTPS for cloud provider base URL overrides.
- */
+/** Release no-op stub for InsecureSslConfig. */
 object InsecureSslConfig {
 
     val trustManager: X509TrustManager? = null

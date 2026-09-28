@@ -33,10 +33,8 @@ class CapsuleLifecycleTest {
 
     @get:Rule val compose = createComposeRule()
 
-    // K11 — exercises the real auto-hide path in CapsuleStateHolder.
-    // Uses real time (runBlocking + real delay) so the holder's delay(3000)
-    // actually fires. If production drops scheduleAutoHide or changes the
-    // timing, this test fails.
+    // K11 — exercises the real auto-hide path in CapsuleStateHolder. Uses real time (runBlocking + real delay) so the holder's delay(3000)
+    // actually fires. If production drops scheduleAutoHide or changes the timing, this test fails.
     @Test fun done_state_auto_dismisses_to_hidden_via_real_holder() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         try {

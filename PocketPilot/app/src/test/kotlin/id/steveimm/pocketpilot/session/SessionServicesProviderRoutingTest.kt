@@ -120,10 +120,8 @@ class SessionServicesProviderRoutingTest {
     return context
   }
 
-  /**
-   * Install a fixture [ModelCatalogRepository] backed by [context]'s mocked assets so
-   * `SessionServices.create` resolves models from CATALOG_JSON rather than the real seed.
-   */
+  /** Install a fixture [ModelCatalogRepository] backed by [context]'s mocked assets so `SessionServices.create` resolves models from
+   * CATALOG_JSON rather than the real seed. */
   private fun installFixtureCatalogRepo(context: Context) {
     val settingsStore = mockk<id.steveimm.pocketpilot.app.AppSettingsStore>(relaxed = true)
     every { settingsStore.load() } returns id.steveimm.pocketpilot.app.AppSettings(

@@ -3,14 +3,7 @@ package id.steveimm.pocketpilot.ui.settings
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-/**
- * Covers every row of the browser_script mapping table. The mapper resolves four
- * observable inputs (enable pref, gate pending, gate error, CDP probe) into a single
- * [ToolStatusUi] + optional [RowAction]; mis-ordering the precedence (e.g. showing the
- * probe result while a gate error is live) is exactly the regression these tests guard.
- *
- * These tests are the source of truth for label wording.
- */
+/** Covers every row of the browser_script mapping table. */
 class BrowserScriptStatusMapperTest {
 
     // Row 1: Off, no error → "Disabled"
@@ -164,9 +157,8 @@ class BrowserScriptStatusMapperTest {
         assertThat(result.rowAction).isNull()
     }
 
-    // Precedence — the mapper's branch order is `pending > error > !enabledPref > probe`.
-    // The design doc's table doesn't enumerate combinations; pinning current behavior so a
-    // re-order shows up here rather than only in production.
+    // Precedence — the mapper's branch order is `pending > error > !enabledPref > probe`. The design doc's table doesn't enumerate
+    // combinations; pinning current behavior so a re-order shows up here rather than only in production.
 
     @Test
     fun `gate pending wins over gate error`() {

@@ -42,20 +42,7 @@ import id.steveimm.pocketpilot.ui.overlay.model.CapsuleRenderSpec
 import id.steveimm.pocketpilot.ui.overlay.model.NavSpec
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
-/**
- * CapsuleControlBar — the row beneath the status line / detail body.
- *
- * Most states share one `Row(SpaceBetween)`:
- *  - [ActionButtonCluster] (left): mode-driven action buttons (Takeover, Resume, Done,
- *    Always / Session / Reject, Stop, Close).
- *  - [NavButtonCluster] (right): nav icons (Minimize, OpenApp, OpenViewer) gated by [NavSpec].
- *
- * Attention states render only their action buttons so required choices get the full row.
- *
- * Both clusters hide together when mode is `Done`; that gate is enforced by
- * [SmartCapsuleSurface] (skips the entire bar) and by [NavSpec.from] (zeroes
- * every nav flag).
- */
+/** CapsuleControlBar — the row beneath the status line / detail body. */
 @Composable
 internal fun CapsuleControlBar(
     spec: CapsuleRenderSpec,

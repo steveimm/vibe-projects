@@ -25,10 +25,7 @@ import id.steveimm.pocketpilot.ui.theme.pocketPilot
 import android.content.Context
 import java.util.Date
 
-/**
- * MessageBubble — entry-point dispatcher. User vs Agent rendering lives in
- * [UserBubble] / [AgentRow].
- */
+/** MessageBubble — entry-point dispatcher. User vs Agent rendering lives in [UserBubble] / [AgentRow]. */
 @Composable
 fun MessageBubble(
     message: ChatMessage,

@@ -13,18 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 
-/**
- * Coordinates session lifecycle and input queuing.
- *
- * Replaces timer-loop drain in MainActivity with event-driven approach:
- * - Inputs during busy state (Running/Paused/TakeoverPending) are queued
- * - Queue drains automatically when session transitions to Idle/Created
- * - Session creation is serialized via internal [Mutex]
- *
- * Threading: All public methods must be called from the main thread (Dispatchers.Main).
- * The mutex serializes concurrent coroutine access but all field reads/writes
- * rely on main-thread confinement for safety.
- */
+/** Coordinates session lifecycle and input queuing. */
 class SessionCoordinator(private val scope: CoroutineScope) {
 
     companion object {
@@ -41,14 +30,7 @@ class SessionCoordinator(private val scope: CoroutineScope) {
 
     private val _currentSessionState = MutableStateFlow<SessionState?>(null)
 
-    /**
-     * State of the currently-owned session, or `null` when no session exists.
-     *
-     * Emits [SessionState.Created] eagerly at the start of [createAndSubmit]
-     * — before the suspending `create` block runs — so the "creation in
-     * progress" window is observable as a locked state. Callers that gate
-     * memory edits (see `MemoryEditGate`) rely on this invariant.
-     */
+    /** State of the currently-owned session, or `null` when no session exists. */
     val currentSessionState: StateFlow<SessionState?> = _currentSessionState.asStateFlow()
 
     var selectedSessionForReload: SessionInfo? = null
@@ -56,13 +38,7 @@ class SessionCoordinator(private val scope: CoroutineScope) {
     /** File name of the last session that died (Shutdown). Used for auto-reload. */
     private var lastDeadSessionFileName: String? = null
 
-    /**
-     * Submit user input to the current session.
-     *
-     * - Idle/Created: sends immediately
-     * - Running/Paused/TakeoverPending: queues for automatic event-driven drain
-     * - No session or Shutdown: returns appropriate result for caller to handle
-     */
+    /** Submit user input to the current session. */
     suspend fun submit(text: String): SubmitResult {
         mutex.lock()
         try {
@@ -89,36 +65,15 @@ class SessionCoordinator(private val scope: CoroutineScope) {
         }
     }
 
-    /**
-     * Create a session and submit the first input, all under the creation lock.
-     *
-     * Returns:
-     * - [CreateResult.Success]: session created and first input submitted.
-     * - [CreateResult.LockBusy]: lock already held (another creation in progress);
-     *   caller should fall back to [enqueue] so input is delivered once the
-     *   in-progress creation completes.
-     * - [CreateResult.Aborted]: [create] returned null (explicit abort, e.g. a
-     *   non-reloadable checkpoint). Pending inputs are cleared so the aborted
-     *   text does not auto-run in the next fresh session.
-     *
-     * Concurrency note: [observeSessionState] launches a collector that calls
-     * [drainPending] on state transitions. Since the collector runs in a separate
-     * coroutine, it will suspend on the mutex until this method's finally block
-     * releases it. The initial StateFlow emission is handled after release, and
-     * any redundant drain is a safe no-op (empty queue check).
-     *
-     * @param text First user input to send after creation.
-     * @param create Factory that creates and configures the session. Return null to abort.
-     */
+    /** Create a session and submit the first input, all under the creation lock. */
     suspend fun createAndSubmit(
         text: String,
         create: suspend () -> AgentSession?
     ): CreateResult {
         if (!mutex.tryLock()) return CreateResult.LockBusy
         try {
-            // Lock the memory-edit gate before the suspending create block runs.
-            // Without this, an `append` racing with creation could fire while
-            // currentSessionState is still null.
+            // Lock the memory-edit gate before the suspending create block runs. Without this, an `append` racing with creation could fire
+            // while currentSessionState is still null.
             _currentSessionState.value = SessionState.Created
             val session = try {
                 create()
@@ -143,70 +98,36 @@ class SessionCoordinator(private val scope: CoroutineScope) {
         }
     }
 
-    /**
-     * Directly queue input for delivery when the next session becomes available.
-     *
-     * Use when [createAndSubmit] returns [CreateResult.LockBusy] (another
-     * creation is in-progress). The input will be drained when the session
-     * transitions to Idle/Created.
-     *
-     * Must be called from the main thread.
-     */
+    /** Directly queue input for delivery when the next session becomes available. */
     fun enqueue(text: String) {
         pendingInputs.add(text)
     }
 
-    /**
-     * Attach an externally-managed session (e.g., rebound from service).
-     * Starts state observation for event-driven drain.
-     *
-     * Must be called from the main thread. Not guarded by the mutex —
-     * callers must ensure no concurrent [submit]/[clearSession] calls.
-     */
+    /** Attach an externally-managed session (e.g., rebound from service). Starts state observation for event-driven drain. */
     fun attachSession(session: AgentSession) {
         currentSession = session
-        // Synchronous snapshot so MemoryEditGate reflects the attached session
-        // immediately — the launched collector runs asynchronously and would
-        // leave a stale-unlocked window for callers reading the flow on the
-        // same tick as the attach.
+        // Synchronous snapshot so MemoryEditGate reflects the attached session immediately — the launched collector runs asynchronously
+        // and would leave a stale-unlocked window for callers reading the flow on the same tick as the attach.
         _currentSessionState.value = session.state.value
         observeSessionState(session)
     }
 
-    /**
-     * Detach the current session without shutting it down.
-     * Used when switching to history viewing mode.
-     *
-     * The detached session is still alive and may still write memory, so we
-     * intentionally keep the state collector running — `currentSessionState`
-     * continues to mirror the detached session until it Shutdowns (or until
-     * a new session is attached, which swaps the source via [observeSessionState]).
-     * Without this, [MemoryEditGate] would falsely unlock while the detached
-     * session is still capable of appending.
-     *
-     * Must be called from the main thread. Not guarded by the mutex —
-     * callers must ensure no concurrent [submit]/[clearSession] calls.
-     */
+    /** Detach the current session without shutting it down. Used when switching to history viewing mode. */
     fun detachSession() {
         currentSession = null
         pendingInputs.clear()
         lastDeadSessionFileName = null
     }
 
-    /**
-     * Consume the file name of the last session that died (Shutdown).
-     * Returns the file name and clears it so it's only used once.
-     * Used by callers to set up auto-reload from checkpoint.
-     */
+    /** Consume the file name of the last session that died (Shutdown). Returns the file name and clears it so it's only used once. Used
+     * by callers to set up auto-reload from checkpoint. */
     fun consumeDeadSessionFileName(): String? {
         val f = lastDeadSessionFileName
         lastDeadSessionFileName = null
         return f
     }
 
-    /**
-     * Shutdown and clear the current session.
-     */
+    /** Shutdown and clear the current session. */
     suspend fun clearSession() {
         mutex.lock()
         try {

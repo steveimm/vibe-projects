@@ -1,34 +1,23 @@
 package id.steveimm.pocketpilot.browser.setup
 
 import android.util.Log
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Idempotently writes Chrome's command-line file at `/data/local/tmp/chrome-command-line` so
- * Chrome binds the `chrome_devtools_remote` abstract socket once the user has flipped the
- * `enable-command-line-on-non-rooted-devices` flag and restarted Chrome.
- *
- * App uid cannot write to `/data/local/tmp/`; Shizuku gives us shell uid which can. We never
- * force-stop Chrome — the file is harmless until the user toggles the chrome flag.
- *
- * Idempotent: reads the existing file first and skips the write when content already matches,
- * so flipping the toggle off + on doesn't cause needless writes.
- */
+/** Idempotently writes Chrome's command-line file at `/data/local/tmp/chrome-command-line` so Chrome binds the `chrome_devtools_remote`
+ * abstract socket once the user has flipped the `enable-command-line-on-non-rooted-devices` flag and restarted Chrome. */
 class CommandLineWriter(
     private val shell: ShellRunner = ShizukuShellRunner(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
 
-    /**
-     * @return [Outcome.AlreadyCorrect] when the file already had the expected content (no-op),
-     * [Outcome.Written] when we wrote it successfully, [Outcome.Failed] when the shell call
-     * failed (Shizuku unavailable, exit non-zero, etc.). Callers should surface failure to the
-     * user — when the write fails the toggle should not stay on.
-     */
+    /** @return [Outcome.AlreadyCorrect] when the file already had the expected content (no-op), [Outcome.Written] when we wrote it
+     * successfully, [Outcome.Failed] when the shell call failed (Shizuku unavailable, exit non-zero, etc.). */
     suspend fun ensureWritten(): Outcome = withContext(ioDispatcher) {
         val current = runCatching { shell.run(arrayOf("sh", "-c", "cat $TARGET_PATH 2>/dev/null")) }
+            .onFailure { if (it is CancellationException) throw it }
             .getOrNull()
         if (current?.exitCode == 0 && current.stdout.trim() == DESIRED_CONTENT.trim()) {
             return@withContext Outcome.AlreadyCorrect
@@ -36,6 +25,7 @@ class CommandLineWriter(
         val write = runCatching {
             shell.run(arrayOf("sh", "-c", "echo $QUOTED_CONTENT > $TARGET_PATH"))
         }.getOrElse {
+            if (it is CancellationException) throw it
             Log.w(TAG, "shell write threw", it)
             return@withContext Outcome.Failed
         }
@@ -47,13 +37,7 @@ class CommandLineWriter(
     companion object {
         const val TARGET_PATH = "/data/local/tmp/chrome-command-line"
 
-        /**
-         * Chrome reads the first token (process name) and ignores it; everything after is
-         * appended to the command line. The two flags below are what Chromium's
-         * DevToolsServer::IsAllowed checks: a remote-debugging-socket-name flag tells Chrome
-         * to bind the named abstract socket. NetworkService is already default in modern
-         * Chrome but specifying it keeps behavior consistent across older Chrome variants.
-         */
+        /** Chrome reads the first token (process name) and ignores it; everything after is appended to the command line. */
         const val DESIRED_CONTENT =
             "_ --remote-debugging-socket-name=chrome_devtools_remote --enable-features=NetworkService"
 

@@ -20,8 +20,6 @@ import org.junit.Test
 
 class CompactorTest {
 
-    // ── helpers ──────────────────────────────────────────────────────────
-
     private fun model(window: Int = 1000) = ModelEntry(
         name = "test-model",
         displayName = "Test Model",
@@ -107,8 +105,6 @@ class CompactorTest {
         ): Flow<LLMStreamEvent> = flow { emit(LLMStreamEvent.Completed) }
     }
 
-    // ── findSafeCutPoint ─────────────────────────────────────────────────
-
     @Test
     fun `findSafeCutPoint snaps back to the paired FunctionCall when threshold lands in an FCO`() {
         val client = RecordingClient()
@@ -153,9 +149,8 @@ class CompactorTest {
             call("c1"),
             output("c1", 5_000),  // Only a single FC/FCO pair, nothing before it
         )
-        // Walk back lands on FCO at 1; snap back lands on FC at 0; but cut=0 means
-        // nothing to summarize. Walking c from 1 downTo 1 finds only c=1 (unsafe),
-        // so we return items.size.
+        // Walk back lands on FCO at 1; snap back lands on FC at 0; but cut=0 means nothing to summarize. Walking c from 1 downTo 1 finds
+        // only c=1 (unsafe), so we return items.size.
         val cut = compactor.findSafeCutPoint(items, keepTokens = 2_000)
         assertThat(cut).isEqualTo(items.size)
     }
@@ -213,8 +208,6 @@ class CompactorTest {
         val items = listOf<ResponseItem>(assistant(5), assistant(5))
         assertThat(compactor.findSafeCutPoint(items, keepTokens = 10_000)).isEqualTo(0)
     }
-
-    // ── maybeCompact: outcomes ──────────────────────────────────────────
 
     @Test
     fun `maybeCompact returns Skipped when under threshold`() = runBlocking {
@@ -332,8 +325,6 @@ class CompactorTest {
         assertThat(digest.content).contains("step2")
     }
 
-    // ── CAS race ────────────────────────────────────────────────────────
-
     @Test
     fun `CAS race returns Stale when supplement arrives during summarization`() {
         val started = CompletableDeferred<Unit>()
@@ -375,8 +366,6 @@ class CompactorTest {
         }).isTrue()
     }
 
-    // ── cancellation ────────────────────────────────────────────────────
-
     @Test
     fun `CancellationException during LLM call propagates`() {
         val started = CompletableDeferred<Unit>()
@@ -408,8 +397,6 @@ class CompactorTest {
         }
         assertThat(caught).isInstanceOf(CancellationException::class.java)
     }
-
-    // ── LLM failure path ────────────────────────────────────────────────
 
     @Test
     fun `LLM exception returns Failed (not throws)`() = runBlocking {
@@ -444,8 +431,6 @@ class CompactorTest {
         assertThat((outcome as CompactionOutcome.Failed).reason).contains("provider 500")
     }
 
-    // ── modelId vs name ─────────────────────────────────────────────────
-
     @Test
     fun `summarize is sent with provider modelId not the catalog alias`() = runBlocking {
         val client = RecordingClient()
@@ -474,8 +459,6 @@ class CompactorTest {
         assertThat(outcome).isInstanceOf(CompactionOutcome.Compacted::class.java)
         assertThat(client.capturedModels.single()).isEqualTo("provider/model")
     }
-
-    // ── maxSummaryTokens cap forwarding ─────────────────────────────────
 
     @Test
     fun `summarize forwards maxSummaryTokens as maxOutputTokens to the LLM call`() = runBlocking {

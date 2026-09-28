@@ -22,13 +22,7 @@ import id.steveimm.pocketpilot.util.recycleCompat
 import kotlinx.coroutines.delay
 import rikka.shizuku.Shizuku
 
-/**
- * VirtualDisplayPlatform — AndroidPlatform running on a Shizuku virtual display.
- *
- * Lifecycle is serialized through [VdLifecycleArbiter]: start/stop take exclusive access,
- * captureScreen/performAction run under a shared Running lease. Binder death transitions
- * the platform to Broken and clears cached proxies.
- */
+/** VirtualDisplayPlatform — AndroidPlatform running on a Shizuku virtual display. */
 class VirtualDisplayPlatform(
         private val service: AccessibilityService,
         private val shizuku: ShizukuClient,
@@ -44,27 +38,15 @@ class VirtualDisplayPlatform(
     companion object {
         private const val TAG = "VirtualDisplayPlatform"
 
-        /**
-         * Virtual display flags bitmask:
-         *   0x001 = VIRTUAL_DISPLAY_FLAG_PUBLIC
-         *   0x008 = VIRTUAL_DISPLAY_FLAG_SECURE
-         *   0x040 = VIRTUAL_DISPLAY_FLAG_SUPPORTS_TOUCH
-         *   0x200 = VIRTUAL_DISPLAY_FLAG_SHOULD_SHOW_SYSTEM_DECORATIONS
-         *   0x400 = VIRTUAL_DISPLAY_FLAG_TRUSTED (hidden)
-         *   0x800 = VIRTUAL_DISPLAY_FLAG_OWN_DISPLAY_GROUP (hidden)
-         */
+        /** Public, secure, touch-capable virtual display with system decorations, trusted status, and its own display group. */
         private const val DISPLAY_FLAGS = 0x1 or 0x8 or 0x40 or 0x200 or 0x400 or 0x800
 
         private const val SURFACE_READY_DELAY_MS = 200L
         private const val IMAGE_READER_MAX_IMAGES = 2
     }
 
-    // ── Lifecycle State ──────────────────────────────────────────
-
     private val arbiter = VdLifecycleArbiter()
     private var binderDeadListener: Shizuku.OnBinderDeadListener? = null
-
-    // ── Component Wiring ─────────────────────────────────────────
 
     private val displayIdProvider: () -> Int = {
         when (val s = arbiter.state) {
@@ -122,8 +104,6 @@ class VirtualDisplayPlatform(
                     inputInjector = inputInjector,
                     shizuku = shizuku
             )
-
-    // ── Lifecycle ────────────────────────────────────────────────
 
     override suspend fun start() {
         arbiter.withLifecycleTransition { previous ->
@@ -202,10 +182,7 @@ class VirtualDisplayPlatform(
         }
     }
 
-    /**
-     * Release platform resources. Must be idempotent.
-     * Serialized through the lifecycle arbiter — waits for in-flight ops to complete.
-     */
+    /** Release platform resources. Must be idempotent. Serialized through the lifecycle arbiter — waits for in-flight ops to complete. */
     override suspend fun stop() {
         arbiter.withLifecycleTransition(
             preDrainTransform = { current ->
@@ -262,28 +239,21 @@ class VirtualDisplayPlatform(
         }
     }
 
-    // ── Hybrid Surface Switching ──────────────────────────────────
-
-    /**
-     * Switch VirtualDisplay output to the Viewer's SurfaceView for 60fps live preview. Called when
-     * the Viewer Activity becomes visible.
-     */
+    /** Switch VirtualDisplay output to the Viewer's SurfaceView for 60fps live preview. Called when the Viewer Activity becomes
+     * visible. */
     fun switchToLivePreview(surfaceView: SurfaceView) {
         if (arbiter.state !is VdState.Running) return
 
         surfaceController.switchToLivePreview(surfaceView)
-        // Always reset fail counter after a successful surface switch — not just on
-        // mode change. Surface replacement (already LIVE_PREVIEW) also provides a fresh
-        // surface that should get a clean slate for PixelCopy attempts.
+        // Always reset fail counter after a successful surface switch — not just on mode change. Surface replacement (already
+        // LIVE_PREVIEW) also provides a fresh surface that should get a clean slate for PixelCopy attempts.
         if (surfaceController.mode() == VirtualDisplaySurfaceMode.LIVE_PREVIEW) {
             captureCoordinator.onLivePreviewActivated()
         }
     }
 
-    /**
-     * Switch VirtualDisplay output back to the ImageReader for headless capture. Called when the
-     * Viewer Activity is hidden or destroyed.
-     */
+    /** Switch VirtualDisplay output back to the ImageReader for headless capture. Called when the Viewer Activity is hidden or
+     * destroyed. */
     fun switchToImageReader() {
         if (arbiter.state !is VdState.Running) return
         surfaceController.switchToImageReader()
@@ -292,12 +262,7 @@ class VirtualDisplayPlatform(
     /** Current surface mode, for UI to check. */
     fun getSurfaceMode(): VirtualDisplaySurfaceMode = surfaceController.mode()
 
-    /**
-     * Forward a touch stream from VirtualDisplayViewerActivity into the virtual display.
-     *
-     * Primary path uses raw MotionEvent injection when InputEvent#setDisplayId is available.
-     * Fallback path uses shell `input tap/swipe --display` when that hidden API is unavailable.
-     */
+    /** Forward a touch stream from VirtualDisplayViewerActivity into the virtual display. */
     fun onViewerTouch(
             action: Int,
             x: Float,
@@ -317,8 +282,6 @@ class VirtualDisplayPlatform(
                 viewHeight = viewHeight
         )
     }
-
-    // ── Screen Capture ──────────────────────────────────────────
 
     override suspend fun captureScreen(): ScreenSnapshot {
         val currentPkg = getCurrentPackageName()
@@ -461,12 +424,7 @@ class VirtualDisplayPlatform(
         )
     }
 
-    // ===== Action Helpers =====
-
-    /**
-     * Clamp swipe coordinates to virtual display bounds.
-     * No edge inset needed — virtual display doesn't have gesture-nav interference.
-     */
+    /** Clamp swipe coordinates to virtual display bounds. No edge inset needed — virtual display doesn't have gesture-nav interference. */
     private suspend fun performSwipe(action: UIAction.Swipe): ActionResult {
         val maxX = (config.width - 1).coerceAtLeast(0)
         val maxY = (config.height - 1).coerceAtLeast(0)
@@ -532,8 +490,6 @@ class VirtualDisplayPlatform(
             ActionResult.Failure("Virtual display not running (${e.message})")
         }
     }
-
-    // ── IME Suppression ──────────────────────────────────────────
 
     /** Actions that can trigger IME on the wrong display. */
     private fun UIAction.mayTriggerIme(): Boolean =

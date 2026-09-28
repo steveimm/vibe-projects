@@ -20,15 +20,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/**
- * On-device prelude semantics test. This is the authoritative coverage for the JS prelude:
- * it loads the real prelude into a real Android WebView and exercises a [BrowserScriptRunner.run]
- * round-trip. Any change to [BrowserScriptPrelude.PRELUDE], the @JavascriptInterface bridge,
- * or [BrowserScriptRunner] should be validated by running:
- *
- *   ./gradlew :app:connectedDebugAndroidTest \
- *     -Pandroid.testInstrumentationRunnerArguments.class=id.steveimm.pocketpilot.browser.script.BrowserScriptRunnerInstrumentedTest
- */
+/** On-device prelude semantics test. */
 @RunWith(AndroidJUnit4::class)
 class BrowserScriptRunnerInstrumentedTest {
 
@@ -52,10 +44,8 @@ class BrowserScriptRunnerInstrumentedTest {
         assertEquals("0", ok.resultJson)
     }
 
-    /**
-     * Minimal in-memory [CdpConnectionFactory] that synchronously responds to every command
-     * with a canned-but-valid CDP envelope. Keeps the test free of network and Shizuku.
-     */
+    /** Minimal in-memory [CdpConnectionFactory] that synchronously responds to every command with a canned-but-valid CDP envelope.
+     * Keeps the test free of network and Shizuku. */
     private class InlineCdpConnectionFactory : CdpConnectionFactory {
         override suspend fun connect(
             url: String,

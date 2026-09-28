@@ -54,15 +54,7 @@ import org.json.JSONObject
 import org.junit.After
 import org.junit.Test
 
-/**
- * Real-reload + listener-wiring coverage for §6 of doc/main/ui/session/state_machine.md.
- *
- * Verifies the FSM contract enforced by [AgentSession.reload] (guard rejection,
- * Created return state, scratchpad legacy fallback, lastTaskOutcome restoration)
- * and the mutation-listener wiring/unwiring done in [AgentSession.init] /
- * [AgentSession] shutdown path. The coordinator-only data-shape round trip lives in
- * [SessionCheckpointCoordinatorTest].
- */
+/** Real-reload + listener-wiring coverage for §6 of doc/main/ui/session/state_machine.md. */
 class SessionCheckpointReloadAndListenersTest {
 
     @After
@@ -105,10 +97,8 @@ class SessionCheckpointReloadAndListenersTest {
         assertThat(reloaded).isNull()
     }
 
-    // endregion
-
-    // region §6.3 reload success path — Created state, restored containers,
-    // legacy scratchpad fallback, lastTaskOutcome propagation.
+    // endregion region §6.3 reload success path — Created state, restored containers, legacy scratchpad fallback, lastTaskOutcome
+    // propagation.
 
     @Test
     fun `reload from IDLE_READY restores history todos scratchpad and returns Created`() = runTest {
@@ -287,8 +277,6 @@ class SessionCheckpointReloadAndListenersTest {
 
     // endregion
 
-    // ---------- helpers ----------
-
     private fun newSnapshot(
         schemaVersion: Int = 2,
         checkpointState: CheckpointState,
@@ -347,12 +335,7 @@ class SessionCheckpointReloadAndListenersTest {
         )
     }
 
-    /**
-     * Stub the four static factories `AgentSession.reload` calls. Without this the reload
-     * path would crash during `PlatformFactory.create` / `SessionServices.create` because
-     * those construct real Android components. Stubbing here lets us drive `reload()`
-     * end-to-end on the JVM and assert restored state on the supplied SessionServices.
-     */
+    /** Stub the four static factories `AgentSession.reload` calls. */
     private fun installFactoryStubs(services: SessionServices) {
         mockkObject(TraceRecorderFactory)
         every { TraceRecorderFactory.create(any(), any(), any()) } returns NoopTraceRecorder

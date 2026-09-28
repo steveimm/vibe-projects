@@ -57,15 +57,7 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.TriangleAlert
 import kotlinx.coroutines.delay
 
-/**
- * SmartCapsuleSurface — orchestrator composable for the Smart Capsule.
- *
- * Renders, top-to-bottom: status line, optional detail body, control bar,
- * optional input bar (with optional startup-error banner above it).
- *
- * The orchestrator owns derivation (`CapsuleRenderSpec`, `NavSpec`) and submit-intent
- * routing, but not the input draft state — that lives in [CapsuleInputBar].
- */
+/** SmartCapsuleSurface — orchestrator composable for the Smart Capsule. */
 @Composable
 fun SmartCapsuleSurface(
     mode: CapsuleMode,
@@ -112,11 +104,7 @@ fun SmartCapsuleSurface(
     val shape = MaterialTheme.shapes.large
     val spacing = MaterialTheme.pocketPilot.spacing
 
-    // N1 ledger: latch a stable start timestamp the first composition we see
-    // Running, drop it on transition out. CapsuleStateHolder recreates
-    // CapsuleMode.Running(thought) on every thought update (CapsuleStateHolder.kt:162-165),
-    // so keying remember/LaunchedEffect on `mode` would reset the clock every
-    // thought tick. Key the latch on the Running boolean only.
+    // N1 ledger: latch a stable start timestamp the first composition we see Running, drop it on transition out.
     val isRunning = mode is CapsuleMode.Running
     var runningStartedAtMs by remember { mutableStateOf<Long?>(null) }
     LaunchedEffect(isRunning) {

@@ -5,16 +5,8 @@ import kotlinx.coroutines.CompletableDeferred
 import org.junit.Test
 import java.util.concurrent.atomic.AtomicBoolean
 
-/**
- * Cancellation-guard coverage for [handlePageFinished], the page-load callback
- * orchestrator extracted from `ScriptHostWebViewClient.onPageFinished`.
- *
- * The guards exist because Android may queue an `onPageFinished` (or its inner
- * prelude `evaluateJavascript` callback) after [BrowserScriptRunner.run] has set
- * its `cancelled` flag in `finally` but before the WebView teardown post drains.
- * Without these guards, agent JS (PRELUDE + user script) would be injected into
- * a WebView that's about to be destroyed.
- */
+/** Cancellation-guard coverage for [handlePageFinished], the page-load callback orchestrator extracted from
+ * `ScriptHostWebViewClient.onPageFinished`. */
 class ScriptHostPageLoadCancelGuardTest {
 
     @Test

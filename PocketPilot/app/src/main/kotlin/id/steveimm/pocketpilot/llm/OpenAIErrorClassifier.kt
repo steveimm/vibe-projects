@@ -1,6 +1,7 @@
 package id.steveimm.pocketpilot.llm
 
 import android.util.Log
+import kotlinx.coroutines.CancellationException
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -9,6 +10,7 @@ internal object OpenAIErrorClassifier {
     private const val TAG = "OpenAIErrorClassifier"
 
     fun classify(e: Exception): Exception = when (e) {
+        is CancellationException -> throw e
         // Fast-path: preserve existing domain exceptions
         is RateLimitException, is TransientException -> e
 

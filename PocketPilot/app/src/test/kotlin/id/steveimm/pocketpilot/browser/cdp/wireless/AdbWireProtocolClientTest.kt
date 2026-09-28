@@ -41,18 +41,14 @@ class AdbWireProtocolClientTest {
         )
 
         val client2Server = parseFrames(server.clientWroteBytes())
-        // Post-mTLS the daemon SPEAKS FIRST (sends A_CNXN). Client sends OPEN, then a "ready"
-        // OKAY (mandatory — without it adbd's local_socket never enables FDE_READ on the chrome
-        // side and stalls), then WRTE.
+        // Post-mTLS the daemon SPEAKS FIRST (sends A_CNXN). Client sends OPEN, then a "ready" OKAY (mandatory — without it adbd's
+        // local_socket never enables FDE_READ on the chrome side and stalls), then WRTE.
         assertThat(client2Server[0].command).isEqualTo(AdbProtocol.A_OPEN)
         assertThat(client2Server[1].command).isEqualTo(AdbProtocol.A_OKAY)
         assertThat(client2Server[2].command).isEqualTo(AdbProtocol.A_WRTE)
         assertThat(String(client2Server[2].payload, Charsets.UTF_8))
             .isEqualTo("GET /json HTTP/1.1\r\n\r\n")
-        // After receiving each server WRTE, client must OKAY back. The trailing A_CLSE the
-        // production runExchange sends is wrapped in runCatching - it's best-effort cleanup
-        // after we've already seen the peer's A_CLSE, so we don't assert on it (in this in-
-        // process pipe setup the worker has already exited and the pipe is broken).
+        // After receiving each server WRTE, client must OKAY back.
         val tailCommands = client2Server.drop(3).map { it.command }
         assertThat(tailCommands).containsAtLeastElementsIn(
             listOf(AdbProtocol.A_OKAY, AdbProtocol.A_OKAY)
@@ -183,9 +179,8 @@ class AdbWireProtocolClientTest {
 
     @Test
     fun `openOnChannel resets idle read timeout to infinite after handshake`() {
-        // Long-lived CDP/WebSocket streams must clear the handshake-grade SO_TIMEOUT after the
-        // post-mTLS A_OPEN/OKAY round-trip — otherwise an idle gap longer than the handshake
-        // timeout (10s in production) tears down the relay socket.
+        // Long-lived CDP/WebSocket streams must clear the handshake-grade SO_TIMEOUT after the post-mTLS A_OPEN/OKAY round-trip —
+        // otherwise an idle gap longer than the handshake timeout (10s in production) tears down the relay socket.
         val server = FakeAdbd(
             expectClientWrte = false,
             responseChunks = emptyList(),
@@ -202,9 +197,8 @@ class AdbWireProtocolClientTest {
 
     @Test
     fun `SocketChannel idle timeout reset survives long idle gap then receives a frame`() {
-        // Regression for `browser-phase6-ws-idle-timeout`: handshake-grade soTimeout was
-        // persisting after WS upgrade and killing idle CDP sockets at the 10s mark. After
-        // setIdleReadTimeoutMs(0) the read blocks indefinitely until the next frame arrives.
+        // Regression for `browser-phase6-ws-idle-timeout`: handshake-grade soTimeout was persisting after WS upgrade and killing idle CDP
+        // sockets at the 10s mark. After setIdleReadTimeoutMs(0) the read blocks indefinitely until the next frame arrives.
         java.net.ServerSocket(0).use { server ->
             val sock = java.net.Socket()
             sock.connect(java.net.InetSocketAddress("127.0.0.1", server.localPort), 1_000)
@@ -249,12 +243,7 @@ class AdbWireProtocolClientTest {
         return header + body
     }
 
-    /**
-     * In-process fake adbd, post-mTLS view: the daemon speaks first by sending A_CNXN. After
-     * receiving the client's A_OPEN it replies A_OKAY, then writes [responseChunks] one frame at
-     * a time (acking each client OKAY), then optionally A_CLSE. The pre-mTLS A_CNXN/A_STLS
-     * dance is handled by [AdbTlsClient] (not exercised here).
-     */
+    /** In-process fake adbd, post-mTLS view: the daemon speaks first by sending A_CNXN. */
     private class FakeAdbd(
         private val rejectOpen: Boolean = false,
         private val sendAuthInsteadOfCnxn: Boolean = false,
@@ -326,10 +315,7 @@ class AdbWireProtocolClientTest {
                     AdbProtocol.Message.write(toClientSrc, AdbProtocol.A_OKAY, remoteId, open.arg0, ByteArray(0))
                 }
 
-                // Server emits each response frame, expecting OKAY back. If the client returns
-                // mid-stream (e.g. Content-Length satisfied), the second-frame write may block
-                // on the pipe; that's OK — the surrounding test does not rely on the worker
-                // completing in those cases.
+                // The client may stop reading after Content-Length. The test does not wait for subsequent server frames.
                 for (chunk in responseChunks) {
                     AdbProtocol.Message.write(toClientSrc, AdbProtocol.A_WRTE, remoteId, open.arg0, chunk)
                     val ack = AdbProtocol.Message.read(fromClientReader)

@@ -1,6 +1,7 @@
 import json
 import os
 import shlex
+import signal
 import socket
 import subprocess
 import sys
@@ -407,3 +408,51 @@ def test_health_requests_refresh_watchdog_idle_timer(tmp_path, free_port, bridge
         assert bridge.process.poll() is None
 
     assert bridge.process.poll() is None
+
+
+def test_timeout_still_applies_after_shell_exits_with_background_child(bridge_server: BridgeProcess) -> None:
+    """Bound execution while descendants still hold the command's output pipes."""
+    response = bridge_server.post_json(
+        "/v1/exec",
+        {"command": "sleep 30 &", "timeout_ms": 400},
+        timeout=5,
+    )
+    assert response.status == 200
+    assert response.body["timed_out"] is True
+    assert response.body["duration_ms"] < 5000
+    assert bridge_server.post_json("/v1/exec", {"command": "echo recovered"}).body["stdout"] == "recovered\n"
+
+
+def test_invalid_process_arguments_return_json_error(bridge_server: BridgeProcess) -> None:
+    """Reject subprocess-invalid strings before acquiring the execution slot."""
+    for payload in [
+        {"command": "echo \u0000"},
+        {"command": "true", "cwd": "\u0000"},
+        {"command": "true", "env": {"BAD=KEY": "value"}},
+        {"command": "true", "env": {"NAME": "\u0000"}},
+    ]:
+        response = bridge_server.post_json("/v1/exec", payload)
+        assert response.status == 400
+        assert response.body == {"error": "invalid_request"}
+
+
+def test_detached_output_writer_cannot_hold_execution_slot(bridge_server: BridgeProcess, tmp_path: Path) -> None:
+    """Return at the deadline even if a detached process inherits an output pipe."""
+    pid_file = tmp_path / "detached.pid"
+    code = f"""
+import subprocess
+from pathlib import Path
+child = subprocess.Popen(["sleep", "30"], start_new_session=True)
+Path({str(pid_file)!r}).write_text(str(child.pid))
+"""
+    try:
+        response = bridge_server.post_json("/v1/exec", {"command": python_command(code), "timeout_ms": 400}, timeout=5)
+        assert response.status == 200
+        assert response.body["timed_out"] is True
+        assert bridge_server.post_json("/v1/exec", {"command": "echo recovered"}).body["stdout"] == "recovered\n"
+    finally:
+        if pid_file.exists():
+            try:
+                os.kill(int(pid_file.read_text()), signal.SIGKILL)
+            except ProcessLookupError:
+                pass

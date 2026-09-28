@@ -203,8 +203,6 @@ class TypeExecutorTest {
         assertThat(outcome).isInstanceOf(ActionOutcome.Cancelled::class.java)
     }
 
-    // ---------- Coordinate-hint normalization (Codex dual target) ----------
-
     @Test
     fun `semantic resolved plus hint inside bounds uses SetTextOnNodeAt first`() = runTest {
         val snapshot = editableSnapshot()

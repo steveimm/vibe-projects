@@ -1,10 +1,6 @@
 package id.steveimm.pocketpilot.onboarding
 
-/**
- * Validates an API key against the LLM provider endpoint.
- *
- * Uses direct HTTP (not ChatCompletionClient) for exact status code mapping.
- */
+/** Validates an API key against the LLM provider endpoint. */
 interface LlmCredentialValidator {
     sealed interface Result {
         data object Valid : Result

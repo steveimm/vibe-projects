@@ -3,13 +3,8 @@ package id.steveimm.pocketpilot.ui.capsule.voice
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-/**
- * JVM unit tests for [VoiceInputController]. Drives recognition transitions through
- * [FakeRecognizer] callbacks — no Android framework required.
- *
- * Each test asserts on BOTH [VoiceInputController.state] and the captured `onText` history so a
- * regression in either the state machine or the visible-text contract is caught.
- */
+/** JVM unit tests for [VoiceInputController]. Drives recognition transitions through [FakeRecognizer] callbacks — no Android framework
+ * required. */
 class VoiceInputControllerTest {
 
     private class CapturingOnText : (String) -> Unit {

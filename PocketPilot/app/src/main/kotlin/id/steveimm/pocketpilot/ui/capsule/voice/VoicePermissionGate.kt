@@ -18,13 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
-/**
- * What the voice-mic caller should do given the current RECORD_AUDIO permission state.
- *
- * Mirrors [id.steveimm.pocketpilot.ui.settings.RunCommandPermissionDisposition]; see that file for the
- * rationale (shouldShowRationale is false both pre-first-ask AND post-permanent-deny, so
- * `hasAttempted` is needed to disambiguate).
- */
+/** What the voice-mic caller should do given the current RECORD_AUDIO permission state. */
 internal sealed interface VoicePermissionDisposition {
     data object Granted : VoicePermissionDisposition
     data object Request : VoicePermissionDisposition

@@ -75,10 +75,8 @@ class LoopDetectionPolicyTest {
         val policy = LoopDetectionPolicy()
         var state = NavigationState()
 
-        // Use many shared elements so Jaccard is very high even with 1 varying element
-        // 20 shared + 1 varying → Jaccard = 20/22 ≈ 0.91, still under 0.95
-        // Need ~40 shared: 40/42 ≈ 0.952 >= 0.95
-        // But simpler: use identical screens
+        // Use many shared elements so Jaccard is very high even with 1 varying element 20 shared + 1 varying → Jaccard = 20/22 ≈ 0.91,
+        // still under 0.95 Need ~40 shared: 40/42 ≈ 0.952 >= 0.95 But simpler: use identical screens
         repeat(5) {
             state = state.advance(snapshot(label = "Identical"))
         }
@@ -153,10 +151,8 @@ class LoopDetectionPolicyTest {
         )
     }
 
-    /**
-     * Snapshot with [sharedCount] stable elements + 1 varying element.
-     * Jaccard between two snapshots = sharedCount / (sharedCount + 2).
-     */
+    /** Snapshot with [sharedCount] stable elements + 1 varying element. Jaccard between two snapshots = sharedCount / (sharedCount +
+     * 2). */
     private fun snapshotWithProgress(sharedCount: Int, varyingLabel: String): ScreenSnapshot {
         val sharedElements = (0 until sharedCount).map { i ->
             PerceptionElement(

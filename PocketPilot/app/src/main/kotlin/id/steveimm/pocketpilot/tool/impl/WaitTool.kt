@@ -8,9 +8,7 @@ import id.steveimm.pocketpilot.tool.handlers.UIActionInvocation
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * WaitTool - deterministic wait without screen targeting.
- */
+/** WaitTool - deterministic wait without screen targeting. */
 class WaitTool : ToolSpec {
     companion object {
         private const val DEFAULT_WAIT_MS = 1000L

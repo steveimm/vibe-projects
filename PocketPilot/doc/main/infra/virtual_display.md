@@ -144,4 +144,4 @@ Thin wrapper for privileged Shizuku binder calls:
 | `clearCachedProxies()` | Clears proxy provider + display transport caches |
 | `bypassHiddenApis()` | `HiddenApiBypass` for `setDisplayId()` and `ServiceManager` |
 
-Supporting files: `ShizukuServiceProxyProvider`, `ShizukuDisplayTransport`, `ShizukuInputTransport`, `ShizukuActivityTaskTransport`, `ShizukuActivityLauncher`, `ShizukuShellExecutor`, `ShizukuRuntimeGateway`.
+Supporting files: `ShizukuServiceProxyProvider`, `ShizukuDisplayTransport`, `ShizukuInputTransport`, `ShizukuActivityTaskTransport`, `ShizukuActivityLauncher`, shared `platform/ShizukuShell`, `ShizukuRuntimeGateway`.

@@ -32,12 +32,7 @@ import id.steveimm.pocketpilot.ui.theme.AppWindowInsets
 import id.steveimm.pocketpilot.ui.theme.Fraunces
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
-/**
- * Shared scaffold for every onboarding step.
- *
- * Provides: back arrow (except step 1), step count, linear progress bar,
- * title, and content slot.
- */
+/** Shared scaffold for every onboarding step. */
 @Composable
 fun OnboardingShell(
     stepIndex: Int,

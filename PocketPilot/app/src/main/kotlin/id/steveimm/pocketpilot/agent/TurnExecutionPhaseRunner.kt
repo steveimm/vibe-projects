@@ -13,11 +13,7 @@ import id.steveimm.pocketpilot.tool.ToolObservation
 import id.steveimm.pocketpilot.trace.AgentTrace
 import kotlinx.coroutines.delay
 
-/**
- * Executes selected tool calls for a turn and emits side effects (history, traces, UI events).
- *
- * This keeps execution concerns separate from AgentTurnRunner orchestration.
- */
+/** Executes selected tool calls for a turn and emits side effects (history, traces, UI events). */
 internal class TurnExecutionPhaseRunner(
         private val config: AgentExecutionConfig,
         private val services: SessionServices,

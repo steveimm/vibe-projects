@@ -36,8 +36,6 @@ class OtherBaseUrlValidatorTest {
         assertThat(result.getOrThrow()).isEqualTo("http://192.168.1.10:11434/v1")
     }
 
-    // ── scheme / host validation ─────────────────────────────────────────
-
     @Test
     fun `rejects ftp and other non-http schemes`() {
         val result = OtherBaseUrlValidator.validate("ftp://example.com/")
@@ -64,8 +62,6 @@ class OtherBaseUrlValidatorTest {
         assertThat(result.exceptionOrNull()).hasMessageThat().contains("host")
     }
 
-    // ── normalization ────────────────────────────────────────────────────
-
     @Test
     fun `trims trailing slash`() {
         val result = OtherBaseUrlValidator.validate("https://api.example.com/v1/")
@@ -79,8 +75,6 @@ class OtherBaseUrlValidatorTest {
         assertThat(result.isSuccess).isTrue()
         assertThat(result.getOrThrow()).isEqualTo("https://api.example.com/v1")
     }
-
-    // ── reject sensitive URL segments (Codex review HIGH #2) ─────────────
 
     @Test
     fun `rejects user-info in URL and message does not echo the secret`() {

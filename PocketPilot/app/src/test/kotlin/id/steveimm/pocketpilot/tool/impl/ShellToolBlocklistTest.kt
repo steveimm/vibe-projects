@@ -5,14 +5,10 @@ import id.steveimm.pocketpilot.tool.ValidationResult
 import org.json.JSONObject
 import org.junit.Test
 
-/**
- * Security regression: shell blocklist and metacharacter rejection.
- */
+/** Security regression: shell blocklist and metacharacter rejection. */
 class ShellToolBlocklistTest {
 
     private val tool = ShellTool()
-
-    // ── Blocklist completeness ──────────────────────────────────────
 
     @Test
     fun `am command is blocked`() {
@@ -49,8 +45,6 @@ class ShellToolBlocklistTest {
         assertBlocked("find /sdcard -name test")
     }
 
-    // ── Full-path bypass prevention ─────────────────────────────────
-
     @Test
     fun `full path to am is blocked`() {
         assertBlocked("/system/bin/am broadcast -a EVIL")
@@ -60,8 +54,6 @@ class ShellToolBlocklistTest {
     fun `full path to su is blocked`() {
         assertBlocked("/system/xbin/su")
     }
-
-    // ── Metacharacter rejection ─────────────────────────────────────
 
     @Test
     fun `semicolon rejected`() {
@@ -113,8 +105,6 @@ class ShellToolBlocklistTest {
         assertMetacharRejected("cat /sdcard/file.txt\nrm -rf /")
     }
 
-    // ── Allowed commands pass validation ─────────────────────────────
-
     @Test
     fun `ls is allowed`() {
         assertAllowed("ls /sdcard/")
@@ -129,8 +119,6 @@ class ShellToolBlocklistTest {
     fun `stat is allowed`() {
         assertAllowed("stat /sdcard/file.txt")
     }
-
-    // ── Edge cases ──────────────────────────────────────────────────
 
     @Test
     fun `empty command is invalid`() {

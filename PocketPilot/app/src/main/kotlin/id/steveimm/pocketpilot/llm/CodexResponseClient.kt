@@ -6,6 +6,9 @@ import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.ResponseInputItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.trySendBlocking
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
@@ -17,17 +20,7 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
-/**
- * LLM client that talks to ChatGPT's Codex backend via OAuth access token.
- *
- * Captures no OAuth state. Each request invokes [headerSupplier] for a fresh
- * [CodexHeaders] bundle — the supplier is expected to return a refreshed token
- * when near expiry (see `AuthStore.codexHeaders`). This makes a cached client
- * valid across token rotations and account switches.
- *
- * Uses raw OkHttp + [CodexRequestBuilder] / [CodexSseParser] to stream
- * responses from `chatgpt.com/backend-api/codex/responses`.
- */
+/** LLM client that talks to ChatGPT's Codex backend via OAuth access token. */
 class CodexResponseClient(
     private val headerSupplier: suspend () -> CodexHeaders
 ) : LLMClient() {
@@ -39,8 +32,6 @@ class CodexResponseClient(
 
     private val httpClient: OkHttpClient = buildHttpClient()
 
-    // ── Non-streaming ────────────────────────────────────────────────────
-
     override suspend fun chatWithTools(
         systemPrompt: String,
         inputItems: List<ResponseInputItem>,
@@ -48,9 +39,8 @@ class CodexResponseClient(
         model: String,
         maxOutputTokens: Long?,
     ): ResponsesResult = withContext(Dispatchers.IO) {
-        // Codex backend forbids `max_output_tokens` (see CodexRequestBuilder).
-        // Accept the parameter to satisfy the LLMClient contract, but cannot
-        // forward it to the wire format.
+        // Codex backend forbids `max_output_tokens` (see CodexRequestBuilder). Accept the parameter to satisfy the LLMClient contract, but
+        // cannot forward it to the wire format.
         LlmLogger.logInput(TAG, systemPrompt, inputItems, tools)
 
         CloudLlmRetry.executeWithRetry(tag = TAG, operationName = "codex chatWithTools") {
@@ -127,8 +117,6 @@ class CodexResponseClient(
         }
     }
 
-    // ── Streaming ────────────────────────────────────────────────────────
-
     override fun chatWithToolsStreaming(
         systemPrompt: String,
         inputItems: List<ResponseInputItem>,
@@ -140,10 +128,10 @@ class CodexResponseClient(
 
         val activeCall = AtomicReference<okhttp3.Call?>(null)
 
-        val job = launch {
+        val job = launch(Dispatchers.IO) {
             val retryResult = streamWithRetry(
                 tag = TAG,
-                emitToFlow = { event -> trySend(event) }
+                emitToFlow = { event -> trySendBlocking(event).getOrThrow() }
             ) { attempt, emitter ->
                 val body = CodexRequestBuilder.buildRequestBody(systemPrompt, inputItems, tools, model)
                 val request = buildRequest(body, headerSupplier())
@@ -152,6 +140,7 @@ class CodexResponseClient(
                     val call = httpClient.newCall(request)
                     activeCall.set(call)
                     try {
+                        currentCoroutineContext().ensureActive()
                         call.execute().use { response ->
                             if (!response.isSuccessful) handleErrorResponse(response)
 
@@ -201,7 +190,7 @@ class CodexResponseClient(
             }
 
             retryResult.closeFlow(
-                emitToFlow = { trySend(it) },
+                emitToFlow = { trySendBlocking(it).getOrThrow() },
                 closeFlow = { close() }
             )
         }
@@ -213,8 +202,6 @@ class CodexResponseClient(
         }
     }
 
-    // ── Lifecycle ────────────────────────────────────────────────────────
-
     override suspend fun cleanup() {
         Log.d(TAG, "Cleanup: evicting connections and shutting down dispatcher")
         withContext(Dispatchers.IO) {
@@ -222,8 +209,6 @@ class CodexResponseClient(
             httpClient.dispatcher.executorService.shutdown()
         }
     }
-
-    // ── Private helpers ──────────────────────────────────────────────────
 
     /** MediaType without charset — ChatGPT backend rejects `charset=utf-8`. */
     private fun buildRequest(body: String, headers: CodexHeaders): Request {

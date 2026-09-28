@@ -66,13 +66,7 @@ class ShellTool(
         const val DEFAULT_TIMEOUT_SECONDS = 10L
         private const val MAX_OUTPUT_CHARS = 4096
 
-        // Blocked first tokens. Rationale:
-        //   am, pm        — Activity / Package Manager privilege escalation surface
-        //   reboot, su    — destructive / root
-        //   env           — mutates the environment seen by subsequent calls
-        //   xargs, find   — both can execute arbitrary commands (xargs by design;
-        //                   find via -exec), which would subvert the no-pipes /
-        //                   no-redirects / no-`$()` policy enforced below.
+        // Blocked first tokens.
         private val BLOCKED_COMMANDS = setOf("am", "pm", "reboot", "su", "env", "xargs", "find")
 
         // Rejects: ; | & ` > < newline/CR, and any $ (variable expansion/substitution)
@@ -99,10 +93,8 @@ class ShellTool(
                         .redirectErrorStream(true)
                         .start()
 
-                    // Read output concurrently to prevent pipe deadlock.
-                    // Must read BEFORE/during waitFor — if the process fills the
-                    // OS pipe buffer (~64KB) before we read, it blocks and waitFor
-                    // never returns.
+                    // Read output concurrently to prevent pipe deadlock. Must read BEFORE/during waitFor — if the process fills the OS
+                    // pipe buffer (~64KB) before we read, it blocks and waitFor never returns.
                     val outputDeferred = async(Dispatchers.IO) {
                         process.inputStream.bufferedReader().use { reader ->
                             buildString {

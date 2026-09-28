@@ -16,10 +16,8 @@ class CapsuleRenderingTest {
 
     @get:Rule val compose = createComposeRule()
 
-    // K1 — Hidden draws no capsule state-chrome (Row1 thought, Row2 buttons,
-    // Row2-right nav icons). Row3 new-task prompt IS still drawn by design
-    // (it's the "What can I help you with?" entry point), and we verify that
-    // too so this test captures the actual contract.
+    // K1 — Hidden draws no capsule state-chrome (Row1 thought, Row2 buttons, Row2-right nav icons). Row3 new-task prompt IS still drawn by
+    // design (it's the "What can I help you with?" entry point), and we verify that too so this test captures the actual contract.
     @Test fun hidden_renders_no_capsule_state_chrome() {
         compose.setContent { TestCapsule(mode = CapsuleMode.Hidden) }
 

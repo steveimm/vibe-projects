@@ -21,8 +21,6 @@ class CodexRequestBuilderTest {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    // ── buildRequestBody ──────────────────────────────────────────────────
-
     @Test
     fun `buildRequestBody sets required Codex fields`() {
         val body = CodexRequestBuilder.buildRequestBody(
@@ -59,8 +57,6 @@ class CodexRequestBuilderTest {
         assertThat(obj["instructions"]!!.jsonPrimitive.content).isEqualTo("")
     }
 
-    // ── convertInputItems: user vs assistant ──────────────────────────────
-
     @Test
     fun `user message uses input_text content type`() {
         val arr = convertItems(userMessage("hi there"))
@@ -84,8 +80,6 @@ class CodexRequestBuilderTest {
         assertThat(part["type"]!!.jsonPrimitive.content).isEqualTo("output_text")
         assertThat(part["text"]!!.jsonPrimitive.content).isEqualTo("done")
     }
-
-    // ── function_call / function_call_output ──────────────────────────────
 
     @Test
     fun `function_call item serializes name call_id and arguments`() {
@@ -119,8 +113,6 @@ class CodexRequestBuilderTest {
         assertThat(obj["output"]!!.jsonPrimitive.content).isEqualTo("tool result text")
     }
 
-    // ── System prompt placement ───────────────────────────────────────────
-
     @Test
     fun `system prompt goes to instructions field not into input items`() {
         val body = CodexRequestBuilder.buildRequestBody(
@@ -137,8 +129,6 @@ class CodexRequestBuilderTest {
         assertThat(input).hasSize(1)
         assertThat(input[0].jsonObject["role"]!!.jsonPrimitive.content).isEqualTo("user")
     }
-
-    // ── convertTools ──────────────────────────────────────────────────────
 
     @Test
     fun `convertTools produces valid JSON Schema for each tool`() {
@@ -208,8 +198,6 @@ class CodexRequestBuilderTest {
         val arr = CodexRequestBuilder.convertTools(emptyList())
         assertThat(arr.length()).isEqualTo(0)
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────
 
     private fun parse(body: String): JsonObject =
         json.parseToJsonElement(body).jsonObject

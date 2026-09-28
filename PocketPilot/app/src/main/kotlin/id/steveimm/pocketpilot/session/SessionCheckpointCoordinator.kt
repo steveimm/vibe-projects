@@ -17,12 +17,7 @@ import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.protocol.SessionLlmConfig
 import id.steveimm.pocketpilot.protocol.SessionState
 
-/**
- * Coordinates building and persisting LLM context snapshots.
- *
- * Owns the mapping from runtime state → [SessionRuntimeSnapshot].
- * Delegates actual I/O to [SessionRecordingService].
- */
+/** Coordinates building and persisting LLM context snapshots. */
 internal class SessionCheckpointCoordinator(
     private val sessionId: String,
     private val config: SessionConfig,

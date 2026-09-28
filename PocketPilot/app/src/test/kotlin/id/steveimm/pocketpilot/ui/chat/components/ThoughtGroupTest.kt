@@ -6,12 +6,8 @@ import id.steveimm.pocketpilot.ui.chat.model.ActionState
 import id.steveimm.pocketpilot.ui.chat.model.ContentBlock
 import org.junit.Test
 
-/**
- * UXFB-4: ThoughtGroup grouping logic. The pure [groupTrace] function is the
- * structural contract — composable styling is verified visually via
- * /ux-visual-debug. Cardinality (TurnPlanningPhaseRunner.kt:217-238): each turn
- * emits exactly one Thought + ≥1 Actions.
- */
+/** UXFB-4: ThoughtGroup grouping logic. The pure [groupTrace] function is the structural contract — composable styling is verified
+ * visually via /ux-visual-debug. Cardinality (TurnPlanningPhaseRunner.kt:217-238): each turn emits exactly one Thought + ≥1 Actions. */
 class ThoughtGroupTest {
 
     private fun action(id: String, name: String = "tool"): ContentBlock.Action =

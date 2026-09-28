@@ -143,8 +143,6 @@ class ScrollExecutorTest {
             .containsExactly(UIAction.ScrollNodeAt(540, 1200, "down"))
     }
 
-    // ---------- Coordinate-hint normalization (Codex dual target) ----------
-
     @Test
     fun `scroll element_index 999 plus xy fails unresolved without dispatch`() = runTest {
         val snapshot = scrollableSnapshot("Item 1")

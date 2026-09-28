@@ -30,14 +30,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-/**
- * Characterization tests for the ApiKey step FSM defined in
- * doc/main/state_machines/onboarding_apikey_step.md.
- *
- * Covers every transition (manual + OAuth) and every guard rejection. The VM
- * is constructed with permissions+earlier outcomes already satisfied so each
- * test starts on the ApiKey step with `OAuthReady` as the entry state.
- */
+/** Characterization tests for the ApiKey step FSM defined in doc/main/state_machines/onboarding_apikey_step.md. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ApiKeyStepStateTest {
 
@@ -82,8 +75,6 @@ class ApiKeyStepStateTest {
         unmockkAll()
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────────
-
     private fun onApiKeyStepOutcomes(apiKey: StepOutcome = StepOutcome.Pending) = StepOutcomes(
         accessibility = StepOutcome.Done,
         overlay = StepOutcome.Done,
@@ -114,9 +105,7 @@ class ApiKeyStepStateTest {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // ENTRY STATES
-    // ─────────────────────────────────────────────────────────────────────
 
     @Test
     fun `entry with OPENAI provider yields OAuthReady`() = runTest {
@@ -175,9 +164,7 @@ class ApiKeyStepStateTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // MANUAL PATH TRANSITIONS
-    // ─────────────────────────────────────────────────────────────────────
 
     @Test
     fun `Empty to Editing on non-blank key`() = runTest {
@@ -347,9 +334,7 @@ class ApiKeyStepStateTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // MANUAL PATH GUARD REJECTIONS
-    // ─────────────────────────────────────────────────────────────────────
 
     @Test
     fun `validateApiKey from Empty is no-op`() = runTest {
@@ -365,10 +350,8 @@ class ApiKeyStepStateTest {
 
     @Test
     fun `validateApiKey after success auto-advance does not re-validate`() = runTest {
-        // After Valid the VM auto-advances to Demo (stepState becomes DemoStepState.Ready),
-        // so the `else -> return` branch in validateApiKey() short-circuits any further
-        // validation attempt. We can't easily pause mid-Valid (delay(400) runs under
-        // UnconfinedTestDispatcher), so this characterizes the post-advance no-op path.
+        // After Valid the VM auto-advances to Demo (stepState becomes DemoStepState.Ready), so the `else -> return` branch in
+        // validateApiKey() short-circuits any further validation attempt.
         server.enqueue(MockResponse().setResponseCode(200).setBody("""{"choices":[]}"""))
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job())
         val vm = makeVm(scope); drain(scope, this)
@@ -447,9 +430,7 @@ class ApiKeyStepStateTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // OAUTH PATH TRANSITIONS
-    // ─────────────────────────────────────────────────────────────────────
 
     @Test
     fun `OAuthReady to OAuthInProgress to OAuthSuccess writes credential and advances`() = runTest {
@@ -532,9 +513,7 @@ class ApiKeyStepStateTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // OAUTH PATH GUARD REJECTIONS
-    // ─────────────────────────────────────────────────────────────────────
 
     @Test
     fun `startOAuth is no-op when already OAuthInProgress`() = runTest {
@@ -553,9 +532,7 @@ class ApiKeyStepStateTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // RE-ENTRY FROM BACK NAVIGATION
-    // ─────────────────────────────────────────────────────────────────────
 
     @Test
     fun `re-entry with apiKey Done and OPENAI_CODEX credential yields OAuthSuccess empty email`() = runTest {
@@ -611,11 +588,8 @@ class ApiKeyStepStateTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // FRESH ENTRY WITH PENDING OUTCOME BUT EXISTING AUTHSTORE CREDENTIAL
-    // (Regression: previously the wizard ignored AuthStore on Pending entry,
-    //  forcing users with valid keys back through OAuth or manual entry.)
-    // ─────────────────────────────────────────────────────────────────────
+    // FRESH ENTRY WITH PENDING OUTCOME BUT EXISTING AUTHSTORE CREDENTIAL (Regression: previously the wizard ignored AuthStore on Pending
+    // entry, forcing users with valid keys back through OAuth or manual entry.)
 
     @Test
     fun `fresh entry with Pending outcome auto-marks Done and advances when OPENAI_CODEX credential exists`() = runTest {
@@ -662,9 +636,8 @@ class ApiKeyStepStateTest {
 
     @Test
     fun `back-nav from Demo to Pending ApiKey with existing credential shows success without advancing`() = runTest {
-        // Demo is Pending so wizard lands there first; user navigates back to ApiKey.
-        // On re-entry, autoAdvance=false so we render the success state and stay put,
-        // letting the user choose to switch provider or continue manually.
+        // Demo is Pending so wizard lands there first; user navigates back to ApiKey. On re-entry, autoAdvance=false so we render the
+        // success state and stay put, letting the user choose to switch provider or continue manually.
         every { store.loadOutcomes() } returns StepOutcomes(
             accessibility = StepOutcome.Done,
             overlay = StepOutcome.Done,

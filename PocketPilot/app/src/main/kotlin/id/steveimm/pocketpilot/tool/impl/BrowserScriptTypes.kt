@@ -3,11 +3,8 @@ package id.steveimm.pocketpilot.tool.impl
 import id.steveimm.pocketpilot.browser.script.ScriptResult
 import org.json.JSONObject
 
-/**
- * Acquire the browser script invoker if every capability gate passes, or return a
- * structured Unavailable outcome the tool surfaces verbatim. Consulted at execution
- * time so policy and runtime state changes between turns are honored.
- */
+/** Acquire the browser script invoker if every capability gate passes, or return a structured Unavailable outcome the tool surfaces
+ * verbatim. Consulted at execution time so policy and runtime state changes between turns are honored. */
 interface BrowserScriptCapabilityGate {
     suspend fun acquire(): Outcome
 

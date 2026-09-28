@@ -18,12 +18,7 @@ import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.protocol.CompletionHandoff
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
-/**
- * Pure-Kotlin guard for the "Open <App>" CTA. Returns true when [handoff] has a
- * non-null `appPackage` AND [canResolveLauncher] reports the package resolves to
- * a launcher intent. Extracted so the visibility decision can be unit-tested
- * without Compose; the composable below wraps `PackageManager.getLaunchIntentForPackage`.
- */
+/** Pure-Kotlin guard for the "Open <App>" CTA. */
 internal fun shouldShowOpenAppCta(
     handoff: CompletionHandoff?,
     canResolveLauncher: (String) -> Boolean,
@@ -32,10 +27,8 @@ internal fun shouldShowOpenAppCta(
     return canResolveLauncher(pkg)
 }
 
-/**
- * Renders the "Open <App>" CTA under a finished VD row. Hidden when the package
- * is null or PackageManager cannot resolve a launcher intent.
- */
+/** Renders the "Open <App>" CTA under a finished VD row. Hidden when the package is null or PackageManager cannot resolve a launcher
+ * intent. */
 @Composable
 internal fun CompletionHandoffCtaRow(
     handoff: CompletionHandoff,

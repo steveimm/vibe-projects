@@ -18,33 +18,17 @@ import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/**
- * Wireless-ADB self-pair transport: drives the spike-proven path
- *   Shizuku → IAdbManager.allowWirelessDebugging → enablePairingByQrCode → embedded TLS-PSK pair
- *   → embedded mTLS adb client → A_OPEN(localabstract:chrome_devtools_remote) → CDP bytes.
- *
- * Lazy: bootstrap is deferred to the first [exchange] / [ensureWebSocketRelayPort] call. The TLS
- * adb port is cached; the RSA keypair is persisted via [AdbCryptoKeyStore], so subsequent runs
- * skip pairing once `/data/misc/adb/adb_keys` already contains our pubkey.
- */
+/** Wireless-ADB self-pair transport: drives the spike-proven path Shizuku → IAdbManager.allowWirelessDebugging → enablePairingByQrCode
+ * → embedded TLS-PSK pair → embedded mTLS adb client → A_OPEN(localabstract:chrome_devtools_remote) → CDP bytes. */
 class WirelessAdbSelfPairTransport(
     private val wirelessManager: AdbWirelessManager,
     private val keyStore: AdbCryptoKeyStore,
     private val pairingClient: AdbPairingClient,
     private val wireClient: AdbWireProtocolClient,
-    /**
-     * Per-session unguessable token expected in the WS Upgrade `X-PocketPilot-Token` header. Any
-     * other local app can dial 127.0.0.1:[relayPort], so the token is the only thing keeping
-     * them out of Chrome's CDP. Must be non-empty.
-     */
+    /** Per-session unguessable token expected in the WS Upgrade `X-PocketPilot-Token` header. Any other local app can dial
+     * 127.0.0.1:[relayPort], so the token is the only thing keeping them out of Chrome's CDP. Must be non-empty. */
     private val relayAuthToken: String,
-    /**
-     * Optional witness that the persisted pubkey was paired before. When non-null, [ensurePaired]
-     * skips the SPAKE2 round-trip on cold sessions where adb_keys is unreadable but the cached
-     * fingerprint matches the current pubkey — relying on the immediately-following mTLS
-     * handshake as the authoritative test. Null disables the optimization (default; existing
-     * pre-cache behaviour).
-     */
+    /** Optional witness that the persisted pubkey was paired before. */
     private val pairOnceCache: PairOnceCache? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : DevtoolsSocketTransport, WirelessAdbRelayHost, AutoCloseable {
@@ -58,21 +42,9 @@ class WirelessAdbSelfPairTransport(
     private val bootstrapLock = Mutex()
     @Volatile private var cachedTlsPort: Int = -1
     @Volatile private var prunedThisSession = false
-    /**
-     * True iff the most-recent bootstrap skipped pairing on the strength of [pairOnceCache].
-     * If the very next mTLS handshake fails, that cache entry is the prime suspect — the
-     * exchange-retry path uses this flag to invalidate before re-bootstrapping (which then
-     * forces a real pair). Reset on every successful pair / authorized-skip path so a stale
-     * "true" from a previous bootstrap can't trigger a spurious invalidation later.
-     */
+    /** True iff the most-recent bootstrap skipped pairing on the strength of [pairOnceCache]. */
     @Volatile private var lastBootstrapUsedCache = false
-    /**
-     * Fingerprint earned by a fresh pair that has NOT yet been confirmed by an mTLS handshake.
-     * The cache is only written after the next [wireClient] op succeeds — adbd's adb_keys
-     * reload is event-driven and a successful SPAKE2 round-trip does not guarantee adbd
-     * trusts the new key yet. Cleared on exchange failure (so a bad pair doesn't poison the
-     * cache) and on next-call success (so the witness is durable).
-     */
+    /** Fingerprint earned by a fresh pair that has NOT yet been confirmed by an mTLS handshake. */
     @Volatile private var pendingFingerprintCommit: String? = null
 
     private val relayLock = Any()
@@ -93,16 +65,8 @@ class WirelessAdbSelfPairTransport(
             commitPendingFingerprint()
             response
         } catch (t: Throwable) {
-            // adbd may have rotated the TLS port (Wi-Fi flap, daemon restart) between bootstrap
-            // and now; invalidate the cached port and retry once with a fresh bootstrap.
-            // If the previous bootstrap skipped pairing on the strength of [pairOnceCache], the
-            // failure is most likely "adbd doesn't actually trust us" — drop the cache entry so
-            // the re-bootstrap re-pairs for real instead of short-circuiting again.
-            // If the previous bootstrap performed a fresh pair, drop the pending commit too:
-            // the pair did not survive mTLS, so we have no business writing the fingerprint to
-            // the cache.
-            // TODO: if this retry path fires more than rarely in production, wire a counter so
-            //  port-rotation rate becomes observable rather than silent.
+            // adbd may have rotated the TLS port (Wi-Fi flap, daemon restart) between bootstrap and now; invalidate the cached port and
+            // retry once with a fresh bootstrap.
             Log.w(TAG, "wireless-adb exchange failed; invalidating cached port and retrying once", t)
             cachedTlsPort = -1
             pendingFingerprintCommit = null
@@ -195,11 +159,8 @@ class WirelessAdbSelfPairTransport(
             return
         }
 
-        // [isPubkeyAuthorized] returned false: either adb_keys is genuinely missing our key, or
-        // the file was unreadable to us (locked OEMs whose shell uid is dropped from the `adb`
-        // group — e.g. nubia P0110). Only the unreadable case justifies trusting the pair-once
-        // cache: if the file is readable and our key is missing, we MUST re-pair regardless of
-        // what we previously cached.
+        // [isPubkeyAuthorized] returned false: either adb_keys is genuinely missing our key, or the file was unreadable to us (locked OEMs
+        // whose shell uid is dropped from the `adb` group — e.g. nubia P0110).
         val cache = pairOnceCache
         if (keyPersisted && cache != null) {
             val status = wirelessManager.pubkeyAuthorizationStatus(pubkeyBase64)
@@ -222,13 +183,11 @@ class WirelessAdbSelfPairTransport(
         } finally {
             runCatching { wirelessManager.closePairPort() }
         }
-        // adbd's adb_keys reload is event-driven (file watch) and not strictly synchronous with
-        // pair completion; settle briefly so the freshly-paired key is in adbd's accepted set
-        // before the immediately-following mTLS handshake.
+        // adbd's adb_keys reload is event-driven (file watch) and not strictly synchronous with pair completion; settle briefly so the
+        // freshly-paired key is in adbd's accepted set before the immediately-following mTLS handshake.
         runInterruptible(ioDispatcher) { Thread.sleep(POST_PAIR_SETTLE_MS) }
-        // DEFER: don't write the cache yet. SPAKE2 success doesn't prove adbd actually loaded
-        // our key — only the next mTLS handshake does. The exchange-success path commits this;
-        // the exchange-failure path drops it.
+        // DEFER: don't write the cache yet. SPAKE2 success doesn't prove adbd actually loaded our key — only the next mTLS handshake does.
+        // The exchange-success path commits this; the exchange-failure path drops it.
         lastBootstrapUsedCache = false
         pendingFingerprintCommit = if (pairOnceCache != null) {
             PairOnceCache.fingerprintOf(pubkeyBase64)
@@ -251,11 +210,8 @@ class WirelessAdbSelfPairTransport(
             .onFailure { Log.w(TAG, "wireless-adb pair-once cache write failed (non-fatal)", it) }
     }
 
-    /**
-     * One-shot cleanup of historical `PocketPilot@*` accumulation in `/data/misc/adb/adb_keys`
-     * (pre-pair-once each cold session appended a fresh entry). Best-effort: failures here are
-     * non-fatal — the existing tunnel keeps working.
-     */
+    /** One-shot cleanup of historical `PocketPilot@*` accumulation in `/data/misc/adb/adb_keys` (pre-pair-once each cold session
+     * appended a fresh entry). Best-effort: failures here are non-fatal — the existing tunnel keeps working. */
     private suspend fun pruneStaleAdbKeysOnce(pubkeyBase64: String) {
         if (prunedThisSession) return
         prunedThisSession = true
@@ -380,10 +336,8 @@ class WirelessAdbSelfPairTransport(
     }
 }
 
-/**
- * Bridge integration hook for [WirelessAdbSelfPairTransport]'s in-process TCP relay so
- * [ShizukuChromeDevtoolsBridge.resolveWebSocketHost] doesn't depend on the concrete class.
- */
+/** Bridge integration hook for [WirelessAdbSelfPairTransport]'s in-process TCP relay so
+ * [ShizukuChromeDevtoolsBridge.resolveWebSocketHost] doesn't depend on the concrete class. */
 interface WirelessAdbRelayHost {
     suspend fun ensureWebSocketRelayPort(): Int?
 }

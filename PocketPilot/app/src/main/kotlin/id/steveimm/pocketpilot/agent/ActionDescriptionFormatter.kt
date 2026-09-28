@@ -2,9 +2,7 @@ package id.steveimm.pocketpilot.agent
 
 import org.json.JSONObject
 
-/**
- * Format a human-readable description for a tool call.
- */
+/** Format a human-readable description for a tool call. */
 object ActionDescriptionFormatter {
     fun format(toolCall: ToolCallRequest): String {
         return when (toolCall.name.lowercase()) {
@@ -17,12 +15,7 @@ object ActionDescriptionFormatter {
         }
     }
 
-    /**
-     * Convert an [ActionTarget] to a human-readable string.
-     *
-     * @param pointLabel  word used before point coordinates ("at" for click, "coordinates" for type/swipe)
-     * @param fallback    string when no target fields are present (null → "element -1")
-     */
+    /** Convert an [ActionTarget] to a human-readable string. */
     private fun targetToString(
         target: ActionTarget,
         pointLabel: String = "at",

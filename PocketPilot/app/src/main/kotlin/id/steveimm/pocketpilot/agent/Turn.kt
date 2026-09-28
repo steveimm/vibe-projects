@@ -17,23 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import org.json.JSONObject
 
-/**
- * Encapsulates a single ReAct iteration: LLM call → response parsing.
- *
- * Pure LLM-calling wrapper. All input construction is handled by PromptBuilder;
- * Turn only cares about sending items to the model and interpreting the response.
- *
- * The optional [compactor]/[historyManager]/[currentGoal] triple wires the reactive
- * auto-compaction path in [runStreaming]: when the provider rejects a request with
- * a [ContextWindowExceededException], the turn runs [Compactor.forceCompactNow]
- * once. If the outcome is [CompactionOutcome.Compacted], the caller-supplied
- * [rebuildInputItems] lambda is invoked to rebuild the prompt from the now-smaller
- * history and the streaming call is retried once. Any other outcome (or a missing
- * rebuilder) propagates the original [ContextWindowExceededException] with a clear
- * message — silently retrying with the same payload that just overflowed is never
- * useful. When any of the three constructor wires is null the catch block simply
- * rethrows the exception (no recovery).
- */
+/** Encapsulates a single ReAct iteration: LLM call → response parsing. */
 class Turn(
         private val toolRegistry: ToolRegistry,
         private val llmClient: LLMClient,
@@ -105,10 +89,8 @@ class Turn(
             } catch (e: ContextWindowExceededException) {
                 e
             } catch (e: Exception) {
-                // Some providers (and the local LFM client) surface overflow as a
-                // Failed event whose message bubbles up as an unclassified
-                // RuntimeException. Re-classify here so we route to compaction
-                // instead of treating it as a generic terminal error.
+                // Some providers (and the local LFM client) surface overflow as a Failed event whose message bubbles up as an unclassified
+                // RuntimeException. Re-classify here so we route to compaction instead of treating it as a generic terminal error.
                 val reclassified = classifyContextWindowExceeded(e)
                 if (reclassified != null) {
                     reclassified

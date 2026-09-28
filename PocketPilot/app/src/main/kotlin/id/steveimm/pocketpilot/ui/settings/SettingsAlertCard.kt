@@ -16,10 +16,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 
 internal enum class AlertTone { Error, Warning, Info }
 
-// Inline alert surface. Stays flat (no foldedPaper) — these read as banners
-// nested inside cards or page bodies, not as standalone leaves of the book.
-// Shape is `shapes.small` (tighter than navigation cards); padding is
-// `spacing.md`. Tone selects from container/onContainer color pairs.
+// Inline alert surface.
 @Composable
 internal fun SettingsAlertCard(
     message: String,

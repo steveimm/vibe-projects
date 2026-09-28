@@ -8,14 +8,8 @@ import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
 import org.junit.Test
 
-/**
- * Schema, validation, happy-path, output truncation, and timeout-clamp coverage for
- * BrowserScriptTool. Cancellation and trace-fidelity coverage live in companion files
- * to keep each test file under the project's 400-line cap.
- *
- * Truncation marker `[truncated: original_chars=N]` and `browser-use` skill mention are
- * asserted here so the static accept-criteria greps are anchored in this test file.
- */
+/** Schema, validation, happy-path, output truncation, and timeout-clamp coverage for BrowserScriptTool. Cancellation and trace-fidelity
+ * coverage live in companion files to keep each test file under the project's 400-line cap. */
 class BrowserScriptToolTest {
 
     @Test

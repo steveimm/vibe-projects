@@ -7,14 +7,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/**
- * Virtual-display lifecycle states.
- *
- * Only [Running] allows operational calls (captureScreen, performAction).
- * [Draining] is a transient state during stop: rejects new leases but keeps resources
- * accessible so in-flight ops can complete.
- * [Broken] is the terminal error state after binder death or unrecoverable platform loss.
- */
+/** Virtual-display lifecycle states. */
 sealed interface VdState {
     data object Stopped : VdState
     data class Running(val displayId: Int, val imageReader: ImageReader) : VdState
@@ -26,19 +19,7 @@ sealed interface VdState {
     ) : VdState
 }
 
-/**
- * Serializes virtual-display lifecycle transitions and protects in-flight operational calls.
- *
- * Lifecycle transitions (start, stop, binder death) take exclusive access via [withLifecycleTransition].
- * They wait for in-flight operational calls to drain before proceeding.
- *
- * Operational calls (captureScreen, performAction) run under [withRunningLease], which increments
- * an active-ops counter and checks the state is [VdState.Running]. A lifecycle transition cannot
- * proceed while any operational call is in flight.
- *
- * Thread-safety relies on [state] being `@Volatile` and [activeOps] being atomic, providing
- * the necessary memory barriers between the lifecycle and operational paths.
- */
+/** Serializes virtual-display lifecycle transitions and protects in-flight operational calls. */
 internal class VdLifecycleArbiter {
     @Volatile var state: VdState = VdState.Stopped
         private set
@@ -52,19 +33,7 @@ internal class VdLifecycleArbiter {
         private const val DRAIN_POLL_MS = 5L
     }
 
-    /**
-     * Execute a lifecycle transition under exclusive access.
-     *
-     * Acquires the lifecycle mutex, optionally transforms the state via [preDrainTransform]
-     * to reject new operational calls during the drain window, then waits for in-flight ops
-     * to complete (up to [DRAIN_TIMEOUT_MS]). The caller should finalize [state] via
-     * [transitionTo] inside the block.
-     *
-     * For `stop()`, pass a transform that moves Running -> Draining so new [withRunningLease]
-     * calls fail fast while in-flight ops can still access resources via providers.
-     *
-     * @return the result of [block], which receives the state that was active before the transform
-     */
+    /** Execute a lifecycle transition under exclusive access. */
     suspend fun <T> withLifecycleTransition(
         preDrainTransform: ((VdState) -> VdState)? = null,
         block: suspend (previousState: VdState) -> T
@@ -76,18 +45,7 @@ internal class VdLifecycleArbiter {
             block(previous)
         }
 
-    /**
-     * Execute an operational call under a Running lease.
-     *
-     * Increments the active-ops counter (preventing lifecycle transitions from proceeding),
-     * checks the state is [VdState.Running], and runs the block with the running state.
-     *
-     * Note: [markBroken] can change state outside the lifecycle mutex. An in-flight lease
-     * may briefly observe stale Running state after binder death. The dead binder will
-     * reject the call; subsequent calls will fail fast.
-     *
-     * @throws PlatformNotRunningException if the platform is not [VdState.Running]
-     */
+    /** Execute an operational call under a Running lease. */
     suspend fun <T> withRunningLease(block: suspend (VdState.Running) -> T): T {
         activeOps.incrementAndGet()
         try {
@@ -104,13 +62,7 @@ internal class VdLifecycleArbiter {
         state = newState
     }
 
-    /**
-     * Emergency transition to [VdState.Broken].
-     *
-     * Can be called outside a lifecycle transition (e.g., from binder death callback).
-     * In-flight operational calls will complete with whatever error the dead binder produces;
-     * subsequent calls will fail fast.
-     */
+    /** Emergency transition to [VdState.Broken]. */
     fun markBroken(reason: String) {
         val current = state
         if (current == VdState.Stopped || current is VdState.Broken) return

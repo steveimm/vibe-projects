@@ -111,7 +111,7 @@ The Other / OpenRouter cloud-model picker (`SearchableGroupedModelPicker`) uses 
 
 > See: `llm/LLMClientFactory.kt`
 
-Creates `LLMClient` instances from model names. Constructor takes the catalog, an `AuthStore` (single credential source), and a base-URL override map. Cached as `ConcurrentHashMap<modelName, Entry(generation, client)>` — atomic `compute()` for lookup+rebuild guarantees that a credential rotation never returns a stale client (factory consults `authStore.generation(provider)` and rebuilds when it changes). Routes purely on `entry.provider`: `OPENAI_API` (`ApiType.RESPONSE` → `OpenAIResponseClient`, `ApiType.CHAT` → `ChatCompletionClient`); `OPENROUTER`/`OTHER` → `ChatCompletionClient` with `authStore.requireApiKey(provider)` (OTHER additionally hard-requires non-blank `entry.baseUrl` and throws `MissingCredential(OTHER)` otherwise, so a malformed synth entry can't leak the user's key to api.openai.com); `OPENAI_CODEX` → `CodexResponseClient` with `headerSupplier = { authStore.codexHeaders(LLMProvider.OPENAI_CODEX) }`; `LOCAL_LFM` is rejected by the factory and constructed directly via `LFMLLMClient(context)` in `SessionLlmBootstrapper`. `requireApiKey` throws typed `MissingCredential` / `WrongCredentialType` errors that runtime surfaces as a startup-failure banner deep-link.
+Creates `LLMClient` instances from model names. Constructor takes the catalog, an `AuthStore` (single credential source), and a base-URL override map. A synchronized cache maps each model name to its credential generation and client. Lookup and replacement share the factory lock, and a generation change rebuilds the cached entry without closing clients still used by that session. Routes purely on `entry.provider`: `OPENAI_API` (`ApiType.RESPONSE` → `OpenAIResponseClient`, `ApiType.CHAT` → `ChatCompletionClient`); `OPENROUTER`/`OTHER` → `ChatCompletionClient` with `authStore.requireApiKey(provider)` (OTHER additionally hard-requires non-blank `entry.baseUrl` and throws `MissingCredential(OTHER)` otherwise, so a malformed synth entry can't leak the user's key to api.openai.com); `OPENAI_CODEX` → `CodexResponseClient` with `headerSupplier = { authStore.codexHeaders(LLMProvider.OPENAI_CODEX) }`; `LOCAL_LFM` is rejected by the factory and constructed directly via `LFMLLMClient(context)` in `SessionLlmBootstrapper`. `requireApiKey` throws typed `MissingCredential` / `WrongCredentialType` errors that runtime surfaces as a startup-failure banner deep-link.
 
 ## Session Bootstrap
 
@@ -123,11 +123,17 @@ Fallback: if `llm_models.json` missing/malformed, uses built-in catalog (`glm-5`
 
 ---
 
+## Client and stream ownership
+
+Each session factory owns the clients it creates. Credentials changing starts a new cached generation while existing callers retain their client until teardown. `cleanupAll()` closes current and superseded clients, attempts every close even after a failure, and prevents further creation. Test-injected and local clients remain externally owned. Session cleanup closes each client through its owner.
+
+Streaming producers run on IO and wait for channel capacity so a slow collector cannot lose text or tool events. Each collection owns its active response independently. Cancellation closes that response and propagates without retrying or switching transports. A request cancelled before the SDK returns response headers is closed when the response becomes available.
+
 ## Retry Infrastructure
 
 **CloudLlmRetry** (`llm/CloudLlmRetry.kt`): Non-streaming retry with exponential backoff (1s → 60s). Retries on `RateLimitException` and `TransientException`. Honors `retryAfterMs`.
 
-**CloudStreamRetryRunner** (`llm/CloudStreamRetryRunner.kt`): Streaming retry. **No retry after partial output** (would produce duplicates). Same backoff policy pre-output.
+**CloudStreamRetryRunner** (`llm/CloudStreamRetryRunner.kt`): Streaming retry. **No retry after partial output** (would produce duplicates). Same backoff policy pre-output. The configured retry budget is honored, and cancellation never consumes a retry.
 
 **OpenAIErrorClassifier** (`llm/OpenAIErrorClassifier.kt`): Classifies raw exceptions: HTTP 429 → `RateLimitException`, timeout/5xx → `TransientException`, `UnknownHostException` → non-retryable.
 

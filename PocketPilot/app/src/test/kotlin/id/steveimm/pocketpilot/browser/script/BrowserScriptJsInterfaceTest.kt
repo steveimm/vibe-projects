@@ -229,11 +229,8 @@ class BrowserScriptJsInterfaceTest {
 
     @Test
     fun `session quota is shared across JsInterface instances within one session`() {
-        // Reproduces the P6 final-gate scope bug: BrowserScriptRunner builds a fresh
-        // JsInterface every run(), so the per-instance counter scoped the cap to a
-        // single browser_script call. With the shared session-scoped counter, a second
-        // JsInterface (next run() within the same session) sees the first call's bytes
-        // and rejects when cumulative exceeds the cap.
+        // Reproduces the P6 final-gate scope bug: BrowserScriptRunner builds a fresh JsInterface every run(), so the per-instance counter
+        // scoped the cap to a single browser_script call.
         val recorder = mockk<TraceRecorder>(relaxed = true)
         every { recorder.runDirAbsolutePath } returns "/sdcard/trace/run-1"
         every {

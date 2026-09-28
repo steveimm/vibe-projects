@@ -3,51 +3,29 @@ package id.steveimm.pocketpilot.tool
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicBoolean
 
-/**
- * ToolSpec - Specification for a tool that can be invoked by the agent.
- * 
- * Tools are declarative specifications that describe:
- * - What the tool does (name, description)
- * - What parameters it accepts (schema)
- * - How to validate inputs
- * - How to create an executable invocation
- * 
- * Pattern inspired by Gemini CLI's DeclarativeTool.
- */
+/** ToolSpec - Specification for a tool that can be invoked by the agent. */
 interface ToolSpec {
     /** Unique name of the tool (used in LLM function calling) */
     val name: String
-    
+
     /** Human-readable description for the LLM */
     val description: String
-    
+
     /** JSON Schema for the tool's parameters */
     val parameterSchema: JSONObject
-    
-    /**
-     * Validate the parameters before creating an invocation.
-     * 
-     * @param params The parameters to validate
-     * @return ValidationResult indicating success or failure with details
-     */
+
+    /** Validate the parameters before creating an invocation. */
     fun validate(params: JSONObject): ValidationResult
-    
-    /**
-     * Create an executable invocation from validated parameters.
-     *
-     * @param params The validated parameters
-     * @return A ToolInvocation ready to execute
-     */
+
+    /** Create an executable invocation from validated parameters. */
     fun createInvocation(params: JSONObject): ToolInvocation
 }
 
-/**
- * ValidationResult - Result of validating tool parameters.
- */
+/** ValidationResult - Result of validating tool parameters. */
 sealed interface ValidationResult {
     /** Parameters are valid */
     data object Valid : ValidationResult
-    
+
     /** Parameters are invalid */
     data class Invalid(
         val errors: List<String>
@@ -56,45 +34,24 @@ sealed interface ValidationResult {
     }
 }
 
-/**
- * ToolInvocation - A validated, ready-to-execute tool call.
- * 
- * This represents a tool call that has passed validation and is ready
- * to be executed. It captures all the information needed to:
- * - Describe what will happen (for approval UI)
- * - Execute the action
- * - Handle cancellation
- */
+/** ToolInvocation - A validated, ready-to-execute tool call. */
 interface ToolInvocation {
     /** The tool this invocation is for */
     val toolName: String
-    
+
     /** The parameters for this invocation */
     val params: JSONObject
-    
-    /**
-     * Get a human-readable description of what this invocation will do.
-     * Used for approval dialogs and logging.
-     */
+
+    /** Get a human-readable description of what this invocation will do. Used for approval dialogs and logging. */
     fun getDescription(): String
-    
-    /**
-     * Execute the tool invocation.
-     * 
-     * @param context Execution context with platform access
-     * @return The result of execution
-     */
+
+    /** Execute the tool invocation. */
     suspend fun execute(context: ToolExecutionContext): ToolExecutionResult
 }
 
-/**
- * ToolExecutionContext - Context provided to tool invocations during execution.
- */
+/** ToolExecutionContext - Context provided to tool invocations during execution. */
 interface ToolExecutionContext {
-    /**
-     * Call id assigned by ToolRouter, useful for cross-component correlation.
-     * Nullable for tests or custom execution contexts.
-     */
+    /** Call id assigned by ToolRouter, useful for cross-component correlation. Nullable for tests or custom execution contexts. */
     val callId: String? get() = null
 
     /** Access to platform operations */
@@ -110,37 +67,27 @@ interface ToolExecutionContext {
     fun isCancelled(): Boolean
 }
 
-/**
- * ToolExecutionResult - Result of executing a tool.
- */
+/** ToolExecutionResult - Result of executing a tool. */
 sealed interface ToolExecutionResult {
     /** Execution succeeded */
     data class Success(
         val output: String,
         val observation: ToolObservation? = null
     ) : ToolExecutionResult
-    
+
     /** Execution failed */
     data class Failure(
         val error: String,
         val exception: Throwable? = null
     ) : ToolExecutionResult
-    
+
     /** Execution was cancelled */
     data class Cancelled(
         val reason: String = "Cancelled"
     ) : ToolExecutionResult
 }
 
-/**
- * ToolObservation - Post-action observation captured after tool execution.
- * 
- * V2 Addition: Tools now capture the screen state after execution,
- * so the agent can see what changed as a result of the action.
- * 
- * The snapshot is included for use by subsequent tool executions to avoid
- * using stale element indices.
- */
+/** ToolObservation - Post-action observation captured after tool execution. */
 sealed interface ToolObservation {
     /** Screen state after action (for UI tools) */
     data class ScreenState(
@@ -150,7 +97,7 @@ sealed interface ToolObservation {
         /** The actual snapshot object for subsequent tool executions */
         val snapshot: id.steveimm.pocketpilot.model.ScreenSnapshot? = null
     ) : ToolObservation
-    
+
     /** Text output for non-UI tools */
     data class TextOutput(val content: String) : ToolObservation
 }
@@ -162,11 +109,8 @@ fun textToolSuccess(output: String): ToolExecutionResult.Success =
                 observation = ToolObservation.TextOutput(output)
         )
 
-/**
- * Per-call cancellation token. ToolRouter creates one per execute() call.
- * Tools observe cancellation via ToolExecutionContext.isCancelled(), which
- * delegates to this token.
- */
+/** Per-call cancellation token. ToolRouter creates one per execute() call. Tools observe cancellation via
+ * ToolExecutionContext.isCancelled(), which delegates to this token. */
 class CancellationToken {
     private val cancelled = AtomicBoolean(false)
     fun cancel() { cancelled.set(true) }

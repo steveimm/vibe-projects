@@ -1,9 +1,9 @@
 import base64
+import binascii
 import json
-import os
 import subprocess
+import sys
 from pathlib import Path
-from typing import Any, List, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -12,19 +12,14 @@ from pydantic import BaseModel
 
 app = FastAPI()
 
-# Configuration
 INSPECTION_TOOL_DIR = Path(__file__).parent.resolve()
 DEBUG_OUTPUT_DIR = (INSPECTION_TOOL_DIR / "../debug-output").resolve()
 EVAL_RESULTS_DIR = (INSPECTION_TOOL_DIR / "../eval/results").resolve()
 REPLAY_V2_DIR = INSPECTION_TOOL_DIR / "replay_v2"
-
-class DebugRunInfo(BaseModel):
-    id: str
-    trace_id: str
-    compiled: bool
+COMPILE_TIMEOUT_SECONDS = 120
 
 
-class EvalTaskInfo(BaseModel):
+class TraceInfo(BaseModel):
     id: str
     trace_id: str
     compiled: bool
@@ -32,180 +27,238 @@ class EvalTaskInfo(BaseModel):
 
 class EvalRunInfo(BaseModel):
     id: str
-    tasks: List[EvalTaskInfo]
+    tasks: list[TraceInfo]
 
 
 class CatalogResponse(BaseModel):
-    debug_runs: List[DebugRunInfo]
-    eval_runs: List[EvalRunInfo]
+    debug_runs: list[TraceInfo]
+    eval_runs: list[EvalRunInfo]
 
 
 class RunInfo(BaseModel):
-    # Legacy shape kept for old frontend callers.
     id: str
-    timestamp: Optional[str] = None
+    timestamp: str | None = None
     compiled: bool
 
 
-def _is_compiled(trace_dir: Path) -> bool:
-    return (trace_dir / "derived" / "steps.jsonl").exists()
+def _encode_trace_id(payload: dict[str, str]) -> str:
+    """Encode a trace location as a URL-safe identifier.
 
+    Args:
+        payload: Trace kind, run name, and optional task name.
 
-def _encode_trace_id(payload: dict[str, Any]) -> str:
+    Returns:
+        Base64 identifier without padding.
+    """
     raw = json.dumps(payload, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
     return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
 
 
-def _decode_trace_id(trace_id: str) -> dict[str, Any]:
-    pad = "=" * ((4 - len(trace_id) % 4) % 4)
+def _decode_trace_id(trace_id: str) -> dict[str, str]:
+    """Decode and validate a catalog trace identifier.
+
+    Args:
+        trace_id: Encoded trace location from the catalog.
+
+    Returns:
+        Validated trace location fields.
+
+    Raises:
+        HTTPException: The identifier is malformed or lacks required fields.
+    """
+    pad = "=" * (-len(trace_id) % 4)
     try:
-        decoded = base64.urlsafe_b64decode((trace_id + pad).encode("ascii")).decode("utf-8")
+        decoded = base64.b64decode(trace_id + pad, altchars=b"-_", validate=True).decode("utf-8")
         payload = json.loads(decoded)
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+    except (ValueError, UnicodeError, binascii.Error) as exc:
         raise HTTPException(status_code=400, detail="Invalid trace id") from exc
 
-    if not isinstance(payload, dict):
-        raise HTTPException(status_code=400, detail="Invalid trace id")
-    kind = payload.get("k")
-    run_id = payload.get("r")
-    task_id = payload.get("t")
-    if kind == "debug" and isinstance(run_id, str) and run_id:
-        return {"k": "debug", "r": run_id}
-    if kind == "eval" and isinstance(run_id, str) and run_id and isinstance(task_id, str) and task_id:
-        return {"k": "eval", "r": run_id, "t": task_id}
+    if isinstance(payload, dict):
+        kind, run_id, task_id = payload.get("k"), payload.get("r"), payload.get("t")
+        if isinstance(run_id, str) and run_id:
+            if kind == "debug":
+                return {"k": kind, "r": run_id}
+            if kind == "eval" and isinstance(task_id, str) and task_id:
+                return {"k": kind, "r": run_id, "t": task_id}
     raise HTTPException(status_code=400, detail="Invalid trace id")
 
 
 def _ensure_within(root: Path, target: Path) -> None:
-    root_abs = root.resolve()
-    target_abs = target.resolve()
-    try:
-        target_abs.relative_to(root_abs)
-    except ValueError:
+    """Reject paths outside the allowed root, including symlink escapes.
+
+    Args:
+        root: Allowed directory.
+        target: Requested path.
+
+    Raises:
+        HTTPException: The resolved path escapes the root.
+    """
+    if not target.resolve().is_relative_to(root.resolve()):
         raise HTTPException(status_code=403, detail="Access denied")
 
 
 def _resolve_trace_dir(trace_id: str) -> Path:
+    """Resolve a trace identifier within its configured artifact root.
+
+    Args:
+        trace_id: Catalog trace identifier.
+
+    Returns:
+        Contained, resolved trace directory.
+    """
     payload = _decode_trace_id(trace_id)
     if payload["k"] == "debug":
-        trace_dir = (DEBUG_OUTPUT_DIR / payload["r"] / "trace").resolve()
-        _ensure_within(DEBUG_OUTPUT_DIR, trace_dir)
-        return trace_dir
+        root = DEBUG_OUTPUT_DIR
+        trace_dir = root / payload["r"] / "trace"
+    else:
+        root = EVAL_RESULTS_DIR
+        trace_dir = root / payload["r"] / "artifacts" / payload["t"] / "trace"
+    _ensure_within(root, trace_dir)
+    return trace_dir.resolve()
 
-    trace_dir = (
-        EVAL_RESULTS_DIR / payload["r"] / "artifacts" / payload["t"] / "trace"
-    ).resolve()
-    _ensure_within(EVAL_RESULTS_DIR, trace_dir)
-    return trace_dir
+
+def _trace_info(directory: Path, payload: dict[str, str]) -> TraceInfo:
+    """Build the shared catalog entry for a debug run or evaluation task.
+
+    Args:
+        directory: Directory containing the trace folder.
+        payload: Trace identifier fields.
+
+    Returns:
+        Catalog entry and current compilation state.
+    """
+    return TraceInfo(
+        id=directory.name,
+        trace_id=_encode_trace_id(payload),
+        compiled=(directory / "trace" / "derived" / "steps.jsonl").is_file(),
+    )
 
 
 def _build_catalog() -> CatalogResponse:
-    debug_runs: List[DebugRunInfo] = []
-    if DEBUG_OUTPUT_DIR.exists():
-        for entry in sorted(os.listdir(DEBUG_OUTPUT_DIR), reverse=True):
-            run_dir = DEBUG_OUTPUT_DIR / entry
-            if not run_dir.is_dir() or not entry.startswith("run_"):
-                continue
-            trace_dir = run_dir / "trace"
-            debug_runs.append(
-                DebugRunInfo(
-                    id=entry,
-                    trace_id=_encode_trace_id({"k": "debug", "r": entry}),
-                    compiled=_is_compiled(trace_dir),
-                )
-            )
+    """Scan debug and evaluation roots for replayable traces.
 
-    eval_runs: List[EvalRunInfo] = []
-    if EVAL_RESULTS_DIR.exists():
-        for run_entry in sorted(os.listdir(EVAL_RESULTS_DIR), reverse=True):
-            run_dir = EVAL_RESULTS_DIR / run_entry
-            if not run_dir.is_dir() or run_entry.startswith("."):
-                continue
-            artifacts_dir = run_dir / "artifacts"
-            if not artifacts_dir.is_dir():
-                continue
-
-            tasks: List[EvalTaskInfo] = []
-            for task_entry in sorted(os.listdir(artifacts_dir)):
-                task_dir = artifacts_dir / task_entry
-                if not task_dir.is_dir():
-                    continue
-                trace_dir = task_dir / "trace"
-                if not trace_dir.exists():
-                    continue
-                tasks.append(
-                    EvalTaskInfo(
-                        id=task_entry,
-                        trace_id=_encode_trace_id({"k": "eval", "r": run_entry, "t": task_entry}),
-                        compiled=_is_compiled(trace_dir),
-                    )
-                )
-
-            if tasks:
-                eval_runs.append(EvalRunInfo(id=run_entry, tasks=tasks))
-
+    Returns:
+        Catalog ordered by descending run name and ascending task name.
+    """
+    debug_runs = [
+        _trace_info(run, {"k": "debug", "r": run.name})
+        for run in sorted(DEBUG_OUTPUT_DIR.glob("run_*"), reverse=True)
+        if run.is_dir()
+    ]
+    eval_runs = []
+    for run in sorted(EVAL_RESULTS_DIR.glob("*"), reverse=True):
+        if not run.is_dir() or run.name.startswith("."):
+            continue
+        tasks = [
+            _trace_info(task, {"k": "eval", "r": run.name, "t": task.name})
+            for task in sorted((run / "artifacts").glob("*"))
+            if task.is_dir() and (task / "trace").is_dir()
+        ]
+        if tasks:
+            eval_runs.append(EvalRunInfo(id=run.name, tasks=tasks))
     return CatalogResponse(debug_runs=debug_runs, eval_runs=eval_runs)
 
 
 def _compile_trace_dir(trace_dir: Path) -> dict[str, str]:
-    if not trace_dir.exists():
+    """Compile replay files with the server's Python interpreter.
+
+    Args:
+        trace_dir: Validated trace directory.
+
+    Returns:
+        Compilation status and compiler output.
+
+    Raises:
+        HTTPException: Trace input is missing, compilation fails, or it times out.
+    """
+    if not trace_dir.is_dir():
         raise HTTPException(status_code=404, detail="Trace directory not found")
-    if not (trace_dir / "trace.jsonl").exists():
+    if not (trace_dir / "trace.jsonl").is_file():
         raise HTTPException(status_code=404, detail="trace.jsonl not found")
 
-    compiler_script = INSPECTION_TOOL_DIR / "replay_compiler.py"
     try:
         result = subprocess.run(
-            ["python3", str(compiler_script), str(trace_dir)],
+            [sys.executable, str(INSPECTION_TOOL_DIR / "replay_compiler.py"), str(trace_dir)],
             capture_output=True,
             text=True,
             check=True,
+            timeout=COMPILE_TIMEOUT_SECONDS,
         )
-        return {"status": "success", "output": result.stdout}
+    except subprocess.TimeoutExpired as exc:
+        raise HTTPException(status_code=504, detail="Compilation timed out") from exc
     except subprocess.CalledProcessError as exc:
         raise HTTPException(status_code=500, detail=f"Compilation failed: {exc.stderr}") from exc
+    return {"status": "success", "output": result.stdout}
 
 
 @app.get("/api/catalog", response_model=CatalogResponse)
-async def get_catalog():
+def get_catalog() -> CatalogResponse:
+    """Return available traces, scanning files in FastAPI's worker thread pool."""
     return _build_catalog()
 
 
-@app.get("/api/runs", response_model=List[RunInfo])
-async def list_runs_legacy():
-    catalog = _build_catalog()
-    return [RunInfo(id=run.id, compiled=run.compiled) for run in catalog.debug_runs]
+@app.get("/api/runs", response_model=list[RunInfo])
+def list_runs_legacy() -> list[RunInfo]:
+    """Return debug runs in the original frontend's response format."""
+    return [RunInfo(id=run.id, compiled=run.compiled) for run in _build_catalog().debug_runs]
 
 
 @app.post("/api/traces/{trace_id}/compile")
-async def compile_trace(trace_id: str):
-    trace_dir = _resolve_trace_dir(trace_id)
-    return _compile_trace_dir(trace_dir)
+def compile_trace(trace_id: str) -> dict[str, str]:
+    """Compile a catalog trace in a worker thread.
+
+    Args:
+        trace_id: Encoded catalog location.
+
+    Returns:
+        Compiler status and output.
+    """
+    return _compile_trace_dir(_resolve_trace_dir(trace_id))
 
 
 @app.post("/api/runs/{run_id}/compile")
-async def compile_run_legacy(run_id: str):
+def compile_run_legacy(run_id: str) -> dict[str, str]:
+    """Compile a debug run requested by the original frontend.
+
+    Args:
+        run_id: Debug run directory name.
+
+    Returns:
+        Compiler status and output.
+    """
     trace_dir = (DEBUG_OUTPUT_DIR / run_id / "trace").resolve()
     _ensure_within(DEBUG_OUTPUT_DIR, trace_dir)
     return _compile_trace_dir(trace_dir)
 
 
 @app.get("/traces/{trace_id}/{path:path}")
-async def get_trace_file(trace_id: str, path: str):
-    trace_dir = _resolve_trace_dir(trace_id)
-    if not trace_dir.exists():
-        raise HTTPException(status_code=404, detail="Trace directory not found")
+def get_trace_file(trace_id: str, path: str) -> FileResponse:
+    """Serve a file contained within a catalog trace.
 
+    Args:
+        trace_id: Encoded catalog location.
+        path: File path relative to the trace directory.
+
+    Returns:
+        Streamed trace artifact.
+
+    Raises:
+        HTTPException: The trace or file is missing, or the path escapes its root.
+    """
+    trace_dir = _resolve_trace_dir(trace_id)
+    if not trace_dir.is_dir():
+        raise HTTPException(status_code=404, detail="Trace directory not found")
     safe_path = (trace_dir / path).resolve()
     _ensure_within(trace_dir, safe_path)
-    if not safe_path.exists():
+    if not safe_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(safe_path)
 
-# Serve the frontend
+
 if REPLAY_V2_DIR.exists():
     app.mount("/", StaticFiles(directory=str(REPLAY_V2_DIR), html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    uvicorn.run(app, host="127.0.0.1", port=8000)

@@ -4,19 +4,8 @@ import id.steveimm.pocketpilot.protocol.PlatformMode
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-/**
- * Covers every row of the 12-row Virtual Display mapping table. First-match-wins ordering is critical: mis-ordering
- * (e.g. surfacing a stale gate error once persisted mode has already flipped to VD) is
- * exactly the regression these tests guard.
- *
- * Three invariants under test:
- * - `switchChecked` strictly mirrors `persistedMode == VIRTUAL_DISPLAY` (rows 1, 6–12 checked;
- *   rows 2–5 unchecked).
- * - Gate errors only surface when persisted is ACCESSIBILITY (rows 2–3); a stale gateError
- *   with persisted=VD must be ignored in favor of the Shizuku-status rows.
- * - Row 10 says "configured for" not "running on" — `effectiveMode == VIRTUAL_DISPLAY` only
- *   proves the session selected the VD platform, not that capture started.
- */
+/** Covers every row of the 12-row Virtual Display mapping table. First-match-wins ordering is critical: mis-ordering (e.g. surfacing a
+ * stale gate error once persisted mode has already flipped to VD) is exactly the regression these tests guard. */
 class VirtualDisplayStatusMapperTest {
 
     // Row 1: gatePending wins over everything else

@@ -22,31 +22,19 @@ sealed class TurnOutcome {
     data object Cancelled : TurnOutcome()
 }
 
-/**
- * Mutable runtime state carried across turns.
- *
- * `navigationState` powers loop detection (stable-screen warning).
- */
+/** Mutable runtime state carried across turns. */
 internal data class TurnRunnerState(
     val navigationState: NavigationState = NavigationState()
 )
 
-/**
- * Full output of one `AgentTurnRunner.executeTurn()` call:
- * - `outcome`: control decision for the outer Agent loop
- * - `nextState`: state to feed into the next turn
- */
+/** Full output of one `AgentTurnRunner.executeTurn()` call: - `outcome`: control decision for the outer Agent loop - `nextState`: state
+ * to feed into the next turn */
 internal data class TurnExecutionResult(
     val outcome: TurnOutcome,
     val nextState: TurnRunnerState
 )
 
-/**
- * Outcome of executing the selected tool calls for a turn.
- *
- * Tracks which tools actually reached a terminal state (success/failure/cancelled)
- * so callers can distinguish "planned but not executed" from "executed and succeeded".
- */
+/** Outcome of executing the selected tool calls for a turn. */
 internal data class ExecutionPhaseResult(
     val executedToolIds: Set<String>,
     val terminatedEarly: Boolean,
@@ -61,13 +49,7 @@ internal data class ExecutionPhaseResult(
     }
 }
 
-/**
- * Maps the planning + execution results to the control-loop outcome.
- *
- * Only emits [TurnOutcome.Complete] when `complete_task` was planned AND actually executed.
- * If the execution loop aborted early (failure or cancellation) before reaching
- * `complete_task`, emits [TurnOutcome.Error] or [TurnOutcome.Cancelled] instead.
- */
+/** Maps the planning + execution results to the control-loop outcome. */
 internal fun decideTurnOutcome(
     policy: TurnToolPolicy,
     turnResult: TurnResult,

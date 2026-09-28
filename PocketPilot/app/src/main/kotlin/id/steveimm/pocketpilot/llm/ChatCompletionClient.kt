@@ -9,23 +9,16 @@ import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.ResponseInputItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.trySendBlocking
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicReference
 
-/**
- * LLM client using OpenAI Chat Completions API.
- *
- * Works with any OpenAI-compatible endpoint (OpenRouter, vLLM, etc.)
- * by setting [baseUrl] and [apiKey]. Accepts the same ResponseInputItem /
- * FunctionTool types as the callers produce and converts them internally
- * to Chat Completions types via [ChatCompletionInterop].
- *
- * Non-streaming: client.chat().completions().create()
- * Streaming:     client.chat().completions().createStreaming()
- */
+/** LLM client using OpenAI Chat Completions API. */
 class ChatCompletionClient(
     apiKey: String,
     baseUrl: String? = null,
@@ -52,8 +45,6 @@ class ChatCompletionClient(
             InsecureSslConfig.trustManager?.let { trustManager(it) }
         }
         .build()
-
-    // ── Non-streaming ───────────────────────────────────────────────────
 
     override suspend fun chatWithTools(
         systemPrompt: String,
@@ -113,8 +104,6 @@ class ChatCompletionClient(
         }
     }
 
-    // ── Streaming ───────────────────────────────────────────────────────
-
     override fun chatWithToolsStreaming(
         systemPrompt: String,
         inputItems: List<ResponseInputItem>,
@@ -126,11 +115,11 @@ class ChatCompletionClient(
 
         val activeStream = AtomicReference<AutoCloseable?>(null)
 
-        val job = launch {
+        val job = launch(Dispatchers.IO) {
             val retryResult =
                 streamWithRetry(
                     tag = TAG,
-                    emitToFlow = { event -> trySend(event) }
+                    emitToFlow = { event -> trySendBlocking(event).getOrThrow() }
                 ) { attempt, emitter ->
                 val verbose = LlmLogger.isVerboseEnabled
                 val textAccumulator = if (verbose) StringBuilder() else null
@@ -148,6 +137,7 @@ class ChatCompletionClient(
                     activeStream.set(streamResponse)
                     try {
                         streamResponse.use { stream ->
+                                currentCoroutineContext().ensureActive()
                             stream.stream().forEach { chunk ->
                             if (responseId == null) {
                                 responseId = chunk.id()
@@ -260,7 +250,7 @@ class ChatCompletionClient(
                 }
 
             retryResult.closeFlow(
-                emitToFlow = { trySend(it) },
+                emitToFlow = { trySendBlocking(it).getOrThrow() },
                 closeFlow = { close() }
             )
         }
@@ -271,8 +261,6 @@ class ChatCompletionClient(
             Log.d(TAG, "Streaming flow closed")
         }
     }
-
-    // ── Helpers ──────────────────────────────────────────────────────────
 
     private fun buildParams(
         systemPrompt: String,
@@ -298,6 +286,6 @@ class ChatCompletionClient(
     }
 
     override suspend fun cleanup() {
-        Log.d(TAG, "Cleanup requested (no-op for cloud client)")
+        withContext(Dispatchers.IO) { client.close() }
     }
 }

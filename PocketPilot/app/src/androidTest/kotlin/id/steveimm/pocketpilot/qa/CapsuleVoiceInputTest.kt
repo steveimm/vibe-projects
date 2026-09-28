@@ -27,18 +27,13 @@ import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-// ---------------------------------------------------------------------------
-// Test fixtures — fake recognizer + factory + deps. These are the entire reason
-// these tests exist as a separate class from CapsuleInputTest: never touch the
-// real AndroidRecognizerFactory, never start a SpeechRecognizer session.
-// ---------------------------------------------------------------------------
+// Test fixtures — fake recognizer + factory + deps. These are the entire reason these tests exist as a separate class from
+// CapsuleInputTest: never touch the real AndroidRecognizerFactory, never start a SpeechRecognizer session.
 
 private class FakeRecognizer : Recognizer {
     var startedWith: Pair<String, RecognizerCallbacks>? = null
@@ -160,9 +155,8 @@ class CapsuleVoiceInputTest {
         )
     }
 
-    // (c2) Overlay path with permission already granted: must start the controller directly
-    // (no MainActivity bounce) — fixes the device-QA bug where granted-overlay yanked the user
-    // into MainActivity just for the permission check to no-op.
+    // (c2) Overlay path with permission already granted: must start the controller directly (no MainActivity bounce) — fixes the device-QA
+    // bug where granted-overlay yanked the user into MainActivity just for the permission check to no-op.
     @Test fun overlay_path_with_permission_granted_starts_controller_directly() {
         val factory = FakeRecognizerFactory(available = true)
         val deps = FakeVoiceMicDeps(
@@ -213,9 +207,8 @@ class CapsuleVoiceInputTest {
         assertEquals("hello world", compose.onNodeWithTag("qa-capsule-input").editableTextValue())
     }
 
-    // (e) User typing while Listening must cancel the recognizer AND preserve
-    // the keystroke. The bar diffs IME input against the controller's last
-    // pushed text to detect this — verified end-to-end here.
+    // (e) User typing while Listening must cancel the recognizer AND preserve the keystroke. The bar diffs IME input against the
+    // controller's last pushed text to detect this — verified end-to-end here.
     @Test fun typing_during_listening_cancels_recognizer_and_keeps_user_text() {
         grantRecordAudio()
         val factory = FakeRecognizerFactory(available = true)
@@ -268,9 +261,8 @@ class CapsuleVoiceInputTest {
         compose.onNodeWithTag("qa-capsule-send", useUnmergedTree = true).assertIsNotEnabled()
     }
 
-    // (g) Terminal onFinal must transition state back to Idle and destroy the
-    // session recognizer — guarding against leaked SpeechRecognizer instances
-    // after a normal end-of-utterance.
+    // (g) Terminal onFinal must transition state back to Idle and destroy the session recognizer — guarding against leaked
+    // SpeechRecognizer instances after a normal end-of-utterance.
     @Test fun final_result_destroys_recognizer_and_returns_to_idle() {
         grantRecordAudio()
         val factory = FakeRecognizerFactory(available = true)
@@ -295,17 +287,4 @@ class CapsuleVoiceInputTest {
         compose.onNodeWithTag("qa-capsule-mic", useUnmergedTree = true).assertExists()
     }
 
-    // (b) Permission-missing → MAIN_APP launcher path. Brittle: instrumented
-    // ActivityResult registration interacts poorly with composeTestRule lifecycle
-    // and the system permission dialog cannot be reliably introspected here.
-    // We document the intent and skip; tests (a)-(g) above already cover all
-    // observable surface behavior reachable without provoking the system dialog.
-    @Ignore("ActivityResultLauncher registration + system permission dialog is brittle in instrumented tests; see comment")
-    @Test fun permission_missing_routes_through_gate_without_starting_recognizer() {
-        // If this were enabled we'd revoke RECORD_AUDIO, set activity = compose.activity,
-        // tap the mic, and assert factory.created.isEmpty(). gate.requestPermission()
-        // would have fired the system dialog — we cannot easily verify that, so the
-        // negative assertion (no recognizer started) is the meaningful signal.
-        assertNull(null)
-    }
 }

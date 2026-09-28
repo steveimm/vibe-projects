@@ -19,12 +19,8 @@ import id.steveimm.pocketpilot.ui.chat.model.ContentBlock
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Test
 
-/**
- * Gap-filling transitions for [ChatEventReducer] not covered by
- * [ChatEventReducerTest]: supplement-as-user-turn, executed-without-proposal,
- * non-success outcomes, error-without-open-agent, and turn-started buffer reset.
- * Locks the documented contract in doc/main/state_machines/ui_chat.md.
- */
+/** Gap-filling transitions for [ChatEventReducer] not covered by [ChatEventReducerTest]: supplement-as-user-turn,
+ * executed-without-proposal, non-success outcomes, error-without-open-agent, and turn-started buffer reset. */
 class ChatSupplementAndActionTransitionTest {
 
     private val sessionId = SessionId("s1")
@@ -42,8 +38,6 @@ class ChatSupplementAndActionTransitionTest {
             setCurrentAgentMessageId = { currentAgentId = it }
         )
     }
-
-    // ── SupplementReceived: user turn split mid-task ──
 
     @Test
     fun `supplement closes prior agent message and opens fresh one`() {
@@ -76,8 +70,6 @@ class ChatSupplementAndActionTransitionTest {
         val agent = f.messages[1] as ChatMessage.Agent
         assertThat(agent.state).isEqualTo(AgentMessageState.Thinking)
     }
-
-    // ── ActionExecuted with no preceding proposal ──
 
     @Test
     fun `executed without proposal synthesises action card in executed state`() {
@@ -156,8 +148,6 @@ class ChatSupplementAndActionTransitionTest {
         assertThat(action.data.resultSummary).isNull()
     }
 
-    // ── Error without an open agent ──
-
     @Test
     fun `error before any task creates synthetic agent message`() {
         val f = Fixture()
@@ -170,8 +160,6 @@ class ChatSupplementAndActionTransitionTest {
         val text = agent.contentBlocks.single() as ContentBlock.Text
         assertThat(text.text).isEqualTo("⚠️ boom")
     }
-
-    // ── TurnStarted resets streaming buffer ──
 
     @Test
     fun `turn started clears streaming buffer so next delta starts fresh`() {
@@ -187,8 +175,6 @@ class ChatSupplementAndActionTransitionTest {
         val texts = agent.contentBlocks.filterIsInstance<ContentBlock.Text>()
         assertThat(texts.last().text).isEqualTo("second")
     }
-
-    // ── Action card splits text into a fresh trailing text block ──
 
     @Test
     fun `text after action card lands in a new text block, not appended to prior text`() {

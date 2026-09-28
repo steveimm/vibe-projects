@@ -36,11 +36,8 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import java.io.File
 
-/**
- * Tests for the Settings → Memory page surface and the IA reshuffle (LLM &
- * Authentication moves under Behavior, Voice header drops, Memory row added
- * under Behavior).
- */
+/** Tests for the Settings → Memory page surface and the IA reshuffle (LLM & Authentication moves under Behavior, Voice header drops,
+ * Memory row added under Behavior). */
 @RunWith(AndroidJUnit4::class)
 class MemorySettingsPageTest {
 
@@ -85,9 +82,8 @@ class MemorySettingsPageTest {
         compose.onNodeWithText("Device Memory").assertIsDisplayed()
     }
 
-    // Phase 1: every sub-page renders the unified PageMastheadDrillDown — the
-    // back chevron, the Fraunces title, and the close affordance all land.
-    // One representative sub-page is enough to cover the shared composable.
+    // Phase 1: every sub-page renders the unified PageMastheadDrillDown — the back chevron, the Fraunces title, and the close affordance
+    // all land. One representative sub-page is enough to cover the shared composable.
     @Test fun sub_page_masthead_renders_back_title_and_close() {
         compose.setContent {
             PocketPilotTheme {
@@ -107,9 +103,8 @@ class MemorySettingsPageTest {
             }
         }
 
-        // Initially the gate emits its `true` initial value until the underlying
-        // flow produces a real state. Wait for the unlocked state before asserting
-        // the banner is hidden.
+        // Initially the gate emits its `true` initial value until the underlying flow produces a real state. Wait for the unlocked state
+        // before asserting the banner is hidden.
         compose.waitUntil(5_000) { !gate.memoryEditLocked.value }
         compose.waitForIdle()
         compose.onAllNodesWithTag(MEMORY_SETTINGS_BANNER_TAG).assertCountEquals(0)
@@ -186,8 +181,7 @@ class MemorySettingsPageTest {
         }
     }
 
-    // IA reshuffle: LLM & Authentication moves under Behavior, Voice header
-    // disappears, Memory row joins Behavior. Asserted directly on
+    // IA reshuffle: LLM & Authentication moves under Behavior, Voice header disappears, Memory row joins Behavior. Asserted directly on
     // SettingsHomePage so we are testing the IA, not the sheet wrapper.
     @Test fun home_ia_collapses_voice_into_behavior_and_adds_memory_row() {
         compose.setContent {

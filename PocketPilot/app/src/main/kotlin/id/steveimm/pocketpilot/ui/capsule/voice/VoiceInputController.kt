@@ -8,30 +8,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import java.util.Locale
 
-/**
- * UI-facing state for the voice-input session. The state machine is:
- *
- *   Idle ──start()──▶ Listening ──stop()──▶ Stopping ──onFinal/onError──▶ Idle
- *                       │                                     │
- *                       └──cancel()──▶ Idle                   └──LangUnavail──▶ Unavailable
- *
- * [Unavailable] is terminal for the session — the user has to restart it to retry.
- */
+/** UI-facing state for the voice-input session. The state machine is: */
 enum class VoiceState { Idle, Listening, Stopping, Unavailable }
 
-/**
- * Drives a [Recognizer] session and surfaces a small state machine plus the partial/final
- * text-edit semantics used by the capsule voice input UI.
- *
- * Plain (non-Compose, non-Android) class so it can be exercised by JVM unit tests with a fake
- * recognizer. The companion @Composable [rememberVoiceInputController] wires it into Compose.
- *
- * Threading: assumes single-threaded use from the main thread — same constraint as [Recognizer].
- *
- * Generation counter: every terminal callback, [cancel], and [dispose] bumps [generation] so any
- * late callbacks captured in the previous session's closure are dropped. This is how we keep a
- * delayed `onPartial` from a cancelled or finished session from overwriting freshly-typed text.
- */
+/** Drives a [Recognizer] session and surfaces a small state machine plus the partial/final text-edit semantics used by the capsule
+ * voice input UI. */
 class VoiceInputController(
     private val factory: RecognizerFactory,
     private val languageTag: String,
@@ -55,9 +36,6 @@ class VoiceInputController(
     private var baseText: String = ""
 
     // Tracks whether the current session has produced ANY successful signal (partial or final).
-    // A hard error before any signal means the recognizer is unusable on this hardware/config —
-    // we then promote the controller to terminal Unavailable so the mic icon hides (see
-    // [handleError]). Reset at the top of [start].
     private var sessionGotAnyCallback: Boolean = false
 
     fun start(baseText: String) {
@@ -170,11 +148,8 @@ class VoiceInputController(
         }
         VoiceError.Busy, VoiceError.ServiceDied, VoiceError.Unknown -> {
             onText(baseText)
-            // Hard error before we ever heard back from the recognizer: it's unusable on this
-            // device/config (e.g. registered RecognitionService but no default selected, or
-            // AppOps blocks binding). Promote to terminal Unavailable so the mic icon hides
-            // and the user stops seeing the toast on every tap. Once we've seen at least one
-            // partial/final, the same errors are treated as transient (network dropped etc.).
+            // Hard error before we ever heard back from the recognizer: it's unusable on this device/config (e.g. registered
+            // RecognitionService but no default selected, or AppOps blocks binding).
             if (!sessionGotAnyCallback) {
                 onToast("Voice unavailable")
                 VoiceState.Unavailable

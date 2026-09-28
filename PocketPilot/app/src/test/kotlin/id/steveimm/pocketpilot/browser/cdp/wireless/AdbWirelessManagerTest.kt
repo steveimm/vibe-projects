@@ -11,11 +11,8 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
-/**
- * Coverage for [AdbWirelessManager]: each public method is exercised against a mocked binder.
- * Hand-rolled `binderProvider` mirrors the convention in [ShizukuChromeDevtoolsBridgeTest] —
- * lambda returns the same mock every time, no DI framework needed.
- */
+/** Coverage for [AdbWirelessManager]: each public method is exercised against a mocked binder. Hand-rolled `binderProvider` mirrors the
+ * convention in [ShizukuChromeDevtoolsBridgeTest] — lambda returns the same mock every time, no DI framework needed. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AdbWirelessManagerTest {
 
@@ -278,9 +275,8 @@ class AdbWirelessManagerTest {
 
     @Test
     fun pruneAdbKeys_skips_write_when_any_pubkey_repeats_above_ceiling() = runTest {
-        // Pathological growth: 11 copies of the SAME pubkey trips the ceiling. Even though the
-        // prune logic would cleanly dedupe to 1, surfacing this case via a logged warning is
-        // more useful than silently churning the file every cold session.
+        // Pathological growth: 11 copies of the SAME pubkey trips the ceiling. Even though the prune logic would cleanly dedupe to 1,
+        // surfacing this case via a logged warning is more useful than silently churning the file every cold session.
         val current = "AAAA_CURRENT_KEY"
         val padded = (1..11).joinToString("") { "$current PocketPilot@P0110\n" }
         every { binder.readAdbKeys() } returns padded

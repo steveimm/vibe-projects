@@ -132,10 +132,7 @@ class RelayAuthTokenTest {
 
     @Test
     fun `readHttpRequestHead enforces total deadline against byte-dribble`() {
-        // Adversary: drips one byte at a time, each well under the per-read soTimeout. Without a
-        // TOTAL deadline the helper would run for HEADER_BUFFER_LIMIT iterations × per-byte
-        // delay (~minutes for a small dribble). With the deadline, total wall time bounded by
-        // totalDeadlineMs + last-read budget regardless of payload size.
+        // Adversary: drips one byte at a time, each well under the per-read soTimeout.
         val totalMs = 600
         val perByteDelayMs = 80L
         val dribble = object : java.io.InputStream() {

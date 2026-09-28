@@ -18,22 +18,22 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 data class AppSettings(
-        val selectedModel: String,
-        val debugMode: Boolean,
-        val perceptionMode: String,
-        val llmBackend: LLMBackendType,
-        val localModel: LocalModelOption,
-        val platformMode: PlatformMode,
-        val traceEnabled: Boolean,
-        val browserScriptEnabled: Boolean,
-        val termuxShellEnabled: Boolean,
-        val openaiBaseUrl: String,
-        val otherBaseUrl: String,
-        val otherModelId: String,
-        val approvalMode: ApprovalMode,
+    val selectedModel: String = AppSettingsStore.DEFAULT_MODEL,
+    val debugMode: Boolean = AppSettingsStore.DEFAULT_DEBUG_MODE,
+    val perceptionMode: String = AppSettingsStore.DEFAULT_PERCEPTION_MODE,
+    val llmBackend: LLMBackendType = AppSettingsStore.DEFAULT_LLM_BACKEND,
+    val localModel: LocalModelOption = AppSettingsStore.DEFAULT_LOCAL_MODEL,
+    val platformMode: PlatformMode = AppSettingsStore.DEFAULT_PLATFORM_MODE,
+    val traceEnabled: Boolean = AppSettingsStore.DEFAULT_TRACE_ENABLED,
+    val browserScriptEnabled: Boolean = AppSettingsStore.DEFAULT_BROWSER_SCRIPT_ENABLED,
+    val termuxShellEnabled: Boolean = AppSettingsStore.DEFAULT_TERMUX_SHELL_ENABLED,
+    val openaiBaseUrl: String = "",
+    val otherBaseUrl: String = "",
+    val otherModelId: String = "",
+    val approvalMode: ApprovalMode = AppSettingsStore.DEFAULT_APPROVAL_MODE,
 )
 
-class AppSettingsStore(private val context: Context) {
+class AppSettingsStore(context: Context) {
     companion object {
         private const val PREFS_NAME = "agent_prefs"
 
@@ -67,6 +67,8 @@ class AppSettingsStore(private val context: Context) {
         val DEFAULT_APPROVAL_MODE = ApprovalMode.SMART
     }
 
+    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
     private val _termuxShellEnabled = MutableStateFlow(loadTermuxShellEnabled())
     val termuxShellEnabled: StateFlow<Boolean> = _termuxShellEnabled.asStateFlow()
 
@@ -80,168 +82,109 @@ class AppSettingsStore(private val context: Context) {
     // via the read-modify-write between _disabledAgentSkills.value and the prefs commit.
     private val disabledSkillsMutex = Mutex()
 
-    /** Plain prefs for non-secret settings only (model, turns, mode, etc.). */
-    private fun prefs() = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-
     fun load(): AppSettings {
-        val prefs = prefs()
-
-        val selectedModel = prefs.getString(KEY_MODEL, DEFAULT_MODEL) ?: DEFAULT_MODEL
-        val debugMode = prefs.getBoolean(KEY_DEBUG_MODE, DEFAULT_DEBUG_MODE)
-        val perceptionMode =
-                prefs.getString(KEY_PERCEPTION_MODE, null)
-                        ?: if (prefs.getBoolean(KEY_SCREENSHOT_INPUT, false)) "hybrid"
-                        else DEFAULT_PERCEPTION_MODE
-
-        val backendName =
-                prefs.getString(KEY_LLM_BACKEND, DEFAULT_LLM_BACKEND.name)
-                        ?: DEFAULT_LLM_BACKEND.name
-        val llmBackend =
-                try {
-                    LLMBackendType.valueOf(backendName)
-                } catch (e: Exception) {
-                    DEFAULT_LLM_BACKEND
-                }
-
         val localModelId = prefs.getString(KEY_LOCAL_MODEL_ID, null)
-        val localModel = localModelId?.let { id ->
-            AVAILABLE_LOCAL_MODELS.find { it.id == id }
-        } ?: DEFAULT_LOCAL_MODEL
-        val platformModeName = prefs.getString(KEY_PLATFORM_MODE, DEFAULT_PLATFORM_MODE.name)
-                ?: DEFAULT_PLATFORM_MODE.name
-        val platformMode = try {
-            PlatformMode.valueOf(platformModeName)
-        } catch (_: Exception) {
-            DEFAULT_PLATFORM_MODE
-        }
-        val traceEnabled = prefs.getBoolean(KEY_TRACE_ENABLED, DEFAULT_TRACE_ENABLED)
-        val browserScriptEnabled =
-                prefs.getBoolean(KEY_BROWSER_SCRIPT_ENABLED, DEFAULT_BROWSER_SCRIPT_ENABLED)
-        val termuxShellEnabled = prefs.getBoolean(
-                KEY_TERMUX_SHELL_ENABLED,
-                DEFAULT_TERMUX_SHELL_ENABLED
-        )
-        val openaiBaseUrl = prefs.getString(KEY_OPENAI_BASE_URL, "") ?: ""
-        val otherBaseUrl = prefs.getString(KEY_OTHER_BASE_URL, "") ?: ""
-        val otherModelId = prefs.getString(KEY_OTHER_MODEL_ID, "") ?: ""
-        val approvalModeName = prefs.getString(KEY_APPROVAL_MODE, DEFAULT_APPROVAL_MODE.name)
-                ?: DEFAULT_APPROVAL_MODE.name
-        val approvalMode = try {
-            val parsed = ApprovalMode.valueOf(approvalModeName)
-            if (parsed == ApprovalMode.ALWAYS_ASK) DEFAULT_APPROVAL_MODE else parsed
-        } catch (_: Exception) {
-            DEFAULT_APPROVAL_MODE
-        }
-
         return AppSettings(
-                selectedModel = selectedModel,
-                debugMode = debugMode,
-                perceptionMode = perceptionMode,
-                llmBackend = llmBackend,
-                localModel = localModel,
-                platformMode = platformMode,
-                traceEnabled = traceEnabled,
-                browserScriptEnabled = browserScriptEnabled,
-                termuxShellEnabled = termuxShellEnabled,
-                openaiBaseUrl = openaiBaseUrl,
-                otherBaseUrl = otherBaseUrl,
-                otherModelId = otherModelId,
-                approvalMode = approvalMode,
+            selectedModel = prefs.getString(KEY_MODEL, DEFAULT_MODEL) ?: DEFAULT_MODEL,
+            debugMode = prefs.getBoolean(KEY_DEBUG_MODE, DEFAULT_DEBUG_MODE),
+            perceptionMode = prefs.getString(KEY_PERCEPTION_MODE, null)
+                ?: if (prefs.getBoolean(KEY_SCREENSHOT_INPUT, false)) "hybrid" else DEFAULT_PERCEPTION_MODE,
+            llmBackend = readEnum(KEY_LLM_BACKEND, DEFAULT_LLM_BACKEND),
+            localModel = AVAILABLE_LOCAL_MODELS.find { it.id == localModelId } ?: DEFAULT_LOCAL_MODEL,
+            platformMode = readEnum(KEY_PLATFORM_MODE, DEFAULT_PLATFORM_MODE),
+            traceEnabled = prefs.getBoolean(KEY_TRACE_ENABLED, DEFAULT_TRACE_ENABLED),
+            browserScriptEnabled = loadBrowserScriptEnabled(),
+            termuxShellEnabled = loadTermuxShellEnabled(),
+            openaiBaseUrl = prefs.getString(KEY_OPENAI_BASE_URL, "").orEmpty(),
+            otherBaseUrl = prefs.getString(KEY_OTHER_BASE_URL, "").orEmpty(),
+            otherModelId = prefs.getString(KEY_OTHER_MODEL_ID, "").orEmpty(),
+            approvalMode = readEnum(KEY_APPROVAL_MODE, DEFAULT_APPROVAL_MODE)
+                .takeUnless { it == ApprovalMode.ALWAYS_ASK } ?: DEFAULT_APPROVAL_MODE,
         )
     }
 
+    private inline fun <reified T : Enum<T>> readEnum(key: String, default: T): T {
+        val name = prefs.getString(key, default.name)
+        return enumValues<T>().firstOrNull { it.name == name } ?: default
+    }
+
     fun loadTermuxShellEnabled(): Boolean =
-        prefs().getBoolean(KEY_TERMUX_SHELL_ENABLED, DEFAULT_TERMUX_SHELL_ENABLED)
+        prefs.getBoolean(KEY_TERMUX_SHELL_ENABLED, DEFAULT_TERMUX_SHELL_ENABLED)
 
     suspend fun setTermuxShellEnabled(value: Boolean) {
         withContext(Dispatchers.IO) {
-            prefs().edit().putBoolean(KEY_TERMUX_SHELL_ENABLED, value).apply()
+            prefs.edit().putBoolean(KEY_TERMUX_SHELL_ENABLED, value).apply()
         }
         _termuxShellEnabled.value = value
     }
 
     fun loadBrowserScriptEnabled(): Boolean =
-        prefs().getBoolean(KEY_BROWSER_SCRIPT_ENABLED, DEFAULT_BROWSER_SCRIPT_ENABLED)
+        prefs.getBoolean(KEY_BROWSER_SCRIPT_ENABLED, DEFAULT_BROWSER_SCRIPT_ENABLED)
 
     suspend fun setBrowserScriptEnabled(value: Boolean) {
         withContext(Dispatchers.IO) {
-            prefs().edit().putBoolean(KEY_BROWSER_SCRIPT_ENABLED, value).apply()
+            prefs.edit().putBoolean(KEY_BROWSER_SCRIPT_ENABLED, value).apply()
         }
         _browserScriptEnabled.value = value
     }
 
     fun saveModel(value: String) {
-        prefs().edit().putString(KEY_MODEL, value).apply()
+        prefs.edit().putString(KEY_MODEL, value).apply()
     }
 
     fun saveDebugMode(value: Boolean) {
-        prefs().edit().putBoolean(KEY_DEBUG_MODE, value).apply()
+        prefs.edit().putBoolean(KEY_DEBUG_MODE, value).apply()
     }
 
-    fun loadCompactOverlays(): Boolean = prefs().getBoolean(KEY_COMPACT_OVERLAYS, false)
+    fun loadCompactOverlays(): Boolean = prefs.getBoolean(KEY_COMPACT_OVERLAYS, false)
 
     fun saveCompactOverlays(value: Boolean) {
-        prefs().edit().putBoolean(KEY_COMPACT_OVERLAYS, value).apply()
+        prefs.edit().putBoolean(KEY_COMPACT_OVERLAYS, value).apply()
     }
 
     fun saveTraceEnabled(value: Boolean) {
-        prefs().edit().putBoolean(KEY_TRACE_ENABLED, value).apply()
+        prefs.edit().putBoolean(KEY_TRACE_ENABLED, value).apply()
     }
 
     fun saveBrowserScriptEnabled(value: Boolean) {
-        prefs().edit().putBoolean(KEY_BROWSER_SCRIPT_ENABLED, value).apply()
+        prefs.edit().putBoolean(KEY_BROWSER_SCRIPT_ENABLED, value).apply()
         _browserScriptEnabled.value = value
     }
 
     fun savePerceptionMode(value: String) {
-        prefs().edit().putString(KEY_PERCEPTION_MODE, value).apply()
+        prefs.edit().putString(KEY_PERCEPTION_MODE, value).apply()
     }
 
-    fun saveOpenaiBaseUrl(value: String) {
-        if (value.isBlank()) {
-            prefs().edit().remove(KEY_OPENAI_BASE_URL).apply()
-        } else {
-            prefs().edit().putString(KEY_OPENAI_BASE_URL, value).apply()
-        }
-    }
+    fun saveOpenaiBaseUrl(value: String) = saveOptionalString(KEY_OPENAI_BASE_URL, value)
 
-    fun saveOtherBaseUrl(value: String) {
-        if (value.isBlank()) {
-            prefs().edit().remove(KEY_OTHER_BASE_URL).apply()
-        } else {
-            prefs().edit().putString(KEY_OTHER_BASE_URL, value).apply()
-        }
-    }
+    fun saveOtherBaseUrl(value: String) = saveOptionalString(KEY_OTHER_BASE_URL, value)
 
-    fun saveOtherModelId(value: String) {
-        if (value.isBlank()) {
-            prefs().edit().remove(KEY_OTHER_MODEL_ID).apply()
-        } else {
-            prefs().edit().putString(KEY_OTHER_MODEL_ID, value).apply()
-        }
-    }
+    fun saveOtherModelId(value: String) = saveOptionalString(KEY_OTHER_MODEL_ID, value)
 
+    private fun saveOptionalString(key: String, value: String) {
+        val editor = prefs.edit()
+        if (value.isBlank()) editor.remove(key) else editor.putString(key, value)
+        editor.apply()
+    }
 
     fun saveBackend(value: LLMBackendType) {
-        prefs().edit().putString(KEY_LLM_BACKEND, value.name).apply()
+        prefs.edit().putString(KEY_LLM_BACKEND, value.name).apply()
     }
 
     fun savePlatformMode(value: PlatformMode) {
-        prefs().edit().putString(KEY_PLATFORM_MODE, value.name).apply()
+        prefs.edit().putString(KEY_PLATFORM_MODE, value.name).apply()
     }
 
     fun saveApprovalMode(value: ApprovalMode) {
-        prefs().edit().putString(KEY_APPROVAL_MODE, value.name).apply()
+        prefs.edit().putString(KEY_APPROVAL_MODE, value.name).apply()
     }
 
     fun saveLocalModel(model: LocalModelOption) {
-        prefs().edit().putString(KEY_LOCAL_MODEL_ID, model.id).apply()
+        prefs.edit().putString(KEY_LOCAL_MODEL_ID, model.id).apply()
     }
 
-    // ===== User app overrides =====
-
     fun loadUserAppOverrides(): Map<String, AppTier> {
-        val raw = prefs().getString(KEY_USER_APP_OVERRIDES, null) ?: return emptyMap()
+        val raw = prefs.getString(KEY_USER_APP_OVERRIDES, null) ?: return emptyMap()
         return try {
             val obj = JSONObject(raw)
             buildMap {
@@ -255,16 +198,10 @@ class AppSettingsStore(private val context: Context) {
         }
     }
 
-    /**
-     * Persist user app overrides synchronously via `commit()` on [Dispatchers.IO].
-     *
-     * Suspends until XML is fully written so [AppClassifier.setOverride] can `await` the
-     * disk write under its mutex — guaranteeing last-emitted == last-persisted even under
-     * concurrent writes. `apply()` would defer the write asynchronously and break that.
-     */
+    /** Persist user app overrides synchronously via `commit()` on [Dispatchers.IO]. */
     suspend fun saveUserAppOverrides(overrides: Map<String, AppTier>) {
         withContext(Dispatchers.IO) {
-            val editor = prefs().edit()
+            val editor = prefs.edit()
             if (overrides.isEmpty()) {
                 editor.remove(KEY_USER_APP_OVERRIDES).commit()
                 return@withContext
@@ -275,10 +212,8 @@ class AppSettingsStore(private val context: Context) {
         }
     }
 
-    // ===== Disabled agent skills =====
-
     fun loadDisabledAgentSkills(): Set<String> {
-        val raw = prefs().getString(KEY_DISABLED_AGENT_SKILLS, null) ?: return emptySet()
+        val raw = prefs.getString(KEY_DISABLED_AGENT_SKILLS, null) ?: return emptySet()
         return try {
             val arr = JSONArray(raw)
             buildSet {
@@ -297,7 +232,7 @@ class AppSettingsStore(private val context: Context) {
         val next = if (disabled) current + name else current - name
         if (next == current) return@withLock
         withContext(Dispatchers.IO) {
-            val editor = prefs().edit()
+            val editor = prefs.edit()
             if (next.isEmpty()) {
                 editor.remove(KEY_DISABLED_AGENT_SKILLS).apply()
             } else {

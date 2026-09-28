@@ -37,7 +37,6 @@ import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Warning
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -50,7 +49,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -124,7 +122,7 @@ internal fun AppAccessSettingsPage(
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     val context = LocalContext.current
-    val overrides by appClassifier.userOverrides.collectAsState()
+    val overrides by appClassifier.userOverrides.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
 
     val index = remember(context, contentIndex) {
@@ -133,7 +131,7 @@ internal fun AppAccessSettingsPage(
             skillPackages = AppAccessContentIndex.assetSkillLister(context.assets),
         )
     }
-    val summaries by index.summaries.collectAsState()
+    val summaries by index.summaries.collectAsStateWithLifecycle()
 
     val effectiveSkillLoader: suspend (String) -> String? = if (skillLoader != null) {
         skillLoader
@@ -170,10 +168,8 @@ internal fun AppAccessSettingsPage(
     var query by rememberSaveable { mutableStateOf("") }
     var filter by rememberSaveable { mutableStateOf(AppFilter.All) }
     val expandedPackages = remember { mutableStateMapOf<String, Boolean>() }
-    // Per-package one-shot nonce: bumped whenever "+ Memory" creates a fresh
-    // file, threaded into MemoryFileEditor so the editor lands in EDIT
-    // immediately rather than VIEW. Map survives recomposition only — process
-    // death drops the signal, which is correct (file already exists).
+    // Per-package one-shot nonce: bumped whenever "+ Memory" creates a fresh file, threaded into MemoryFileEditor so the editor lands in
+    // EDIT immediately rather than VIEW.
     val startInEditNonces = remember { mutableStateMapOf<String, String>() }
     val memoryCreateFailures = remember { mutableStateMapOf<String, Boolean>() }
     var openFullMemoryPackage by rememberSaveable { mutableStateOf<String?>(null) }
@@ -219,21 +215,12 @@ internal fun AppAccessSettingsPage(
     }
 
     val onAddMemory: (String) -> Unit = { pkg ->
-        // UI-layer gate: chip is also disabled when locked, but the click can
-        // race the lock flipping true mid-recomposition. Drop the click here
-        // before launching to avoid spawning an aborted coroutine.
+        // UI-layer gate: chip is also disabled when locked, but the click can race the lock flipping true mid-recomposition. Drop the
+        // click here before launching to avoid spawning an aborted coroutine.
         if (!locked) {
             memoryCreateFailures.remove(pkg)
             coroutineScope.launch {
-                // Two safety layers around the write:
-                //  - Idempotent: re-read inside the coroutine. If a file
-                //    already exists (page mounted with a stale empty index,
-                //    or two "+ Memory" taps raced), skip the write so an
-                //    existing apps/<pkg>.md is never blanked.
-                //  - Gate TOCTOU: re-check `gate.isLockedNow()` right before
-                //    the write. If a session began between click and IO,
-                //    abort with the standard toast. `isLockedNow()` reads
-                //    the upstream state directly so it cannot lag the lock.
+                // Two safety layers around the write: - Idempotent: re-read inside the coroutine.
                 val outcome = withContext(ioDispatcher) {
                     if (gate.isLockedNow()) {
                         AddMemoryOutcome.Aborted
@@ -412,7 +399,7 @@ private fun LoadingState() {
             .padding(MaterialTheme.pocketPilot.spacing.lg),
         contentAlignment = Alignment.TopCenter,
     ) {
-        AppAccessNoticeCard(
+        SettingsNoticeCard(
             title = "Loading apps",
             message = "Reading installed apps and access rules.",
             loading = true,
@@ -428,7 +415,7 @@ private fun AppRowsErrorState(message: String, onRetry: () -> Unit) {
             .padding(MaterialTheme.pocketPilot.spacing.lg),
         contentAlignment = Alignment.TopCenter,
     ) {
-        AppAccessNoticeCard(
+        SettingsNoticeCard(
             title = "Could not load apps",
             message = message,
             action = {
@@ -437,50 +424,6 @@ private fun AppRowsErrorState(message: String, onRetry: () -> Unit) {
                 }
             },
         )
-    }
-}
-
-@Composable
-private fun AppAccessNoticeCard(
-    title: String,
-    message: String,
-    modifier: Modifier = Modifier,
-    loading: Boolean = false,
-    action: (@Composable () -> Unit)? = null,
-) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .foldedPaper(MaterialTheme.shapes.medium),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = MaterialTheme.shapes.medium,
-    ) {
-        Row(
-            modifier = Modifier.padding(MaterialTheme.pocketPilot.spacing.cardPadding),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.md),
-        ) {
-            if (loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 2.dp,
-                )
-            }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            action?.invoke()
-        }
     }
 }
 
@@ -512,7 +455,7 @@ private fun AppList(
     ) {
         if (rows.isEmpty()) {
             item {
-                AppAccessNoticeCard(
+                SettingsNoticeCard(
                     title = "No apps match",
                     message = "Try a different search or filter.",
                     modifier = Modifier.padding(top = MaterialTheme.pocketPilot.spacing.sm),
@@ -591,9 +534,8 @@ private fun AppRowItem(
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        // Tap row body (not the trailing slot, not tier chips) to expand.
-                        // Only active when there is something to show — empty rows
-                        // route through the "+ Memory" affordance instead.
+                        // Tap row body (not the trailing slot, not tier chips) to expand. Only active when there is something to show —
+                        // empty rows route through the "+ Memory" affordance instead.
                         .let { base ->
                             if (hasContent) {
                                 base
@@ -752,10 +694,8 @@ private fun TrailingSlot(
             }
         }
     } else {
-        // UI-layer enforcement of the single-writer rule for "+ Memory" — the
-        // action-layer re-check still happens inside the click coroutine, but
-        // disabling here also stops the visible affordance from looking
-        // tappable while a session is open.
+        // UI-layer enforcement of the single-writer rule for "+ Memory" — the action-layer re-check still happens inside the click
+        // coroutine, but disabling here also stops the visible affordance from looking tappable while a session is open.
         Surface(
             onClick = onAddMemory,
             enabled = !addMemoryLocked,
@@ -940,8 +880,6 @@ internal fun SegmentChip(
         )
     }
 }
-
-// --- filter helpers ---
 
 private fun filterRows(
     rows: List<AppRow>,

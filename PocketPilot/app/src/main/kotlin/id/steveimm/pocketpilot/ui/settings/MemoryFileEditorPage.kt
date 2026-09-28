@@ -18,11 +18,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 
-/**
- * Full-screen variant of [MemoryFileEditor] for the standalone Settings →
- * Memory page (and the bounded inline editor's "↗ Open" affordance). The
- * unbounded editor body fills available space.
- */
+/** Full-screen variant of [MemoryFileEditor] for the standalone Settings → Memory page (and the bounded inline editor's "↗ Open"
+ * affordance). The unbounded editor body fills available space. */
 @Composable
 internal fun MemoryFileEditorPage(
     title: String,

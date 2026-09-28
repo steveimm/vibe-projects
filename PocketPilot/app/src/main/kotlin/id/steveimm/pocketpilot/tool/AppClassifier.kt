@@ -12,20 +12,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 
-/**
- * Classifies Android packages into security tiers.
- *
- * Two layers:
- *  - [appTiers]            — bundled tiers from `assets/security/app_tiers.json` (immutable).
- *  - [userOverrides]       — per-package user overrides (mutated through [setOverride]).
- *
- * Effective tier: if bundled[pkg] == BLOCKED then BLOCKED (absolute floor, no override
- * can soften it), otherwise overrides[pkg] ?: bundled[pkg] ?: CAUTIOUS.
- *
- * Sensitive apps almost always set FLAG_SECURE on their windows, which blanks out
- * VirtualDisplay capture and accessibility content anyway — letting a user "Allow" them
- * would be theater, so [setOverride] refuses the write at the source.
- */
+/** Classifies Android packages into security tiers. */
 class AppClassifier(
     private val appTiers: Map<String, AppTier>,
     initialUserOverrides: Map<String, AppTier> = emptyMap(),
@@ -45,14 +32,8 @@ class AppClassifier(
         return _userOverrides.value[pkg] ?: bundled ?: AppTier.CAUTIOUS
     }
 
-    /**
-     * Apply a user override. Serialized end-to-end (in-memory CAS + persistence)
-     * by [overrideMutex] so on-disk state never diverges from [userOverrides].
-     *
-     * - bundled == BLOCKED && tier != BLOCKED → no-op → [SetOverrideResult.RefusedBlocked].
-     * - tier matches bundled default          → entry removed → [SetOverrideResult.Removed].
-     * - otherwise                             → entry written → [SetOverrideResult.Accepted].
-     */
+    /** Apply a user override. Serialized end-to-end (in-memory CAS + persistence) by [overrideMutex] so on-disk state never diverges
+     * from [userOverrides]. */
     suspend fun setOverride(pkg: String, tier: AppTier): SetOverrideResult = overrideMutex.withLock {
         val bundledDefault = appTiers[pkg] ?: AppTier.CAUTIOUS
         if (bundledDefault == AppTier.BLOCKED && tier != AppTier.BLOCKED) {
@@ -65,11 +46,8 @@ class AppClassifier(
         if (next.containsKey(pkg)) SetOverrideResult.Accepted else SetOverrideResult.Removed
     }
 
-    /**
-     * Returns a masked snapshot (empty elements, no image) if the package is BLOCKED,
-     * otherwise returns the original snapshot unchanged.
-     * Call this at every screen capture point to prevent BLOCKED app content from leaking.
-     */
+    /** Returns a masked snapshot (empty elements, no image) if the package is BLOCKED, otherwise returns the original snapshot
+     * unchanged. Call this at every screen capture point to prevent BLOCKED app content from leaking. */
     fun maskIfBlocked(snapshot: ScreenSnapshot, packageName: String?): ScreenSnapshot {
         if (classify(packageName) != AppTier.BLOCKED) return snapshot
         return ScreenSnapshot(
@@ -82,10 +60,8 @@ class AppClassifier(
     companion object {
         private const val TAG = "AppClassifier"
 
-        /**
-         * Parse only the bundled tier map from assets. Used by [AppClassifierHolder]
-         * which then layers in user overrides + the persistence callback.
-         */
+        /** Parse only the bundled tier map from assets. Used by [AppClassifierHolder] which then layers in user overrides + the
+         * persistence callback. */
         fun loadBundledTiers(assets: AssetManager): Map<String, AppTier> {
             val json = try {
                 assets.open("security/app_tiers.json")
@@ -114,11 +90,8 @@ class AppClassifier(
             return tiers
         }
 
-        /**
-         * Convenience for tests / non-singleton paths. Returns a classifier with no user
-         * overrides and no persistence callback. Production code paths should go through
-         * [AppClassifierHolder] so UI / capsule / agent observe the same StateFlow.
-         */
+        /** Convenience for tests / non-singleton paths. Returns a classifier with no user overrides and no persistence callback.
+         * Production code paths should go through [AppClassifierHolder] so UI / capsule / agent observe the same StateFlow. */
         fun fromAssets(assets: AssetManager): AppClassifier =
             AppClassifier(loadBundledTiers(assets))
     }

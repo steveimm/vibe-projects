@@ -35,10 +35,8 @@ import id.steveimm.pocketpilot.ui.theme.PocketPilotTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-/**
- * Build a [CapsuleBinding] backed by the running [AgentService], or [InertCapsuleBinding]
- * when the service isn't bound yet (so the chat surface still renders its idle state).
- */
+/** Build a [CapsuleBinding] backed by the running [AgentService], or [InertCapsuleBinding] when the service isn't bound yet (so the
+ * chat surface still renders its idle state). */
 @Composable
 private fun rememberCapsuleBinding(): CapsuleBinding {
     val holder = AgentService.instance?.capsuleStateHolder ?: return InertCapsuleBinding
@@ -88,16 +86,11 @@ internal fun MainActivityContent(
         val sessions by viewModel.sessions.collectAsStateWithLifecycle()
         val effectivePlatformMode by effectivePlatformModeFlow.collectAsStateWithLifecycle()
         val currentSessionState by currentSessionStateFlow.collectAsStateWithLifecycle()
-        // Mirrors MemoryEditGate: any non-Shutdown session (including creation-in-progress
-        // Created) counts as "session running" for the next-session subtitle on disabled
-        // skills. Only `null` or Shutdown means the next session reads the latest toggle.
+        // Mirrors MemoryEditGate: any non-Shutdown session (including creation-in-progress Created) counts as "session running" for the
+        // next-session subtitle on disabled skills. Only `null` or Shutdown means the next session reads the latest toggle.
         val isSessionRunning = currentSessionState != null && currentSessionState != SessionState.Shutdown
 
-        // Voice cold-start route: AgentService.requestVoicePermissionViaMainActivity() brings
-        // MainActivity to the front with EXTRA_REQUEST_VOICE_PERMISSION; MainActivity sets a
-        // pending flag (process state, not intent state) and we drain it here once the launcher
-        // is mounted. The launcher MUST be registered unconditionally at MainActivity scope so
-        // a cold-start (process freshly launched by the overlay) finds it ready.
+        // Register the launcher before consuming an overlay voice-permission request, including on a cold start.
         val activity = LocalContext.current as? MainActivity
         if (activity != null) {
             val gate = rememberVoicePermissionGate(activity) { _ -> /* voice-ui owns the real callback */ }
@@ -111,19 +104,14 @@ internal fun MainActivityContent(
                     }
                     VoicePermissionDisposition.Granted,
                     VoicePermissionDisposition.OpenAppSettings -> {
-                        // Granted: user toggled in Settings between request and resume. OpenAppSettings:
-                        // permanently denied — the overlay's next mic tap will surface UI; nothing to do
-                        // from the cold-start route. Either way, just clear so we don't re-fire.
+                        // Clear the handled request. Any remaining denial is shown on the next overlay mic tap.
                         activity.clearVoicePermissionRequest()
                     }
                 }
             }
         }
 
-        // Deep-link target captured when a banner/tap wants Settings opened at a
-        // specific tab. Forwarded into SettingsSheet via initialPage/initialAuthTab.
-        // Seeded from [initialSettingsDeepLink] (set by host pre-flight checks like
-        // missing-credential validation) so auto-opened sheets land on the right page.
+        // Deep-link target captured when a banner/tap wants Settings opened at a specific tab.
         var pendingDeepLink by remember(initialSettingsDeepLink) {
             mutableStateOf<SettingsDeepLink?>(initialSettingsDeepLink)
         }

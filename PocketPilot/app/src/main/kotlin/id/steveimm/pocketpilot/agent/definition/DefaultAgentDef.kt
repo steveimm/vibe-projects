@@ -3,16 +3,8 @@ package id.steveimm.pocketpilot.agent.definition
 import id.steveimm.pocketpilot.agent.AgentExecutionRole
 import id.steveimm.pocketpilot.tool.ToolName
 
-/**
- * Tools that DefaultRoleDef declares statically but should be gated out of the LLM
- * allowlist when their corresponding user pref is OFF. SessionServices merges this set
- * into [id.steveimm.pocketpilot.protocol.SessionConfig.excludedTools] so the existing exclude path
- * (consumed by SessionToolingBootstrapper.resolveAllowedToolNames) does the actual hiding.
- *
- * Why a separate seam: the static [DefaultRoleDef] is referenced from other roles' tests
- * and from AgentDefRegistry's allRoles list at class init, so we keep its allowedTools stable
- * and let runtime gating live with the rest of the per-session resolution logic.
- */
+/** Tools that DefaultRoleDef declares statically but should be gated out of the LLM allowlist when their corresponding user pref is
+ * OFF. */
 internal fun defaultToolsExcludedByPref(browserScriptEnabled: Boolean): Set<String> =
     if (browserScriptEnabled) emptySet() else setOf(ToolName.BrowserScript.raw)
 

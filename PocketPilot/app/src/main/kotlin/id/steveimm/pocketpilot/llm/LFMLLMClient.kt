@@ -13,6 +13,7 @@ import ai.liquid.leap.message.ChatMessageContent
 import ai.liquid.leap.message.MessageResponse
 import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.ResponseInputItem
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -24,13 +25,7 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.UUID
 
-/**
- * Declares known semantic gaps in the Leap/local LLM backend.
- *
- * These are inherent limitations of the local inference path, not bugs.
- * Callers that care about exact tool-call correlation or multi-role
- * conversation fidelity should use a cloud client instead.
- */
+/** Declares known semantic gaps in the Leap/local LLM backend. */
 internal object LocalLlmSemantics {
     /** Roles other than user/assistant are silently dropped during conversion. */
     val dropsNonUserAssistantRoles = true
@@ -45,13 +40,7 @@ internal object LocalLlmSemantics {
     val flattensContentToString = true
 }
 
-/**
- * LFMLLMClient - Local LLM client using LiquidAI Leap SDK.
- *
- * Uses Leap's function calling, conversation, and model loading APIs directly.
- *
- * Known semantic gaps are documented in [LocalLlmSemantics].
- */
+/** LFMLLMClient - Local LLM client using LiquidAI Leap SDK. */
 class LFMLLMClient(
     private val context: Context,
     private val config: LocalLLMConfig = LocalLLMConfig()
@@ -64,13 +53,7 @@ class LFMLLMClient(
             patchLeapJsonConfig()
         }
 
-        /**
-         * Patch the Leap SDK's internal Json instance to ignore unknown keys.
-         *
-         * The SDK (0.9.2) uses a private static Json without ignoreUnknownKeys,
-         * which causes deserialization failures when upstream HuggingFace manifests
-         * add new fields (e.g., top_k in SamplingParameters).
-         */
+        /** Patch the Leap SDK's internal Json instance to ignore unknown keys. */
         private fun patchLeapJsonConfig() {
             try {
                 val field = LeapDownloader::class.java.getDeclaredField("json")
@@ -97,9 +80,7 @@ class LFMLLMClient(
     @Volatile
     private var modelLoadingState: ModelLoadingState = ModelLoadingState.NotLoaded
 
-    /**
-     * Model loading state for UI feedback.
-     */
+    /** Model loading state for UI feedback. */
     sealed interface ModelLoadingState {
         data object NotLoaded : ModelLoadingState
         data class Downloading(val progress: Float) : ModelLoadingState
@@ -110,14 +91,10 @@ class LFMLLMClient(
 
     override fun isReady(): Boolean = modelLoadingState is ModelLoadingState.Ready
 
-    /**
-     * Get the current model loading state.
-     */
+    /** Get the current model loading state. */
     fun getLoadingState(): ModelLoadingState = modelLoadingState
 
-    /**
-     * Load the model (safe to call multiple times).
-     */
+    /** Load the model (safe to call multiple times). */
     suspend fun loadModel(onProgress: ((ModelLoadingState) -> Unit)? = null) {
         modelMutex.withLock {
             loadModelLocked(onProgress)
@@ -189,10 +166,8 @@ class LFMLLMClient(
         val textBuffer = StringBuilder()
         val toolCalls = mutableListOf<LLMToolCall>()
         var completeToolCalls: List<LLMToolCall> = emptyList()
-        // Leap SDK exposes no native max-output-tokens knob, so we enforce the
-        // cap client-side by truncating the streamed text once the running
-        // estimate exceeds it. ~4 chars per token, consistent with
-        // HistoryManager.estimateTokenCount.
+        // Leap SDK exposes no native max-output-tokens knob, so we enforce the cap client-side by truncating the streamed text once the
+        // running estimate exceeds it. ~4 chars per token, consistent with HistoryManager.estimateTokenCount.
         val maxChars: Long = maxOutputTokens?.let { (it * 4L).coerceAtLeast(1L) } ?: Long.MAX_VALUE
         var truncated = false
 
@@ -276,6 +251,8 @@ class LFMLLMClient(
                 }
             }
             emit(LLMStreamEvent.Completed)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Streaming failed", e)
             emit(LLMStreamEvent.Failed(e.message ?: "Unknown error"))

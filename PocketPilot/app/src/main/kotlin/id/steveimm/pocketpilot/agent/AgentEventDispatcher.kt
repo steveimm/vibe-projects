@@ -94,10 +94,7 @@ class AgentEventDispatcher(
         ))
     }
 
-    /**
-     * Emit a thought update for the Smart Capsule.
-     * Extracted from agent_thought in tool call parameters.
-     */
+    /** Emit a thought update for the Smart Capsule. Extracted from agent_thought in tool call parameters. */
     suspend fun thoughtUpdate(full: String, compact: String) {
         Log.d(TAG, "ThoughtUpdate: $compact")
         eventEmitter(ThoughtUpdate(
@@ -108,9 +105,7 @@ class AgentEventDispatcher(
         ))
     }
 
-    /**
-     * Emit an AskUser event — agent is requesting user help.
-     */
+    /** Emit an AskUser event — agent is requesting user help. */
     suspend fun emitAskUser(
         type: id.steveimm.pocketpilot.protocol.AskUserType,
         message: String,

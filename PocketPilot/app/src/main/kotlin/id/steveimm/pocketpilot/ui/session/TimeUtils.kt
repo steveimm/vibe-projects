@@ -7,32 +7,18 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-/**
- * Utility functions for time formatting in the session list UI.
- */
+/** Utility functions for time formatting in the session list UI. */
 object TimeUtils {
-    
+
     // DateTimeFormatter is thread-safe unlike SimpleDateFormat
     private val dateFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.US)
     private val dateWithYearFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
-    
-    /**
-     * Format timestamp as relative time.
-     * 
-     * - < 1 minute: "Just now"
-     * - < 60 minutes: "X minutes ago"
-     * - < 24 hours: "X hours ago"
-     * - < 7 days: "X days ago"
-     * - Same year: "MMM d" (e.g., "Jan 21")
-     * - Different year: "MMM d, yyyy" (e.g., "Jan 21, 2023")
-     * 
-     * @param timestamp The epoch timestamp in milliseconds
-     * @return A human-readable relative time string
-     */
+
+    /** Format timestamp as relative time. */
     fun formatRelativeTime(timestamp: Long): String {
         val now = System.currentTimeMillis()
         val diff = now - timestamp
-        
+
         return when {
             diff < TimeUnit.MINUTES.toMillis(1) -> "Just now"
             diff < TimeUnit.HOURS.toMillis(1) -> {
@@ -49,11 +35,11 @@ object TimeUtils {
             }
             else -> {
                 val dateTime = LocalDateTime.ofInstant(
-                    Instant.ofEpochMilli(timestamp), 
+                    Instant.ofEpochMilli(timestamp),
                     ZoneId.systemDefault()
                 )
                 val currentYear = LocalDateTime.now().year
-                
+
                 if (dateTime.year == currentYear) {
                     dateTime.format(dateFormatter)
                 } else {
@@ -62,13 +48,8 @@ object TimeUtils {
             }
         }
     }
-    
-    /**
-     * Format message count for display.
-     * 
-     * @param count The number of messages
-     * @return A formatted string like "3 messages" or "1 message"
-     */
+
+    /** Format message count for display. */
     fun formatMessageCount(count: Int): String {
         return if (count == 1) "1 message" else "$count messages"
     }

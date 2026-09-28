@@ -26,14 +26,7 @@ import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
 import org.junit.Test
 
-/**
- * P0.2 — Capture-layer privacy gate tests.
- *
- * Verifies that BLOCKED-app content never leaks through observations:
- * - buildObservation masks elements + image for BLOCKED apps
- * - OpenAppTool returns masked observation when launching a BLOCKED app
- * - UIActionInvocation returns masked observation when on a BLOCKED app
- */
+/** P0.2 — Capture-layer privacy gate tests. */
 class CapturePrivacyGateTest {
 
     private val blockedPkg = "com.chase.sig.android"
@@ -42,8 +35,6 @@ class CapturePrivacyGateTest {
     private fun classifier() = AppClassifier(
         mapOf(blockedPkg to AppTier.BLOCKED, normalPkg to AppTier.NORMAL)
     )
-
-    // ---- buildObservation ----
 
     @Test
     fun `buildObservation masks snapshot for BLOCKED app`() {
@@ -94,8 +85,6 @@ class CapturePrivacyGateTest {
         assertThat(obs!!.snapshot?.hasScreenshot).isNotEqualTo(true)
     }
 
-    // ---- OpenAppTool ----
-
     @Test
     fun `open_app launching blocked app returns masked observation`() = runTest {
         val platform = RichFakePlatform(
@@ -132,8 +121,6 @@ class CapturePrivacyGateTest {
         assertThat(obs).isNotNull()
         assertThat(obs!!.elementCount).isGreaterThan(0)
     }
-
-    // ---- UIActionInvocation ----
 
     @Test
     fun `UIActionInvocation on blocked app returns masked observation`() = runTest {
@@ -177,8 +164,6 @@ class CapturePrivacyGateTest {
         assertThat(obs!!.elementCount).isGreaterThan(0)
     }
 
-    // ---- MobileActionTool (click executor path) ----
-
     @Test
     fun `mobile_action click on blocked app returns masked observation`() = runTest {
         val platform = RichFakePlatform(initialPackage = blockedPkg)
@@ -218,8 +203,6 @@ class CapturePrivacyGateTest {
         assertThat(obs).isNotNull()
         assertThat(obs!!.elementCount).isGreaterThan(0)
     }
-
-    // ---- Helpers ----
 
     private fun testElement(index: Int) = PerceptionElement(
         index = index,
@@ -265,10 +248,7 @@ class CapturePrivacyGateTest {
     }
 }
 
-/**
- * Fake platform that returns a rich snapshot (with elements + image)
- * and simulates foreground-package change on launchApp.
- */
+/** Fake platform that returns a rich snapshot (with elements + image) and simulates foreground-package change on launchApp. */
 private class RichFakePlatform(
     private var initialPackage: String? = "com.example.fake",
     private val installedApps: List<AppInfo> = emptyList()

@@ -9,11 +9,7 @@ enum class VirtualDisplaySurfaceMode {
         LIVE_PREVIEW
 }
 
-/**
- * Manages which surface the virtual display renders to.
- *
- * Switches between ImageReader (headless capture) and SurfaceView (live preview).
- */
+/** Manages which surface the virtual display renders to. */
 internal class VirtualDisplaySurfaceController(
         private val shizuku: ShizukuClient,
         private val displayIdProvider: () -> Int,

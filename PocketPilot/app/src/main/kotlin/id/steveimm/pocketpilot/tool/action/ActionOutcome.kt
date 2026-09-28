@@ -2,12 +2,7 @@ package id.steveimm.pocketpilot.tool.action
 
 import id.steveimm.pocketpilot.tool.ToolObservation
 
-/**
- * Result of executor-level action execution.
- *
- * Richer than ActionResult: includes post-action observation and optional
- * attempt trail metadata for debuggability.
- */
+/** Result of executor-level action execution. */
 sealed interface ActionOutcome {
     data class Success(
         val message: String,

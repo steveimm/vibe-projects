@@ -29,16 +29,7 @@ import kotlinx.serialization.encodeToString
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicInteger
 
-/**
- * AccessibilityPlatform - Real implementation of AndroidPlatform using AccessibilityService.
- *
- * This wraps the existing Perceptor for screen capture and provides action execution via the
- * accessibility service APIs.
- *
- * Visualization Support: Optionally accepts an ActionVisualizerManager to display visual feedback
- * (ripples, trails) when performing gestures. This helps users see where and how the agent is
- * interacting with the screen.
- */
+/** AccessibilityPlatform - Real implementation of AndroidPlatform using AccessibilityService. */
 class AccessibilityPlatform(
         private val service: AccessibilityService,
         private val config: SessionConfig,
@@ -238,16 +229,7 @@ class AccessibilityPlatform(
             val keyboardVisible: Boolean
     )
 
-    /**
-     * Collect a11y roots from all relevant windows on the active display.
-     *
-     * Excludes TYPE_ACCESSIBILITY_OVERLAY (our own overlay) and TYPE_INPUT_METHOD (keyboard).
-     * Sorted by layer for deterministic element ordering across turns.
-     * Falls back to rootInActiveWindow if window enumeration fails.
-     *
-     * Also detects keyboard visibility from the window type list (TYPE_INPUT_METHOD present),
-     * since keyboard nodes are filtered from roots and won't be seen by Perceptor.
-     */
+    /** Collect a11y roots from all relevant windows on the active display. */
     private fun collectRootsOnActiveDisplay(): WindowRoots {
         val windows = try {
             service.windows
@@ -274,10 +256,8 @@ class AccessibilityPlatform(
                 val root = w.root
                 if (root != null) collectedRoots.add(root) else hasNullRoot = true
             }
-            // OEM workaround: some devices return null for AccessibilityWindowInfo.getRoot()
-            // on focused windows (e.g. runtime permission dialogs) even though the tree is
-            // accessible via rootInActiveWindow. Supplement with the active root when a
-            // focused window has a null root.
+            // OEM workaround: some devices return null for AccessibilityWindowInfo.getRoot() on focused windows (e.g. runtime permission
+            // dialogs) even though the tree is accessible via rootInActiveWindow.
             val finalRoots = if (hasNullRoot) {
                 val activeRoot = service.rootInActiveWindow
                 if (activeRoot != null && collectedRoots.none { it.windowId == activeRoot.windowId }) {
@@ -354,9 +334,8 @@ class AccessibilityPlatform(
     }
 
     override fun hasRequiredPermissions(): Boolean {
-        // TODO: Consider checking Settings.canDrawOverlays() for overlay permission.
-        //       However, overlay permission should be verified at MainActivity level,
-        //       not here. Current check is sufficient for AccessibilityPlatform's scope.
+        // TODO: Consider checking Settings.canDrawOverlays() for overlay permission. However, overlay permission should be verified at
+        // MainActivity level, not here. Current check is sufficient for AccessibilityPlatform's scope.
         return service.serviceInfo != null
     }
 
@@ -429,15 +408,7 @@ class AccessibilityPlatform(
         }
     }
 
-    /**
-     * Return the REAL display dimensions (full screen including nav bar and cutout).
-     *
-     * Accessibility nodes report bounds in full-screen coordinates (getBoundsInScreen),
-     * so the display info used for visibility filtering must match. Using
-     * Resources.displayMetrics.heightPixels gives only the app content area, which
-     * causes elements near the bottom (e.g., bottom toolbar buttons) to be incorrectly
-     * filtered as off-screen.
-     */
+    /** Return the REAL display dimensions (full screen including nav bar and cutout). */
     override fun getDisplayInfo(): DisplayInfo {
         val wm = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val density = service.resources.displayMetrics.density
@@ -460,7 +431,6 @@ class AccessibilityPlatform(
         )
     }
 
-    // ===== Action Helpers =====
     override fun showScrollVisualization(x: Int, y: Int, direction: String) {
         val visualizer = visualizer ?: return
         val trail =
@@ -570,13 +540,7 @@ class AccessibilityPlatform(
                 ?.path
     }
 
-    // ===== App Management Implementation =====
-
-    /**
-     * Get list of installed launchable apps.
-     *
-     * Uses PackageManager to query apps that have a launcher activity.
-     */
+    /** Get list of installed launchable apps. */
     override suspend fun getInstalledApps(): List<AppInfo> {
         return withContext(Dispatchers.IO) {
             try {
@@ -588,11 +552,7 @@ class AccessibilityPlatform(
         }
     }
 
-    /**
-     * Launch an app by package name.
-     *
-     * Uses PackageManager.getLaunchIntentForPackage to get the launch intent.
-     */
+    /** Launch an app by package name. */
     override suspend fun launchApp(packageName: String): ActionResult {
         return withContext(Dispatchers.Main) {
             try {

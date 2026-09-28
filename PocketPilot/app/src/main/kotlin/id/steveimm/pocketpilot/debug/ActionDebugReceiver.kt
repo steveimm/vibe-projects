@@ -12,13 +12,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
-/**
- * Debug-only BroadcastReceiver for direct action execution testing.
- *
- * Receives an intent with action parameters, executes the action via
- * [DebugActionExecutor], and writes results to device storage.
- * Registered dynamically in [AgentService.onServiceConnected], gated by BuildConfig.DEBUG.
- */
+/** Debug-only BroadcastReceiver for direct action execution testing. */
 class ActionDebugReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {

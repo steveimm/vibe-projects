@@ -21,10 +21,9 @@ from eval.aw_bridge.task_loader import (
 
 
 def _parse_args() -> argparse.Namespace:
+    """Parse command-line options for this tool."""
     parser = argparse.ArgumentParser(
-        description=(
-            "Run AndroidWorld task setup only (initialize_task), without bridge execution."
-        )
+        description=("Run AndroidWorld task setup only (initialize_task), without bridge execution.")
     )
     parser.add_argument("--config", default="eval/config/default.yaml")
     parser.add_argument("--suite", default=None)
@@ -48,6 +47,11 @@ def _parse_args() -> argparse.Namespace:
 
 def _build_runner_like_args(args: argparse.Namespace) -> SimpleNamespace:
     # Reuse runner config parsing path with only the fields _load_config expects.
+    """Adapt command-line options to the shared runner configuration loader.
+
+    Args:
+        args: Parsed command-line options or command arguments.
+    """
     return SimpleNamespace(
         config=args.config,
         suite=args.suite,
@@ -62,24 +66,31 @@ def _build_runner_like_args(args: argparse.Namespace) -> SimpleNamespace:
     )
 
 
-def _pick_task_instance(
-    task_instances: list[TaskInstance], task_name: str, instance_index: int
-) -> TaskInstance:
+def _pick_task_instance(task_instances: list[TaskInstance], task_name: str, instance_index: int) -> TaskInstance:
+    """Select the requested named task instance or reject an invalid selection.
+
+    Args:
+        task_instances: Selected task instances.
+        task_name: AndroidWorld task name.
+        instance_index: Zero-based parameter combination to select.
+    """
     matches = [t for t in task_instances if t.task_name == task_name]
     if not matches:
         available = sorted({t.task_name for t in task_instances})
-        raise RuntimeError(
-            f"Task '{task_name}' not found. Available task names: {available}"
-        )
+        raise RuntimeError(f"Task '{task_name}' not found. Available task names: {available}")
     if instance_index < 0 or instance_index >= len(matches):
-        raise RuntimeError(
-            f"instance-index out of range: {instance_index}. "
-            f"Task '{task_name}' has {len(matches)} instance(s)."
-        )
+        raise RuntimeError(f"instance-index out of range: {instance_index}. Task '{task_name}' has {len(matches)} instance(s).")
     return matches[instance_index]
 
 
 def _payload(task_instance: TaskInstance, initialized: bool, teardown: bool) -> dict[str, Any]:
+    """Build the JSON status record for task setup and teardown.
+
+    Args:
+        task_instance: Initialized task metadata and task implementation.
+        initialized: Whether task initialization completed.
+        teardown: Whether task cleanup was requested.
+    """
     return {
         "task_name": task_instance.task_name,
         "instance_index": task_instance.instance_index,
@@ -92,6 +103,7 @@ def _payload(task_instance: TaskInstance, initialized: bool, teardown: bool) -> 
 
 
 def main() -> None:
+    """Set up one AndroidWorld task without running the agent."""
     args = _parse_args()
     workspace_root = Path(__file__).resolve().parents[2]
 

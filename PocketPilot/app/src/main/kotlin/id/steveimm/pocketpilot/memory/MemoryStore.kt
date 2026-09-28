@@ -7,12 +7,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.atomic.AtomicBoolean
 
-/**
- * Persistent markdown-based memory store. Read is side-effect-free (raw file
- * contents). Writes go through atomic temp-file replace. Append performs
- * schema-aware insertion under the target section heading per explicit rules
- * (see design_claude.md → Append insertion rules).
- */
+/** Persistent markdown-based memory store. */
 class MemoryStore(
     private val memoryDir: File,
     val maxContentLength: Int = DEFAULT_MAX_CONTENT_LENGTH,

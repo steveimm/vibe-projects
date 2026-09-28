@@ -16,13 +16,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Transient UI state for the local model loading indicator.
- *
- * Picking a local model in settings kicks off a background download via a
- * disposable [LFMLLMClient]; once the disk cache is warm the runner is
- * released, so a later session boot reuses cached weights without re-downloading.
- */
+/** Transient UI state for the local model loading indicator. */
 class ModelLoadingStatusHolder(
     private val context: Context,
     private val scope: CoroutineScope,

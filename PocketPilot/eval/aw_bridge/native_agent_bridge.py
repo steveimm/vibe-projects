@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
 import logging
 import shlex
 import subprocess
 import time
+from dataclasses import dataclass
+from pathlib import Path
 
 from eval.aw_bridge.completion_monitor import LogcatCompletionMonitor
 
@@ -62,6 +62,13 @@ class NativeAgentBridge:
         self._adb_shell_uid_cache: int | None = None
 
     def run_task(self, goal: str, run_id: str, artifact_dir: Path) -> BridgeOutcome:
+        """Run one agent goal while capturing logcat and monitoring its completion.
+
+        Args:
+            goal: User goal for the agent.
+            run_id: Identifier used to associate logs and trace artifacts.
+            artifact_dir: Directory for this task's artifacts.
+        """
         artifact_dir.mkdir(parents=True, exist_ok=True)
         logcat_path = artifact_dir / "logcat.log"
         started = time.monotonic()
@@ -93,9 +100,7 @@ class NativeAgentBridge:
 
             if self._config.stop_agent_after_task:
                 self.stop_agent()
-                # Allow trace flush before killing. On timeout, the agent may
-                # still be mid-turn; the STOP broadcast triggers graceful
-                # shutdown which flushes session_stopped + run_summary to disk.
+                # Give graceful shutdown time to flush session_stopped and run_summary.
                 time.sleep(3)
                 self.force_stop()
 
@@ -120,6 +125,12 @@ class NativeAgentBridge:
                 logcat_file.close()
 
     def pull_trace_dir(self, run_id: str, local_trace_dir: Path) -> bool:
+        """Copy a completed run trace from the device when it exists.
+
+        Args:
+            run_id: Identifier used to associate logs and trace artifacts.
+            local_trace_dir: Destination for the pulled device trace.
+        """
         device_trace_dir = self._device_trace_dir(run_id)
         exists = self._run_adb_shell(
             ["ls", device_trace_dir],
@@ -140,6 +151,7 @@ class NativeAgentBridge:
         return result.returncode == 0
 
     def stop_agent(self) -> None:
+        """Broadcast a graceful agent stop request to flush the run trace."""
         self._run_adb_shell(
             [
                 "am",
@@ -154,6 +166,7 @@ class NativeAgentBridge:
         )
 
     def force_stop(self) -> None:
+        """Force-stop the app to isolate the next evaluation task."""
         self._run_adb_shell(
             ["am", "force-stop", self._config.package_name],
             check=False,
@@ -161,6 +174,12 @@ class NativeAgentBridge:
         )
 
     def _start_agent(self, goal: str, run_id: str) -> None:
+        """Prepare service permissions and launch the configured agent goal.
+
+        Args:
+            goal: User goal for the agent.
+            run_id: Identifier used to associate logs and trace artifacts.
+        """
         self.force_stop()
         if self._config.clear_memory_before_task:
             self._clear_long_term_memory()
@@ -223,16 +242,12 @@ class NativeAgentBridge:
             base_url = self._config.api_keys.get("OPENAI_BASE_URL")
             if base_url:
                 # Translate localhost to 10.0.2.2 for the Android emulator
-                emulator_url = base_url.replace("://localhost", "://10.0.2.2").replace(
-                    "://127.0.0.1", "://10.0.2.2"
-                )
+                emulator_url = base_url.replace("://localhost", "://10.0.2.2").replace("://127.0.0.1", "://10.0.2.2")
                 extras.extend(["--es", "openai_base_url", emulator_url])
             # OTHER provider trio: api key already mapped above; forward url + model id.
             other_base_url = self._config.api_keys.get("OTHER_BASE_URL")
             if other_base_url:
-                emulator_other_url = other_base_url.replace(
-                    "://localhost", "://10.0.2.2"
-                ).replace("://127.0.0.1", "://10.0.2.2")
+                emulator_other_url = other_base_url.replace("://localhost", "://10.0.2.2").replace("://127.0.0.1", "://10.0.2.2")
                 extras.extend(["--es", "other_base_url", emulator_other_url])
             other_model_id = self._config.api_keys.get("OTHER_MODEL_ID")
             if other_model_id:
@@ -258,6 +273,7 @@ class NativeAgentBridge:
         )
 
     def _clear_long_term_memory(self) -> None:
+        """Remove saved agent memory through the debuggable app's ADB sandbox."""
         result = self._run_adb_shell(
             ["run-as", self._config.package_name, "rm", "-rf", "files/memory"],
             check=False,
@@ -271,10 +287,7 @@ class NativeAgentBridge:
         stderr = (result.stderr or "").strip()
         stdout = (result.stdout or "").strip()
         detail = stderr or stdout or f"returncode={result.returncode}"
-        raise RuntimeError(
-            "Failed to clear long-term memory before eval task launch: "
-            f"{detail}"
-        )
+        raise RuntimeError(f"Failed to clear long-term memory before eval task launch: {detail}")
 
     def _ensure_accessibility_service(self) -> None:
         """Ensure our accessibility service is enabled and bound.
@@ -288,15 +301,11 @@ class NativeAgentBridge:
         """
         # Grant overlay (draw-over-other-apps) permission
         self._run_adb_shell(
-            ["appops", "set", self._config.package_name,
-             "SYSTEM_ALERT_WINDOW", "allow"],
+            ["appops", "set", self._config.package_name, "SYSTEM_ALERT_WINDOW", "allow"],
             check=False,
             timeout_sec=self._config.adb_command_timeout_sec,
         )
-        # Start the app to clear Android's force-stopped state.
-        # force_stop() puts the app in a state where Android won't auto-start
-        # services (including accessibility).  Starting the activity clears
-        # this flag so the framework can bind our AccessibilityService.
+        # Launching the activity clears force-stop so Android can bind the accessibility service.
         self._run_adb_shell(
             ["am", "start", "-n", self._config.activity, "-W"],
             check=False,
@@ -326,8 +335,7 @@ class NativeAgentBridge:
                 time.sleep(self._A11Y_RETRY_COOLDOWN_SEC)
 
         raise RuntimeError(
-            "Accessibility service did not become ready after "
-            f"{self._A11Y_ENABLE_ATTEMPTS} attempts. Last state: {last_state}"
+            f"Accessibility service did not become ready after {self._A11Y_ENABLE_ATTEMPTS} attempts. Last state: {last_state}"
         )
 
     _A11Y_READY_TIMEOUT_SEC = 15
@@ -337,6 +345,7 @@ class NativeAgentBridge:
     _SHIZUKU_START_TIMEOUT_SEC = 15
 
     def _enable_accessibility_service_settings(self) -> None:
+        """Enable the agent service while preserving other enabled accessibility services."""
         current_raw = self._get_secure_setting("enabled_accessibility_services")
         current_services = self._parse_a11y_services(current_raw)
         already_listed = self._A11Y_SERVICE in current_services
@@ -362,6 +371,7 @@ class NativeAgentBridge:
             self._put_secure_setting("enabled_accessibility_services", new_value)
 
     def _wait_for_accessibility_service_ready(self) -> tuple[bool, str]:
+        """Poll until Android reports the agent accessibility service bound."""
         deadline = time.monotonic() + self._A11Y_READY_TIMEOUT_SEC
         last_state = "unknown"
         while time.monotonic() < deadline:
@@ -373,6 +383,7 @@ class NativeAgentBridge:
         return False, last_state
 
     def _get_accessibility_service_state(self) -> tuple[bool, str]:
+        """Read whether the accessibility service is enabled and bound."""
         enabled_raw = self._get_secure_setting("enabled_accessibility_services")
         enabled_services = self._parse_a11y_services(enabled_raw)
         global_enabled = self._get_secure_setting("accessibility_enabled") == "1"
@@ -384,27 +395,21 @@ class NativeAgentBridge:
             timeout_sec=min(8, self._config.adb_command_timeout_sec),
         )
         dumpsys_text = dumpsys.stdout or ""
-        service_bound = (
-            dumpsys.returncode == 0
-            and self._is_service_in_bound_accessibility_services(dumpsys_text)
-        )
-        ready = (
-            self._A11Y_SERVICE in enabled_services
-            and global_enabled
-            and service_bound
-        )
+        service_bound = dumpsys.returncode == 0 and self._is_service_in_bound_accessibility_services(dumpsys_text)
+        ready = self._A11Y_SERVICE in enabled_services and global_enabled and service_bound
 
-        state = (
-            f"global_enabled={global_enabled}, "
-            f"service_listed={self._A11Y_SERVICE in enabled_services}, "
-            f"service_bound={service_bound}"
-        )
+        state = f"global_enabled={global_enabled}, service_listed={self._A11Y_SERVICE in enabled_services}, service_bound={service_bound}"
         if dumpsys.returncode != 0:
             dumpsys_err = (dumpsys.stderr or "").strip() or f"returncode={dumpsys.returncode}"
             state = f"{state}, dumpsys_error={dumpsys_err}"
         return ready, state
 
     def _get_secure_setting(self, key: str) -> str:
+        """Read one Android secure setting through ADB.
+
+        Args:
+            key: Secure setting name.
+        """
         result = self._run_adb_shell(
             ["settings", "get", "secure", key],
             check=False,
@@ -413,13 +418,16 @@ class NativeAgentBridge:
         )
         if result.returncode != 0:
             stderr = (result.stderr or "").strip()
-            raise RuntimeError(
-                f"Failed to read secure setting {key}: "
-                f"returncode={result.returncode}, stderr={stderr}"
-            )
+            raise RuntimeError(f"Failed to read secure setting {key}: returncode={result.returncode}, stderr={stderr}")
         return (result.stdout or "").strip()
 
     def _put_secure_setting(self, key: str, value: str) -> None:
+        """Write one Android secure setting through ADB.
+
+        Args:
+            key: Secure setting name.
+            value: Input value to validate or normalize.
+        """
         result = self._run_adb_shell(
             ["settings", "put", "secure", key, value],
             check=False,
@@ -428,13 +436,15 @@ class NativeAgentBridge:
         )
         if result.returncode != 0:
             stderr = (result.stderr or "").strip()
-            raise RuntimeError(
-                f"Failed to set secure setting {key}: "
-                f"returncode={result.returncode}, stderr={stderr}"
-            )
+            raise RuntimeError(f"Failed to set secure setting {key}: returncode={result.returncode}, stderr={stderr}")
 
     @staticmethod
     def _parse_a11y_services(raw: str) -> list[str]:
+        """Split Android's colon-separated accessibility service setting.
+
+        Args:
+            raw: Unparsed input value.
+        """
         value = raw.strip()
         if not value or value == "null":
             return []
@@ -442,10 +452,12 @@ class NativeAgentBridge:
 
     @classmethod
     def _is_service_in_bound_accessibility_services(cls, dumpsys_text: str) -> bool:
-        # Match on the full component name, the package name, or the service
-        # label.  Different Android versions format Bound services differently:
-        # some include componentName=pkg/class, others only show
-        # label=<app-name> without the package or component name.
+        # Android versions identify bound services by component, package, or display label.
+        """Recognize the agent in Android's bound accessibility service listing.
+
+        Args:
+            dumpsys_text: Android accessibility service diagnostic output.
+        """
         package = cls._A11Y_SERVICE.split("/")[0]
         markers = (cls._A11Y_SERVICE, package, cls._A11Y_SERVICE_LABEL)
         lines = dumpsys_text.splitlines()
@@ -456,7 +468,7 @@ class NativeAgentBridge:
                 return True
 
             indent = len(line) - len(line.lstrip())
-            for next_line in lines[index + 1:]:
+            for next_line in lines[index + 1 :]:
                 stripped = next_line.strip()
                 if not stripped:
                     continue
@@ -466,8 +478,6 @@ class NativeAgentBridge:
                 if any(m in stripped for m in markers):
                     return True
         return False
-
-    # ── Shizuku lifecycle ────────────────────────────────────────
 
     def _ensure_shizuku(self) -> None:
         """Install Shizuku and start its server for virtual-display mode.
@@ -525,13 +535,17 @@ class NativeAgentBridge:
 
         stderr = (result.stderr or "").strip()
         _log.warning(
-            "Failed to grant Shizuku permission (%s). "
-            "Manual approval in Shizuku app may be required. stderr=%s",
+            "Failed to grant Shizuku permission (%s). Manual approval in Shizuku app may be required. stderr=%s",
             _SHIZUKU_PERMISSION,
             stderr,
         )
 
     def _is_package_installed(self, package: str) -> bool:
+        """Check whether Android can resolve the requested installed package.
+
+        Args:
+            package: Android package identifier.
+        """
         result = self._run_adb_shell(
             ["pm", "list", "packages", package],
             check=False,
@@ -541,12 +555,11 @@ class NativeAgentBridge:
         return f"package:{package}" in (result.stdout or "")
 
     def _install_shizuku(self) -> None:
+        """Install Shizuku from the configured APK if it is available."""
         apk_path = self._config.shizuku_apk_path
         if not apk_path:
             raise RuntimeError(
-                "Shizuku is not installed on the device and no "
-                "shizuku_apk_path is configured.  Either install Shizuku "
-                "manually or set bridge.shizuku_apk_path in the eval config."
+                "Shizuku is not installed on the device and no shizuku_apk_path is configured.  Either install Shizuku manually or set bridge.shizuku_apk_path in the eval config."
             )
         resolved = Path(apk_path).resolve()
         if not resolved.is_file():
@@ -561,6 +574,7 @@ class NativeAgentBridge:
         _log.info("Shizuku installed")
 
     def _is_shizuku_server_running(self) -> bool:
+        """Check for a running Shizuku server process."""
         result = self._run_adb_shell(
             ["pidof", _SHIZUKU_SERVER_PROCESS],
             check=False,
@@ -570,6 +584,7 @@ class NativeAgentBridge:
         return bool((result.stdout or "").strip())
 
     def _stop_shizuku_server(self) -> None:
+        """Stop an existing Shizuku server before restarting it with the expected user."""
         self._run_adb_shell(
             [
                 "sh",
@@ -581,6 +596,7 @@ class NativeAgentBridge:
         )
 
     def _get_shizuku_server_uid(self) -> int | None:
+        """Read the Shizuku server process user ID when it is running."""
         pid_raw = self._get_shizuku_pid().strip()
         if not pid_raw:
             return None
@@ -622,17 +638,20 @@ class NativeAgentBridge:
         native_started = self._start_shizuku_server_via_native_lib(apk_dir)
         if not native_started:
             _log.warning(
-                "Native Shizuku launcher not found under %s/lib/*/libshizuku.so; "
-                "falling back to app_process entrypoint",
+                "Native Shizuku launcher not found under %s/lib/*/libshizuku.so; falling back to app_process entrypoint",
                 apk_dir,
             )
             # Backward-compatibility fallback for older builds.
-            start_cmd = (
-                f"(CLASSPATH={shlex.quote(device_apk)} "
-                f"/system/bin/app_process -Djava.class.path={shlex.quote(device_apk)} "
-                f"/system/bin --nice-name={_SHIZUKU_SERVER_PROCESS} "
-                f"moe.shizuku.server.ShizukuService &)"
+            app_process = shlex.join(
+                [
+                    "/system/bin/app_process",
+                    f"-Djava.class.path={device_apk}",
+                    "/system/bin",
+                    f"--nice-name={_SHIZUKU_SERVER_PROCESS}",
+                    "moe.shizuku.server.ShizukuService",
+                ]
             )
+            start_cmd = f"(CLASSPATH={shlex.quote(device_apk)} {app_process} &)"
             self._run_shizuku_start_script(
                 start_cmd,
                 timeout_sec=10,
@@ -642,17 +661,14 @@ class NativeAgentBridge:
         deadline = time.monotonic() + self._SHIZUKU_START_TIMEOUT_SEC
         while time.monotonic() < deadline:
             if self._is_shizuku_server_running():
-                _log.info("Shizuku server started (pid=%s)",
-                          self._get_shizuku_pid())
+                _log.info("Shizuku server started (pid=%s)", self._get_shizuku_pid())
                 return
             time.sleep(1)
 
-        raise RuntimeError(
-            f"Shizuku server did not start within "
-            f"{self._SHIZUKU_START_TIMEOUT_SEC}s"
-        )
+        raise RuntimeError(f"Shizuku server did not start within {self._SHIZUKU_START_TIMEOUT_SEC}s")
 
     def _resolve_shizuku_apk_path(self) -> str:
+        """Find the installed Shizuku APK on the device."""
         result = self._run_adb_shell(
             ["pm", "path", _SHIZUKU_PKG],
             check=False,
@@ -665,18 +681,22 @@ class NativeAgentBridge:
         return apk_line.split("package:", 1)[1]
 
     def _start_shizuku_server_via_native_lib(self, apk_dir: str) -> bool:
-        # Try common ABI folders used by package manager extraction.
-        script = (
-            f"APK_DIR={shlex.quote(apk_dir)}; "
-            "for abi in arm64 arm x86_64 x86; do "
-            "  LIB=\"$APK_DIR/lib/$abi/libshizuku.so\"; "
-            "  if [ -f \"$LIB\" ]; then "
-            "    \"$LIB\" >/dev/null 2>&1 & "
-            "    exit 0; "
-            "  fi; "
-            "done; "
-            "exit 1"
-        )
+        """Try the installed package's native Shizuku starter libraries.
+
+        Args:
+            apk_dir: Installed package directory containing native starter libraries.
+        """
+        script = f"""
+APK_DIR={shlex.quote(apk_dir)}
+for abi in arm64 arm x86_64 x86; do
+    LIB="$APK_DIR/lib/$abi/libshizuku.so"
+    if [ -f "$LIB" ]; then
+        "$LIB" >/dev/null 2>&1 &
+        exit 0
+    fi
+done
+exit 1
+"""
         result = self._run_shizuku_start_script(
             script,
             timeout_sec=self._config.adb_command_timeout_sec,
@@ -688,6 +708,12 @@ class NativeAgentBridge:
         script: str,
         timeout_sec: int | None,
     ) -> subprocess.CompletedProcess[str]:
+        """Run a Shizuku startup shell script with a bounded ADB timeout.
+
+        Args:
+            script: Shell script to execute on the device.
+            timeout_sec: Maximum wait in seconds.
+        """
         uid = self._get_adb_shell_uid()
         if uid == 0:
             # Some environments expose adb shell as root; start Shizuku as
@@ -705,8 +731,7 @@ class NativeAgentBridge:
                 if result.returncode == 0:
                     return result
             _log.warning(
-                "adb shell is running as root, but could not switch to uid 2000 "
-                "for Shizuku start; retrying without uid switch"
+                "adb shell is running as root, but could not switch to uid 2000 for Shizuku start; retrying without uid switch"
             )
 
         return self._run_adb_shell(
@@ -717,6 +742,7 @@ class NativeAgentBridge:
         )
 
     def _get_adb_shell_uid(self) -> int | None:
+        """Read and cache the user ID used by ADB shell."""
         if self._adb_shell_uid_cache is not None:
             return self._adb_shell_uid_cache
 
@@ -737,6 +763,7 @@ class NativeAgentBridge:
         return uid
 
     def _get_shizuku_pid(self) -> str:
+        """Read the running Shizuku server process ID."""
         result = self._run_adb_shell(
             ["pidof", _SHIZUKU_SERVER_PROCESS],
             check=False,
@@ -746,6 +773,11 @@ class NativeAgentBridge:
         return (result.stdout or "").strip()
 
     def _clear_device_trace(self, run_id: str) -> None:
+        """Remove an earlier device trace with the same run identifier.
+
+        Args:
+            run_id: Identifier used to associate logs and trace artifacts.
+        """
         self._run_adb_shell(
             ["rm", "-rf", self._device_trace_dir(run_id)],
             check=False,
@@ -753,12 +785,19 @@ class NativeAgentBridge:
         )
 
     def _device_trace_dir(self, run_id: str) -> str:
-        return (
-            f"/sdcard/Android/data/{self._config.package_name}/files/"
-            f"inspection-trace/{run_id}"
-        )
+        """Build the device trace directory for a run identifier.
+
+        Args:
+            run_id: Identifier used to associate logs and trace artifacts.
+        """
+        return f"/sdcard/Android/data/{self._config.package_name}/files/inspection-trace/{run_id}"
 
     def _adb_command(self, args: list[str]) -> list[str]:
+        """Build an ADB command targeting the configured device.
+
+        Args:
+            args: Parsed command-line options or command arguments.
+        """
         if self._config.adb_serial:
             return ["adb", "-s", self._config.adb_serial, *args]
         return ["adb", *args]
@@ -781,6 +820,14 @@ class NativeAgentBridge:
         capture_output: bool = False,
         timeout_sec: int | None = None,
     ) -> subprocess.CompletedProcess[str]:
+        """Run a device-targeted ADB command with the configured timeout.
+
+        Args:
+            args: Parsed command-line options or command arguments.
+            check: Whether a nonzero exit should raise an exception.
+            capture_output: Whether to collect stdout and stderr.
+            timeout_sec: Maximum wait in seconds.
+        """
         return subprocess.run(
             self._adb_command(args),
             check=check,
@@ -807,10 +854,20 @@ class NativeAgentBridge:
 
 
 def _bool_arg(value: bool) -> str:
+    """Format a Boolean for an Android broadcast argument.
+
+    Args:
+        value: Input value to validate or normalize.
+    """
     return "true" if value else "false"
 
 
 def _stop_process(proc: subprocess.Popen[str]) -> None:
+    """Terminate a subprocess, killing it if graceful shutdown times out.
+
+    Args:
+        proc: Child process to monitor or stop.
+    """
     if proc.poll() is not None:
         return
     proc.terminate()

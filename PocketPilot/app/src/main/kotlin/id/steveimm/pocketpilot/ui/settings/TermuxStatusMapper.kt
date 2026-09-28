@@ -3,14 +3,8 @@ package id.steveimm.pocketpilot.ui.settings
 import id.steveimm.pocketpilot.termux.NeedsSetupReason
 import id.steveimm.pocketpilot.termux.TermuxBridgeStatus
 
-/**
- * Pure mapper: collapse the live Termux bridge state, the runtime permission disposition,
- * and the user's enable pref into the display-only [ToolStatusUi] the unified tool card
- * renders. No Compose dependency — covered by JVM unit tests.
- *
- * Label words MUST stay exactly `"Ready" / "Needs Setup" / "Setting up…" / "Not Installed"
- * / "Disabled"` — `SettingsTermuxRowTest` matches on them.
- */
+/** Pure mapper: collapse the live Termux bridge state, the runtime permission disposition, and the user's enable pref into the
+ * display-only [ToolStatusUi] the unified tool card renders. No Compose dependency — covered by JVM unit tests. */
 internal fun termuxStatusUi(
     state: TermuxBridgeStatus,
     permissionDisposition: RunCommandPermissionDisposition?,
@@ -49,11 +43,8 @@ private fun TermuxBridgeStatus.subtitle(): String = when (this) {
     TermuxBridgeStatus.Disabled -> "Toggle to enable"
 }
 
-/**
- * PERMISSION_MISSING is the only reason whose subtitle depends on the runtime disposition.
- * `OpenAppSettings` means the user picked "Don't ask again", so the system dialog no longer
- * surfaces — point them to App Settings instead of "tap to grant".
- */
+/** PERMISSION_MISSING is the only reason whose subtitle depends on the runtime disposition. `OpenAppSettings` means the user picked
+ * "Don't ask again", so the system dialog no longer surfaces — point them to App Settings instead of "tap to grant". */
 private fun TermuxBridgeStatus.subtitleFor(
     permissionDisposition: RunCommandPermissionDisposition?,
 ): String {

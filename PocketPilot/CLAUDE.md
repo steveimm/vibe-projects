@@ -4,7 +4,8 @@ AI-powered Android automation using accessibility services. Kotlin/Jetpack Compo
 
 ## Quick Reference
 
-**Build**: `./gradlew assembleDebug`
+**APK deliverable**: Signed release for `arm64-v8a` only, using the existing signing key.
+**Development build**: `./gradlew assembleDebug` (only when required for development or device tests)
 **Test (JVM)**: `./gradlew test`
 **Test (Compose UI on device)**: `./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.package=id.steveimm.pocketpilot.qa`
 **Lint**: `./gradlew lint`
@@ -35,6 +36,16 @@ Project-specific additions:
 - `/action-debug` - Debug failed tool executions by isolating action layer
 - `/cog-tune` - Analyze agent cognition using traces and eval results
 - `/ux-visual-debug` - End-to-end UX QA from user perspective via ADB
+
+## Code conventions
+
+- Prefer straightforward control flow and reuse existing helpers before adding abstractions.
+- Keep related behavior together. Extract a module when it removes duplication or gives one responsibility a clear owner.
+- Keep comments necessary and at most two lines. Put longer explanations in `doc/`.
+- Preserve coroutine cancellation. Run blocking work on IO and release resources on every exit path.
+- Use typed Python parameters and return values, concise Google-style function docstrings, and no module docstrings.
+- Prefer 120–140 character lines and one blank line between logical sections.
+- Use the CLI for dependency changes. Test behavior and failure boundaries, not implementation details.
 
 ## Git
 

@@ -22,15 +22,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-/**
- * Characterization tests for the PermissionStepState FSM described in
- * doc/main/state_machines/onboarding_permission_step.md.
- *
- * The state itself is a `sealed interface` with `data object` variants only —
- * every transition / guard lives in OnboardingViewModel.checkCurrentPermission
- * (and openSystemSettings / onHostResumed / skipStep). Tests drive the VM and
- * observe `vm.stepState` / `vm.currentStep` / outcome writes.
- */
+/** Characterization tests for the PermissionStepState FSM described in doc/main/state_machines/onboarding_permission_step.md. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PermissionStepStateTest {
 
@@ -105,8 +97,6 @@ class PermissionStepStateTest {
         every { permissionMonitor.isBatteryOptimized() } returns true
     }
 
-    // ── Checking → Ready (live false, !isReturnFromSettings) ──
-
     @Test
     fun `fresh entry with permission missing lands on Ready`() = runTest {
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job())
@@ -119,14 +109,10 @@ class PermissionStepStateTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ── Checking → advance (autoAdvance=true, live true) ──
-
     @Test
     fun `fresh entry with permission satisfied auto-advances and persists Done`() = runTest {
-        // All permissions live=true; outcomes default Pending.
-        // firstIncompleteStep (live override) skips Accessibility/Overlay (live true) and
-        // returns Battery (because outcomes.battery == Pending). Battery's live check is
-        // true → autoAdvance path runs synchronously → advances to ApiKey.
+        // All permissions live=true; outcomes default Pending. firstIncompleteStep (live override) skips Accessibility/Overlay (live true)
+        // and returns Battery (because outcomes.battery == Pending).
         allPermissionsGranted()
 
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job())
@@ -139,8 +125,6 @@ class PermissionStepStateTest {
 
         scope.coroutineContext.job.cancel()
     }
-
-    // ── Checking → Satisfied (autoAdvance=false via goBack) ──
 
     @Test
     fun `goBack to satisfied permission step lands on Satisfied without advancing`() = runTest {
@@ -168,8 +152,6 @@ class PermissionStepStateTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ── Checking → Unsatisfied (Overlay, isReturnFromSettings, live false) ──
-
     @Test
     fun `onHostResumed on Overlay with permission still missing transitions to Unsatisfied`() = runTest {
         every { permissionMonitor.isAccessibilityEnabled() } returns true
@@ -190,8 +172,6 @@ class PermissionStepStateTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ── Checking → Unsatisfied (Battery, isReturnFromSettings, live false) ──
-
     @Test
     fun `onHostResumed on Battery with optimization not ignored transitions to Unsatisfied`() = runTest {
         every { permissionMonitor.isAccessibilityEnabled() } returns true
@@ -211,8 +191,6 @@ class PermissionStepStateTest {
 
         scope.coroutineContext.job.cancel()
     }
-
-    // ── Checking → Satisfied via a11y poll (Accessibility, isReturnFromSettings) ──
 
     @Test
     fun `accessibility poll succeeds within 3s and advances to Overlay`() = runTest {
@@ -235,9 +213,8 @@ class PermissionStepStateTest {
         // checkCurrentPermission set Checking synchronously before launching the poll.
         assertThat(vm.stepState).isEqualTo(PermissionStepState.Checking)
 
-        // First poll iteration is enough — the mock flips on the 4th call
-        // (init=2, onHostResumed sync check=1, first poll=1). Stop before the
-        // 400ms auto-advance fires so Satisfied is observable.
+        // First poll iteration is enough — the mock flips on the 4th call (init=2, onHostResumed sync check=1, first poll=1). Stop before
+        // the 400ms auto-advance fires so Satisfied is observable.
         testScheduler.advanceTimeBy(250)
         testScheduler.runCurrent()
         // Poll succeeded → onPermissionSatisfied set Satisfied; AUTO_ADVANCE_DELAY (400ms)
@@ -252,8 +229,6 @@ class PermissionStepStateTest {
 
         scope.coroutineContext.job.cancel()
     }
-
-    // ── Checking → Unsatisfied via a11y poll exhaustion ──
 
     @Test
     fun `accessibility poll exhausts 3s without success and lands on Unsatisfied`() = runTest {
@@ -274,8 +249,6 @@ class PermissionStepStateTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ── Ready → OpeningSettings (and emits effect) ──
-
     @Test
     fun `openSystemSettings on Accessibility transitions Ready to OpeningSettings and emits effect`() = runTest {
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job())
@@ -295,8 +268,6 @@ class PermissionStepStateTest {
         collector.cancel()
         scope.coroutineContext.job.cancel()
     }
-
-    // ── Unsatisfied → OpeningSettings ──
 
     @Test
     fun `openSystemSettings on Overlay Unsatisfied transitions to OpeningSettings and emits effect`() = runTest {
@@ -323,8 +294,6 @@ class PermissionStepStateTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ── OpeningSettings → Checking (re-enters via onHostResumed) ──
-
     @Test
     fun `onHostResumed from OpeningSettings re-enters Checking before settling on Unsatisfied`() = runTest {
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job())
@@ -334,9 +303,8 @@ class PermissionStepStateTest {
         vm.openSystemSettings()
         assertThat(vm.stepState).isEqualTo(PermissionStepState.OpeningSettings)
 
-        // Permission still missing on resume → poll path runs (Accessibility step) and
-        // exhausts. The Checking transition is observable synchronously before the poll
-        // suspends on its first delay.
+        // Permission still missing on resume → poll path runs (Accessibility step) and exhausts. The Checking transition is observable
+        // synchronously before the poll suspends on its first delay.
         vm.onHostResumed()
         assertThat(vm.stepState).isEqualTo(PermissionStepState.Checking)
 
@@ -345,8 +313,6 @@ class PermissionStepStateTest {
 
         scope.coroutineContext.job.cancel()
     }
-
-    // ── Battery Ready → Skipped via skipStep ──
 
     @Test
     fun `skipStep on Battery Ready persists Skipped and advances`() = runTest {
@@ -368,8 +334,6 @@ class PermissionStepStateTest {
 
         scope.coroutineContext.job.cancel()
     }
-
-    // ── Battery Unsatisfied → Skipped via skipStep ──
 
     @Test
     fun `skipStep on Battery Unsatisfied persists Skipped and advances`() = runTest {
@@ -395,8 +359,6 @@ class PermissionStepStateTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ── Guard: skipStep no-ops on Accessibility ──
-
     @Test
     fun `skipStep on Accessibility is a no-op (no Skipped outcome no advance)`() = runTest {
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job())
@@ -413,8 +375,6 @@ class PermissionStepStateTest {
 
         scope.coroutineContext.job.cancel()
     }
-
-    // ── Guard: skipStep no-ops on Overlay ──
 
     @Test
     fun `skipStep on Overlay is a no-op`() = runTest {
@@ -434,8 +394,6 @@ class PermissionStepStateTest {
 
         scope.coroutineContext.job.cancel()
     }
-
-    // ── Guard: onHostResumed outside permission family is a no-op ──
 
     @Test
     fun `onHostResumed on ApiKey step does not touch permission state`() = runTest {
@@ -461,8 +419,6 @@ class PermissionStepStateTest {
 
         scope.coroutineContext.job.cancel()
     }
-
-    // ── Invariant: a11y poll only on isReturnFromSettings (fresh entry never polls) ──
 
     @Test
     fun `fresh entry with accessibility missing does not poll - stays on Ready immediately`() = runTest {

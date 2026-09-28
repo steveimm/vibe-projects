@@ -51,12 +51,7 @@ private val SUGGESTIONS = listOf(
     Suggestion("Search", "for nearby restaurants"),
 )
 
-/**
- * EmptyState — Bound Edition first page. The 240dp paw bleeds from the top-right
- * corner; the question and marginalia suggestions sit in the lower-left third,
- * separated by a 64dp hairline rule. Reveal staggers at 80ms intervals over
- * `TraceEnter`; reduced-motion renders everything immediately.
- */
+/** EmptyState — Bound Edition first page. */
 @Composable
 fun EmptyState(
     onSuggestionClick: (String) -> Unit,
@@ -68,10 +63,8 @@ fun EmptyState(
             .fillMaxSize()
             .clipToBounds(),
     ) {
-        // Paw glyph is rendered by ChatScreen at the outer Box layer so it can
-        // bleed up through the masthead band (transparent ChatHeader sits on
-        // top, "PocketPilot" wordmark stays readable). Kept out of this composable
-        // to avoid Scaffold-content clipping.
+        // Paw glyph is rendered by ChatScreen at the outer Box layer so it can bleed up through the masthead band (transparent ChatHeader
+        // sits on top, "PocketPilot" wordmark stays readable). Kept out of this composable to avoid Scaffold-content clipping.
 
         Column(
             modifier = Modifier
@@ -155,9 +148,8 @@ private fun MarginaliaSuggestion(
     }
 }
 
-// 4-step choreography per motion.md: each index waits 80ms longer than the
-// previous, then fades + slides 8dp into place over `TraceEnter`. Reduced-motion
-// short-circuits to immediate render.
+// 4-step choreography per motion.md: each index waits 80ms longer than the previous, then fades + slides 8dp into place over `TraceEnter`.
+// Reduced-motion short-circuits to immediate render.
 @Composable
 private fun StaggeredReveal(
     index: Int,

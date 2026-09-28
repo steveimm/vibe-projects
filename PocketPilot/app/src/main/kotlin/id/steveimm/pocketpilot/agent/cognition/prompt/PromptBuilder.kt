@@ -12,31 +12,14 @@ import com.openai.models.responses.ResponseInputImage
 import com.openai.models.responses.ResponseInputItem
 import com.openai.models.responses.ResponseInputText
 
-/**
- * Builds the complete input items list for one LLM turn.
- *
- * Prompt is a sequential narrative the LLM reads left-to-right:
- *   1. HISTORY  — past turns (compression handled by HistoryManager)
- *   2. MEMORY   — working memory (scratchpad + todos)
- *   3. APP SKILL — active package guidance loaded per turn
- *   4. OBSERVATION — current screen state + warnings + screenshot
- */
+/** Builds the complete input items list for one LLM turn. */
 internal class PromptBuilder(
     private val historyManager: HistoryManager,
     private val sessionState: AgentSessionState,
     private val supportsVision: Boolean = true
 ) {
 
-    /**
-     * Assemble all input items for one LLM call.
-     *
-     * @param observation  Canonical turn observation (screen state + image)
-     * @param warnings  Plain-text warning strings (loop detection, final turn, etc.)
-     * @param turnNumber Current turn number (1-based, optional — informational only)
-     * @param appSkill Optional app-specific skill block for the foreground package
-     * @param recalledMemory Optional recalled long-term memory block
-     * @param activatedAgentSkills Optional activated agent skill bodies
-     */
+    /** Assemble all input items for one LLM call. */
     fun buildInputItems(
         observation: TurnObservation,
         warnings: List<String> = emptyList(),
@@ -53,31 +36,19 @@ internal class PromptBuilder(
         add(buildObservationSection(observation, warnings, turnNumber))
     }
 
-    // ── History ──────────────────────────────────────────────────────────
-
-    /**
-     * History section is a direct pass-through of [HistoryManager.forPrompt].
-     * Screen compression is handled proactively by HistoryManager on addItem().
-     */
+    /** History section is a direct pass-through of [HistoryManager.forPrompt]. Screen compression is handled proactively by
+     * HistoryManager on addItem(). */
     private fun buildHistorySection(): List<ResponseInputItem> {
         return historyManager.forPrompt().mapNotNull { it.toResponseInputItem() }
     }
 
-    // ── Memory ──────────────────────────────────────────────────────────
-
-    /**
-     * Build a single "Working Memory" user message (todos + scratchpad).
-     * Returns null when both are empty — no noise for early turns.
-     */
+    /** Build a single "Working Memory" user message (todos + scratchpad). Returns null when both are empty — no noise for early turns. */
     private fun buildMemorySection(): ResponseInputItem? {
         val text = buildMemoryText() ?: return null
         return textUserMessage(text)
     }
 
-    /**
-     * Produces the text body for the memory message.
-     * Package-visible for testing.
-     */
+    /** Produces the text body for the memory message. Package-visible for testing. */
     internal fun buildMemoryText(): String? {
         val todoContext = sessionState.todos.toPromptContext()
         val scratchpadContext = sessionState.scratchpad.toPromptContext()
@@ -102,8 +73,6 @@ internal class PromptBuilder(
         }.trim()
     }
 
-    // ── Current Observation ─────────────────────────────────────────────
-
     private fun buildObservationSection(
         observation: TurnObservation,
         warnings: List<String>,
@@ -117,15 +86,7 @@ internal class PromptBuilder(
         }
     }
 
-    /**
-     * Produces the text body for the current-observation message.
-     *
-     * Turn-specific decorations (warnings, screenshot note, no-a11y guidance) are layered
-     * around the canonical [TurnObservation.screenBlock]. The turn number is rendered
-     * without a budget — the agent should not be primed with a finite remaining count.
-     *
-     * Package-visible for testing.
-     */
+    /** Produces the text body for the current-observation message. */
     internal fun buildObservationText(
         observation: TurnObservation,
         warnings: List<String>,
@@ -159,8 +120,6 @@ internal class PromptBuilder(
         }.trim()
     }
 
-    // ── ResponseItem → ResponseInputItem ────────────────────────────────
-
     private fun ResponseItem.toResponseInputItem(): ResponseInputItem? = when (this) {
         is ResponseItem.Message -> {
             val easyRole = when (role) {
@@ -193,8 +152,6 @@ internal class PromptBuilder(
                 .build()
         )
     }
-
-    // ── Helpers ──────────────────────────────────────────────────────────
 
     private fun textUserMessage(text: String): ResponseInputItem =
         ResponseInputItem.ofEasyInputMessage(

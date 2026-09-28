@@ -10,11 +10,7 @@ internal class ShizukuActivityLauncher {
                 private const val TAG = "ShizukuActivityLaunch"
         }
 
-        /**
-         * Launch an activity onto a target display.
-         *
-         * Throws on failure so the caller can propagate truthful results.
-         */
+        /** Launch an activity onto a target display. */
         fun launchOnDisplay(context: Context, intent: Intent, displayId: Int) {
                 val optionsClass = Class.forName("android.app.ActivityOptions")
                 val options = optionsClass.getMethod("makeBasic").invoke(null)

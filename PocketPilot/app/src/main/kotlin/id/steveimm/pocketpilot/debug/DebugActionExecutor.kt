@@ -5,7 +5,6 @@ import android.content.Intent
 import android.util.Log
 import id.steveimm.pocketpilot.app.AgentService
 import id.steveimm.pocketpilot.model.ScreenSnapshot
-import id.steveimm.pocketpilot.perception.Perceptor
 import id.steveimm.pocketpilot.platform.AccessibilityGestureInjector
 import id.steveimm.pocketpilot.platform.ActionResult
 import id.steveimm.pocketpilot.platform.NodeActionPerformer
@@ -19,19 +18,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 
-/**
- * Executes a single action directly and writes structured results to device storage.
- *
- * Composes [NodeActionPerformer] + [AccessibilityGestureInjector] from the live
- * [AgentService], bypassing SessionConfig and the full agent loop.
- * Screenshots are captured host-side via adb; this class handles
- * a11y tree capture, action execution, and change detection only.
- */
+/** Executes a single action directly and writes structured results to device storage. */
 class DebugActionExecutor(private val service: AgentService) {
 
     private val visualizer = service.getActionVisualizer()
@@ -66,11 +54,11 @@ class DebugActionExecutor(private val service: AgentService) {
     }
 
     suspend fun execute(intent: Intent, context: Context) {
-        val dir = prepareOutputDir(context)
+        val artifacts = DebugActionArtifacts(File(context.getExternalFilesDir(null), OUTPUT_DIR), TAG).reset()
 
         val actionName = intent.getStringExtra("action")
         if (actionName == null) {
-            finish(dir, errorJson("Missing 'action' extra"))
+            artifacts.finish(errorJson("Missing 'action' extra"))
             return
         }
 
@@ -81,13 +69,13 @@ class DebugActionExecutor(private val service: AgentService) {
 
         val uiAction = parseAction(actionName, intent)
         if (uiAction == null) {
-            finish(dir, errorJson("Unknown or invalid action: $actionName"))
+            artifacts.finish(errorJson("Unknown or invalid action: $actionName"))
             return
         }
 
         // Pre-snapshot
-        val preSnapshot = if (captureTree) captureSnapshot() else null
-        if (preSnapshot != null) writeTree(dir, "pre_tree.json", preSnapshot)
+        val preSnapshot = if (captureTree) artifacts.captureSnapshot(service) else null
+        if (preSnapshot != null) artifacts.writeTree("pre_tree.json", preSnapshot)
 
         // Execute
         val startMs = System.currentTimeMillis()
@@ -98,8 +86,8 @@ class DebugActionExecutor(private val service: AgentService) {
         delay(settleMs)
 
         // Post-snapshot
-        val postSnapshot = if (captureTree) captureSnapshot() else null
-        if (postSnapshot != null) writeTree(dir, "post_tree.json", postSnapshot)
+        val postSnapshot = if (captureTree) artifacts.captureSnapshot(service) else null
+        if (postSnapshot != null) artifacts.writeTree("post_tree.json", postSnapshot)
 
         // Compare
         val verdict = if (captureTree) {
@@ -114,12 +102,10 @@ class DebugActionExecutor(private val service: AgentService) {
             verdict, elapsedMs, settleMs,
             preSnapshot, postSnapshot
         )
-        finish(dir, json)
+        artifacts.finish(json)
 
         Log.i(TAG, "action=$actionName status=${result.statusName()} verdict=$verdict elapsed=${elapsedMs}ms")
     }
-
-    // -- Action dispatch --
 
     private suspend fun performAction(action: UIAction): ActionResult {
         return when (action) {
@@ -183,8 +169,6 @@ class DebugActionExecutor(private val service: AgentService) {
         )
     }
 
-    // -- Intent parsing --
-
     private fun parseAction(name: String, intent: Intent): UIAction? {
         return when (name) {
             "click" -> {
@@ -233,23 +217,6 @@ class DebugActionExecutor(private val service: AgentService) {
         }
     }
 
-    // -- Snapshot --
-
-    private suspend fun captureSnapshot(): ScreenSnapshot? {
-        return try {
-            withContext(Dispatchers.Main) {
-                val root = service.rootInActiveWindow
-                val dm = service.resources.displayMetrics
-                Perceptor.snapshot(root, dm.widthPixels, dm.heightPixels)
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to capture snapshot", e)
-            null
-        }
-    }
-
-    // -- Result JSON --
-
     private fun buildResultJson(
         actionName: String,
         intent: Intent,
@@ -277,7 +244,7 @@ class DebugActionExecutor(private val service: AgentService) {
             })
             put("elapsed_ms", elapsedMs)
             put("settle_ms", settleMs)
-            put("timestamp", isoTimestamp())
+            put("timestamp", debugActionTimestamp())
             put("device", android.os.Build.MODEL)
             put("files", JSONObject().apply {
                 if (pre != null) put("pre_tree", "pre_tree.json")
@@ -319,32 +286,6 @@ class DebugActionExecutor(private val service: AgentService) {
         }
     }
 
-    // -- File I/O --
-
-    private fun prepareOutputDir(context: Context): File {
-        val dir = File(context.getExternalFilesDir(null), OUTPUT_DIR)
-        if (dir.exists()) dir.deleteRecursively()
-        dir.mkdirs()
-        return dir
-    }
-
-    private fun writeTree(dir: File, filename: String, snapshot: ScreenSnapshot) {
-        try {
-            File(dir, filename).writeText(Perceptor.toPromptJson(snapshot))
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to write $filename", e)
-        }
-    }
-
-    private fun finish(dir: File, json: JSONObject) {
-        try {
-            File(dir, "result.json").writeText(json.toString(2))
-            File(dir, ".done").createNewFile()
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to write result", e)
-        }
-    }
-
     companion object {
         private const val TAG = "DebugActionExecutor"
         private const val DEFAULT_SETTLE_MS = 350
@@ -353,11 +294,9 @@ class DebugActionExecutor(private val service: AgentService) {
 
         fun writeErrorResult(context: Context, error: String) {
             try {
-                val dir = File(context.applicationContext.getExternalFilesDir(null), OUTPUT_DIR)
-                if (dir.exists()) dir.deleteRecursively()
-                dir.mkdirs()
-                File(dir, "result.json").writeText(errorJson(error).toString(2))
-                File(dir, ".done").createNewFile()
+                DebugActionArtifacts(File(context.applicationContext.getExternalFilesDir(null), OUTPUT_DIR), TAG)
+                    .reset()
+                    .finish(errorJson(error))
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to write error result", e)
             }
@@ -368,14 +307,8 @@ class DebugActionExecutor(private val service: AgentService) {
                 put("version", 1)
                 put("status", "error")
                 put("error", error)
-                put("timestamp", isoTimestamp())
+                put("timestamp", debugActionTimestamp())
             }
-        }
-
-        private fun isoTimestamp(): String {
-            val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
-            fmt.timeZone = TimeZone.getTimeZone("UTC")
-            return fmt.format(Date())
         }
     }
 }

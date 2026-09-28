@@ -6,14 +6,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import org.junit.Test
 
-/**
- * Coverage for the Virtual Display enable gate. The Display section toggle is the single UI
- * surface that flips the platform mode to VD, and every gate branch matters: a regression here
- * re-opens the back-door where the mode persists as VD without the gating contract holding.
- *
- * Mirrors [BrowserScriptToggleGateTest] one-for-one, minus the writer-preflight cases (this
- * gate has no I/O preflight by design — see the KDoc on [VirtualDisplayToggleGate]).
- */
+/** Coverage for the Virtual Display enable gate. */
 class VirtualDisplayToggleGateTest {
 
     @Test
@@ -104,9 +97,8 @@ class VirtualDisplayToggleGateTest {
     @Test
     fun `granted result with stale checkSelfPermission re-check returns ShizukuPermissionDenied`() =
         runTest {
-            // Paranoia path: listener fires GRANTED but the underlying UID consent row was not
-            // written. Should not happen on a healthy Shizuku install, but if it does we must
-            // not silently proceed — the user needs actionable feedback.
+            // Paranoia path: listener fires GRANTED but the underlying UID consent row was not written. Should not happen on a healthy
+            // Shizuku install, but if it does we must not silently proceed — the user needs actionable feedback.
             val result = gateVirtualDisplayEnable(
                 isShizukuAvailable = { true },
                 hasShizukuPermission = { false },
@@ -115,8 +107,6 @@ class VirtualDisplayToggleGateTest {
 
             assertThat(result).isEqualTo(VirtualDisplayToggleError.ShizukuPermissionDenied)
         }
-
-    // ── VirtualDisplayToggleGate (Compose state holder) ─────────────────────────────────
 
     @Test
     fun `setEnabled(false) bypasses gate — persists false without invoking gate`() = runTest {
@@ -203,9 +193,8 @@ class VirtualDisplayToggleGateTest {
             scope = backgroundScope,
             onPersist = { persisted += it },
             gate = {
-                // First attempt fails (e.g., Shizuku not yet granted), second succeeds (user
-                // returned and granted). Mirrors the call-site contract:
-                //     onCheckedChange = { gate.clearError(); gate.setEnabled(it) }
+                // First attempt fails (e.g., Shizuku not yet granted), second succeeds (user returned and granted). Mirrors the call-site
+                // contract: onCheckedChange = { gate.clearError(); gate.setEnabled(it) }
                 attempt++
                 if (attempt == 1) VirtualDisplayToggleError.ShizukuPermissionDenied else null
             },

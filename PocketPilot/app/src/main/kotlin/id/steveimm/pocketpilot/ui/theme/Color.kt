@@ -17,9 +17,8 @@ val Rust = Color(0xFF8B2E1F)
 val Hairline = Ink.copy(alpha = 0.12f)
 val InkGhost = Ink.copy(alpha = 0.08f)
 
-// Material *Container slots — Paper warm-tinted to keep editorial palette
-// consistent across FilledTonalButton / FilterChip(selected) / error cards.
-// Avoids Material 3's default lavender leak. See QA report I-1.
+// Material *Container slots — Paper warm-tinted to keep editorial palette consistent across FilledTonalButton / FilterChip(selected) /
+// error cards. Avoids Material 3's default lavender leak. See QA report I-1.
 val PrimaryContainerLight = Color(0xFFEBCFC3)   // Claw-tinted Paper
 val TertiaryContainerLight = Color(0xFFF2E2C7)  // Amber-tinted Paper
 val ErrorContainerLight = Color(0xFFE0CAC1)     // Rust-tinted Paper

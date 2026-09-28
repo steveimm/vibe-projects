@@ -49,9 +49,9 @@ class CompletedPatternTest(unittest.TestCase):
         line = '02-17 12:00:00.000  1234  5678 I AgentService: Task completed'
         self.assertIsNotNone(COMPLETED_PATTERN.search(line))
 
-    def test_session_completed_emitted(self) -> None:
+    def test_session_completed_without_reason_is_not_completion(self) -> None:
         line = 'AgentSession: Emitted event: SessionCompleted'
-        self.assertIsNotNone(COMPLETED_PATTERN.search(line))
+        self.assertIsNone(COMPLETED_PATTERN.search(line))
 
     def test_unrelated_line(self) -> None:
         line = 'AgentService: Starting task'
@@ -173,10 +173,25 @@ class LogcatCompletionMonitorTest(unittest.TestCase):
                 "AgentSession: Emitted event: SessionCompleted\n",
                 encoding="utf-8",
             )
-            monitor = LogcatCompletionMonitor(max_wait_seconds=1, poll_interval_seconds=0.01)
+            monitor = LogcatCompletionMonitor(max_wait_seconds=0.05, poll_interval_seconds=0.01)
             result = monitor.wait(logcat)
-            self.assertEqual(result.bridge_status, "completed")
+            self.assertEqual(result.bridge_status, "timeout")
             self.assertIsNone(result.agent_completion_reason)
+
+
+    def test_waits_for_current_task_after_previous_session_teardown(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            logcat = Path(tmp) / "logcat.log"
+            logcat.write_text(
+                "AgentSession: Emitted event: SessionCompleted\n"
+                "AgentService: Session completed: previous, reason: USER_STOPPED\n"
+                "AgentService: Task completed: current, reason: GOAL_ACHIEVED\n",
+                encoding="utf-8",
+            )
+            result = LogcatCompletionMonitor(1, 0.01).wait(logcat)
+            self.assertEqual(result.bridge_status, "completed")
+            self.assertEqual(result.agent_completion_reason, "GOAL_ACHIEVED")
+            self.assertIn("current", result.matched_line)
 
 
 if __name__ == "__main__":

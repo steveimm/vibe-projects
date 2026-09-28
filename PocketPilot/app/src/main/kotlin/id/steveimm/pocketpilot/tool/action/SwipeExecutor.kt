@@ -9,12 +9,7 @@ import kotlinx.coroutines.delay
 import org.json.JSONObject
 import kotlin.math.max
 
-/**
- * Swipe executor: raw coordinate-based gesture from start to end.
- *
- * No direction/distance abstraction — coordinates map directly to gesture.
- * Used for precision gestures: sliders, drag-and-drop, carousels.
- */
+/** Swipe executor: raw coordinate-based gesture from start to end. */
 class SwipeExecutor {
     companion object {
         private const val DEFAULT_SWIPE_DURATION_MS = 400L

@@ -26,9 +26,8 @@ import kotlinx.coroutines.launch
 internal fun completionSummary(result: String?): String =
         result?.takeIf { it.isNotBlank() } ?: "Task completed"
 
-/** Display name of `complete_task` after [formatToolName] — used to detect the
- *  Turn.kt:205-209 stop signal in the chat trace (the tool's args.answer is
- *  surfaced via [TaskCompleted.result]). */
+/** Display name of `complete_task` after [formatToolName] — used to detect the Turn.kt:205-209 stop signal in the chat trace (the
+ * tool's args.answer is surfaced via [TaskCompleted.result]). */
 private val COMPLETE_TASK_DISPLAY = id.steveimm.pocketpilot.ui.common.formatToolName("complete_task")
 
 internal fun shouldHandleReboundEvent(
@@ -36,15 +35,7 @@ internal fun shouldHandleReboundEvent(
         replayCutoffTimestamp: Long?
 ): Boolean = replayCutoffTimestamp == null || eventTimestamp > replayCutoffTimestamp
 
-/**
- * Apply Turn.kt:205-209 stop criteria to the row at [TaskCompleted] time:
- *  - if a `complete_task` action ran in this row → append [ContentBlock.FinalText]
- *    carrying [rawResult] (which is `arguments.answer` per TurnToolPolicy.kt:103);
- *  - else if the most recent block is a streaming [ContentBlock.Text] → promote
- *    it in place to [ContentBlock.FinalText] (the "last text without tools" path);
- *  - else → append a [ContentBlock.FinalText] with the resolved completion text.
- *  Error rows still get a Text block prefixed with ⚠️ and never produce a final.
- */
+/** Use complete_task output as final text, or promote the last streamed text when no completion tool ran. */
 internal fun appendCompletionToMessages(
         messages: MutableList<ChatMessage>,
         rawResult: String?,
@@ -100,10 +91,7 @@ private fun applyCompletionToBlocks(
         // Missing/empty answer ⇒ no final region (per uxfb-3 README §3).
         return if (realAnswer != null) blocks + ContentBlock.FinalText(realAnswer) else blocks
     }
-    // Last-text-without-tools path (Turn.kt:205-209 second branch): promote the
-    // most recent non-blank Text in place. Otherwise fall back to rawResult only
-    // if it's a real answer — never fabricate "Task completed" for USER_STOPPED
-    // / side-effect-only completions where rawResult is null.
+    // Last-text-without-tools path (Turn.kt:205-209 second branch): promote the most recent non-blank Text in place.
     val lastTextIndex = blocks.indexOfLast {
         it is ContentBlock.Text && it.text.isNotBlank()
     }
@@ -173,15 +161,8 @@ internal fun appendStartupFailureMessages(
     )
 }
 
-/**
- *
- * Responsibilities:
- * - Collect events from AgentSession.events
- * - Maintain message list with mutableStateListOf<ChatMessage>()
- * - Handle streaming text accumulation
- * - Manage input state (Idle/Working)
- * - Manage session history (list, resume, delete)
- */
+/** Responsibilities: - Collect events from AgentSession.events - Maintain message list with mutableStateListOf<ChatMessage>() - Handle
+ * streaming text accumulation - Manage input state (Idle/Working) - Manage session history (list, resume, delete) */
 class ChatViewModel(
         private val sessionProvider: () -> AgentSession?,
         private val sessionHistoryManager: SessionHistoryManager? = null,
@@ -256,10 +237,7 @@ class ChatViewModel(
                         if (shouldHandleReboundEvent(event.timestamp, replayCutoffTimestamp)) {
                             handleEvent(event)
                         }
-                        // Yield to the main looper after streaming deltas so Compose
-                        // can recompose between frames (renders incremental text).
-                        // Without this, rapid deltas batch in the SharedFlow buffer
-                        // and the collector processes them all in one frame.
+                        // Yield after streaming updates so Compose can render intermediate frames.
                         if (event is MessageDelta) {
                             kotlinx.coroutines.delay(1)
                         }
@@ -284,11 +262,7 @@ class ChatViewModel(
         }
     }
 
-    /**
-     * Send a user message.
-     *
-     * If no session exists, calls onSessionNeeded callback to create one.
-     */
+    /** Send a user message. */
     fun sendMessage(text: String) {
         val session = sessionProvider()
         if (session != null && session.state.value != SessionState.Shutdown) {
@@ -306,8 +280,6 @@ class ChatViewModel(
             viewModelScope.launch { session.submit(Op.Interrupt) }
         }
     }
-
-    // ===== Smart Capsule Actions =====
 
     /** Send a supplement message during an active task. */
     fun sendSupplement(text: String) {
@@ -359,11 +331,8 @@ class ChatViewModel(
         AgentService.instance?.dismissError()
     }
 
-    /**
-     * Surface a bootstrap failure (session creation threw before any events
-     * reached the chat). Preserves the user's input so they can retry, and
-     * appends a visible error message to the chat history.
-     */
+    /** Surface a bootstrap failure (session creation threw before any events reached the chat). Preserves the user's input so they can
+     * retry, and appends a visible error message to the chat history. */
     fun reportStartupFailure(
         inputText: String,
         errorMessage: String,
@@ -401,44 +370,26 @@ class ChatViewModel(
         sessionHistoryController.clearConversation()
     }
 
-    // ===== Session History Methods =====
-
     /** Load the list of saved sessions. */
     fun loadSessions() {
         sessionHistoryController.loadSessions()
     }
 
-    /**
-     * Resume a previously saved session.
-     *
-     * This clears current messages and restores the session's messages.
-     *
-     * @param sessionInfo The session to resume
-     * @param onResumed Callback when session is ready (for UI to reconnect event collection)
-     */
+    /** Resume a previously saved session. */
     fun resumeSession(sessionInfo: SessionInfo, onResumed: (suspend () -> Unit)? = null) {
         eventCollectionJob?.cancel()
         eventCollectionJob = null
         sessionHistoryController.resumeSession(sessionInfo, onResumed)
     }
 
-    /**
-     * Start a new session, clearing current conversation.
-     *
-     * @param model The model being used
-     * @param appVersion The app version
-     */
+    /** Start a new session, clearing current conversation. */
     fun startNewSession(model: String? = null, appVersion: String? = null) {
         eventCollectionJob?.cancel()
         eventCollectionJob = null
         sessionHistoryController.startNewSession(model, appVersion)
     }
 
-    /**
-     * Delete a saved session.
-     *
-     * @param sessionInfo The session to delete
-     */
+    /** Delete a saved session. */
     fun deleteSession(sessionInfo: SessionInfo) {
         sessionHistoryController.deleteSession(sessionInfo)
     }

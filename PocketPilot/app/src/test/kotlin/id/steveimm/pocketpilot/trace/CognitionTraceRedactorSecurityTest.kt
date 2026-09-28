@@ -7,13 +7,9 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Test
 
-/**
- * Security regression: password fields and other sensitive keys must be redacted
- * from traces/prompts/history so they never leak into debug artifacts.
- */
+/** Security regression: password fields and other sensitive keys must be redacted from traces/prompts/history so they never leak into
+ * debug artifacts. */
 class CognitionTraceRedactorSecurityTest {
-
-    // ── Password field redaction in JSON ─────────────────────────────
 
     @Test
     fun `password key value is redacted in JSON`() {
@@ -63,8 +59,6 @@ class CognitionTraceRedactorSecurityTest {
         assertThat(redacted["name"]?.jsonPrimitive?.content).isEqualTo("test")
     }
 
-    // ── Password text redaction in plain strings ─────────────────────
-
     @Test
     fun `text containing email is redacted`() {
         val text = "Login: user@example.com with password"
@@ -83,8 +77,6 @@ class CognitionTraceRedactorSecurityTest {
         assertThat(redacted).contains("[REDACTED_TOKEN]")
     }
 
-    // ── Nested JSON redaction ────────────────────────────────────────
-
     @Test
     fun `nested password fields are redacted`() {
         val json = JsonObject(mapOf(
@@ -100,8 +92,6 @@ class CognitionTraceRedactorSecurityTest {
         assertThat(creds?.get("password")?.jsonPrimitive?.content).isEqualTo("[REDACTED]")
         assertThat(creds?.get("username")?.jsonPrimitive?.content).isEqualTo("bob")
     }
-
-    // ── Non-sensitive data is preserved ──────────────────────────────
 
     @Test
     fun `non-sensitive text is not modified`() {

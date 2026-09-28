@@ -3,20 +3,13 @@ package id.steveimm.pocketpilot.history.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/**
- * A message in a session, can be user or agent.
- * 
- * This is the persisted representation of messages that can be serialized to JSON.
- * It maps to/from the UI's ChatMessage types.
- */
+/** A message in a session, can be user or agent. */
 @Serializable
 sealed interface MessageRecord {
     val id: String
     val timestamp: Long
-    
-    /**
-     * User message.
-     */
+
+    /** User message. */
     @Serializable
     @SerialName("user")
     data class User(
@@ -24,10 +17,8 @@ sealed interface MessageRecord {
         override val timestamp: Long,
         val text: String
     ) : MessageRecord
-    
-    /**
-     * Agent message with content blocks.
-     */
+
+    /** Agent message with content blocks. */
     @Serializable
     @SerialName("agent")
     data class Agent(
@@ -35,53 +26,34 @@ sealed interface MessageRecord {
         override val timestamp: Long,
         val contentBlocks: List<ContentBlockRecord>,
         val isComplete: Boolean,
-        /**
-         * Wall-clock when the row sealed (TaskCompleted / SessionError).
-         * Null while the message is still streaming. Persisted so resumed
-         * history rows can compute elapsed time per Track A spec §4.5/§5.2.
-         */
+        /** Wall-clock when the row sealed (TaskCompleted / SessionError). Null while the message is still streaming. Persisted so
+         * resumed history rows can compute elapsed time per Track A spec §4.5/§5.2. */
         val completedTimestamp: Long? = null,
-        /**
-         * Persisted row-level state ("live" / "waiting" / "complete" / "error").
-         * Null on legacy records — derived from [isComplete] on read.
-         */
+        /** Persisted row-level state ("live" / "waiting" / "complete" / "error"). Null on legacy records — derived from [isComplete] on
+         * read. */
         val rowState: String? = null
     ) : MessageRecord
 }
 
-/**
- * Persisted content block (text or action).
- * 
- * This represents the interleaved content in an agent message:
- * text → action → text → action → etc.
- */
+/** Persisted content block (text or action). */
 @Serializable
 sealed interface ContentBlockRecord {
-    /**
-     * Text content from the LLM response.
-     */
+    /** Text content from the LLM response. */
     @Serializable
     @SerialName("text")
     data class Text(val text: String) : ContentBlockRecord
 
-    /**
-     * Concluding answer (per Turn.kt:205-209 stop criteria) — promoted from
-     * [Text] by the chat reducer when the row sealed.
-     */
+    /** Concluding answer (per Turn.kt:205-209 stop criteria) — promoted from [Text] by the chat reducer when the row sealed. */
     @Serializable
     @SerialName("final_text")
     data class FinalText(val text: String) : ContentBlockRecord
 
-    /**
-     * Agent reasoning emitted via `ThoughtUpdate`.
-     */
+    /** Agent reasoning emitted via `ThoughtUpdate`. */
     @Serializable
     @SerialName("thought")
     data class Thought(val text: String) : ContentBlockRecord
 
-    /**
-     * An action card (tool execution).
-     */
+    /** An action card (tool execution). */
     @Serializable
     @SerialName("action")
     data class Action(

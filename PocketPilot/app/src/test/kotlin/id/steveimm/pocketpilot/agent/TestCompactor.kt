@@ -12,12 +12,7 @@ import com.openai.models.responses.ResponseInputItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-/**
- * Builds a no-op-in-practice [Compactor] for tests that aren't focused on
- * compaction. The model carries a generous `contextWindow`, so
- * [Compactor.maybeCompact] returns `Skipped` for any realistically-sized test
- * history and never invokes the LLM. Prompts are empty strings.
- */
+/** Builds a no-op-in-practice [Compactor] for tests that aren't focused on compaction. */
 internal fun noopCompactor(
     llmClient: LLMClient = SkippedLLMClient,
     contextWindow: Int = 128_000,

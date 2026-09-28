@@ -16,11 +16,8 @@ import org.json.JSONObject
 import org.junit.Test
 import java.util.concurrent.atomic.AtomicBoolean
 
-/**
- * Cancellation and timeout coverage for BrowserScriptTool: pre-execution short-circuit,
- * mid-execution watchdog cancellation (with real elapsed-time accounting), runner-reported
- * cancellation, and runner-reported timeout.
- */
+/** Cancellation and timeout coverage for BrowserScriptTool: pre-execution short-circuit, mid-execution watchdog cancellation (with real
+ * elapsed-time accounting), runner-reported cancellation, and runner-reported timeout. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class BrowserScriptToolCancellationTest {
 

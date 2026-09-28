@@ -6,13 +6,7 @@ import id.steveimm.pocketpilot.tool.ToolName
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-/**
- * Verifies the LLM allowlist gate for the user pref controlling `browser_script`.
- *
- * Same resolution path SessionAgentRunner uses: it calls [AgentRoleDef.resolve] with
- * `excludedTools` derived from [defaultToolsExcludedByPref]. If the pref is OFF and resolve
- * still surfaces browser_script, the LLM sees the tool.
- */
+/** Verifies the LLM allowlist gate for the user pref controlling `browser_script`. */
 class DefaultToolsExcludedByPrefTest {
 
     private val termuxUnavailable = TermuxCapabilitySnapshot(

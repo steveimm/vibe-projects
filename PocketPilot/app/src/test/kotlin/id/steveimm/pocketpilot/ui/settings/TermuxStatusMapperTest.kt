@@ -5,13 +5,7 @@ import id.steveimm.pocketpilot.termux.TermuxBridgeStatus
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-/**
- * Covers every row of the Termux mapping table.
- *
- * The label words are load-bearing — `SettingsTermuxRowTest` (instrumentation) matches on
- * them. Tone / spinner / subtitle assertions guard against
- * silent UX regressions when someone edits the mapper.
- */
+/** Covers every row of the Termux mapping table. */
 class TermuxStatusMapperTest {
 
     @Test
@@ -91,13 +85,7 @@ class TermuxStatusMapperTest {
         assertThat(ui.subtitle).isEqualTo("Termux bridge running — tap to restart")
     }
 
-    // Below: NeedsSetupReason subtitle matrix. The design table only requires the umbrella
-    // label "Needs Setup" / Warning tone for every NeedsSetup variant, but the subtitle is
-    // what tells the user what to actually do. Pin each reason so a future copy edit shows
-    // up in CI rather than only in the user's hands.
-    //
-    // Design doc is the source of truth for label wording — these tests pin current subtitle
-    // wording of the mapper.
+    // Below: NeedsSetupReason subtitle matrix.
 
     @Test
     fun `NeedsSetup PERMISSION_MISSING with null disposition shows tap-to-grant subtitle`() {

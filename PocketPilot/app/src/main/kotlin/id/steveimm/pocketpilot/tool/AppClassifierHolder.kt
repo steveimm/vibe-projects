@@ -4,23 +4,7 @@ import android.content.Context
 import android.util.Log
 import id.steveimm.pocketpilot.app.AppSettingsStore
 
-/**
- * Application-scoped [AppClassifier] singleton.
- *
- * Three previous construction sites (`AgentSession.create`, `AgentSession.reload`, and the
- * fallback in `SessionServices.create`) would each spin up their own classifier — and therefore
- * their own user-override StateFlow — so the settings UI, capsule, and live session could
- * diverge. Hoisting to the process keeps writes and reads coherent.
- *
- * Persistence: writes flow through `setOverride` → `onUserOverridesChanged` callback →
- * [AppSettingsStore.saveUserAppOverrides]. The callback is `suspend` and runs inside the
- * classifier's mutex; the store completes a synchronous `commit()` on [kotlinx.coroutines.Dispatchers.IO]
- * before the mutex releases, so emissions and disk writes stay in lock-step
- * (last-emitted == last-persisted).
- *
- * Single-writer rule: every override change (settings UI, capsule `ApprovalScope.ALWAYS`)
- * goes through `classifier.setOverride(...)`. The UI never writes the store directly.
- */
+/** Application-scoped [AppClassifier] singleton. */
 object AppClassifierHolder {
     private const val TAG = "AppClassifierHolder"
 

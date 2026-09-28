@@ -1,26 +1,41 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import json
 import re
+import shlex
 import shutil
 import subprocess
 import sys
 import time
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from agent_link import AgentLink, AgentLinkState, find_project_root
+
+
 def slugify(value: str) -> str:
+    """Normalize a scenario name for use in an artifact directory.
+
+    Args:
+        value: Text to normalize or match.
+    """
     slug = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip().lower())
     slug = re.sub(r"-+", "-", slug).strip("-")
     return slug or "scenario"
 
 
-def parse_bounds(raw: str) -> Optional[tuple[int, int, int, int]]:
+def parse_bounds(raw: str) -> tuple[int, int, int, int] | None:
+    """Parse Android UI bounds, returning no value for malformed attributes.
+
+    Args:
+        raw: Raw Android bounds attribute.
+    """
     match = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", raw or "")
     if not match:
         return None
@@ -29,6 +44,11 @@ def parse_bounds(raw: str) -> Optional[tuple[int, int, int, int]]:
 
 
 def center_of_bounds(bounds: tuple[int, int, int, int]) -> tuple[int, int]:
+    """Find the tap coordinate at the center of a UI node.
+
+    Args:
+        bounds: Left, top, right, and bottom coordinates.
+    """
     x1, y1, x2, y2 = bounds
     return ((x1 + x2) // 2, (y1 + y2) // 2)
 
@@ -42,11 +62,11 @@ class StepResult:
     error: str
     started_at: str
     ended_at: str
-    artifacts: Dict[str, str]
+    artifacts: dict[str, str]
 
 
 class UXRunner:
-    def __init__(self, scenario: Dict[str, Any], out_root: Path, serial: Optional[str]):
+    def __init__(self, scenario: dict[str, Any], out_root: Path, serial: str | None) -> None:
         self.scenario = scenario
         self.serial = serial
         self.package = scenario.get("package", "")
@@ -57,18 +77,25 @@ class UXRunner:
         self.run_dir = out_root / run_name
         self.run_dir.mkdir(parents=True, exist_ok=True)
 
-        self.steps: List[StepResult] = []
+        self.steps: list[StepResult] = []
         self.start_time = datetime.now()
 
     @property
-    def adb(self) -> List[str]:
+    def adb(self) -> list[str]:
+        """Build the ADB command prefix for the selected device."""
         base = ["adb"]
         if self.serial:
             base.extend(["-s", self.serial])
         return base
 
-    def _run(self, cmd: List[str], check: bool = True, text: bool = True) -> subprocess.CompletedProcess:
-        proc = subprocess.run(cmd, capture_output=True, text=text)
+    def _run(self, cmd: list[str], check: bool = True) -> subprocess.CompletedProcess[str]:
+        """Run a text-producing command and report its diagnostic output on failure.
+
+        Args:
+            cmd: Command and arguments to execute.
+            check: Whether to reject a nonzero exit status.
+        """
+        proc = subprocess.run(cmd, capture_output=True, text=True)
         if check and proc.returncode != 0:
             stderr = (proc.stderr or "").strip()
             stdout = (proc.stdout or "").strip()
@@ -77,9 +104,16 @@ class UXRunner:
         return proc
 
     def shell(self, *parts: str, check: bool = True) -> str:
-        return (self._run(self.adb + ["shell", *parts], check=check).stdout or "").strip()
+        """Run shell arguments on the device with each value correctly quoted.
+
+        Args:
+            check: Whether to reject a nonzero exit status.
+            parts: Unescaped device shell arguments.
+        """
+        return (self._run(self.adb + ["shell", shlex.join(parts)], check=check).stdout or "").strip()
 
     def ensure_prerequisites(self) -> None:
+        """Check that ADB is available and the selected device is connected."""
         if shutil.which("adb") is None:
             raise RuntimeError("adb not found in PATH")
         state = self._run(self.adb + ["get-state"], check=False).stdout.strip()
@@ -87,10 +121,16 @@ class UXRunner:
             raise RuntimeError("No connected device in 'device' state. Run `adb devices`.")
 
     def current_serial(self) -> str:
+        """Read the connected device serial for the QA report."""
         out = self._run(self.adb + ["get-serialno"], check=False).stdout.strip()
         return out or (self.serial or "unknown")
 
     def dump_ui(self, label: str) -> Path:
+        """Capture Android's UI hierarchy into the run directory.
+
+        Args:
+            label: Artifact file-name label.
+        """
         remote = "/sdcard/ux_dump.xml"
         self.shell("uiautomator", "dump", "--compressed", remote)
         local = self.run_dir / f"{label}.xml"
@@ -98,6 +138,11 @@ class UXRunner:
         return local
 
     def screenshot(self, label: str) -> Path:
+        """Capture a PNG screenshot without decoding its binary output.
+
+        Args:
+            label: Artifact file-name label.
+        """
         local = self.run_dir / f"{label}.png"
         with local.open("wb") as fh:
             proc = subprocess.run(self.adb + ["exec-out", "screencap", "-p"], stdout=fh, stderr=subprocess.PIPE)
@@ -105,10 +150,15 @@ class UXRunner:
             raise RuntimeError((proc.stderr or b"screencap failed").decode("utf-8", errors="ignore"))
         return local
 
-    def visible_strings(self, xml_path: Path) -> List[str]:
+    def visible_strings(self, xml_path: Path) -> list[str]:
+        """Collect unique visible labels and resource identifiers from a UI dump.
+
+        Args:
+            xml_path: Captured UI hierarchy file.
+        """
         root = ET.parse(xml_path).getroot()
         seen = set()
-        ordered: List[str] = []
+        ordered: list[str] = []
         for node in root.iter("node"):
             for key in ("text", "content-desc", "resource-id"):
                 value = (node.attrib.get(key) or "").strip()
@@ -117,7 +167,12 @@ class UXRunner:
                     ordered.append(value)
         return ordered
 
-    def capture_snapshot(self, prefix: str) -> Dict[str, str]:
+    def capture_snapshot(self, prefix: str) -> dict[str, str]:
+        """Save a screenshot, UI hierarchy, and visible-text summary.
+
+        Args:
+            prefix: Artifact file-name prefix.
+        """
         png = self.screenshot(prefix)
         xml = self.dump_ui(prefix)
         visible = self.visible_strings(xml)
@@ -125,21 +180,41 @@ class UXRunner:
         visible_file.write_text("\n".join(visible[:300]) + ("\n" if visible else ""), encoding="utf-8")
         return {"screenshot": str(png), "ui_xml": str(xml), "visible_text": str(visible_file)}
 
-    def _find_nodes(self, xml_path: Path) -> List[Dict[str, str]]:
+    def _find_nodes(self, xml_path: Path) -> list[dict[str, str]]:
+        """Read UI node attributes from a captured hierarchy.
+
+        Args:
+            xml_path: Captured UI hierarchy file.
+        """
         return [node.attrib for node in ET.parse(xml_path).getroot().iter("node")]
 
     def _lookup_and_tap(
-        self, mode: str, value: str, occurrence: int,
-        contains: bool = False, retries: int = 1, retry_interval_ms: int = 800,
+        self,
+        mode: str,
+        value: str,
+        occurrence: int,
+        contains: bool = False,
+        retries: int = 1,
+        retry_interval_ms: int = 800,
     ) -> None:
+        """Find a matching UI node and tap its center, retrying when requested.
+
+        Args:
+            mode: Selector mode: text, description, or resource ID.
+            value: Text to normalize or match.
+            occurrence: One-based position among matching nodes.
+            contains: Whether text or description matches may be substrings.
+            retries: Maximum lookup attempts.
+            retry_interval_ms: Delay between lookup attempts.
+        """
         if not value:
             raise RuntimeError(f"{mode} selector cannot be empty")
 
-        last_error: Optional[RuntimeError] = None
+        last_error: RuntimeError | None = None
         for attempt in range(max(1, retries)):
             try:
                 nodes = self._find_nodes(self.dump_ui("lookup"))
-                matches: List[Dict[str, str]] = []
+                matches: list[dict[str, str]] = []
                 for node in nodes:
                     text_val = (node.get("text") or "").strip()
                     desc_val = (node.get("content-desc") or "").strip()
@@ -180,11 +255,21 @@ class UXRunner:
         raise last_error  # type: ignore[misc]
 
     def _has_text(self, target: str) -> bool:
+        """Check whether a target appears in visible labels or resource identifiers.
+
+        Args:
+            target: Text to find in the UI.
+        """
         if not target:
             return False
         return any(target in item for item in self.visible_strings(self.dump_ui("assert")))
 
     def _has_desc(self, target: str) -> bool:
+        """Check whether a target appears in a node's accessibility description.
+
+        Args:
+            target: Text to find in the UI.
+        """
         if not target:
             return False
         xml_path = self.dump_ui("assert")
@@ -194,9 +279,18 @@ class UXRunner:
                 return True
         return False
 
-    def _poll_until(self, check_fn, target: str, timeout_ms: int, interval_ms: int, expect: bool) -> None:
-        deadline = time.time() + timeout_ms / 1000.0
-        while time.time() < deadline:
+    def _poll_until(self, check_fn: Callable[[str], bool], target: str, timeout_ms: int, interval_ms: int, expect: bool) -> None:
+        """Poll a device-state predicate until its expected result or a deadline.
+
+        Args:
+            check_fn: Device-state predicate evaluated on each poll.
+            target: Text to find in the UI.
+            timeout_ms: Maximum polling duration.
+            interval_ms: Delay between state checks.
+            expect: Predicate result required for success.
+        """
+        deadline = time.monotonic() + timeout_ms / 1000.0
+        while time.monotonic() < deadline:
             found = check_fn(target)
             if found == expect:
                 return
@@ -204,7 +298,13 @@ class UXRunner:
         verb = "appear" if expect else "disappear"
         raise RuntimeError(f"Timed out waiting for '{target}' to {verb} ({timeout_ms}ms)")
 
-    def execute_step(self, index: int, step: Dict[str, Any]) -> bool:
+    def execute_step(self, index: int, step: dict[str, Any]) -> bool:
+        """Execute one scenario step and capture its outcome and visual artifacts.
+
+        Args:
+            index: One-based step position.
+            step: Scenario action and its arguments.
+        """
         action = (step.get("action") or "").strip()
         name = (step.get("name") or action or f"step-{index}").strip()
         continue_on_fail = bool(step.get("continue_on_fail", False))
@@ -238,25 +338,34 @@ class UXRunner:
                 time.sleep(max(0, int(step.get("ms", 800))) / 1000.0)
             elif action == "tap_text":
                 self._lookup_and_tap(
-                    "text", str(step.get("text") or ""), int(step.get("occurrence", 1)),
+                    "text",
+                    str(step.get("text") or ""),
+                    int(step.get("occurrence", 1)),
                     retries=int(step.get("retries", 1)),
                     retry_interval_ms=int(step.get("retry_interval_ms", 800)),
                 )
             elif action == "tap_contains_text":
                 self._lookup_and_tap(
-                    "text", str(step.get("text") or ""), int(step.get("occurrence", 1)), True,
+                    "text",
+                    str(step.get("text") or ""),
+                    int(step.get("occurrence", 1)),
+                    True,
                     retries=int(step.get("retries", 1)),
                     retry_interval_ms=int(step.get("retry_interval_ms", 800)),
                 )
             elif action == "tap_resource_id":
                 self._lookup_and_tap(
-                    "resource_id", str(step.get("resource_id") or ""), int(step.get("occurrence", 1)),
+                    "resource_id",
+                    str(step.get("resource_id") or ""),
+                    int(step.get("occurrence", 1)),
                     retries=int(step.get("retries", 1)),
                     retry_interval_ms=int(step.get("retry_interval_ms", 800)),
                 )
             elif action == "tap_desc":
                 self._lookup_and_tap(
-                    "desc", str(step.get("desc") or ""), int(step.get("occurrence", 1)),
+                    "desc",
+                    str(step.get("desc") or ""),
+                    int(step.get("occurrence", 1)),
                     bool(step.get("contains", False)),
                     retries=int(step.get("retries", 1)),
                     retry_interval_ms=int(step.get("retry_interval_ms", 800)),
@@ -303,7 +412,8 @@ class UXRunner:
             elif action == "wait_for_text":
                 target = str(step.get("text") or "")
                 self._poll_until(
-                    self._has_text, target,
+                    self._has_text,
+                    target,
                     timeout_ms=int(step.get("timeout_ms", 10000)),
                     interval_ms=int(step.get("interval_ms", 500)),
                     expect=True,
@@ -311,7 +421,8 @@ class UXRunner:
             elif action == "wait_for_not_text":
                 target = str(step.get("text") or "")
                 self._poll_until(
-                    self._has_text, target,
+                    self._has_text,
+                    target,
                     timeout_ms=int(step.get("timeout_ms", 10000)),
                     interval_ms=int(step.get("interval_ms", 500)),
                     expect=False,
@@ -319,7 +430,8 @@ class UXRunner:
             elif action == "wait_for_desc":
                 target = str(step.get("desc") or "")
                 self._poll_until(
-                    self._has_desc, target,
+                    self._has_desc,
+                    target,
                     timeout_ms=int(step.get("timeout_ms", 10000)),
                     interval_ms=int(step.get("interval_ms", 500)),
                     expect=True,
@@ -347,7 +459,12 @@ class UXRunner:
         )
         return status == "PASS" or continue_on_fail
 
-    def write_summary(self, agent_state: AgentLinkState) -> Dict[str, Any]:
+    def write_summary(self, agent_state: AgentLinkState) -> dict[str, Any]:
+        """Write JSON and Markdown reports for UX steps and the linked agent run.
+
+        Args:
+            agent_state: Linked agent run status and artifact paths.
+        """
         failed = [s for s in self.steps if s.status != "PASS"]
         summary = {
             "scenario": self.name,
@@ -410,20 +527,31 @@ class UXRunner:
         return summary
 
 
-def load_scenario(path: Path) -> Dict[str, Any]:
+def load_scenario(path: Path) -> dict[str, Any]:
+    """Load and validate a scenario with a nonempty step list.
+
+    Args:
+        path: Scenario JSON file.
+    """
     if not path.exists():
         raise RuntimeError(f"Scenario not found: {path}")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"Invalid scenario JSON: {path} :: {exc}") from exc
-    if not isinstance(data.get("steps"), list) or not data["steps"]:
+    if not isinstance(data, dict) or not isinstance(data.get("steps"), list) or not data["steps"]:
         raise RuntimeError("Scenario must contain non-empty `steps` array")
     return data
 
-def run_ux_qa(args: Any) -> int:
-    runner: Optional[UXRunner] = None
-    agent_link: Optional[AgentLink] = None
+
+def run_ux_qa(args: argparse.Namespace) -> int:
+    """Run a device UX scenario and finalize any linked agent process.
+
+    Args:
+        args: Parsed UX runner options.
+    """
+    runner: UXRunner | None = None
+    agent_link: AgentLink | None = None
 
     try:
         scenario = load_scenario(Path(args.scenario).resolve())
@@ -461,7 +589,9 @@ def run_ux_qa(args: Any) -> int:
         print(f"[ux-qa] Output: {runner.run_dir}")
         print(f"[ux-qa] Result: {summary['status']} ({summary['failed_count']} failed / {summary['step_count']} steps)")
         if summary["agent_link"]["enabled"]:
-            print(f"[ux-qa] Agent link: {summary['agent_link']['status']} -> {summary['agent_link']['debug_output_dir'] or 'N/A'}")
+            print(
+                f"[ux-qa] Agent link: {summary['agent_link']['status']} -> {summary['agent_link']['debug_output_dir'] or 'N/A'}"
+            )
 
         return 0 if summary["status"] == "PASS" else 2
     except Exception as exc:  # noqa: BLE001

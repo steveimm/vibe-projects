@@ -2,12 +2,7 @@ package id.steveimm.pocketpilot.session
 
 import org.json.JSONObject
 
-/**
- * Thread-safe key-value scratchpad backed by [JSONObject].
- *
- * JSON-in (write) → JSON-store → JSON-out (prompt): no format translation at any stage.
- * Values can be any JSON-compatible type (String, Number, Boolean, JSONArray, JSONObject).
- */
+/** Thread-safe key-value scratchpad backed by [JSONObject]. */
 class ScratchpadState {
 
     companion object {
@@ -30,10 +25,8 @@ class ScratchpadState {
         onMutation = listener
     }
 
-    /**
-     * Write a single key-value pair. Value can be any JSON-compatible type.
-     * Validation: key length, value length (via toString()), entry count.
-     */
+    /** Write a single key-value pair. Value can be any JSON-compatible type. Validation: key length, value length (via toString()),
+     * entry count. */
     fun write(key: String, value: Any) {
         require(key.length <= MAX_KEY_LENGTH) {
             "Scratchpad key too long (max $MAX_KEY_LENGTH chars)"
@@ -89,12 +82,7 @@ class ScratchpadState {
         onMutation?.invoke()
     }
 
-    /**
-     * Build the prompt-visible scratchpad section.
-     *
-     * Format: JSON object with truncation for long values and a total budget cap.
-     * Non-truncated values are valid JSON. Truncated values end with `...` and a comment.
-     */
+    /** Build the prompt-visible scratchpad section. */
     fun toPromptContext(): String {
         val snapshot = synchronized(lock) { JSONObject(data.toString()) }
         val keys = snapshot.keys().asSequence().toList().sorted()

@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""Compile raw trace.jsonl into step-centric replay indexes.
-
-Usage:
-    python3 replay_compiler.py /path/to/debug-output/run_xxx/trace
-"""
 
 from __future__ import annotations
 
@@ -11,17 +6,24 @@ import argparse
 import json
 import time
 from collections import defaultdict
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line options for this tool."""
     parser = argparse.ArgumentParser(description="Compile trace replay indexes")
     parser.add_argument("trace_dir", help="Directory that contains trace.jsonl")
     return parser.parse_args()
 
 
-def safe_json_loads(line: str) -> Optional[Dict[str, Any]]:
+def safe_json_loads(line: str) -> dict[str, Any] | None:
+    """Decode a JSON object, ignoring blank, malformed, or non-object records.
+
+    Args:
+        line: Log or JSONL record to inspect.
+    """
     line = line.strip()
     if not line:
         return None
@@ -34,27 +36,46 @@ def safe_json_loads(line: str) -> Optional[Dict[str, Any]]:
     return parsed
 
 
-def read_events(trace_file: Path) -> List[Dict[str, Any]]:
-    events: List[Dict[str, Any]] = []
+def read_events(trace_file: Path) -> list[dict[str, Any]]:
+    """Read valid trace events and order them by sequence and timestamp.
+
+    Args:
+        trace_file: Raw trace JSONL file.
+    """
+    events: list[dict[str, Any]] = []
     for raw_line in trace_file.read_text(encoding="utf-8").splitlines():
         event = safe_json_loads(raw_line)
         if event is not None:
             events.append(event)
 
-    def seq_key(event: Dict[str, Any]) -> Tuple[int, int]:
-        seq = event.get("seq")
-        if not isinstance(seq, int):
-            seq = 0
-        ts = event.get("tsMs")
-        if not isinstance(ts, int):
-            ts = 0
-        return (seq, ts)
-
-    events.sort(key=seq_key)
+    events.sort(key=event_sort_key)
     return events
 
 
-def event_type(event: Dict[str, Any]) -> str:
+def event_sort_key(event: dict[str, Any]) -> tuple[int, int]:
+    """Return numeric ordering fields, defaulting malformed values to zero.
+
+    Args:
+        event: Raw trace event.
+    """
+    return _integer(event.get("seq")), _integer(event.get("tsMs"))
+
+
+def _integer(value: object) -> int:
+    """Read an integer trace field, defaulting malformed metadata to zero.
+
+    Args:
+        value: Unvalidated trace field.
+    """
+    return value if isinstance(value, int) else 0
+
+
+def event_type(event: dict[str, Any]) -> str:
+    """Read the event type from current or legacy trace fields.
+
+    Args:
+        event: Raw trace event.
+    """
     raw = event.get("type")
     if isinstance(raw, str) and raw:
         return raw
@@ -64,7 +85,12 @@ def event_type(event: Dict[str, Any]) -> str:
     return "unknown"
 
 
-def event_session_id(event: Dict[str, Any]) -> Optional[str]:
+def event_session_id(event: dict[str, Any]) -> str | None:
+    """Read the session identifier from current or legacy trace fields.
+
+    Args:
+        event: Raw trace event.
+    """
     value = event.get("sessionId")
     if isinstance(value, str) and value:
         return value
@@ -79,7 +105,12 @@ def event_session_id(event: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def event_turn_number(event: Dict[str, Any]) -> Optional[int]:
+def event_turn_number(event: dict[str, Any]) -> int | None:
+    """Read the turn number from current or legacy trace fields.
+
+    Args:
+        event: Raw trace event.
+    """
     value = event.get("turnNumber")
     if isinstance(value, int):
         return value
@@ -91,7 +122,12 @@ def event_turn_number(event: Dict[str, Any]) -> Optional[int]:
     return None
 
 
-def event_turn_id(event: Dict[str, Any]) -> Optional[str]:
+def event_turn_id(event: dict[str, Any]) -> str | None:
+    """Read the turn identifier from current or legacy trace fields.
+
+    Args:
+        event: Raw trace event.
+    """
     value = event.get("turnId")
     if isinstance(value, str) and value:
         return value
@@ -103,30 +139,47 @@ def event_turn_id(event: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def event_artifacts(event: Dict[str, Any]) -> List[Dict[str, Any]]:
+def event_artifacts(event: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return only artifact objects from the event's artifact list.
+
+    Args:
+        event: Raw trace event.
+    """
     artifacts = event.get("artifacts")
     if isinstance(artifacts, list):
         return [a for a in artifacts if isinstance(a, dict)]
     return []
 
 
-def parse_parent_session_id(session_id: str) -> Optional[str]:
-    if "::" not in session_id:
-        return None
-    parts = session_id.split("::")
-    if len(parts) <= 1:
-        return None
-    return "::".join(parts[:-1])
+def parse_parent_session_id(session_id: str) -> str | None:
+    """Remove the final delegation segment to identify a parent session.
+
+    Args:
+        session_id: Session identifier containing optional delegation segments.
+    """
+    parent, separator, _ = session_id.rpartition("::")
+    return parent if separator else None
 
 
-def extract_artifact(artifacts: Iterable[Dict[str, Any]], kind: str) -> Optional[Dict[str, Any]]:
+def extract_artifact(artifacts: Iterable[dict[str, Any]], kind: str) -> dict[str, Any] | None:
+    """Return the first artifact matching the requested kind.
+
+    Args:
+        artifacts: Artifact records attached to a trace event.
+        kind: Artifact kind to match.
+    """
     for artifact in artifacts:
         if artifact.get("kind") == kind:
             return artifact
     return None
 
 
-def summarize_event(event: Dict[str, Any]) -> Dict[str, Any]:
+def summarize_event(event: dict[str, Any]) -> dict[str, Any]:
+    """Select event fields needed by the replay frontend.
+
+    Args:
+        event: Raw trace event.
+    """
     return {
         "seq": event.get("seq"),
         "ts_ms": event.get("tsMs"),
@@ -136,9 +189,14 @@ def summarize_event(event: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def compile_sessions(events: List[Dict[str, Any]]) -> Tuple[Dict[str, Dict[str, Any]], List[Dict[str, Any]]]:
-    sessions: Dict[str, Dict[str, Any]] = {}
-    raw_session_nodes: List[Dict[str, Any]] = []
+def compile_sessions(events: list[dict[str, Any]]) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
+    """Build session metadata and parent-child links from session lifecycle events.
+
+    Args:
+        events: Trace events ordered by sequence and timestamp.
+    """
+    sessions: dict[str, dict[str, Any]] = {}
+    raw_session_nodes: list[dict[str, Any]] = []
 
     for event in events:
         if event_type(event) != "session_started":
@@ -206,8 +264,14 @@ def compile_sessions(events: List[Dict[str, Any]]) -> Tuple[Dict[str, Dict[str, 
     return sessions, raw_session_nodes
 
 
-def compile_steps(events: List[Dict[str, Any]], sessions: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
-    grouped: Dict[Tuple[str, int], List[Dict[str, Any]]] = defaultdict(list)
+def compile_steps(events: list[dict[str, Any]], sessions: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    """Group events by session and turn, linking screens, tools, and delegated sessions.
+
+    Args:
+        events: Trace events ordered by sequence and timestamp.
+        sessions: Compiled metadata indexed by session identifier.
+    """
+    grouped: dict[tuple[str, int], list[dict[str, Any]]] = defaultdict(list)
 
     for event in events:
         session_id = event_session_id(event)
@@ -216,13 +280,13 @@ def compile_steps(events: List[Dict[str, Any]], sessions: Dict[str, Dict[str, An
             continue
         grouped[(session_id, turn_number)].append(event)
 
-    call_to_step: Dict[str, str] = {}
-    steps: List[Dict[str, Any]] = []
+    call_to_step: dict[str, str] = {}
+    steps: list[dict[str, Any]] = []
 
     for key in sorted(grouped.keys(), key=lambda item: (item[0], item[1])):
         session_id, turn_number = key
         turn_events = grouped[key]
-        turn_events.sort(key=lambda e: (int(e.get("seq", 0)), int(e.get("tsMs", 0))))
+        turn_events.sort(key=event_sort_key)
 
         first = turn_events[0]
         last = turn_events[-1]
@@ -232,8 +296,8 @@ def compile_steps(events: List[Dict[str, Any]], sessions: Dict[str, Dict[str, An
         screen_pre = None
         llm_req = None
         llm_resp = None
-        tool_calls: List[Dict[str, Any]] = []
-        tool_results: List[Dict[str, Any]] = []
+        tool_calls: list[dict[str, Any]] = []
+        tool_results: list[dict[str, Any]] = []
         screen_post = None
 
         for event in turn_events:
@@ -255,10 +319,7 @@ def compile_steps(events: List[Dict[str, Any]], sessions: Dict[str, Dict[str, An
             elif et == "tool_call":
                 tool_calls.append(summarize_event(event))
                 call_id = data.get("id") if isinstance(data.get("id"), str) else None
-                tool_name = data.get("name") if isinstance(data.get("name"), str) else None
                 if call_id:
-                    call_to_step[call_id] = step_id
-                if tool_name == "delegate_task" and call_id:
                     call_to_step[call_id] = step_id
             elif et == "tool_result":
                 tool_results.append(summarize_event(event))
@@ -333,20 +394,33 @@ def compile_steps(events: List[Dict[str, Any]], sessions: Dict[str, Dict[str, An
         if isinstance(child_session_id, str) and child_session_id not in children:
             children.append(child_session_id)
 
-    steps.sort(key=lambda s: (int(s.get("ts_start_ms") or 0), str(s.get("step_id"))))
+    steps.sort(key=lambda step: (_integer(step.get("ts_start_ms")), str(step.get("step_id"))))
     return steps
 
 
 def write_json(path: Path, payload: Any) -> None:
+    """Write a human-readable JSON artifact.
+
+    Args:
+        path: File path to read or write.
+        payload: JSON-compatible record to validate or serialize.
+    """
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def write_jsonl(path: Path, rows: Iterable[Any]) -> None:
+    """Write replay rows as newline-delimited JSON objects.
+
+    Args:
+        path: File path to read or write.
+        rows: Records to write to the output file.
+    """
     lines = [json.dumps(row, ensure_ascii=False) for row in rows]
     path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
 
 
 def main() -> int:
+    """Compile raw trace events into the replay frontend's derived indexes."""
     args = parse_args()
     trace_dir = Path(args.trace_dir).expanduser().resolve()
     trace_file = trace_dir / "trace.jsonl"

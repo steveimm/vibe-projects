@@ -5,11 +5,8 @@ import id.steveimm.pocketpilot.ui.chat.model.ContentBlock
 
 private val WHITESPACE = Regex("\\s+")
 
-/**
- * Outcome-footer text (Track A spec §4.5): single-line `✓ N actions · elapsed`
- * on Complete rows. The CollapsePill uses this as its summary; standalone
- * footer rendering is gone in D2 (the pill replaces it).
- */
+/** Outcome-footer text (Track A spec §4.5): single-line `✓ N actions · elapsed` on Complete rows. The CollapsePill uses this as its
+ * summary; standalone footer rendering is gone in D2 (the pill replaces it). */
 internal fun outcomeFooter(message: ChatMessage.Agent): String {
     val actionCount = countActions(message)
     val elapsed = formatElapsed(message)
@@ -20,11 +17,8 @@ internal fun outcomeFooter(message: ChatMessage.Agent): String {
     return if (parts.isEmpty()) "" else parts.joinToString(separator = " · ")
 }
 
-/**
- * Collapsed-row summary (legacy spec §5.2): `headline · N actions · elapsed`.
- * Retained as a fallback for any future surface that still wants a textual
- * row digest; the pill itself uses [outcomeFooter] only.
- */
+/** Collapsed-row summary (legacy spec §5.2): `headline · N actions · elapsed`. Retained as a fallback for any future surface that still
+ * wants a textual row digest; the pill itself uses [outcomeFooter] only. */
 internal fun collapsedSummary(message: ChatMessage.Agent): String {
     val actionCount = countActions(message)
     val parts = buildList {

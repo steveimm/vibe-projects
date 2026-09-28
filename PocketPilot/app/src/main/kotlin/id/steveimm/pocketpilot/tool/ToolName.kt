@@ -1,8 +1,6 @@
 package id.steveimm.pocketpilot.tool
 
-/**
- * Canonical tool identifiers used across UI and policy layers.
- */
+/** Canonical tool identifiers used across UI and policy layers. */
 sealed class ToolName(
     val raw: String,
     val canonical: String,
@@ -116,9 +114,7 @@ sealed class ToolName(
     }
 }
 
-/**
- * Known action names for mobile_action and standalone action tools.
- */
+/** Known action names for mobile_action and standalone action tools. */
 sealed class MobileActionName(
     val raw: String,
     val canonical: String,

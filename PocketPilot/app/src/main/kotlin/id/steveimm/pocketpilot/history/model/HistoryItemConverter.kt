@@ -44,10 +44,8 @@ object HistoryItemConverter {
         )
     }
 
-    /**
-     * Resolve [MessageKind] from a persisted record, handling both new (`kind` field)
-     * and legacy (`role` + `isScreenObservation`) formats.
-     */
+    /** Resolve [MessageKind] from a persisted record, handling both new (`kind` field) and legacy (`role` + `isScreenObservation`)
+     * formats. */
     private fun resolveMessageKind(record: PersistedHistoryItem.Message): MessageKind {
         // New format: kind field is present
         record.kind?.let { kindStr ->

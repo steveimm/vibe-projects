@@ -16,12 +16,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
-/**
- * Accessibility gesture/global-action executor.
- *
- * Encapsulates gesture construction + dispatch callback handling so
- * AccessibilityPlatform can stay as an orchestrator.
- */
+/** Accessibility gesture/global-action executor. */
 class AccessibilityGestureInjector(
         private val service: AccessibilityService,
         private val visualizer: ActionVisualizerManager? = null,

@@ -24,10 +24,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/**
- * D2/D3 row disclosure: pill owns the toggle; row root is not clickable; the
- * final-answer region stays visible across collapse.
- */
+/** D2/D3 row disclosure: pill owns the toggle; row root is not clickable; the final-answer region stays visible across collapse. */
 @RunWith(AndroidJUnit4::class)
 class ChatAgentRowDisclosureTest {
 

@@ -6,18 +6,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-/**
- * Coverage for the token-gated TCP relay in [ChromeDevtoolsUserService]. We can't drive the
- * happy-path proxy here because the upstream is `android.net.LocalSocket(ABSTRACT)`, which is
- * unreachable from a JVM unit test — the wireless transport's stress test
- * (`WirelessAdbSelfPairTransportRelayStressTest`) covers the success path with a fake
- * upstream, and both relays share the same [RelayAuthToken] gate, so the security invariants
- * tested here apply to both.
- *
- * Coverage: matching-token-idempotent, different-token-rejected, no-token → 403, wrong-token
- * → 403, slowloris → 408 timeout. Together these prove the gate fires on every code path
- * before the upstream connect call.
- */
+/** Coverage for the token-gated TCP relay in [ChromeDevtoolsUserService]. */
 class ChromeDevtoolsUserServiceRelayTest {
 
     private lateinit var service: ChromeDevtoolsUserService

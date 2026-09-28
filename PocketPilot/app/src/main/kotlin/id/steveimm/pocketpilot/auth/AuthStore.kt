@@ -14,21 +14,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-/**
- * Unified credential store for all cloud LLM providers.
- *
- * Keyed by [LLMProvider]`.name`. Backed by [EncryptedSharedPreferences] in
- * production via the default [prefsProvider]. Tests inject a fake provider so
- * JVM unit tests don't need Android Keystore.
- *
- * If [prefsProvider] throws (e.g. EncryptedSharedPreferences fails to init on
- * a device with broken Keystore), the exception bubbles up — no silent
- * memory-only fallback. Caller decides whether to surface a "secure storage
- * unavailable" error to the user.
- *
- * OAuth token refresh for Codex is serialized through [refreshMutex] so concurrent
- * callers don't race. Network refresh is delegated to an injected [refresher].
- */
+/** Unified credential store for all cloud LLM providers. */
 class AuthStore(
     private val context: Context,
     private val refresher: suspend (refreshToken: String) -> AuthCredential.OAuth = {
@@ -96,10 +82,8 @@ class AuthStore(
         }
     }
 
-    /**
-     * Return fresh Codex headers for [provider]. Refreshes under [refreshMutex]
-     * if the cached access token is within [REFRESH_BUFFER_MS] of expiry.
-     */
+    /** Return fresh Codex headers for [provider]. Refreshes under [refreshMutex] if the cached access token is within
+     * [REFRESH_BUFFER_MS] of expiry. */
     suspend fun codexHeaders(provider: LLMProvider): CodexHeaders {
         // Fast path: fresh token, no lock.
         val current = read(provider.name) ?: throw MissingCredential(provider)
@@ -206,10 +190,8 @@ class AuthStore(
     }
 }
 
-/**
- * Best-effort extraction of the `chatgpt_account_id` claim from a JWT payload.
- * Returns null if the token is malformed or the claim is absent.
- */
+/** Best-effort extraction of the `chatgpt_account_id` claim from a JWT payload. Returns null if the token is malformed or the claim is
+ * absent. */
 private fun parseChatgptAccountId(idToken: String): String? {
     val parts = idToken.split('.')
     if (parts.size < 2) return null

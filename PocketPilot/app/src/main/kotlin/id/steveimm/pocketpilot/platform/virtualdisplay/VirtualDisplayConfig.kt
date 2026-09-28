@@ -5,13 +5,7 @@ import android.os.Build
 import android.util.DisplayMetrics
 import android.view.WindowManager
 
-/**
- * VirtualDisplayConfig — Immutable configuration for the agent's virtual display.
- *
- * Specifies the resolution and density of the virtual display to create.
- * Mirrors the physical display's full dimensions (including nav bar and cutout)
- * so apps render at the same layout they would on the real screen.
- */
+/** VirtualDisplayConfig — Immutable configuration for the agent's virtual display. */
 data class VirtualDisplayConfig(
     val width: Int,
     val height: Int,
@@ -26,13 +20,7 @@ data class VirtualDisplayConfig(
     }
 
     companion object {
-        /**
-         * Create a config matching the device's real display dimensions.
-         *
-         * Uses WindowManager.maximumWindowMetrics (API 31+) to get the full physical
-         * display size including nav bar and display cutout, rather than the app content
-         * area from Resources.displayMetrics which excludes system insets.
-         */
+        /** Create a config matching the device's real display dimensions. */
         fun fromPhysicalDisplay(context: Context): VirtualDisplayConfig {
             val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             val density = context.resources.displayMetrics.density

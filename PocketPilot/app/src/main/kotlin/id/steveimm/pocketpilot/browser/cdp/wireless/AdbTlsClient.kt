@@ -17,34 +17,15 @@ import javax.net.ssl.SSLSocket
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.X509ExtendedKeyManager
 
-/**
- * Plain TCP -> A_STLS exchange -> TLS 1.3 wrap to the wireless ADB TLS port.
- *
- * Per AOSP `daemon/adb_wifi.cpp` the adbd state machine on the TLS port is:
- *   - Daemon accepts TCP, starts plain read thread.
- *   - Client sends A_CNXN  -> daemon `handle_new_connection` -> `send_tls_request` (A_STLS).
- *   - Client reads A_STLS, sends its own A_STLS.
- *   - Daemon `adbd_auth_tls_handshake` performs TLS handshake.
- *   - On success daemon `adbd_wifi_secure_connect` calls `send_connect(t)` which writes A_CNXN
- *     to us through TLS. The client MUST wait for that A_CNXN before sending any further
- *     adb wire packets — sending another A_CNXN here makes adbd run `handle_new_connection`
- *     again, which calls `handle_offline()` (firing the disconnect callback) and emits a
- *     stray A_STLS over the encrypted channel.
- *
- * Server cert is not pinned: adbd authenticates US via our client cert against
- * `/data/misc/adb/adb_keys` (validated during the mTLS handshake).
- */
+/** Plain TCP -> A_STLS exchange -> TLS 1.3 wrap to the wireless ADB TLS port. */
 internal object AdbTlsClient {
 
     /** Bidirectional byte-stream channel over the post-handshake mTLS connection. */
     interface TlsChannel : Closeable {
         val inputStream: InputStream
         val outputStream: OutputStream
-        /**
-         * Reset the underlying socket's SO_TIMEOUT after the handshake completes. 0 = infinite.
-         * The handshake uses a short bounded timeout; long-lived streams (CDP WebSocket relay)
-         * must clear it so idle gaps between frames don't tear down the socket.
-         */
+        /** Reset the underlying socket's SO_TIMEOUT after the handshake completes. 0 = infinite. The handshake uses a short bounded
+         * timeout; long-lived streams (CDP WebSocket relay) must clear it so idle gaps between frames don't tear down the socket. */
         fun setIdleReadTimeoutMs(ms: Int)
     }
 
@@ -62,12 +43,7 @@ internal object AdbTlsClient {
         plain.connect(InetSocketAddress(host, port), handshakeTimeoutMs)
         plain.soTimeout = handshakeTimeoutMs
 
-        // Step 1: pre-TLS A_CNXN -> A_STLS handshake (plaintext). Banner advertises only the
-        // features we actually implement on the wire. Notably we do NOT advertise `delayed_ack`:
-        // with delayed_ack negotiated, every A_OKAY must carry a 4-byte `acked_bytes` payload
-        // (see AOSP packages/modules/adb/sockets.cpp `local_socket_ack`), and our minimal client
-        // sends bare A_OKAYs. Mismatched delayed-ack state would silently no-op the ack on the
-        // daemon side. Listing common features keeps the banner shape adbd expects.
+        // Step 1: pre-TLS A_CNXN -> A_STLS handshake (plaintext).
         AdbProtocol.Message.write(
             plain.getOutputStream(),
             AdbProtocol.A_CNXN,
@@ -93,9 +69,8 @@ internal object AdbTlsClient {
         )
         plain.getOutputStream().flush()
 
-        // Step 2: mTLS handshake. Mirrors libadb-android's SslUtils — provider-qualified to the
-        // bundled Conscrypt registered by [WirelessAdbProviders] (the platform's hidden Conscrypt
-        // can't export keying material on some vendor builds).
+        // Step 2: mTLS handshake. Mirrors libadb-android's SslUtils — provider-qualified to the bundled Conscrypt registered by
+        // [WirelessAdbProviders] (the platform's hidden Conscrypt can't export keying material on some vendor builds).
         val context = SSLContext.getInstance("TLSv1.3", "Conscrypt")
         context.init(
             arrayOf(SingleCertKeyManager(material.keyPair.private, material.certificate)),

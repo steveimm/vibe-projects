@@ -42,22 +42,7 @@ internal const val APP_BLOCKED_MEMORY_WARNING =
     "This app is set to Reject. Reject only blocks the agent from writing this memory; " +
         "saved entries are still recalled when this app is foreground."
 
-/**
- * Inline expanded area under an App Access row. Composed of:
- *  - (optional) read-only App Skill viewer when [skillLoader] returns a non-null
- *    body. Pre-loaded once on `Dispatchers.IO`.
- *  - (optional) [MemoryFileEditor] (bounded variant) for `apps/<pkg>.md`.
- *    Rendered when either a memory file already exists for the package OR the
- *    caller indicated the row was just created via the `+ Memory` chip.
- *  - Blocked-app warning chip above the editor when [isBlocked] is true. The
- *    inline editor is intentionally NOT disabled — a Settings edit is the
- *    user's explicit consent (the agent-side write gate exists to require
- *    this consent, not to be redundant with it).
- *
- * Save/delete propagate to [onMemoryPresenceChanged] so the page-scoped
- * [AppAccessContentIndex] can refresh the summary chip in O(1) without
- * re-scanning the filesystem.
- */
+/** Inline expanded area under an App Access row. */
 @Composable
 internal fun AppRowExpansion(
     packageName: String,
@@ -107,10 +92,8 @@ internal fun AppRowExpansion(
                 ioDispatcher = ioDispatcher,
             )
         } else if (onAddMemory != null) {
-            // Skill-only app (or empty row that was force-expanded): surface a
-            // "+ Memory" affordance inside the expansion so users don't have
-            // to collapse and chase the trailing-slot chip, which is hidden
-            // for skill-bearing rows by design.
+            // Skill-only app (or empty row that was force-expanded): surface a "+ Memory" affordance inside the expansion so users don't
+            // have to collapse and chase the trailing-slot chip, which is hidden for skill-bearing rows by design.
             AddMemoryChip(onAddMemory = onAddMemory, enabled = !addMemoryLocked)
         }
     }

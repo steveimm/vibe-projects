@@ -1,32 +1,6 @@
 #!/bin/bash
-#
-# ws-relay-stress.sh — WebSocket relay stress harness for the wireless-ADB self-pair
-# transport. Runs N sequential `debug-run.sh` agent invocations (each ends in one
-# `browser_script` round-trip) on the SAME PocketPilot process, then asserts:
-#
-#   1. /proc/<pid>/fd count grows by no more than +ALLOWED_DELTA across the N runs
-#      (default +2). BOTH socket_fd and total fd are checked.
-#   2. PocketPilot process pid is the same before and after the run (no Android
-#      background-killer eviction, otherwise the fd comparison is meaningless).
-#   3. No `EMFILE` / `Too many open files` lines appear in ANY iteration's child
-#      `logcat_full.log` (debug-run.sh clears logcat per-iteration, so the post-run
-#      `logcat -d` would only show the last iteration's tail — we have to scan each
-#      child's captured log).
-#   4. Each iteration produced a successful `browser_script outcome=SUCCESS` AND a
-#      `Task completed: ... outcome: GOAL_ACHIEVED` AND used the
-#      `WIRELESS_ADB_SELF_PAIR` transport. If any iteration was silently abandoned
-#      (no GOAL_ACHIEVED, no relay activity, etc.) the run is FAIL.
-#
-# Why these checks: WirelessAdbSelfPairTransport binds one ServerSocket for the
-# WebSocket relay (+1 fd) and accepts one AdbStream per WebSocket (+1 fd while
-# in flight). Past the first iteration, both should be released. A growing fd
-# count means the relay accept loop or per-connection cleanup is leaking.
-#
-# Usage:
-#   ANDROID_SERIAL=<serial> ./scripts/ws-relay-stress.sh [-n ITER] [-p "PROMPT"]
-#
-# Requires: adb, scripts/debug-run.sh on PATH (uses repo-relative path).
-#
+# ws-relay-stress.sh: WebSocket relay stress harness for the wireless-ADB self-pair
+
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

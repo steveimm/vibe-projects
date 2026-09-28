@@ -7,12 +7,7 @@ import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
 import org.junit.Test
 
-/**
- * Trace fidelity coverage for BrowserScriptTool: capability_unavailable categorization,
- * probe_error categorization, host_error from runner, host_error from a thrown exception,
- * script_failure categorization, and the rule that rawResultJson always carries the FULL
- * serialized runner payload — never the user-facing text.
- */
+/** Classifies browser failures and verifies trace payloads retain complete results rather than truncated display text. */
 class BrowserScriptToolTraceTest {
 
     @Test

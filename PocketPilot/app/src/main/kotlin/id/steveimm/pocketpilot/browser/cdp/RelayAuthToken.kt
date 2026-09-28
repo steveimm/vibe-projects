@@ -5,18 +5,7 @@ import java.io.OutputStream
 import java.net.SocketTimeoutException
 import java.security.SecureRandom
 
-/**
- * Per-session unguessable token for the localhost CDP relays. Both
- * [id.steveimm.pocketpilot.browser.cdp.shizuku.ChromeDevtoolsUserService] and
- * [id.steveimm.pocketpilot.browser.cdp.wireless.WirelessAdbSelfPairTransport] bind 127.0.0.1:0 — every
- * other app on the device can dial the same port. Without auth, any local app can drive
- * Chrome DevTools the moment a script is running.
- *
- * Defense: [ChromeCdpClient]'s OkHttp WebSocket client sends [HEADER_NAME] with the token in
- * the WS Upgrade request; the relay's accept loop reads the HTTP request line + headers and
- * 403s anything that doesn't match. The relay forwards the buffered request bytes verbatim
- * — Chrome silently ignores [HEADER_NAME].
- */
+/** Per-session unguessable token for the localhost CDP relays. */
 object RelayAuthToken {
 
     /** Header that carries the per-session token in the WS Upgrade request. */
@@ -28,22 +17,8 @@ object RelayAuthToken {
         return bytes.joinToString("") { "%02x".format(it) }
     }
 
-    /**
-     * Read up to [HEADER_BUFFER_LIMIT] bytes from [input] looking for the end of HTTP headers
-     * (`\r\n\r\n`), bounded by a TOTAL [totalDeadlineMs] for the whole head — not a per-read
-     * idle timeout. On success, return the buffered bytes (so callers can replay them
-     * upstream) paired with the parsed value of [HEADER_NAME] — or null if absent. On EOF
-     * before the terminator or limit exceeded, return [Failure].
-     *
-     * The deadline is enforced by walking the per-read socket timeout DOWN as wall time
-     * elapses: before each read we compute `remaining = totalDeadlineMs - elapsed` and ask
-     * the caller (via [setReadTimeout]) to set the underlying socket's read timeout to that
-     * value, so a slow-dribble client that sends one byte every (deadline - 1) ms still
-     * trips the deadline once cumulative wall time crosses it. Without this, per-read
-     * `soTimeout` alone is defeatable: 1 byte every 4.99 s × 4 KiB ≈ 5+ hours of held thread
-     * + fd. [SocketTimeoutException] from `input.read` (or from the deadline check itself)
-     * propagates so the relay can write 408.
-     */
+    /** Read up to [HEADER_BUFFER_LIMIT] bytes from [input] looking for the end of HTTP headers (`\r\n\r\n`), bounded by a TOTAL
+     * [totalDeadlineMs] for the whole head — not a per-read idle timeout. */
     @Throws(SocketTimeoutException::class)
     fun readHttpRequestHead(
         input: InputStream,
@@ -86,11 +61,8 @@ object RelayAuthToken {
         return ParseResult.Success(bytes = bytes, token = header)
     }
 
-    /**
-     * Compare [actual] against [expected] in constant time. Both must be non-blank and equal in
-     * length+bytes. Length comparison can short-circuit safely — different lengths can never
-     * match — but byte comparison must run to completion to deny timing oracles.
-     */
+    /** Compare [actual] against [expected] in constant time. Both must be non-blank and equal in length+bytes. Length comparison can
+     * short-circuit safely — different lengths can never match — but byte comparison must run to completion to deny timing oracles. */
     fun verify(expected: String, actual: String?): Boolean {
         if (actual.isNullOrEmpty() || expected.isEmpty()) return false
         val a = expected.toByteArray(Charsets.US_ASCII)
@@ -109,10 +81,8 @@ object RelayAuthToken {
         }
     }
 
-    /**
-     * Write a minimal HTTP/1.1 408 Request Timeout + close. Best-effort. Used when the client
-     * dribbles bytes (or none) past the pre-auth slowloris timeout.
-     */
+    /** Write a minimal HTTP/1.1 408 Request Timeout + close. Best-effort. Used when the client dribbles bytes (or none) past the
+     * pre-auth slowloris timeout. */
     fun write408(output: OutputStream) {
         runCatching {
             output.write(HTTP_408_BYTES)
@@ -148,21 +118,12 @@ object RelayAuthToken {
         data class Failure(val reason: String) : ParseResult
     }
 
-    /**
-     * 4 KiB caps the request-line + headers we'll buffer before deciding to allow or 403.
-     * Real WS Upgrade headers from OkHttp are well under 1 KiB; an attacker sending a giant
-     * blob to exhaust memory hits this cap and gets 403'd.
-     */
+    /** 4 KiB caps the request-line + headers we'll buffer before deciding to allow or 403. Real WS Upgrade headers from OkHttp are well
+     * under 1 KiB; an attacker sending a giant blob to exhaust memory hits this cap and gets 403'd. */
     const val HEADER_BUFFER_LIMIT = 4096
 
-    /**
-     * TOTAL pre-auth deadline for [readHttpRequestHead] — wall-clock budget covering the entire
-     * request line + headers, NOT a per-read idle timeout. A real WS Upgrade arrives in one TCP
-     * segment within ms; 5s is generous for stalled networks but tight enough that a slowloris
-     * client can't hold a relay thread + fd open by dribbling bytes just under a per-read cap.
-     * The relay restores `soTimeout = 0` (infinite) after auth so the long-lived proxied stream
-     * isn't capped.
-     */
+    /** TOTAL pre-auth deadline for [readHttpRequestHead] — wall-clock budget covering the entire request line + headers, NOT a per-read
+     * idle timeout. */
     const val PRE_AUTH_DEADLINE_MS = 5_000
 
     private val CRLFCRLF = byteArrayOf(0x0d, 0x0a, 0x0d, 0x0a)

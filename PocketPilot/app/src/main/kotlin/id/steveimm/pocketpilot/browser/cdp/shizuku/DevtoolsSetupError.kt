@@ -1,12 +1,6 @@
 package id.steveimm.pocketpilot.browser.cdp.shizuku
 
-/**
- * Setup-time failure modes for the Shizuku Chrome DevTools bridge.
- *
- * Each subtype maps to one actionable diagnostic surfaced by the bridge. The bridge MUST never
- * return a generic error: the agent and tool layer rely on these distinct cases to compose
- * accurate setup guidance for the user.
- */
+/** Setup-time failure modes for the Shizuku Chrome DevTools bridge. */
 sealed class DevtoolsSetupError(
     val code: String,
     message: String,
@@ -43,18 +37,11 @@ sealed class DevtoolsSetupError(
         cause = cause,
     )
 
-    /**
-     * Wireless-ADB self-pair transport could not bring up its in-device path. Distinct from
-     * Shizuku-missing because the failure here is post-Shizuku: we have the binder, but
-     * IAdbManager rejected `allowWirelessDebugging` / `enablePairingByQrCode`, or the device
-     * has no Wi-Fi BSSID (AdbDebuggingManager refuses to enable wireless adb without one), or
-     * the embedded TLS-PSK / mTLS handshake itself failed.
-     */
+    /** Wireless-ADB self-pair transport could not bring up its in-device path. */
     class WirelessAdbSelfPairUnavailable(cause: Throwable?) : DevtoolsSetupError(
         code = "wireless_adb_self_pair_unavailable",
-        // Inline the cause class+message because the capability gate / agent UI surfaces only
-        // [message] (not the chained stack), so SSLHandshakeException / SocketTimeoutException
-        // / IOException details would otherwise be invisible to the user.
+        // Inline the cause class+message because the capability gate / agent UI surfaces only [message] (not the chained stack), so
+        // SSLHandshakeException / SocketTimeoutException / IOException details would otherwise be invisible to the user.
         message = buildWirelessAdbSelfPairMessage(cause),
         cause = cause,
     )

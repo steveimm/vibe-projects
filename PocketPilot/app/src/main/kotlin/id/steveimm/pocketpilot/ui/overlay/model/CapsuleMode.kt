@@ -1,12 +1,6 @@
 package id.steveimm.pocketpilot.ui.overlay.model
 
-/**
- * CapsuleMode — the single source of truth for Smart Capsule UI.
- *
- * One value drives the entire capsule rendering.
- * No boolean soup, no ambient state, no side channels.
- * You look at the mode, you know exactly what to draw.
- */
+/** CapsuleMode — the single source of truth for Smart Capsule UI. */
 sealed interface CapsuleMode {
 
     /** Agent is actively executing. Shows thought + controls. */

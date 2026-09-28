@@ -8,8 +8,6 @@ import org.junit.Test
 
 class CodexSseParserTest {
 
-    // ── SSE line parsing ──────────────────────────────────────────────────
-
     @Test
     fun `single SSE event is parsed correctly`() {
         val sse = sseBlock("response.created", JSONObject().apply {
@@ -59,8 +57,6 @@ class CodexSseParserTest {
         assertThat(events).hasSize(1)
         assertThat(events[0].type).isEqualTo("response.done")
     }
-
-    // ── Event mapping ─────────────────────────────────────────────────────
 
     @Test
     fun `response_created maps to Created with responseId`() {
@@ -171,8 +167,6 @@ class CodexSseParserTest {
         val result = CodexSseParser.mapToStreamEvent(event, accumulator)
         assertThat(result).isNull()
     }
-
-    // ── Tool call accumulation ────────────────────────────────────────────
 
     @Test
     fun `output_item_added starts tracking function call`() {
@@ -416,8 +410,6 @@ class CodexSseParserTest {
         assertThat(byId["call-2"]!!.name).isEqualTo("type_text")
         assertThat(byId["call-2"]!!.arguments).isEqualTo("{\"text\":\"bye\"}")
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────
 
     private fun sseEvent(type: String, json: JSONObject): CodexSseParser.SseEvent {
         json.put("type", type)

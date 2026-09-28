@@ -118,8 +118,6 @@ class ModelCatalogTest {
         assertFalse("unknown" in catalog)
     }
 
-    // ── ModelEntry computed properties ──────────────────────────────────
-
     @Test
     fun `effectiveApiKeyEnv uses provider default when entry has no override`() {
         val catalog = ModelCatalog.fromJson(sampleJson)
@@ -173,8 +171,6 @@ class ModelCatalogTest {
         val entry = ModelCatalog.fromJson(json).resolve("local")
         assertEquals("http://localhost:8000/v1", entry.effectiveBaseUrl)
     }
-
-    // ── Error handling ──────────────────────────────────────────────────
 
     @Test(expected = IllegalArgumentException::class)
     fun `fromJson rejects empty catalog`() {
@@ -231,8 +227,6 @@ class ModelCatalogTest {
         val entry = ModelCatalog.fromJson(json).resolve("no-vision")
         assertFalse(entry.supportsVision)
     }
-
-    // ── Provider-linked model filtering ────────────────────────────────
 
     private val multiProviderJson = """
         {
@@ -355,8 +349,6 @@ class ModelCatalogTest {
         assertTrue(catalog.modelsFor(LLMProvider.OPENROUTER).isEmpty())
     }
 
-    // ── withBaseUrlOverrides ────────────────────────────────────────────
-
     @Test
     fun `withBaseUrlOverrides applies override to provider without entry baseUrl`() {
         val catalog = ModelCatalog.fromJson(multiProviderJson)
@@ -398,8 +390,6 @@ class ModelCatalogTest {
         assertTrue(catalog === result)
     }
 
-    // ── Error handling ──────────────────────────────────────────────────
-
     @Test(expected = kotlinx.serialization.SerializationException::class)
     fun `fromJson throws for malformed JSON`() {
         ModelCatalog.fromJson("[not valid json")
@@ -435,8 +425,6 @@ class ModelCatalogTest {
         val catalog = ModelCatalog.fromJson(json)
         assertNotNull(catalog.resolve("model"))
     }
-
-    // ── context_window ──────────────────────────────────────────────────
 
     @Test
     fun `contextWindow uses explicit JSON value when present`() {

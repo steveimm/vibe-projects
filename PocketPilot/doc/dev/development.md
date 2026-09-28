@@ -16,7 +16,7 @@ All day-to-day work uses the **debug** APK. The **release** APK is only for ship
 | APK size | ~96 MB | 140 MB (R8 enabled; large because Leap SDK + bcprov + tessdata native libs ship inside the APK) |
 | `BuildConfig.DEBUG` | `true` → `LlmLogger.VERBOSE_LOGGING` prints full prompt/response; streaming clients build accumulators | `false` → verbose log off, accumulators skipped (see `perf-streaming-guard`) |
 | `INSECURE_SSL_FOR_EVAL` | opt-in via `-PinsecureSslForEval=true` | forced `false` |
-| Cleartext (`10.0.2.2`, `localhost`) | allowed for emulator via `network_security_config.xml` | blocked |
+| Custom HTTP endpoints | Supported for configured custom servers and localhost tools | Supported for configured custom servers and localhost tools |
 | Stack traces | non-obfuscated | obfuscated by R8 (use `app/build/outputs/mapping/release/mapping.txt` to deobfuscate) |
 
 **When to build release:**

@@ -1,27 +1,9 @@
 #!/bin/bash
-#
-# debug-run.sh - Run agent with screenshot capture at each turn
-#
-# Usage:
-#   ./scripts/debug-run.sh "goal"              # Run with OpenAI backend
-#   ./scripts/debug-run.sh --local "goal"      # Run with local LLM backend
-#   ./scripts/debug-run.sh --accessibility-only "goal"  # A11y tree only
-#   ./scripts/debug-run.sh --screenshot-only "goal"     # Screenshot only
-#   ./scripts/debug-run.sh --hybrid "goal"              # A11y + screenshot
-#   ./scripts/debug-run.sh --main-model gpt-5.2 "goal"
-#   ./scripts/debug-run.sh --virtual-display "goal"     # Run on Shizuku virtual display
-#
-# Environment Variables:
-#   LLM_BACKEND: "openai" (default) or "local" - selects LLM backend
-#   PERCEPTION_MODE: "accessibility_only" (default), "screenshot_only", or "hybrid"
-#   MAIN_MODEL: Override main model name (key from llm_models.json)
-#   PLATFORM_MODE: "accessibility" (default) or "virtual_display"
-#   APPROVAL_MODE: "SMART" (default), "AUTO_APPROVE", or "ALWAYS_ASK" for debug builds
-#   DEBUG_AUTO_APPROVE: true/false shortcut for APPROVAL_MODE=AUTO_APPROVE
-#   DEBUG_BROWSER_SCRIPT_ENABLED: true/false to toggle browser_script before launch
-#
+# debug-run.sh: Run agent with screenshot capture at each turn
 
 set -e
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -92,38 +74,6 @@ log() { echo -e "${BLUE}> $1${NC}"; }
 ok() { echo -e "${GREEN}✓ $1${NC}"; }
 warn() { echo -e "${YELLOW}! $1${NC}"; }
 err() { echo -e "${RED}x $1${NC}"; exit 1; }
-
-list_connected_devices() {
-    adb devices | awk 'NR > 1 && $2 == "device" {print $1}'
-}
-
-select_device() {
-    local preferred_serial="${ANDROID_SERIAL:-}"
-    local devices
-    local physical_devices
-
-    devices="$(list_connected_devices)"
-    if [[ -z "$devices" ]]; then
-        return 1
-    fi
-
-    if [[ -n "$preferred_serial" ]]; then
-        if printf "%s\n" "$devices" | grep -Fxq "$preferred_serial"; then
-            printf "%s\n" "$preferred_serial"
-            return 0
-        fi
-        warn "ANDROID_SERIAL=$preferred_serial not found; auto-selecting device."
-    fi
-
-    physical_devices="$(printf "%s\n" "$devices" | grep -v '^emulator-' || true)"
-    if [[ -n "$physical_devices" ]]; then
-        printf "%s\n" "$physical_devices" | head -n 1
-        return 0
-    fi
-
-    printf "%s\n" "$devices" | head -n 1
-    return 0
-}
 
 escape_shell_arg() {
     printf "%s" "$1" | sed "s/'/'\\\\''/g"

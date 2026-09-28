@@ -1,10 +1,7 @@
 package id.steveimm.pocketpilot.ui.settings
 
-/**
- * Possible CDP probe states the unified card needs to render. Wraps [ChromeCdpProbe.Result]
- * with an additional [Probing] state for the brief window the probe coroutine is in flight.
- * Lives in the mapper file (not the probe class) because it's a display concern.
- */
+/** Possible CDP probe states the unified card needs to render. Wraps [ChromeCdpProbe.Result] with an additional [Probing] state for the
+ * brief window the probe coroutine is in flight. Lives in the mapper file (not the probe class) because it's a display concern. */
 internal sealed interface BrowserScriptProbeState {
     data object Probing : BrowserScriptProbeState
     data object Bound : BrowserScriptProbeState
@@ -12,11 +9,8 @@ internal sealed interface BrowserScriptProbeState {
     data object Unknown : BrowserScriptProbeState
 }
 
-/**
- * What the card's row-tap should do, computed by the mapper so the composable doesn't need
- * to re-derive it from raw state. Null in [BrowserScriptStatusResult.rowAction] means the
- * row is non-interactive (the Switch is still tappable independently).
- */
+/** What the card's row-tap should do, computed by the mapper so the composable doesn't need to re-derive it from raw state. Null in
+ * [BrowserScriptStatusResult.rowAction] means the row is non-interactive (the Switch is still tappable independently). */
 internal sealed class RowAction {
     /** Wipe the inline gate error and re-attempt enabling — mirrors the Switch's tap contract. */
     data object ClearErrorAndRetry : RowAction()
@@ -29,14 +23,8 @@ internal data class BrowserScriptStatusResult(
     val rowAction: RowAction?,
 )
 
-/**
- * Pure mapper: collapse the four observable inputs (enable pref, gate pending flag, gate
- * error, CDP probe result) into the unified card's [ToolStatusUi] plus an optional row
- * action. Mapping table is the source of truth in `design_claude.md`.
- *
- * Probe state is ignored when the pref is off or the gate is busy/errored — those states
- * always win because the probe result is meaningless if the tool isn't actually enabled.
- */
+/** Pure mapper: collapse the four observable inputs (enable pref, gate pending flag, gate error, CDP probe result) into the unified
+ * card's [ToolStatusUi] plus an optional row action. Mapping table is the source of truth in `design_claude.md`. */
 internal fun browserScriptStatusUi(
     enabledPref: Boolean,
     gatePending: Boolean,

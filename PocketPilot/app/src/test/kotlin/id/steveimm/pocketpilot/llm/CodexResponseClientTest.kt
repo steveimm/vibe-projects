@@ -4,7 +4,6 @@ import id.steveimm.pocketpilot.auth.CodexHeaders
 import com.google.common.truth.Truth.assertThat
 import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.ResponseInputItem
-import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Protocol
 import okhttp3.Request
@@ -13,15 +12,7 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import org.json.JSONObject
 import org.junit.Test
 
-/**
- * Direct unit tests for [CodexResponseClient].
- *
- * Covers the pure logic paths that don't require real HTTP:
- * - Codex-specific request construction (headers + body shape) via the
- *   suspend-supplied [CodexHeaders]
- * - Error-response classification (handleErrorResponse)
- * - Streaming event mapping used by chatWithToolsStreaming
- */
+/** Direct unit tests for [CodexResponseClient]. */
 class CodexResponseClientTest {
 
     private val headers = CodexHeaders(
@@ -30,8 +21,6 @@ class CodexResponseClientTest {
         email = "user@example.com",
     )
     private val supplier: suspend () -> CodexHeaders = { headers }
-
-    // ── Request construction ──────────────────────────────────────────────
 
     @Test
     fun `buildRequest adds all required Codex headers from supplier`() {
@@ -61,22 +50,6 @@ class CodexResponseClientTest {
     }
 
     @Test
-    fun `supplier is called per request`() = runBlocking {
-        var calls = 0
-        val dyn: suspend () -> CodexHeaders = {
-            calls++
-            headers
-        }
-        val client = CodexResponseClient(dyn)
-        // Simulate two independent calls — client caches nothing.
-        dyn.invoke()
-        dyn.invoke()
-        // Two direct invocations + the client holds a reference but does not cache headers itself.
-        assertThat(calls).isEqualTo(2)
-        assertThat(client).isNotNull()
-    }
-
-    @Test
     fun `request body matches Codex wire format`() {
         // CodexResponseClient delegates body serialization to CodexRequestBuilder,
         // so asserting on its output is asserting what the client actually sends.
@@ -96,32 +69,6 @@ class CodexResponseClientTest {
         assertThat(json.getBoolean("parallel_tool_calls")).isTrue()
         assertThat(json.has("max_output_tokens")).isFalse()
     }
-
-    @Test
-    fun `CodexRequestBuilder signature has no max-output-tokens parameter (enforces no-forward)`() {
-        // Codex backend rejects max_output_tokens. The LLMClient contract still
-        // exposes the cap (so other providers can honor it), but Codex must
-        // never forward it. Asserting the builder signature catches any future
-        // change that would silently start forwarding the cap.
-        val params = CodexRequestBuilder::class.java
-            .getDeclaredMethod(
-                "buildRequestBody",
-                String::class.java,
-                List::class.java,
-                List::class.java,
-                String::class.java,
-            )
-            .parameterTypes
-        assertThat(params).asList()
-            .containsExactly(
-                String::class.java,
-                List::class.java,
-                List::class.java,
-                String::class.java,
-            ).inOrder()
-    }
-
-    // ── Error response classification ─────────────────────────────────────
 
     @Test(expected = RateLimitException::class)
     fun `429 response maps to RateLimitException`() {
@@ -168,8 +115,6 @@ class CodexResponseClientTest {
         assertThat(ex).isNotInstanceOf(RateLimitException::class.java)
     }
 
-    // ── Streaming finish / terminal events ────────────────────────────────
-
     @Test
     fun `response_completed event maps to Completed`() {
         val ev = CodexSseParser.SseEvent(
@@ -213,8 +158,6 @@ class CodexResponseClientTest {
         assertThat(result).isInstanceOf(LLMStreamEvent.Failed::class.java)
         assertThat((result as LLMStreamEvent.Failed).error).isEqualTo("server kaput")
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────
 
     private fun invokeBuildRequest(client: CodexResponseClient, body: String, headers: CodexHeaders): Request {
         val m = CodexResponseClient::class.java

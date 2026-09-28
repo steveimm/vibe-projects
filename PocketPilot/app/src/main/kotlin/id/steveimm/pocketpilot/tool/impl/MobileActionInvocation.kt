@@ -9,12 +9,7 @@ import id.steveimm.pocketpilot.tool.ToolInvocation
 import id.steveimm.pocketpilot.tool.action.ActionOutcome
 import org.json.JSONObject
 
-/**
- * Thin glue: routes to executor, maps ActionOutcome to ToolExecutionResult.
- *
- * ~40 lines. Replaces UIActionInvocation + all *TargetInvocation classes
- * for mobile_action.
- */
+/** Thin glue: routes to executor, maps ActionOutcome to ToolExecutionResult. */
 class MobileActionInvocation(
     override val params: JSONObject,
     private val description: String,

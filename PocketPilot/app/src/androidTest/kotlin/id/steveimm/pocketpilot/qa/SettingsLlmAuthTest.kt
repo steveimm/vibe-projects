@@ -20,11 +20,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/**
- * S5-S8: LLM Auth page callback contract — tabs are inert until the user commits
- * an action inside the tab; provider sub-selector is also inert (no settings
- * writes) until a model is committed; commits canonicalize per Section 5.
- */
+/** S5-S8: LLM Auth page callback contract — tabs are inert until the user commits an action inside the tab; provider sub-selector is
+ * also inert (no settings writes) until a model is committed; commits canonicalize per Section 5. */
 @RunWith(AndroidJUnit4::class)
 class SettingsLlmAuthTest {
 

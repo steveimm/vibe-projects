@@ -1,11 +1,6 @@
 package id.steveimm.pocketpilot.model
 
-// --- Geometry Models ---
-
-/**
- * Bounds - Rectangle bounds for UI elements.
- * Uses named properties instead of IntArray for type safety and proper equality.
- */
+/** Bounds - Rectangle bounds for UI elements. Uses named properties instead of IntArray for type safety and proper equality. */
 data class Bounds(
     val left: Int,
     val top: Int,
@@ -18,27 +13,13 @@ data class Bounds(
     val centerY: Int get() = (top + bottom) / 2
 }
 
-/**
- * Point - 2D coordinate point.
- * Uses named properties instead of IntArray for type safety and proper equality.
- */
+/** Point - 2D coordinate point. Uses named properties instead of IntArray for type safety and proper equality. */
 data class Point(
     val x: Int,
     val y: Int
 )
 
-// --- Perception Models ---
-
-/**
- * ScreenSnapshot - Captured state of the screen.
- * 
- * No longer stores AccessibilityNodeInfo references to avoid memory leaks.
- * All necessary data for action execution is stored in PerceptionElement.
- * 
- * Note: rootOriginal and rawMap have been removed. Actions now use:
- * - Gesture-based clicks using stored bounds/center coordinates
- * - Re-querying accessibility tree for text input when needed
- */
+/** ScreenSnapshot - Captured state of the screen. */
 data class ScreenSnapshot(
     val timestamp: Long,
     val elements: List<PerceptionElement>,   // Always present (may be empty)

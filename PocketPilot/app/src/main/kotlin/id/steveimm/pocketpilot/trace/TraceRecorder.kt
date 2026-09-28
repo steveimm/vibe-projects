@@ -4,23 +4,14 @@ interface TraceRecorder {
     val enabled: Boolean
     val runId: String?
 
-    /**
-     * Absolute filesystem path of the run folder that backs the artifacts written via
-     * [storeBytes] / [storeText]. Returns null when no on-disk run folder exists (e.g.
-     * [NoopTraceRecorder]). Callers that need to surface artifact locations to consumers
-     * outside the trace process should prefer this absolute path over [TraceArtifactRef.path],
-     * which is relative to the run folder.
-     */
+    /** Absolute filesystem path of the run folder that backs the artifacts written via [storeBytes] / [storeText]. */
     val runDirAbsolutePath: String? get() = null
 
     fun nextSeq(): Long
 
     fun record(event: TraceEventRecord)
 
-    /**
-     * Store a UTF-8 text artifact in the trace run folder.
-     * Returns a reference that can be attached to events.
-     */
+    /** Store a UTF-8 text artifact in the trace run folder. Returns a reference that can be attached to events. */
     fun storeText(
         kind: String,
         filenameHint: String,
@@ -29,10 +20,7 @@ interface TraceRecorder {
         description: String? = null
     ): TraceArtifactRef?
 
-    /**
-     * Store bytes artifact in the trace run folder.
-     * Returns a reference that can be attached to events.
-     */
+    /** Store bytes artifact in the trace run folder. Returns a reference that can be attached to events. */
     fun storeBytes(
         kind: String,
         filenameHint: String,

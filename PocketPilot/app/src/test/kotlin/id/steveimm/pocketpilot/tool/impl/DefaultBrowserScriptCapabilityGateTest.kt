@@ -6,14 +6,8 @@ import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
-/**
- * Coverage for the production capability gate. Each gate condition must surface a distinct,
- * stable code so the agent and UI can compose the right setup guidance.
- *
- * Order matters: the experimental flag is checked BEFORE the bridge preflight, so disabling
- * the experimental flag must not trigger transport probes that themselves spin up Shizuku
- * binding or a TCP relay connect when the feature is off.
- */
+/** Coverage for the production capability gate. Each gate condition must surface a distinct, stable code so the agent and UI can
+ * compose the right setup guidance. */
 class DefaultBrowserScriptCapabilityGateTest {
 
     @Test

@@ -7,8 +7,6 @@ class CloudStreamRetryPolicyTest {
 
     private val tag = "TestPolicy"
 
-    // ── Retry allowed (retryable error, no emitted event, within budget) ──
-
     @Test
     fun `TransientException before any events triggers Retry`() {
         val action = CloudStreamRetryPolicy.decide(
@@ -99,22 +97,12 @@ class CloudStreamRetryPolicyTest {
             .isEqualTo(LLMClient.MAX_BACKOFF_MS)
     }
 
-    // ── Fail-fast after emitted event ─────────────────────────────────────
-    //
-    // Boundary: this file characterizes ONLY the pure decision matrix in
-    // CloudStreamRetryPolicy.decide. The runner-side semantics for *which*
-    // events flip emittedEvent (TextDelta / ToolCallDone / Failed in
-    // StreamAttemptEmitter) are owned by CloudStreamRetryRunnerTest. Here we
-    // treat emittedEvent as an opaque boolean input to the policy and assert
-    // its guard rejects retry of any partially-emitted stream.
+    // Boundary: this file characterizes ONLY the pure decision matrix in CloudStreamRetryPolicy.decide.
 
     @Test
     fun `policy guard - retryable plus emittedEvent always returns FailAndStop`() {
-        // Explicit FSM-guard characterization: per llm_retry.md, the
-        // `retryable && emittedEvent` branch must return FailAndStop for
-        // every retryable classification, on every attempt within budget,
-        // regardless of backoff value. This protects the consumer from
-        // duplicated tokens/tool calls after partial output.
+        // Explicit FSM-guard characterization: per llm_retry.md, the `retryable && emittedEvent` branch must return FailAndStop for every
+        // retryable classification, on every attempt within budget, regardless of backoff value.
         val retryableErrors = listOf<Exception>(
             TransientException("io"),
             TransientException("io", cause = RuntimeException("socket")),
@@ -175,8 +163,6 @@ class CloudStreamRetryPolicyTest {
             .contains("partial output")
     }
 
-    // ── Non-retryable errors ──────────────────────────────────────────────
-
     @Test
     fun `RuntimeException returns Stop regardless of emitted state`() {
         val action = CloudStreamRetryPolicy.decide(
@@ -200,8 +186,6 @@ class CloudStreamRetryPolicyTest {
         )
         assertThat(action).isEqualTo(StreamRetryAction.Stop)
     }
-
-    // ── Max retries exhausted ─────────────────────────────────────────────
 
     @Test
     fun `retryable error at max attempts returns Stop`() {
@@ -254,8 +238,6 @@ class CloudStreamRetryPolicyTest {
         assertThat(action).isEqualTo(StreamRetryAction.Stop)
     }
 
-    // ── emittedEvent guard precedence ─────────────────────────────────────
-
     @Test
     fun `emittedEvent guard takes priority over max-attempts exhaustion`() {
         // Even at exhaustion, the emittedEvent guard still fires FailAndStop
@@ -296,8 +278,6 @@ class CloudStreamRetryPolicyTest {
         assertThat((action as StreamRetryAction.FailAndStop).message)
             .contains("quota exhausted")
     }
-
-    // ── Backoff growth detail ─────────────────────────────────────────────
 
     @Test
     fun `nextBackoffMs grows by BACKOFF_MULTIPLIER from initial backoff`() {

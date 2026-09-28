@@ -1,11 +1,6 @@
 package id.steveimm.pocketpilot.perception
 
-/**
- * Tunables for a11y element filtering and prompt shaping inside [Perceptor].
- *
- * This is intentionally separate from [PerceptionConfig], which controls modality
- * selection (a11y/screenshot/hybrid) at session level.
- */
+/** Tunables for a11y element filtering and prompt shaping inside [Perceptor]. */
 data class PerceptorFilterConfig(
     val maxElements: Int = 500,
     val minElementSizePx: Int = 5,

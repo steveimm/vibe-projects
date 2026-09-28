@@ -90,6 +90,7 @@ Primary files:
   checks still work.
 - Non-zero process exit codes are normal tool output, not transport failures. The LLM receives
   `exit_code`, `stdout`, `stderr`, timeout flags, and truncation refs.
+- The bridge drains both output pipes through one selector loop. The command deadline remains active after the shell exits if a descendant still holds a pipe open.
 - Command timeout defaults to 120s. The executor sub-agent timeout is raised to 150s only when
   `termux_shell` is exposed.
 - Workspace cwd defaults to `~/pocketpilot/workspace/`. Bridge-side cwd validation rejects paths

@@ -3,11 +3,8 @@ package id.steveimm.pocketpilot.tool.impl
 import id.steveimm.pocketpilot.test.FakeAndroidPlatform
 import id.steveimm.pocketpilot.tool.ToolExecutionContext
 
-/**
- * Shared fixtures for the BrowserScriptTool test suite. Kept in production code style
- * (no test-specific marker classes) so the multiple test files all consume the same
- * helpers without duplication.
- */
+/** Shared fixtures for the BrowserScriptTool test suite. Kept in production code style (no test-specific marker classes) so the
+ * multiple test files all consume the same helpers without duplication. */
 internal class RecordingTraceSink : BrowserScriptTraceSink {
     val entries: MutableList<BrowserScriptTraceMetadata> = mutableListOf()
     override fun record(metadata: BrowserScriptTraceMetadata) {

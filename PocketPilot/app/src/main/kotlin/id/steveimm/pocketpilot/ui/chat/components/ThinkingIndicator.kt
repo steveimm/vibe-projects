@@ -33,12 +33,8 @@ import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
-/**
- * ThinkingIndicator — line-art paw matching [R.drawable.ic_paw] / logo.
- * Body (C-spiral) always full alpha; 4 toes light cumulatively over 900ms
- * (225ms phase boundaries), then reset. Ink tint, alpha-only animation
- * (30% → 100%); no scale, no Claw color.
- */
+/** ThinkingIndicator — line-art paw matching [R.drawable.ic_paw] / logo. Body (C-spiral) always full alpha; 4 toes light cumulatively
+ * over 900ms (225ms phase boundaries), then reset. Ink tint, alpha-only animation (30% → 100%); no scale, no Claw color. */
 @Composable
 fun ThinkingIndicator(modifier: Modifier = Modifier) {
     val spacing = MaterialTheme.pocketPilot.spacing
@@ -138,9 +134,8 @@ private fun PawToeSequence(tint: Color) {
 
 private const val ELEMENT_COUNT = 4
 
-/** Alpha for paw-toe `index` at animation `phase` ∈ [0, ELEMENT_COUNT].
- *  Active and prior elements at full alpha (1.0); not-yet-active at 0.30.
- *  Pinned by ThinkingIndicatorCadenceTest. */
+/** Alpha for paw-toe `index` at animation `phase` ∈ [0, ELEMENT_COUNT]. Active and prior elements at full alpha (1.0); not-yet-active
+ * at 0.30. Pinned by ThinkingIndicatorCadenceTest. */
 internal fun pawToeAlpha(phase: Float, index: Int): Float {
     val active = phase.toInt().coerceIn(0, ELEMENT_COUNT - 1)
     return if (index <= active) 1.0f else 0.30f

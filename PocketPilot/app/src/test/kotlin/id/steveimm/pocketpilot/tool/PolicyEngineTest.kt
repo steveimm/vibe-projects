@@ -14,8 +14,6 @@ class PolicyEngineTest {
         tiers: Map<String, AppTier> = emptyMap()
     ) = PolicyEngine(mode, AppClassifier(tiers))
 
-    // --- BLOCKED tier ---
-
     @Test
     fun `blocked app denied even in auto_approve mode`() {
         val engine = engineWith(
@@ -75,8 +73,6 @@ class PolicyEngineTest {
         assertThat(decision).isInstanceOf(PolicyDecision.Deny::class.java)
     }
 
-    // --- CAUTIOUS tier (unknown apps) ---
-
     @Test
     fun `unknown app asks user in smart mode`() {
         val engine = engineWith()
@@ -90,8 +86,6 @@ class PolicyEngineTest {
         val decision = engine.check("mobile_action", clickParams(), "com.unknown.app")
         assertThat(decision).isEqualTo(PolicyDecision.Allow)
     }
-
-    // --- NORMAL tier ---
 
     @Test
     fun `normal app allowed in smart mode`() {
@@ -150,8 +144,6 @@ class PolicyEngineTest {
         assertThat(decision).isEqualTo(PolicyDecision.Allow)
     }
 
-    // --- Non-screen-changing tools ---
-
     @Test
     fun `non-screen-changing tool allowed regardless of tier`() {
         val engine = engineWith(
@@ -170,8 +162,6 @@ class PolicyEngineTest {
         assertThat(decision).isEqualTo(PolicyDecision.Allow)
     }
 
-    // --- ALWAYS_ASK mode ---
-
     @Test
     fun `always_ask mode requests approval for normal app`() {
         val engine = engineWith(
@@ -182,16 +172,12 @@ class PolicyEngineTest {
         assertThat(decision).isInstanceOf(PolicyDecision.AskUser::class.java)
     }
 
-    // --- Null package ---
-
     @Test
     fun `null package treated as cautious`() {
         val engine = engineWith()
         val decision = engine.check("mobile_action", clickParams(), null)
         assertThat(decision).isInstanceOf(PolicyDecision.AskUser::class.java)
     }
-
-    // --- Destination tier ---
 
     @Test
     fun `normal current with cautious destination asks user in smart mode`() {
@@ -246,8 +232,6 @@ class PolicyEngineTest {
         )
         assertThat(decision).isInstanceOf(PolicyDecision.Deny::class.java)
     }
-
-    // --- User override interactions (canonical step ordering) ---
 
     @Test
     fun `user NORMAL override on cautious app under ALWAYS_ASK still asks - mode wins`() = runBlocking {

@@ -7,12 +7,7 @@ private const val MAX_SIGNATURE_HISTORY = 10
 private const val MAX_SIGNATURE_ELEMENTS = 32
 private const val POSITION_BUCKET_PX = 120
 
-/**
- * Tracks recent screen signatures to detect loops and execution stalls.
- *
- * Acts as the agent's short-term spatial memory, using simplified [ScreenSignature]s to robustly
- * identify if the agent is revisiting the same states.
- */
+/** Tracks recent screen signatures to detect loops and execution stalls. */
 internal data class NavigationState(
         val recentSignatures: List<ScreenSignature> = emptyList()
 ) {

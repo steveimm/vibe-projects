@@ -6,10 +6,7 @@ import com.openai.models.responses.FunctionTool
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * Extracts tool parameter schemas from [FunctionTool], handling the SDK's
- * known / unknown / raw-string representations.
- */
+/** Extracts tool parameter schemas from [FunctionTool], handling the SDK's known / unknown / raw-string representations. */
 internal object ToolParameterExtractor {
 
     private const val TAG = "ToolParamExtractor"

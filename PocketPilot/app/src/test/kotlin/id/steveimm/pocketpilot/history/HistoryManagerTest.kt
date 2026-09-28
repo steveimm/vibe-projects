@@ -11,8 +11,6 @@ import org.junit.Test
 
 class HistoryManagerTest {
 
-    // ── Normalization ────────────────────────────────────────────────────
-
     @Test
     fun `forPrompt adds placeholder output when missing`() {
         val manager = HistoryManager()
@@ -61,8 +59,6 @@ class HistoryManagerTest {
         assertThat(output.truncated).isFalse()
     }
 
-    // ── P0: Compression never deletes USER_INTENT ────────────────────────
-
     @Test
     fun `P0 compress never removes USER_INTENT messages`() {
         val manager = HistoryManager()
@@ -92,8 +88,6 @@ class HistoryManagerTest {
             "now go back"
         )
     }
-
-    // ── P0: Screen downgrade keeps last N full, rewrites older ────────────
 
     @Test
     fun `P0 proactive screen downgrade keeps last N full screens`() {
@@ -138,13 +132,8 @@ class HistoryManagerTest {
         assertThat(first.content).isEqualTo("Screen: 42 elements (compressed)")
     }
 
-    // ── P0: Call/output pairing survives compression ─────────────────────
-
-    // (Lossy eviction removed — call/output pairing is now Compactor's
-    // concern; previously this test asserted compress() drops both halves
+    // (Lossy eviction removed — call/output pairing is now Compactor's concern; previously this test asserted compress() drops both halves
     // together.)
-
-    // ── P0: Recent window is protected from eviction ─────────────────────
 
     @Test
     fun `P0 recent window items are protected from eviction`() {
@@ -180,8 +169,6 @@ class HistoryManagerTest {
         assertThat(recentCall).isTrue()
     }
 
-    // ── P0: Repeated compress is idempotent ──────────────────────────────
-
     @Test
     fun `P0 repeated compress is idempotent once stabilized`() {
         val manager = HistoryManager()
@@ -207,13 +194,8 @@ class HistoryManagerTest {
         assertThat(afterSecond).isEqualTo(afterFirst)
     }
 
-    // ── P0: BudgetUnreachable ────────────────────────────────────────────
-
-    // (Removed with the lossy-eviction pipeline — there is no longer a
-    // "budget unreachable" branch; Compactor is responsible for context
+    // (Removed with the lossy-eviction pipeline — there is no longer a "budget unreachable" branch; Compactor is responsible for context
     // pressure now.)
-
-    // ── CompressionResult ────────────────────────────────────────────────
 
     @Test
     fun `compress returns Noop when already under budget`() {
@@ -227,23 +209,14 @@ class HistoryManagerTest {
         assertThat(result).isInstanceOf(CompressionResult.Noop::class.java)
     }
 
-    // (Removed: `compress returns Compressed with stats` — the test depended
-    // on Phase 2 eviction; with eviction gone, compress() rarely returns
-    // Compressed and the test added no remaining value.)
-
-    // ── COMPACTION_SUMMARY breadcrumb ─────────────────────────────────────
+    // (Removed: `compress returns Compressed with stats` — the test depended on Phase 2 eviction; with eviction gone, compress() rarely
+    // returns Compressed and the test added no remaining value.)
 
     // (Removed: `compress inserts COMPACTION_SUMMARY breadcrumb after eviction`
     // — breadcrumb insertion died with the eviction body it described.)
 
-    // ── Auto compress ────────────────────────────────────────────────────
-
-    // (Removed: `auto compress keeps token budget bounded` and
-    // `auto compress uses compressTargetRatio` — autoCompressIfNeeded plus
-    // its config fields were removed when Compactor took over. Compactor
-    // has its own coverage in CompactorTest.kt.)
-
-    // ── Screen Compression Patterns ─────────────────────────────────────
+    // (Removed: `auto compress keeps token budget bounded` and `auto compress uses compressTargetRatio` — autoCompressIfNeeded plus its
+    // config fields were removed when Compactor took over. Compactor has its own coverage in CompactorTest.kt.)
 
     @Test
     fun `compressScreenContent handles accessibility tree block`() {
@@ -266,12 +239,8 @@ class HistoryManagerTest {
         assertThat(manager.compressScreenContent(content)).isEqualTo("Screen: screenshot only (compressed)")
     }
 
-    // ── Token accounting after large compression ────────────────────────
-
-    // (Removed: `compress leaves token estimate matching actual sum after
-    // large eviction` — relied on Phase 2 eviction to produce a Compressed
-    // result. Token-accounting invariants for the live pipeline are covered
-    // implicitly by the screen-downgrade tests above.)
+    // (Removed: `compress leaves token estimate matching actual sum after large eviction` — relied on Phase 2 eviction to produce a
+    // Compressed result. Token-accounting invariants for the live pipeline are covered implicitly by the screen-downgrade tests above.)
 
     @Test
     fun `compress evicts call and paired output together in large history`() {
@@ -301,8 +270,6 @@ class HistoryManagerTest {
         // Every surviving call should have its output; no orphan outputs remain
         assertThat(outputs).isEqualTo(calls)
     }
-
-    // ── Revision + CAS ───────────────────────────────────────────────────
 
     @Test
     fun `revision starts at zero and increments on every mutation`() {

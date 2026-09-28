@@ -48,9 +48,8 @@ class AdbCryptoKeyStoreTest {
 
     @Test
     fun `androidPubkeyBase64 is stable across reloads from disk`() {
-        // Confirms the pubkey blob serializes deterministically across PKCS8 round-trips —
-        // the pair-once optimisation depends on this exact string matching what adbd has in
-        // /data/misc/adb/adb_keys after the previous run.
+        // Confirms the pubkey blob serializes deterministically across PKCS8 round-trips — the pair-once optimisation depends on this
+        // exact string matching what adbd has in /data/misc/adb/adb_keys after the previous run.
         val first = AdbCryptoKeyStore(dir).androidPubkeyBase64()
         val second = AdbCryptoKeyStore(dir).androidPubkeyBase64()
         assertThat(first).isEqualTo(second)

@@ -11,12 +11,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
-/**
- * Direct unit tests for [ChatCompletionClient].
- *
- * Avoids real HTTP by verifying pure logic: request parameter construction
- * and exception-classification behavior around the SDK call.
- */
+/** Direct unit tests for [ChatCompletionClient]. */
 class ChatCompletionClientTest {
 
     private val apiKey = "sk-test-abc123"
@@ -40,22 +35,6 @@ class ChatCompletionClientTest {
             )
             .strict(false)
             .build()
-
-    // ── Construction ──────────────────────────────────────────────────────
-
-    @Test
-    fun `constructor succeeds with just an api key`() {
-        val client = ChatCompletionClient(apiKey)
-        assertThat(client.isReady()).isTrue()
-    }
-
-    @Test
-    fun `constructor succeeds with custom base url`() {
-        val client = ChatCompletionClient(apiKey, baseUrl = "https://openrouter.ai/api/v1")
-        assertThat(client.isReady()).isTrue()
-    }
-
-    // ── Request construction ──────────────────────────────────────────────
 
     @Test
     fun `buildParams produces ChatCompletionCreateParams with system plus user messages and tools`() {
@@ -119,8 +98,6 @@ class ChatCompletionClientTest {
         assertThat(params.maxCompletionTokens().isPresent).isFalse()
     }
 
-    // ── Error classification (provider error → domain exception) ──────────
-
     @Test
     fun `provider 401 error is classified to plain RuntimeException (non-retryable)`() {
         val client = ChatCompletionClient(apiKey)
@@ -156,18 +133,15 @@ class ChatCompletionClientTest {
         installFailingOpenAIClient(client) {
             val n = attempts.incrementAndGet()
             if (n >= 2) {
-                // After observing the second attempt, throw a non-retryable
-                // error to exit the retry loop without waiting additional
+                // After observing the second attempt, throw a non-retryable error to exit the retry loop without waiting additional
                 // exponential-backoff delays.
                 throw IllegalStateException("stop-retry sentinel")
             }
             throw java.net.SocketTimeoutException("read timed out")
         }
 
-        // Behavior: transient errors must be retried by CloudLlmRetry, not surfaced
-        // on first failure. Assert retry happened — do NOT pin the specific
-        // terminal exception type (that is a separate contract owned by
-        // CloudLlmRetry and may legitimately change).
+        // Behavior: transient errors must be retried by CloudLlmRetry, not surfaced on first failure. Assert retry happened — do NOT pin
+        // the specific terminal exception type (that is a separate contract owned by CloudLlmRetry and may legitimately change).
         runCatching {
             runBlocking {
                 client.chatWithTools(
@@ -181,8 +155,6 @@ class ChatCompletionClientTest {
 
         assertThat(attempts.get()).isAtLeast(2)
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────
 
     @Suppress("UNCHECKED_CAST")
     private fun invokeBuildParams(

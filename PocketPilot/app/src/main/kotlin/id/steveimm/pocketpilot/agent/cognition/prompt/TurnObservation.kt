@@ -5,16 +5,7 @@ import id.steveimm.pocketpilot.model.ScreenSnapshot
 import id.steveimm.pocketpilot.perception.PerceptionConfig
 import id.steveimm.pocketpilot.perception.Perceptor
 
-/**
- * Canonical observation payload for one turn.
- *
- * Created once from [ScreenSnapshot] + [PerceptionConfig], then consumed by both
- * [PromptBuilder] (for the LLM prompt) and history recording (for future turns).
- * The expensive [Perceptor.toPromptJson] call happens exactly once at construction.
- *
- * This eliminates the temporal coupling where prompt-building had to precede
- * history recording for correctness — both now project from this immutable payload.
- */
+/** Canonical observation payload for one turn. */
 data class TurnObservation(
     /** A11y tree JSON string, or null when screenshot-only mode */
     val screenJson: String?,
@@ -26,12 +17,7 @@ data class TurnObservation(
     val hasAccessibility: Boolean,
     /** Screenshot image, if captured */
     val image: ScreenImage?,
-    /**
-     * The canonical screen block shared by prompt rendering and history recording.
-     *
-     * In a11y mode: element count header + keyboard note + JSON tree.
-     * In screenshot-only mode: a short factual note (prompt layer adds richer guidance).
-     */
+    /** The canonical screen block shared by prompt rendering and history recording. */
     val screenBlock: String
 ) {
     companion object {

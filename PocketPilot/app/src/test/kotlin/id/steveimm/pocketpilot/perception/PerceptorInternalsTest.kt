@@ -8,8 +8,6 @@ import org.junit.Test
 
 class PerceptorInternalsTest {
 
-    // --- mergedText ---
-
     @Test
     fun `mergedText returns text when available`() {
         val elem = element(text = "Hello", description = "Desc", hintText = "Hint")
@@ -40,8 +38,6 @@ class PerceptorInternalsTest {
         assertThat(mergedText(elem)).isEqualTo("")
     }
 
-    // --- normalizeForMatching ---
-
     @Test
     fun `normalizeForMatching trims and lowercases for matching`() {
         assertThat(normalizeForMatching("  Save  ")).isEqualTo("save")
@@ -52,8 +48,6 @@ class PerceptorInternalsTest {
         assertThat(normalizeForMatching("A  B")).isEqualTo("a  b")
         assertThat(normalizeForMatching("A\tB")).isEqualTo("a\tb")
     }
-
-    // --- shouldOutputResourceIds ---
 
     @Test
     fun `shouldOutputResourceIds returns true when density above threshold`() {
@@ -102,8 +96,6 @@ class PerceptorInternalsTest {
         )
         assertThat(shouldOutputResourceIds(elements, 0.20f)).isFalse()
     }
-
-    // --- enrichEmptyTextElements ---
 
     @Test
     fun `enrichEmptyTextElements bubbles child text into empty interactive parent`() {
@@ -186,9 +178,8 @@ class PerceptorInternalsTest {
 
     @Test
     fun `enrichEmptyTextElements preserves candidate order for out-of-order labels`() {
-        // Parent is a button with no text. Its labels, in candidate order, are
-        // ["A", "B", "C"] — but their vertical positions are out of order, so
-        // a naive sort-by-top would produce ["C", "A", "B"] instead.
+        // Parent is a button with no text. Its labels, in candidate order, are ["A", "B", "C"] — but their vertical positions are out of
+        // order, so a naive sort-by-top would produce ["C", "A", "B"] instead.
         val parent = candidate(
             text = "", description = "", hintText = "", resourceId = "",
             isClickable = true,
@@ -203,9 +194,8 @@ class PerceptorInternalsTest {
 
     @Test
     fun `enrichEmptyTextElements handles 1000 candidates quickly`() {
-        // 200 interactive buttons without text, each in its own vertical band of
-        // 4 non-interactive text nodes. No button's band overlaps another's, so
-        // a quadratic scan would still walk 200 * 800 = 160K containment checks.
+        // 200 interactive buttons without text, each in its own vertical band of 4 non-interactive text nodes. No button's band overlaps
+        // another's, so a quadratic scan would still walk 200 * 800 = 160K containment checks.
         val interactiveCount = 200
         val textPerBand = 4
         val candidates = mutableListOf<PerceptorCandidateElement>()
@@ -284,8 +274,6 @@ class PerceptorInternalsTest {
         assertThat(result[0].element.text).isEqualTo("Icon label")
     }
 
-    // --- applyTruncation ---
-
     @Test
     fun `applyTruncation returns all when under limit`() {
         val candidates = (0..4).map { candidate(text = "T$it", isClickable = true) }
@@ -318,8 +306,7 @@ class PerceptorInternalsTest {
 
     @Test
     fun `applyTruncation fills overflow from remaining`() {
-        // 2 interactive + 10 non-interactive, maxElements=5, ratio=0.8
-        // interactive cap = 4 but only 2 available, non-interactive floor = 1
+        // 2 interactive + 10 non-interactive, maxElements=5, ratio=0.8 interactive cap = 4 but only 2 available, non-interactive floor = 1
         // kept = 2 interactive + 1 non-interactive = 3, then fill 2 more from remaining
         val interactive = (0..1).map { candidate(text = "Btn$it", isClickable = true) }
         val nonInteractive = (0..9).map { candidate(text = "Label$it", isClickable = false) }
@@ -364,8 +351,6 @@ class PerceptorInternalsTest {
         assertThat(keptNonInteractive).isAtLeast(100)
     }
 
-    // --- spatialSort ---
-
     @Test
     fun `spatialSort orders by row then column`() {
         val topRight = candidate(text = "TR", bounds = Bounds(200, 0, 300, 50))
@@ -407,8 +392,6 @@ class PerceptorInternalsTest {
         assertThat(result[0].element.text).isEqualTo("Solo")
     }
 
-    // --- getOccurrenceIndex ---
-
     @Test
     fun `getOccurrenceIndex tracks duplicates`() {
         val counts = mutableMapOf<String, Int>()
@@ -431,8 +414,6 @@ class PerceptorInternalsTest {
         assertThat(getOccurrenceIndex("B", counts) { it }).isEqualTo(0)
         assertThat(getOccurrenceIndex("A", counts) { it }).isEqualTo(1)
     }
-
-    // --- Helpers ---
 
     private fun element(
         index: Int = 0,

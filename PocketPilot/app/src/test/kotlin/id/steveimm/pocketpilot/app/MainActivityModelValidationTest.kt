@@ -145,10 +145,7 @@ class MainActivityModelValidationTest {
 
     @Test
     fun `discovered other prefix not in catalog deep-links to Other tab`() {
-        // Simulates: user refreshed OTHER against URL A, picked an entry, then
-        // changed otherBaseUrl. Scoping hides the entry; selectedModel still
-        // points at it. Without the short-circuit the user gets "Unknown
-        // model" instead of the actionable refresh hint.
+        // Changing the server hides its previous model entry. Report the refresh hint instead of an unknown-model error.
         val store = mockk<AuthStore>(relaxed = true)
         every { store.has(LLMProvider.OTHER) } returns true
         val missing = findMissingCloudKeys(

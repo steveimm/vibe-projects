@@ -1,6 +1,9 @@
 package id.steveimm.pocketpilot.llm
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 
 internal fun interface StreamAttemptEmitter {
     fun emit(event: LLMStreamEvent)
@@ -24,12 +27,7 @@ internal data class StreamRetryRunResult(
     }
 }
 
-/**
- * Shared retry scaffold for cloud streaming calls.
- *
- * The caller provides a single-attempt block that emits events through [StreamAttemptEmitter].
- * This helper owns retry/backoff/fail-fast policy decisions.
- */
+/** Shared retry scaffold for cloud streaming calls. */
 internal suspend fun streamWithRetry(
     tag: String,
     emitToFlow: (LLMStreamEvent) -> Unit,
@@ -42,6 +40,7 @@ internal suspend fun streamWithRetry(
     var failureEmitted = false
 
     for (attempt in 1..maxRetries) {
+        currentCoroutineContext().ensureActive()
         var emittedEvent = false
         val emitter =
             StreamAttemptEmitter { event ->
@@ -61,7 +60,10 @@ internal suspend fun streamWithRetry(
                 failureEmitted = failureEmitted,
                 lastError = null
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
+            currentCoroutineContext().ensureActive()
             classifyContextWindowExceeded(e)?.let { throw it }
             val classified = when (e) {
                 is RateLimitException, is TransientException -> e
@@ -76,7 +78,8 @@ internal suspend fun streamWithRetry(
                         classified = classified,
                         attempt = attempt,
                         emittedEvent = emittedEvent,
-                        backoffMs = backoffMs
+                        backoffMs = backoffMs,
+                        maxRetries = maxRetries
                     )
             ) {
                 is StreamRetryAction.FailAndStop -> {

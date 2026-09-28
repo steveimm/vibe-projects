@@ -15,14 +15,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 
-/**
- * Writes structured trace events and artifacts for one agent session.
- *
- * This class is the single bridge between runtime events and trace recorder output:
- * - emits timeline events (turn/llm/tool/session)
- * - stores redacted text/json artifacts
- * - tracks lightweight run counters for final summary
- */
+/** Writes structured trace events and artifacts for one agent session. */
 internal class AgentTrace(
     private val sessionId: SessionId,
     private val services: SessionServices

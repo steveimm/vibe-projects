@@ -3,18 +3,7 @@ package id.steveimm.pocketpilot.browser.script
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-/**
- * Structural tests for the JS prelude. These tests do NOT execute the JS — they only validate
- * the source text we will inject into the WebView. Real Promise/async/cdp() semantics run inside
- * Android WebView V8 at runtime; this is intentionally not stubbed by a JVM JS engine
- * (Rhino / GraalJS) because divergent engine behavior would create false confidence.
- *
- * Authoritative semantic coverage of the prelude lives in
- * [BrowserScriptRunnerInstrumentedTest] under app/src/androidTest/, runnable on a real device:
- *
- *   ./gradlew :app:connectedDebugAndroidTest \
- *     -Pandroid.testInstrumentationRunnerArguments.class=id.steveimm.pocketpilot.browser.script.BrowserScriptRunnerInstrumentedTest
- */
+/** Structural tests for the JS prelude. */
 class BrowserScriptPreludeTest {
 
     @Test

@@ -5,13 +5,7 @@ import id.steveimm.pocketpilot.platform.AndroidPlatform
 import id.steveimm.pocketpilot.platform.UIAction
 import id.steveimm.pocketpilot.tool.AppClassifier
 
-/**
- * Click executor: thin wrapper over [executePointAction].
- *
- * Primary path for semantic targets: node ACTION_CLICK (a11y tree dependent).
- * Fallback: gesture tap (works on any visible element).
- * Coordinate targets: gesture tap only (node_click skipped).
- */
+/** Click executor: thin wrapper over [executePointAction]. */
 class ClickExecutor(
     private val targetResolver: TargetResolver = TargetResolver
 ) {

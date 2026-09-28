@@ -4,12 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 
-/**
- * Persistence for onboarding wizard state (step outcomes + completion flag).
- *
- * Auth credentials live in [id.steveimm.pocketpilot.auth.AuthStore]; the API-key typed during
- * onboarding is ViewModel-transient (process-death → retype).
- */
+/** Persistence for onboarding wizard state (step outcomes + completion flag). */
 class OnboardingStore(private val context: Context) {
 
     companion object {
@@ -32,8 +27,6 @@ class OnboardingStore(private val context: Context) {
 
     private fun prefs(): SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-
-    // ── Public API ──
 
     /** Whether the full onboarding wizard has been completed. */
     val isCompleted: Boolean
@@ -69,23 +62,7 @@ class OnboardingStore(private val context: Context) {
         prefs().edit().putString(key, outcome.toStorageValue()).apply()
     }
 
-    // ── Migration ──
-
-    /**
-     * Run on first access. Idempotent.
-     *
-     * - No schema key present → brand-new install (or pre-onboarding legacy user).
-     *   Detect existing users via [hasLegacyUsageEvidence] and mark them complete.
-     * - Schema < 2 → strip legacy keys introduced before the auth-cleanup split
-     *   ([LEGACY_KEY_AUTH_METHOD]). The legacy encrypted prefs file
-     *   `onboarding_secure_prefs` is left on disk; nothing reads it anymore.
-     * - Any run: if onboarding is not complete but [hasLegacyUsageEvidence] still
-     *   reports an existing user, mark complete. Recovers users whose
-     *   `onboarding_prefs` was wiped/reset (e.g. selective Auto Backup restore,
-     *   manual data clear of just this prefs file) while `auth_store` survived.
-     *   Safe because cloud credentials can only be written through onboarding or
-     *   the post-onboarding Settings page — their presence implies prior success.
-     */
+    /** Run on first access. Idempotent. */
     fun migrateIfNeeded(hasLegacyUsageEvidence: () -> Boolean) {
         val p = prefs()
         val existing = p.getInt(KEY_SCHEMA_VERSION, -1)
@@ -117,8 +94,6 @@ class OnboardingStore(private val context: Context) {
             Log.d(TAG, "Reconciled: credential exists but onboarding flag was cleared — marked complete")
         }
     }
-
-    // ── Helpers ──
 
     private fun SharedPreferences.readOutcome(key: String): StepOutcome =
         when (getString(key, null)) {

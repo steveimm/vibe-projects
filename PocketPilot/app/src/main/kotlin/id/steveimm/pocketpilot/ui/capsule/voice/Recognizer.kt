@@ -6,13 +6,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 
-/**
- * Provider-agnostic speech-recognition errors.
- *
- * Mirrors the categories the UI actually cares about (retry vs. give up vs. send to settings)
- * without leaking `android.speech.*` constants to call sites — only [AndroidRecognizer] knows
- * how to translate raw framework ints into these.
- */
+/** Provider-agnostic speech-recognition errors. */
 enum class VoiceError {
     NoMatch,
     SpeechTimeout,
@@ -25,26 +19,14 @@ enum class VoiceError {
     Unknown,
 }
 
-/**
- * Callbacks fired by a [Recognizer] during a recognition session.
- *
- * All callbacks are delivered on the main thread because the underlying framework callbacks are.
- * The recognizer fires AT MOST one terminal callback per session — either [onFinal] OR [onError],
- * never both. [onPartial] may fire zero or more times before the terminal callback.
- */
+/** Callbacks fired by a [Recognizer] during a recognition session. */
 interface RecognizerCallbacks {
     fun onPartial(text: String)
     fun onFinal(text: String)
     fun onError(error: VoiceError)
 }
 
-/**
- * A single recognition session controller.
- *
- * Instances are NOT thread-safe and MUST be created and used from the main thread (the framework
- * recognizer this typically wraps has that constraint). One instance can be reused across
- * sessions: call [start] / [stop] / [cancel] as needed, and [destroy] once when finished.
- */
+/** A single recognition session controller. */
 interface Recognizer {
     fun start(languageTag: String, callbacks: RecognizerCallbacks)
     fun stop()
@@ -52,25 +34,13 @@ interface Recognizer {
     fun destroy()
 }
 
-/**
- * Factory that decides whether on-device speech recognition is wired up and creates instances.
- *
- * Split from [Recognizer] so callers can probe availability without paying the cost of
- * constructing a recognizer they may not be able to use (and so unit tests can substitute a
- * fake that reports availability without touching the framework).
- */
+/** Factory that decides whether on-device speech recognition is wired up and creates instances. */
 interface RecognizerFactory {
     fun isAvailable(): Boolean
     fun create(): Recognizer?
 }
 
-/**
- * Production [RecognizerFactory] backed by [android.speech.SpeechRecognizer].
- *
- * Holds an Application context (the caller should pass `context.applicationContext`); the
- * framework recognizer itself must be created on the main thread, so the controller — not this
- * factory — is responsible for invoking [create] from the right dispatcher.
- */
+/** Production [RecognizerFactory] backed by [android.speech.SpeechRecognizer]. */
 class AndroidRecognizerFactory(private val context: Context) : RecognizerFactory {
     override fun isAvailable(): Boolean =
         SpeechRecognizer.isRecognitionAvailable(context)
@@ -79,19 +49,8 @@ class AndroidRecognizerFactory(private val context: Context) : RecognizerFactory
         if (isAvailable()) AndroidRecognizer(context) else null
 }
 
-/**
- * The ONLY type in the app that may touch `android.speech.*`. Everything else talks to
- * [Recognizer] / [RecognizerFactory] / [VoiceError] so the framework dependency stays pinned
- * to this file.
- *
- * Lifecycle: [start] (re)configures the session intent and begins listening; [stop] asks the
- * framework to finalize on the audio it has so far (typically fires [RecognizerCallbacks.onFinal]
- * if there is anything to transcribe); [cancel] aborts without delivering a result; [destroy]
- * detaches the listener and releases the framework recognizer — call exactly once.
- *
- * Must be constructed on the main thread because `SpeechRecognizer.createSpeechRecognizer` is
- * documented to require the main thread.
- */
+/** The ONLY type in the app that may touch `android.speech.*`. Everything else talks to [Recognizer] / [RecognizerFactory] /
+ * [VoiceError] so the framework dependency stays pinned to this file. */
 internal class AndroidRecognizer(context: Context) : Recognizer {
     private val recognizer: SpeechRecognizer =
         SpeechRecognizer.createSpeechRecognizer(context)
@@ -126,12 +85,7 @@ internal class AndroidRecognizer(context: Context) : Recognizer {
         callbacks = null
     }
 
-    /**
-     * Adapts framework callbacks to [RecognizerCallbacks]. Only the four signal-bearing callbacks
-     * (partial results, final results, error, ready-to-stop) are translated — the rest
-     * (beginning-of-speech, RMS, audio buffer, event) are noise for our UX and intentionally
-     * left as no-ops.
-     */
+    /** Adapts framework callbacks to [RecognizerCallbacks]. */
     private inner class Listener : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {}
         override fun onBeginningOfSpeech() {}

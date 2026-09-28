@@ -20,13 +20,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Onboarding wizard state machine.
- *
- * Auth credentials are read from and written to [AuthStore]; the API-key typed
- * during manual entry is held only in `stepState` and is lost on process death.
- * Wizard progress (step outcomes, completion) persists via [OnboardingStore].
- */
+/** Onboarding wizard state machine. */
 class OnboardingViewModel(
     private val store: OnboardingStore,
     private val settingsState: AppSettingsState,
@@ -43,8 +37,6 @@ class OnboardingViewModel(
         private const val A11Y_POLL_MAX_ATTEMPTS = 15 // 3 seconds
     }
 
-    // ── Observable state ──
-
     var currentStep by mutableStateOf(WizardStep.Accessibility)
         private set
 
@@ -56,8 +48,6 @@ class OnboardingViewModel(
 
     private val _effects = Channel<OnboardingEffect>(Channel.BUFFERED)
     val effects = _effects.receiveAsFlow()
-
-    // ── Provider selection for API key step ──
 
     var selectedProvider by mutableStateOf(OnboardingProvider.OPENAI_API)
         private set
@@ -137,8 +127,6 @@ class OnboardingViewModel(
         stepState = ApiKeyStepState.OAuthReady
     }
 
-    // ── Initialization ──
-
     init {
         outcomes = store.loadOutcomes()
         val firstIncomplete = firstIncompleteStep()
@@ -146,16 +134,12 @@ class OnboardingViewModel(
         enterStep(firstIncomplete, isResume = false)
     }
 
-    // ── Lifecycle ──
-
     /** Called from MainActivity.onResume() — re-check current permission step. */
     fun onHostResumed() {
         if (currentStep in listOf(WizardStep.Accessibility, WizardStep.Overlay, WizardStep.Battery)) {
             checkCurrentPermission(isReturnFromSettings = true)
         }
     }
-
-    // ── Actions ──
 
     fun goBack() {
         val prev = previousStep(currentStep) ?: return
@@ -328,8 +312,6 @@ class OnboardingViewModel(
         Log.d(TAG, "Onboarding completed")
     }
 
-    // ── Internal ──
-
     private fun firstIncompleteStep(): WizardStep {
         // Live hard-gate checks override stored Done
         if (!isAccessibilityEnabled()) return WizardStep.Accessibility
@@ -349,12 +331,7 @@ class OnboardingViewModel(
                 checkCurrentPermission(isReturnFromSettings = isResume, autoAdvance = autoAdvance)
             }
             WizardStep.ApiKey -> {
-                // AuthStore is the source of truth for credentials. If one exists for
-                // any onboarding provider, show the "already signed in" state and mark
-                // the step Done — regardless of the locally stored outcome. Covers:
-                //   - Back navigation to a Done step.
-                //   - Re-install / wiped onboarding_prefs while auth_store survived.
-                //   - Demo-failure reset that flipped outcome to Pending.
+                // AuthStore is the source of truth for credentials.
                 if (tryRenderExistingCredential()) {
                     if (autoAdvance) {
                         scope.launch {
@@ -448,14 +425,8 @@ class OnboardingViewModel(
         enterStep(next, isResume = false)
     }
 
-    /**
-     * If [AuthStore] already has a credential for any onboarding-visible provider,
-     * render the matching success state, mark the step Done, and return true.
-     * Returns false when no credential exists.
-     *
-     * OpenAI OAuth takes precedence over manual keys so a user who completed OAuth
-     * sees the OAuth success card on re-entry rather than a generic "Valid" badge.
-     */
+    /** If [AuthStore] already has a credential for any onboarding-visible provider, render the matching success state, mark the step
+     * Done, and return true. Returns false when no credential exists. */
     private fun tryRenderExistingCredential(): Boolean {
         if (authStore.has(LLMProvider.OPENAI_CODEX)) {
             authMethod = ApiKeyAuthMethod.OAUTH
@@ -502,13 +473,9 @@ class OnboardingViewModel(
         WizardStep.Complete -> WizardStep.Demo
     }
 
-    // ── Permission checks (delegate to monitor) ──
-
     fun isAccessibilityEnabled(): Boolean = permissionMonitor.isAccessibilityEnabled()
     fun isOverlayEnabled(): Boolean = permissionMonitor.isOverlayEnabled()
     fun isBatteryOptimized(): Boolean = permissionMonitor.isBatteryOptimized()
-
-    // ── Settings/catalog integration ──
 
     private fun applyDefaultModelFor(provider: LLMProvider) {
         val entry = modelCatalog.modelsFor(provider).lastOrNull() ?: return
@@ -522,12 +489,8 @@ class OnboardingViewModel(
         return HttpLlmCredentialValidator(baseUrl, entry.modelId)
     }
 
-    /**
-     * Mirrors [id.steveimm.pocketpilot.llm.LLMClientFactory.build]: for OPENAI_API entries, an
-     * [AppSettingsState.openaiBaseUrl] override (set from `.env` via intent) wins over
-     * the catalog entry's baseUrl. Required so debug builds talking to a proxy validate
-     * against the proxy, not api.openai.com.
-     */
+    /** Mirrors [id.steveimm.pocketpilot.llm.LLMClientFactory.build]: for OPENAI_API entries, an [AppSettingsState.openaiBaseUrl]
+     * override (set from `.env` via intent) wins over the catalog entry's baseUrl. */
     private fun resolveBaseUrl(entry: ModelEntry): String {
         val override = settingsState.openaiBaseUrl
         if (entry.provider == LLMProvider.OPENAI_API && override.isNotBlank()) return override

@@ -16,11 +16,8 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * Single agent-facing entry point for the Browser CDP runtime: strict validation,
- * execution-time capability gate, cooperative in-flight cancellation, compact bounded
- * output, and full raw runner payload persisted to the trace sink.
- */
+/** Single agent-facing entry point for the Browser CDP runtime: strict validation, execution-time capability gate, cooperative
+ * in-flight cancellation, compact bounded output, and full raw runner payload persisted to the trace sink. */
 class BrowserScriptTool(
     private val capabilityGate: BrowserScriptCapabilityGate,
     private val traceSink: BrowserScriptTraceSink? = null,

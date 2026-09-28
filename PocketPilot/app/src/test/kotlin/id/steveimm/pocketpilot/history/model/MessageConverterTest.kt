@@ -239,9 +239,8 @@ class MessageConverterTest {
 
     @Test
     fun `legacy completed agent record promotes trailing Text to FinalText on restore`() {
-        // Pre-uxfb-3 history persisted answers as plain Text. AgentRow only renders
-        // FinalText outside the collapsible trace, so without this migration legacy
-        // rows would default-collapse with their answer hidden.
+        // Pre-uxfb-3 history persisted answers as plain Text. AgentRow only renders FinalText outside the collapsible trace, so without
+        // this migration legacy rows would default-collapse with their answer hidden.
         val legacyRecord = MessageRecord.Agent(
             id = "legacy",
             timestamp = 1L,

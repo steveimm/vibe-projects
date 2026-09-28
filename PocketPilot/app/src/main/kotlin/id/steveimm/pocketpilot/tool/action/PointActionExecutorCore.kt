@@ -12,13 +12,7 @@ import id.steveimm.pocketpilot.platform.UIAction
 import id.steveimm.pocketpilot.tool.AppClassifier
 import android.util.Log
 
-/**
- * Channel attempt descriptor for the point-action fallback loop.
- *
- * @param displayName Human-readable channel name for logging/messages (e.g. "gesture_tap")
- * @param requiresSemantic If true, this channel is skipped for coordinate-only targets
- * @param createAction Factory that produces the UIAction for the given resolved point
- */
+/** Channel attempt descriptor for the point-action fallback loop. */
 internal data class ChannelAttempt(
     val displayName: String,
     val requiresSemantic: Boolean,
@@ -32,12 +26,7 @@ private const val MAX_CHILD_AREA_FRACTION = 8L // out of 10 → 80%
 /** If runner-up is within this ratio of the nearest, selection is ambiguous → fall back to container. */
 private const val AMBIGUITY_DISTANCE_RATIO = 2L // nearest must be < 1/2 the runner-up distance (squared)
 
-/**
- * Core executor for point-based actions (click, long press).
- *
- * Shared execution path: resolve target → bounds check → channel fallback loop → post-capture.
- * [ClickExecutor] and [LongPressExecutor] are thin wrappers over this function.
- */
+/** Core executor for point-based actions (click, long press). */
 internal suspend fun executePointAction(
     actionName: String,
     channels: List<ChannelAttempt>,
@@ -148,9 +137,7 @@ internal suspend fun executePointAction(
     )
 }
 
-/**
- * Append warnings to a base message string. Shared by click/long-press formatters.
- */
+/** Append warnings to a base message string. Shared by click/long-press formatters. */
 internal fun formatActionMessage(base: String, warnings: List<String>): String {
     if (warnings.isEmpty()) return base
     return buildString {
@@ -266,17 +253,7 @@ private fun findBestActionableContainer(
         )
 }
 
-/**
- * Within a promoted container, find the closest actionable child to [originalPoint].
- *
- * Only considers children materially smaller than the container (< 80% area)
- * to avoid picking a near-full-size overlay or the container itself.
- *
- * Action-specific: for click, only clickable children; for long_press, clickable or
- * long-clickable (matching platform's clickable fallback in NodeActionPerformer).
- * Ambiguity guard: if the nearest and runner-up are similarly close, falls back to null
- * (caller uses container) to avoid misrouting onto overflow/toggle controls.
- */
+/** Within a promoted container, find the closest actionable child to [originalPoint]. */
 private fun findBestActionableChild(
     actionName: String,
     originalPoint: Point,

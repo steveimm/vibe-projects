@@ -1,16 +1,3 @@
-"""Parallel multi-emulator eval runner.
-
-Orchestrates N independent runner.py subprocesses, each targeting a different
-emulator, to reduce wall-clock eval time through horizontal scaling.
-
-Usage:
-    python3 eval/aw_bridge/parallel_runner.py \
-        --config eval/config/default.yaml \
-        --tasks-file eval/config/aw_subset_core.txt \
-        --device emulator-5554:5554:8554 \
-        --device emulator-5556:5556:8556
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -27,16 +14,16 @@ from typing import Any, TextIO
 
 import yaml
 
-from eval.aw_bridge.runner import load_config_dict, load_config_from_path
 from eval.aw_bridge.jsonl_utils import read_jsonl
-from eval.aw_bridge.result_schema import ArtifactPaths, TaskResult, summarize_results
+from eval.aw_bridge.result_schema import (
+    TaskResult,
+    summarize_results,
+    task_result_from_dict,
+)
+from eval.aw_bridge.runner import load_config_dict, load_config_from_path
 from eval.aw_bridge.runner_preflight import build_bridge_apk, install_bridge_apk
-from eval.aw_bridge.task_loader import load_task_names_from_file
+from eval.aw_bridge.task_loader import resolve_selected_tasks
 
-
-# ---------------------------------------------------------------------------
-# Data structures
-# ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class DeviceSpec:
@@ -60,32 +47,40 @@ class ShardResult:
     end_time: float | None = None
 
 
-# ---------------------------------------------------------------------------
-# Argument parsing & validation
-# ---------------------------------------------------------------------------
-
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse command-line options for this tool.
+
+    Args:
+        argv: Command-line arguments, or the process arguments when omitted.
+    """
     parser = argparse.ArgumentParser(
         description="Parallel multi-emulator eval runner",
     )
     parser.add_argument(
-        "--config", default="eval/config/default.yaml",
+        "--config",
+        default="eval/config/default.yaml",
         help="Base config YAML (default: eval/config/default.yaml)",
     )
     parser.add_argument(
-        "--tasks-file", default=None,
+        "--tasks-file",
+        default=None,
         help="Path to task list file (one task name per line)",
     )
     parser.add_argument(
-        "--tasks", default=None,
+        "--tasks",
+        default=None,
         help="Comma-separated task names",
     )
     parser.add_argument(
-        "--device", action="append", required=True, dest="devices",
+        "--device",
+        action="append",
+        required=True,
+        dest="devices",
         help="Device spec SERIAL:CONSOLE_PORT:GRPC_PORT (repeat for each device)",
     )
     parser.add_argument(
-        "--output-root", default="eval/results",
+        "--output-root",
+        default="eval/results",
         help="Root output directory (default: eval/results)",
     )
     parser.add_argument("--suite", default=None)
@@ -98,10 +93,7 @@ def parse_device_spec(raw: str) -> DeviceSpec:
     """Parse ``SERIAL:CONSOLE_PORT:GRPC_PORT`` into a DeviceSpec."""
     parts = raw.strip().split(":")
     if len(parts) != 3:
-        raise ValueError(
-            f"Invalid --device format '{raw}'. "
-            "Expected SERIAL:CONSOLE_PORT:GRPC_PORT"
-        )
+        raise ValueError(f"Invalid --device format '{raw}'. Expected SERIAL:CONSOLE_PORT:GRPC_PORT")
     serial = parts[0].strip()
     if not serial:
         raise ValueError(f"Empty serial in --device '{raw}'")
@@ -109,10 +101,7 @@ def parse_device_spec(raw: str) -> DeviceSpec:
         console_port = int(parts[1])
         grpc_port = int(parts[2])
     except ValueError:
-        raise ValueError(
-            f"Non-integer port in --device '{raw}'. "
-            "Expected SERIAL:CONSOLE_PORT:GRPC_PORT"
-        )
+        raise ValueError(f"Non-integer port in --device '{raw}'. Expected SERIAL:CONSOLE_PORT:GRPC_PORT")
     return DeviceSpec(serial=serial, console_port=console_port, grpc_port=grpc_port)
 
 
@@ -131,27 +120,19 @@ def validate_device_specs(specs: list[DeviceSpec]) -> None:
         raise ValueError(f"Duplicate gRPC port(s): {grpc_ports}")
 
 
-# ---------------------------------------------------------------------------
-# Task resolution & sharding
-# ---------------------------------------------------------------------------
-
 def resolve_task_list(
-    workspace_root: Path, args: argparse.Namespace,
+    workspace_root: Path,
+    args: argparse.Namespace,
 ) -> list[str]:
     """Load task names from ``--tasks-file`` or ``--tasks``."""
-    if args.tasks:
-        tasks = [t.strip() for t in args.tasks.split(",") if t.strip()]
-        if not tasks:
-            raise ValueError("--tasks provided but no task names found")
+    tasks = resolve_selected_tasks(workspace_root, args.tasks, args.tasks_file)
+    if tasks:
         return tasks
+    if args.tasks:
+        raise ValueError("--tasks provided but no task names found")
     if args.tasks_file:
         path = (workspace_root / args.tasks_file).resolve()
-        if not path.exists():
-            raise FileNotFoundError(f"Tasks file not found: {path}")
-        tasks = load_task_names_from_file(path)
-        if not tasks:
-            raise ValueError(f"No task names found in tasks file: {path}")
-        return tasks
+        raise ValueError(f"No task names found in tasks file: {path}")
     raise ValueError("Either --tasks-file or --tasks is required")
 
 
@@ -167,11 +148,13 @@ def filter_active_device_shards(
     devices: list[DeviceSpec],
     shards: list[list[str]],
 ) -> tuple[list[DeviceSpec], list[list[str]]]:
-    active_pairs = [
-        (device, shard)
-        for device, shard in zip(devices, shards)
-        if shard
-    ]
+    """Drop devices assigned no tasks before launching workers.
+
+    Args:
+        devices: Emulator specifications assigned to this run.
+        shards: Task-name groups assigned to devices.
+    """
+    active_pairs = [(device, shard) for device, shard in zip(devices, shards) if shard]
     if not active_pairs:
         raise ValueError("No task shards contain runnable tasks")
     active_devices = [device for device, _ in active_pairs]
@@ -179,11 +162,13 @@ def filter_active_device_shards(
     return active_devices, active_shards
 
 
-# ---------------------------------------------------------------------------
-# Config overlay & directory setup
-# ---------------------------------------------------------------------------
-
 def _load_base_config(workspace_root: Path, config_path: str) -> dict[str, Any]:
+    """Read the shared base configuration for parallel workers.
+
+    Args:
+        workspace_root: Project root used to resolve relative paths.
+        config_path: Runner configuration file path.
+    """
     return load_config_dict(workspace_root, config_path)
 
 
@@ -198,7 +183,6 @@ def create_worker_config(
     cfg.setdefault("runner", {})
     cfg.setdefault("android_world", {})
 
-    # Device overrides
     cfg["runner"]["adb_serial"] = device.serial
     cfg["runner"]["output_root"] = output_root
     cfg["runner"]["perform_bridge_setup"] = False
@@ -225,6 +209,15 @@ def _setup_shard_dirs(
     base_config: dict[str, Any],
     args: argparse.Namespace,
 ) -> list[ShardResult]:
+    """Write task lists and worker configurations into per-device directories.
+
+    Args:
+        run_dir: Directory containing this run's artifacts and summaries.
+        devices: Emulator specifications assigned to this run.
+        shards: Task-name groups assigned to devices.
+        base_config: Shared runner configuration before worker overrides.
+        args: Parsed command-line options or command arguments.
+    """
     results: list[ShardResult] = []
     for idx, (device, task_list) in enumerate(zip(devices, shards)):
         safe_serial = device.serial.replace("-", "_")
@@ -233,15 +226,17 @@ def _setup_shard_dirs(
         output_root = shard_dir / "run"
         shard_dir.mkdir(parents=True, exist_ok=True)
 
-        # Write tasks file
         tasks_path = shard_dir / "tasks.txt"
         tasks_path.write_text(
-            "\n".join(task_list) + "\n", encoding="utf-8",
+            "\n".join(task_list) + "\n",
+            encoding="utf-8",
         )
 
-        # Write worker config YAML overlay
         worker_cfg = create_worker_config(
-            base_config, device, str(output_root), args,
+            base_config,
+            device,
+            str(output_root),
+            args,
         )
         config_path = shard_dir / "worker_config.yaml"
         config_path.write_text(
@@ -249,16 +244,18 @@ def _setup_shard_dirs(
             encoding="utf-8",
         )
 
-        results.append(ShardResult(
-            shard_index=idx,
-            device=device,
-            tasks=task_list,
-            shard_dir=shard_dir,
-            output_root=output_root,
-            config_path=config_path,
-            tasks_path=tasks_path,
-            stdout_log=shard_dir / "runner_stdout.log",
-        ))
+        results.append(
+            ShardResult(
+                shard_index=idx,
+                device=device,
+                tasks=task_list,
+                shard_dir=shard_dir,
+                output_root=output_root,
+                config_path=config_path,
+                tasks_path=tasks_path,
+                stdout_log=shard_dir / "runner_stdout.log",
+            )
+        )
     return results
 
 
@@ -266,6 +263,12 @@ def _build_and_install_bridge_once_per_device(
     shard_results: list[ShardResult],
     workspace_root: Path,
 ) -> None:
+    """Build one debug APK and install it on each active device.
+
+    Args:
+        shard_results: Worker assignments and collected statuses.
+        workspace_root: Project root used to resolve relative paths.
+    """
     apk_path = build_bridge_apk(workspace_root)
     for sr in shard_results:
         worker_config = load_config_from_path(workspace_root, sr.config_path)
@@ -273,6 +276,11 @@ def _build_and_install_bridge_once_per_device(
 
 
 def should_perform_bridge_setup(base_config: dict[str, Any]) -> bool:
+    """Check whether workers require supervisor-managed bridge setup.
+
+    Args:
+        base_config: Shared runner configuration before worker overrides.
+    """
     runner_cfg = base_config.get("runner") or {}
     return bool(runner_cfg.get("perform_bridge_setup", True))
 
@@ -282,22 +290,33 @@ def run_supervisor_bridge_setup(
     workspace_root: Path,
     base_config: dict[str, Any],
 ) -> bool:
+    """Perform shared bridge setup when enabled by the base configuration.
+
+    Args:
+        shard_results: Worker assignments and collected statuses.
+        workspace_root: Project root used to resolve relative paths.
+        base_config: Shared runner configuration before worker overrides.
+    """
     if not should_perform_bridge_setup(base_config):
         return False
     _build_and_install_bridge_once_per_device(shard_results, workspace_root)
     return True
 
 
-# ---------------------------------------------------------------------------
-# Subprocess launch & signal handling
-# ---------------------------------------------------------------------------
-
 # Module-level list so the signal handler can access running workers.
 _active_workers: list[tuple[subprocess.Popen[str], ShardResult, TextIO]] = []
 
 
 def _install_signal_handlers() -> None:
+    """Forward termination signals to workers and collect their exit statuses."""
+
     def handler(signum: int, _frame: Any) -> None:
+        """Forward a termination signal to workers and exit after cleanup.
+
+        Args:
+            signum: Received operating-system signal.
+            _frame: Signal-handler frame supplied by Python.
+        """
         sig_name = signal.Signals(signum).name
         print(f"\n[parallel] Received {sig_name}, forwarding to workers...")
         for proc, sr, _ in _active_workers:
@@ -325,6 +344,12 @@ def _launch_workers(
     shard_results: list[ShardResult],
     workspace_root: Path,
 ) -> list[tuple[subprocess.Popen[str], ShardResult, TextIO]]:
+    """Launch one runner subprocess for each active device shard.
+
+    Args:
+        shard_results: Worker assignments and collected statuses.
+        workspace_root: Project root used to resolve relative paths.
+    """
     runner_script = str(workspace_root / "eval" / "aw_bridge" / "runner.py")
     workers: list[tuple[subprocess.Popen[str], ShardResult, TextIO]] = []
     for sr in shard_results:
@@ -332,8 +357,10 @@ def _launch_workers(
         cmd = [
             sys.executable,
             runner_script,
-            "--config", str(sr.config_path),
-            "--tasks-file", str(sr.tasks_path),
+            "--config",
+            str(sr.config_path),
+            "--tasks-file",
+            str(sr.tasks_path),
         ]
         sr.start_time = time.time()
         proc = subprocess.Popen(
@@ -344,16 +371,18 @@ def _launch_workers(
             text=True,
         )
         workers.append((proc, sr, log_fh))
-        print(
-            f"[parallel] Launched shard {sr.shard_index} "
-            f"(device={sr.device.serial}, tasks={len(sr.tasks)}, pid={proc.pid})"
-        )
+        print(f"[parallel] Launched shard {sr.shard_index} (device={sr.device.serial}, tasks={len(sr.tasks)}, pid={proc.pid})")
     return workers
 
 
 def _wait_for_workers(
     workers: list[tuple[subprocess.Popen[str], ShardResult, TextIO]],
 ) -> None:
+    """Wait for all workers while recording status, duration, and closed logs.
+
+    Args:
+        workers: Running subprocesses, their shard metadata, and log handles.
+    """
     pending = list(workers)
     while pending:
         still_running: list[tuple[subprocess.Popen[str], ShardResult, TextIO]] = []
@@ -365,10 +394,7 @@ def _wait_for_workers(
                 _close_log(log_fh)
                 elapsed = sr.end_time - (sr.start_time or sr.end_time)
                 status = "OK" if ret == 0 else f"FAILED (exit={ret})"
-                print(
-                    f"[parallel] Shard {sr.shard_index} finished: "
-                    f"{status} ({elapsed:.0f}s)"
-                )
+                print(f"[parallel] Shard {sr.shard_index} finished: {status} ({elapsed:.0f}s)")
             else:
                 still_running.append((proc, sr, log_fh))
         pending = still_running
@@ -377,16 +403,17 @@ def _wait_for_workers(
 
 
 def _close_log(fh: TextIO) -> None:
+    """Close a worker log without interrupting process cleanup on an I/O failure.
+
+    Args:
+        fh: Worker log file handle.
+    """
     try:
         if not fh.closed:
             fh.close()
     except OSError:
         pass
 
-
-# ---------------------------------------------------------------------------
-# Result merging
-# ---------------------------------------------------------------------------
 
 def _find_shard_run_dir(shard: ShardResult) -> Path | None:
     """Locate the timestamp-named subdirectory created by runner.py."""
@@ -397,39 +424,6 @@ def _find_shard_run_dir(shard: ShardResult) -> Path | None:
         key=lambda d: d.name,
     )
     return subdirs[-1] if subdirs else None
-
-
-def task_result_from_dict(row: dict[str, Any]) -> TaskResult:
-    """Deserialize a per_task.jsonl row into a TaskResult.
-
-    Mirrors ``eval.analysis.summarize._task_result_from_dict`` so that
-    parallel_runner stays decoupled from that module's private API.
-    """
-    artifact_paths = row.get("artifact_paths") or {}
-    return TaskResult(
-        task_name=row["task_name"],
-        suite_family=row["suite_family"],
-        seed=row.get("seed"),
-        goal=row["goal"],
-        run_id=row["run_id"],
-        attempt=int(row.get("attempt", 0)),
-        bridge_status=row["bridge_status"],
-        agent_completion_reason=row.get("agent_completion_reason"),
-        task_status=row.get("task_status"),
-        answer=row.get("answer"),
-        scripted_score=row.get("scripted_score"),
-        scripted_success=bool(row.get("scripted_success", False)),
-        duration_sec=float(row.get("duration_sec", 0.0)),
-        turns_executed=int(row.get("turns_executed", 0)),
-        tool_calls=int(row.get("tool_calls", 0)),
-        tool_failures=int(row.get("tool_failures", 0)),
-        artifact_paths=ArtifactPaths(
-            trace_dir=artifact_paths.get("trace_dir"),
-            logcat=artifact_paths.get("logcat"),
-            runner_log=artifact_paths.get("runner_log"),
-        ),
-        exception=row.get("exception"),
-    )
 
 
 def merge_results(
@@ -451,11 +445,7 @@ def merge_results(
             "tasks": sr.tasks,
             "exit_code": sr.exit_code,
             "shard_dir": str(sr.shard_dir),
-            "duration_sec": (
-                (sr.end_time - sr.start_time)
-                if sr.start_time is not None and sr.end_time is not None
-                else None
-            ),
+            "duration_sec": ((sr.end_time - sr.start_time) if sr.start_time is not None and sr.end_time is not None else None),
         }
         if shard_run_dir:
             per_task_path = shard_run_dir / "per_task.jsonl"
@@ -495,9 +485,7 @@ def merge_results(
             if not link.exists():
                 link.symlink_to(task_dir.resolve())
 
-    # Select final attempt per task instance: group by (task_name, seed),
-    # take the highest attempt number (runner.py already resolved retries
-    # within each shard; this handles the cross-shard view).
+    # Keep the final attempt for each task instance across all shards.
     all_results = [task_result_from_dict(r) for r in all_rows]
     final_by_key: dict[tuple[str, int | None], TaskResult] = {}
     for result in all_results:
@@ -523,6 +511,12 @@ def _write_shard_manifest(
     run_dir: Path,
     shard_results: list[ShardResult],
 ) -> None:
+    """Record each shard's paths, device, task list, and exit status.
+
+    Args:
+        run_dir: Directory containing this run's artifacts and summaries.
+        shard_results: Worker assignments and collected statuses.
+    """
     manifest = {
         "num_shards": len(shard_results),
         "shards": [
@@ -556,6 +550,13 @@ def _build_summary_config(
     args: argparse.Namespace,
     devices: list[DeviceSpec],
 ) -> dict[str, Any]:
+    """Serialize shared configuration and command-line choices for the merged report.
+
+    Args:
+        base_config: Shared runner configuration before worker overrides.
+        args: Parsed command-line options or command arguments.
+        devices: Emulator specifications assigned to this run.
+    """
     cfg = copy.deepcopy(base_config)
     runner_cfg = cfg.setdefault("runner", {})
     if args.suite is not None:
@@ -581,79 +582,65 @@ def _build_summary_config(
     return cfg
 
 
-# ---------------------------------------------------------------------------
-# Main orchestrator
-# ---------------------------------------------------------------------------
-
 def main(argv: list[str] | None = None) -> None:
+    """Shard benchmark tasks across devices and merge their results.
+
+    Args:
+        argv: Command-line arguments, or the process arguments when omitted.
+    """
     args = _parse_args(argv)
     workspace_root = Path(__file__).resolve().parents[2]
 
-    # 1. Parse and validate device specs
     devices = [parse_device_spec(d) for d in args.devices]
     validate_device_specs(devices)
     print(f"[parallel] Devices: {len(devices)}")
     for d in devices:
         print(f"  {d.serial} console={d.console_port} grpc={d.grpc_port}")
 
-    # 2. Resolve task list
     tasks = resolve_task_list(workspace_root, args)
     print(f"[parallel] Tasks: {len(tasks)}")
     if len(tasks) < len(devices):
-        print(
-            f"[parallel] WARNING: fewer tasks ({len(tasks)}) than devices "
-            f"({len(devices)}); some devices will be idle"
-        )
+        print(f"[parallel] WARNING: fewer tasks ({len(tasks)}) than devices ({len(devices)}); some devices will be idle")
 
-    # 3. Shard tasks
     shards = shard_tasks(tasks, len(devices))
     devices, shards = filter_active_device_shards(devices, shards)
     for i, shard in enumerate(shards):
         print(f"  shard {i}: {len(shard)} tasks")
 
-    # 4. Load base config
     base_config = _load_base_config(workspace_root, args.config)
 
-    # 5. Create run directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_dir = (workspace_root / args.output_root / timestamp).resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
     print(f"[parallel] Run directory: {run_dir}")
 
-    # 6. Setup shard directories, configs, and task files
     shard_results = _setup_shard_dirs(
-        run_dir, devices, shards, base_config, args,
+        run_dir,
+        devices,
+        shards,
+        base_config,
+        args,
     )
 
-    # 7. Build once, install once per device
     if run_supervisor_bridge_setup(shard_results, workspace_root, base_config):
         print("[parallel] Built and installed bridge APK once per device.")
     else:
-        print(
-            "[parallel] Skipping bridge APK build/install "
-            "(runner.perform_bridge_setup=false)"
-        )
+        print("[parallel] Skipping bridge APK build/install (runner.perform_bridge_setup=false)")
 
-    # 8. Install signal handlers
     global _active_workers  # noqa: PLW0603
     _install_signal_handlers()
 
-    # 9. Launch workers
     workers = _launch_workers(shard_results, workspace_root)
     _active_workers = workers
 
-    # 10. Wait for all workers
     try:
         _wait_for_workers(workers)
     finally:
-        # Ensure all log file handles are closed
         for _, _, log_fh in workers:
             _close_log(log_fh)
 
-    # 11. Write shard manifest
     _write_shard_manifest(run_dir, shard_results)
 
-    # 12. Merge results
     merged = merge_results(shard_results, run_dir)
     summary_payload = {
         "run_timestamp": timestamp,
@@ -677,14 +664,9 @@ def main(argv: list[str] | None = None) -> None:
     print(f"\n[parallel] Wrote summary: {summary_path}")
     print(json.dumps(summary_payload["metrics"], ensure_ascii=True, indent=2))
 
-    # 13. Exit code: 0 if all shards succeeded, 1 otherwise
     any_failed = any(sr.exit_code != 0 for sr in shard_results)
     if any_failed:
-        failed = [
-            f"shard {sr.shard_index} (exit={sr.exit_code})"
-            for sr in shard_results
-            if sr.exit_code != 0
-        ]
+        failed = [f"shard {sr.shard_index} (exit={sr.exit_code})" for sr in shard_results if sr.exit_code != 0]
         print(f"[parallel] FAILED shards: {', '.join(failed)}")
         raise SystemExit(1)
 

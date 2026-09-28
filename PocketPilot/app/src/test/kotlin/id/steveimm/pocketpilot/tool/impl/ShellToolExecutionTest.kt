@@ -9,10 +9,8 @@ import org.json.JSONObject
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
-/**
- * Execution-path coverage for ShellTool.ShellInvocation.execute().
- * These tests shell out to the host JVM's /bin/sh, so they only run on Unix-like hosts.
- */
+/** Execution-path coverage for ShellTool.ShellInvocation.execute(). These tests shell out to the host JVM's /bin/sh, so they only run
+ * on Unix-like hosts. */
 class ShellToolExecutionTest {
 
     private val isUnix = !System.getProperty("os.name").orEmpty().startsWith("Windows")

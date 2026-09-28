@@ -9,12 +9,7 @@ internal data class TurnErrorClassification(
     val recoverable: Boolean
 )
 
-/**
- * Classifies turn errors into recoverable/non-recoverable categories.
- *
- * Keep this logic isolated from turn orchestration so policies can evolve
- * without touching AgentTurnRunner control flow.
- */
+/** Classifies turn errors into recoverable/non-recoverable categories. */
 internal object TurnErrorClassifier {
     private const val TAG = "TurnErrorClassifier"
 

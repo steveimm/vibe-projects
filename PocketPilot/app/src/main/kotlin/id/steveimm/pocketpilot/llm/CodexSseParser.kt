@@ -5,20 +5,14 @@ import java.io.BufferedReader
 import java.io.InputStream
 import org.json.JSONObject
 
-/**
- * Parses Server-Sent Events from a raw byte stream (OkHttp response body)
- * and maps Codex-specific event types to [LLMStreamEvent].
- */
+/** Parses Server-Sent Events from a raw byte stream (OkHttp response body) and maps Codex-specific event types to [LLMStreamEvent]. */
 object CodexSseParser {
 
     private const val TAG = "CodexSseParser"
 
     data class SseEvent(val type: String, val json: JSONObject)
 
-    /**
-     * Parse SSE events from an OkHttp response body stream.
-     * Yields parsed JSON events, skipping [DONE] markers.
-     */
+    /** Parse SSE events from an OkHttp response body stream. Yields parsed JSON events, skipping [DONE] markers. */
     fun parse(source: InputStream): Sequence<SseEvent> = sequence {
         val reader = BufferedReader(source.reader(Charsets.UTF_8))
         val dataBuilder = StringBuilder()
@@ -60,10 +54,7 @@ object CodexSseParser {
         }
     }
 
-    /**
-     * Map a Codex SSE event to an [LLMStreamEvent].
-     * Returns null for events we don't need to emit.
-     */
+    /** Map a Codex SSE event to an [LLMStreamEvent]. Returns null for events we don't need to emit. */
     fun mapToStreamEvent(
         event: SseEvent,
         accumulator: ToolCallAccumulator
@@ -118,10 +109,8 @@ object CodexSseParser {
         else -> null
     }
 
-    /**
-     * Accumulates function_call_arguments.delta events into complete tool calls.
-     * Supports parallel tool calls by tracking state per output_index.
-     */
+    /** Accumulates function_call_arguments.delta events into complete tool calls. Supports parallel tool calls by tracking state per
+     * output_index. */
     class ToolCallAccumulator {
         private data class PendingCall(
             val callId: String,

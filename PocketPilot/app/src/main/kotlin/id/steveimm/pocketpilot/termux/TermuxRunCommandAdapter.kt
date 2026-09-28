@@ -152,10 +152,8 @@ class TermuxRunCommandAdapter(private val context: Context) {
             }
 
             try {
-                // Use startForegroundService on Android 8+ — Android 13's BG-FGS-START
-                // restrictions reject plain startService for cross-app service starts even
-                // when the caller is a foreground Activity. Termux's RunCommandService
-                // declares dataSync FGS type and calls startForeground() during onStartCommand.
+                // Use startForegroundService on Android 8+ — Android 13's BG-FGS-START restrictions reject plain startService for
+                // cross-app service starts even when the caller is a foreground Activity.
                 val started =
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         appContext.startForegroundService(runCommandIntent)
@@ -186,10 +184,8 @@ class TermuxRunCommandAdapter(private val context: Context) {
         filter: IntentFilter
     ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Termux invokes our PendingIntent via Binder, so the resulting broadcast appears
-            // to come from Termux's UID; RECEIVER_NOT_EXPORTED rejects it. The PendingIntent
-            // already restricts the sender to whoever holds the PendingIntent reference, and
-            // we set its target package to our own, so this broadcast surface stays narrow.
+            // Termux invokes our PendingIntent via Binder, so the resulting broadcast appears to come from Termux's UID;
+            // RECEIVER_NOT_EXPORTED rejects it.
             appContext.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
         } else {
             @Suppress("UnspecifiedRegisterReceiverFlag")

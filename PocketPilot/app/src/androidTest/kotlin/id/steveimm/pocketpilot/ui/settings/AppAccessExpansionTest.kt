@@ -36,14 +36,7 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import java.io.File
 
-/**
- * Compose tests for the App Access per-app inline expansion.
- *
- * Each test renders [AppAccessSettingsPage] with a deterministic row list and
- * an injected [AppAccessContentIndex], so the test never touches PackageManager
- * or the live asset tree. The page-scoped index is mutated through the editor's
- * save/delete callbacks just like in production — that's the surface under test.
- */
+/** Compose tests for the App Access per-app inline expansion. */
 @RunWith(AndroidJUnit4::class)
 class AppAccessExpansionTest {
 
@@ -111,11 +104,9 @@ class AppAccessExpansionTest {
         }
     }
 
-    // -------------------------------------------------------------
-    // (1) Empty row exposes "+ Memory"; clicking creates the file,
-    //     surfaces the Memory chip + chevron, expands the row, AND
-    //     lands the user directly in EDIT mode (Save / Discard visible).
-    // -------------------------------------------------------------
+    // (1) Empty row exposes "+ Memory"; clicking creates the file, surfaces the Memory chip + chevron, expands the row, AND lands the user
+    // directly in EDIT mode (Save / Discard visible).
+
     @Test fun add_memory_creates_file_updates_chip_expands_and_enters_edit() {
         val pkg = "com.example.alpha"
         renderPage(rows = listOf(row(pkg)), index = emptyIndex())
@@ -153,10 +144,9 @@ class AppAccessExpansionTest {
         compose.onAllNodesWithTag(MEMORY_EDITOR_EDIT_TAG).assertCountEquals(0)
     }
 
-    // -------------------------------------------------------------
     // (1b) "+ Memory" is disabled (and clicking is a no-op) while the
     //      gate is locked. No file is created.
-    // -------------------------------------------------------------
+
     @Test fun add_memory_disabled_when_gate_locked_and_no_file_written() {
         val pkg = "com.example.locked"
 
@@ -184,11 +174,9 @@ class AppAccessExpansionTest {
         compose.onAllNodesWithTag(APP_ROW_TRAILING_CHEVRON_TAG).assertCountEquals(0)
     }
 
-    // -------------------------------------------------------------
-    // (1c) "+ Memory" is idempotent: clicking on a row whose apps/<pkg>.md
-    //      already exists must NOT blank the file, only expand the row +
-    //      flip the index.
-    // -------------------------------------------------------------
+    // (1c) "+ Memory" is idempotent: clicking on a row whose apps/<pkg>.md already exists must NOT blank the file, only expand the row +
+    // flip the index.
+
     @Test fun add_memory_does_not_overwrite_existing_file() {
         val pkg = "com.example.preserve"
         File(memoryDir, "apps").mkdirs()
@@ -210,12 +198,9 @@ class AppAccessExpansionTest {
         assertEquals("KEEP_ME", File(memoryDir, "apps/${pkg}.md").readText())
     }
 
-    // -------------------------------------------------------------
-    // (2) For a row that has a skill but no memory, expanding +
-    //     editing + saving must create the memory file AND flip the
-    //     index so the "Memory" chip appears next to the label.
-    //     Collapse + re-expand preserves nothing-in-progress.
-    // -------------------------------------------------------------
+    // (2) For a row that has a skill but no memory, expanding + editing + saving must create the memory file AND flip the index so the
+    // "Memory" chip appears next to the label. Collapse + re-expand preserves nothing-in-progress.
+
     @Test fun expand_edit_save_surfaces_memory_chip_and_collapse_clears_state() {
         val pkg = "com.example.skilled"
         // Skill present → trailing chevron, no "+ Memory" chip.
@@ -257,10 +242,9 @@ class AppAccessExpansionTest {
         compose.onAllNodesWithTag(MEMORY_EDITOR_TEXTFIELD_TAG).assertCountEquals(0)
     }
 
-    // -------------------------------------------------------------
     // (3) Save-on-existing-memory flow: row already has memory → expand,
     //     edit text, save → chip stays (index update is idempotent).
-    // -------------------------------------------------------------
+
     @Test fun expand_edit_save_persists_to_disk_and_keeps_memory_chip() {
         val pkg = "com.example.bravo"
         File(memoryDir, "apps").mkdirs()
@@ -295,11 +279,9 @@ class AppAccessExpansionTest {
         assertEquals("updated content", File(memoryDir, "apps/${pkg}.md").readText())
     }
 
-    // -------------------------------------------------------------
-    // (4) BLOCKED (bundled) app: expansion area shows the warning chip
-    //     above the editor. Inline editor is NOT disabled — a UI edit
-    //     is the user's explicit consent.
-    // -------------------------------------------------------------
+    // (4) BLOCKED (bundled) app: expansion area shows the warning chip above the editor. Inline editor is NOT disabled — a UI edit is the
+    // user's explicit consent.
+
     @Test fun blocked_app_expansion_shows_warning_chip_above_editor() {
         val pkg = "com.example.bank"
         File(memoryDir, "apps").mkdirs()
@@ -327,10 +309,9 @@ class AppAccessExpansionTest {
         compose.onNodeWithTag(MEMORY_EDITOR_EDIT_TAG).assertIsDisplayed()
     }
 
-    // -------------------------------------------------------------
     // (5) Trailing slot reflects content: chevron on rows with content,
     //     "+ Memory" on rows with neither memory nor skill.
-    // -------------------------------------------------------------
+
     @Test fun trailing_slot_chevron_vs_add_memory_reflects_summary() {
         val withSkill = "com.example.skill"
         val empty = "com.example.empty"

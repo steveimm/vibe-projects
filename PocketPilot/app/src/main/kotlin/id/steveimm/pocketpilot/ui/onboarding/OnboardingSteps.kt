@@ -60,8 +60,6 @@ import id.steveimm.pocketpilot.onboarding.StepOutcome
 import id.steveimm.pocketpilot.onboarding.StepOutcomes
 import id.steveimm.pocketpilot.onboarding.WizardStep
 
-// ── Permission Step ──
-
 @Composable
 fun PermissionStepContent(
     step: WizardStep,
@@ -157,8 +155,6 @@ fun PermissionStepContent(
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
-
-// ── API Key Step ──
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
@@ -498,8 +494,6 @@ private fun ColumnScope.ManualApiKeyContent(
     Spacer(modifier = Modifier.height(32.dp))
 }
 
-// ── Demo Step ──
-
 @Composable
 fun DemoStepContent(
     state: DemoStepState,
@@ -625,8 +619,6 @@ fun DemoStepContent(
     }
 }
 
-// ── Complete Step ──
-
 @Composable
 fun CompleteStepContent(
     outcomes: StepOutcomes,
@@ -671,8 +663,6 @@ fun CompleteStepContent(
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
-
-// ── Shared UI components ──
 
 @Composable
 private fun StatusCard(state: PermissionStepState, consequence: String) {
@@ -813,8 +803,6 @@ private fun OutcomeRow(label: String, outcome: StepOutcome) {
         )
     }
 }
-
-// ── Copy for permission steps ──
 
 private data class PermissionCopy(
     val icon: ImageVector,

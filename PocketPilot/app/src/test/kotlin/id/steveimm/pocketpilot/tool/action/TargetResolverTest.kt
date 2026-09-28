@@ -173,8 +173,6 @@ class TargetResolverTest {
         )
     }
 
-    // ---------- Coordinate-hint normalization (Codex dual target) ----------
-
     @Test
     fun `semantic resolves with hint inside bounds uses element center`() {
         val bounds = Bounds(100, 400, 500, 700)

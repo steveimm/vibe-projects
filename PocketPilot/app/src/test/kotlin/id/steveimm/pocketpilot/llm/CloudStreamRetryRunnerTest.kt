@@ -3,12 +3,11 @@ package id.steveimm.pocketpilot.llm
 import com.google.common.truth.Truth.assertThat
 import java.io.IOException
 import java.net.SocketTimeoutException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class CloudStreamRetryRunnerTest {
-
-    // ── Successful completion ─────────────────────────────────────────────
 
     @Test
     fun `successful attempt returns completed=true`() = runTest {
@@ -30,8 +29,6 @@ class CloudStreamRetryRunnerTest {
         assertThat(result.lastError).isNull()
         assertThat(events).hasSize(3)
     }
-
-    // ── emittedEvent tracking ─────────────────────────────────────────────
 
     @Test
     fun `Created event does NOT block retry -- only TextDelta and ToolCallDone do`() = runTest {
@@ -98,8 +95,6 @@ class CloudStreamRetryRunnerTest {
         assertThat(result.failureEmitted).isTrue()
     }
 
-    // ── Domain exception reclassification ─────────────────────────────────
-
     @Test
     fun `RateLimitException retryAfterMs is preserved through retry`() = runTest {
         // Fixed: domain exceptions are preserved without reclassification.
@@ -141,8 +136,6 @@ class CloudStreamRetryRunnerTest {
         assertThat(result.completed).isTrue()
     }
 
-    // ── failureEmitted tracking ───────────────────────────────────────────
-
     @Test
     fun `failureEmitted is true when Failed event is emitted by attempt block`() = runTest {
         val result = streamWithRetry(
@@ -180,9 +173,8 @@ class CloudStreamRetryRunnerTest {
 
     @Test
     fun `response_incomplete emits exactly one Failed and does not retry`() = runTest {
-        // Simulates what CodexResponseClient does when parser yields Failed from
-        // response.incomplete: emit Failed, return normally (no throw).
-        // streamWithRetry should see completed=true, not trigger any retry.
+        // Simulates what CodexResponseClient does when parser yields Failed from response.incomplete: emit Failed, return normally (no
+        // throw). streamWithRetry should see completed=true, not trigger any retry.
         val events = mutableListOf<LLMStreamEvent>()
         var attempts = 0
 
@@ -209,8 +201,6 @@ class CloudStreamRetryRunnerTest {
         assertThat(failedEvents[0].error).contains("incomplete")
     }
 
-    // ── Failed blocks retry (HIGH-1 regression) ──────────────────────────
-
     @Test
     fun `Failed event blocks retry -- emit Failed then retryable throw does NOT retry`() = runTest {
         var attempts = 0
@@ -234,8 +224,6 @@ class CloudStreamRetryRunnerTest {
         assertThat(events.filterIsInstance<LLMStreamEvent.Failed>()).hasSize(1)
     }
 
-    // ── Max retries exhausted ─────────────────────────────────────────────
-
     @Test
     fun `exhausting all retries returns completed=false with correct cumulative backoff`() = runTest {
         var attempts = 0
@@ -253,12 +241,42 @@ class CloudStreamRetryRunnerTest {
         assertThat(attempts).isEqualTo(3)
         assertThat(result.completed).isFalse()
         assertThat(result.lastError).isNotNull()
-        // 3 attempts, each gets Retry (attempt < MAX_RETRIES=5):
-        // attempt 1 → delay 10ms, attempt 2 → delay 20ms, attempt 3 → delay 40ms
-        assertThat(testScheduler.currentTime).isEqualTo(70L)
+        assertThat(testScheduler.currentTime).isEqualTo(30L)
     }
 
-    // ── Non-retryable errors ──────────────────────────────────────────────
+    @Test
+    fun `configured retry budget can exceed the default`() = runTest {
+        val maxRetries = LLMClient.MAX_RETRIES + 2
+        var attempts = 0
+
+        val result = streamWithRetry(tag = "test", emitToFlow = {}, maxRetries = maxRetries, initialBackoffMs = 1L) { _, _ ->
+            attempts++
+            if (attempts < maxRetries) throw TransientException("try again")
+        }
+
+        assertThat(attempts).isEqualTo(maxRetries)
+        assertThat(result.completed).isTrue()
+    }
+
+    @Test
+    fun `cancellation propagates without retry or failure event`() = runTest {
+        val cancellation = CancellationException("Task stopped")
+        val events = mutableListOf<LLMStreamEvent>()
+        var attempts = 0
+
+        val error = runCatching {
+            streamWithRetry(tag = "test", emitToFlow = events::add) { _, emitter ->
+                attempts++
+                emitter.emit(LLMStreamEvent.TextDelta("partial"))
+                throw cancellation
+            }
+        }.exceptionOrNull()
+
+        assertThat(error).isSameInstanceAs(cancellation)
+        assertThat(attempts).isEqualTo(1)
+        assertThat(events).containsExactly(LLMStreamEvent.TextDelta("partial"))
+        assertThat(testScheduler.currentTime).isEqualTo(0L)
+    }
 
     @Test
     fun `non-retryable error stops immediately`() = runTest {
@@ -277,8 +295,6 @@ class CloudStreamRetryRunnerTest {
         assertThat(attempts).isEqualTo(1)
         assertThat(result.completed).isFalse()
     }
-
-    // ── Backoff progression ───────────────────────────────────────────────
 
     @Test
     fun `backoff increases between retries with correct exponential timing`() = runTest {
@@ -300,8 +316,6 @@ class CloudStreamRetryRunnerTest {
         // A fixed 10ms delay would yield 30ms — this proves backoff growth.
         assertThat(testScheduler.currentTime).isEqualTo(70L)
     }
-
-    // ── ToolCallDone is also a "semantic output" gate ─────────────────────
 
     @Test
     fun `ToolCallDone before retryable error triggers FailAndStop`() = runTest {
@@ -327,8 +341,6 @@ class CloudStreamRetryRunnerTest {
         assertThat(failed.error).startsWith("Stream interrupted after partial output:")
     }
 
-    // ── FailAndStop does NOT re-emit Failed if attempt already emitted one ─
-
     @Test
     fun `FailAndStop does not double-emit Failed when attempt already emitted Failed`() = runTest {
         // emitter sets failureEmitted=true on Failed; FailAndStop branch checks
@@ -352,8 +364,6 @@ class CloudStreamRetryRunnerTest {
         assertThat(failed[0].error).isEqualTo("explicit")
     }
 
-    // ── RateLimit waitMs fallback when retryAfterMs is null ──────────────
-
     @Test
     fun `RateLimitException with null retryAfterMs falls back to backoffMs`() = runTest {
         val result = streamWithRetry(
@@ -369,8 +379,6 @@ class CloudStreamRetryRunnerTest {
         // Falls back to initialBackoffMs (10) since retryAfterMs is null.
         assertThat(testScheduler.currentTime).isEqualTo(10L)
     }
-
-    // ── lastError surfacing ──────────────────────────────────────────────
 
     @Test
     fun `lastError surfaces classified exception after FailAndStop`() = runTest {
@@ -412,13 +420,10 @@ class CloudStreamRetryRunnerTest {
         assertThat(result.lastError!!.cause).isSameInstanceAs(fatal)
     }
 
-    // ── Classify→Stop on attempt == MAX_RETRIES (policy guard, not loop exit) ──
-
     @Test
     fun `attempt equal to policy MAX_RETRIES returns Stop without further delay`() = runTest {
-        // Policy compares against LLMClient.MAX_RETRIES (5), not the runner's maxRetries.
-        // With maxRetries=5 and always-throwing retryable: attempts 1..4 → Retry
-        // (delays 10+20+40+80=150ms); attempt 5 → Stop (no delay), returns early.
+        // Policy compares against LLMClient.MAX_RETRIES (5), not the runner's maxRetries. With maxRetries=5 and always-throwing retryable:
+        // attempts 1..4 → Retry (delays 10+20+40+80=150ms); attempt 5 → Stop (no delay), returns early.
         var attempts = 0
         val result = streamWithRetry(
             tag = "test",
@@ -438,8 +443,6 @@ class CloudStreamRetryRunnerTest {
         assertThat(testScheduler.currentTime).isEqualTo(150L)
     }
 
-    // ── Non-domain exception is funneled through OpenAIErrorClassifier ───
-
     @Test
     fun `IOException is reclassified by OpenAIErrorClassifier and retried`() = runTest {
         var attempts = 0
@@ -457,8 +460,6 @@ class CloudStreamRetryRunnerTest {
         assertThat(attempts).isEqualTo(2)
         assertThat(result.completed).isTrue()
     }
-
-    // ── closeFlow() finalization helper ──────────────────────────────────
 
     @Test
     fun `closeFlow emits no Failed when completed`() {

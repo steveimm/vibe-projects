@@ -1,11 +1,6 @@
 package id.steveimm.pocketpilot.ui.overlay.model
 
-/**
- * CapsuleContext — where the Smart Capsule is currently displayed.
- *
- * Determines which navigation buttons [1][2][3] are relevant
- * and how the capsule is rendered (overlay vs embedded).
- */
+/** CapsuleContext — where the Smart Capsule is currently displayed. */
 enum class CapsuleContext {
     /** User is in the PocketPilot main app. Capsule is embedded via Compose. */
     MAIN_APP,

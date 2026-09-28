@@ -130,10 +130,8 @@ class SessionLlmBootstrapperTest {
 
     @Test
     fun `create surfaces invalid-baseUrl OTHER as MissingCredential not as client error`() {
-        // Regression for Sub 1c Codex HIGH #2: parity between findMissingCloudKeys (which
-        // validates baseUrl) and ensureRequiredCredentials (which used to only check catalog
-        // membership + auth key). Invalid persisted URL → repo refuses to synth → bootstrap
-        // throws MissingCredential(OTHER), surfacing as a clean Other-tab deep-link.
+        // Regression for Sub 1c Codex HIGH #2: parity between findMissingCloudKeys (which validates baseUrl) and ensureRequiredCredentials
+        // (which used to only check catalog membership + auth key).
         val mainLooper = mockk<Looper>()
         val workerLooper = mockk<Looper>()
         mockkStatic(Looper::class)

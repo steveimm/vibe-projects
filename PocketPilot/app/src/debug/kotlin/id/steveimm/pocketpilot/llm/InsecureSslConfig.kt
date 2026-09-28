@@ -8,20 +8,7 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.X509TrustManager
 
-/**
- * Debug-only SSL configuration that skips certificate validation.
- *
- * Used in debug/eval builds when the Android emulator's system clock is frozen
- * to a past date (e.g., Oct 2023 for AndroidWorld), which causes normal SSL
- * certificate validation to fail because certs appear "not yet valid."
- *
- * Gated behind [BuildConfig.INSECURE_SSL_FOR_EVAL] so that normal debug builds
- * still use standard certificate validation. Build with
- * `-PinsecureSslForEval=true` to enable (eval scripts do this automatically).
- *
- * This file exists only in the debug source set. The release source set
- * provides a no-op stub that returns null for all properties.
- */
+/** Debug-only SSL configuration that skips certificate validation. */
 object InsecureSslConfig {
 
     private const val TAG = "InsecureSslConfig"

@@ -10,17 +10,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import org.junit.Test
 
-/**
- * Regression guard for [ShizukuRuntimeGateway.requestPermissionAndAwait] — pins the atomic
- * resume contract used inside its `OnRequestPermissionResultListener`.
- *
- * Why this lives here instead of driving the real gateway: `rikka.shizuku.Shizuku`'s static
- * initializer constructs `new Handler(Looper.getMainLooper())`, which throws on the JVM (the
- * stub `Looper` returns null). We can't load the class in a unit test, so we cannot mock its
- * static surface either. Instead, this test exercises the exact resume idiom the gateway uses
- * (`tryResume` → null token check → `completeResume`) so that any future revert to plain
- * `cont.resume(...)` will surface here as a double-resume `IllegalStateException`.
- */
+/** Regression guard for [ShizukuRuntimeGateway.requestPermissionAndAwait] — pins the atomic resume contract used inside its
+ * `OnRequestPermissionResultListener`. */
 @OptIn(InternalCoroutinesApi::class)
 class ShizukuRuntimeGatewayTest {
 

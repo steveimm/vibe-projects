@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
 # Manage the OpenAI proxy SSH tunnel on the remote eval worker.
-#
-# Usage:
-#   ./scripts/remote/proxy_tunnel.sh install   # install systemd user service
-#   ./scripts/remote/proxy_tunnel.sh start     # start tunnel
-#   ./scripts/remote/proxy_tunnel.sh stop      # stop tunnel
-#   ./scripts/remote/proxy_tunnel.sh status    # check status
-#   ./scripts/remote/proxy_tunnel.sh logs      # show recent logs
-#   ./scripts/remote/proxy_tunnel.sh manual [proxy-host]  # run in foreground (no systemd)
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

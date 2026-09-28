@@ -15,13 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 
-/**
- * Executes one full agent turn and returns the next-loop decision.
- *
- * Turn pipeline: 1) PERCEPTION: capture screen and update navigation state 2) THINKING: build
- * prompt/input and get LLM tool calls 3) ACTION: execute selected tools, collect observations,
- * persist history/trace
- */
+/** Executes one full agent turn and returns the next-loop decision. */
 internal class AgentTurnRunner(
         private val config: AgentExecutionConfig,
         private val services: SessionServices,
@@ -60,11 +54,7 @@ internal class AgentTurnRunner(
                 )
         }
 
-        /**
-         * Runs one turn and never mutates outer `Agent` state directly.
-         *
-         * All cross-turn state is passed in/out via [TurnRunnerState].
-         */
+        /** Runs one turn and never mutates outer `Agent` state directly. */
         suspend fun executeTurn(
                 turnId: String,
                 turnNumber: Int,

@@ -10,34 +10,21 @@ import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.util.HashMap
 
-/**
- * High-level session management API.
- * 
- * This class provides the main interface for:
- * - Listing all sessions (lightweight, for UI display)
- * - Loading a session for resuming
- * - Deleting sessions
- * - Creating new sessions
- * - Resuming existing sessions
- * 
- * It coordinates between SessionStorage (file I/O) and SessionRecordingService (real-time recording).
- */
+/** High-level session management API. */
 class SessionHistoryManager(
     private val storage: SessionStorage,
     private val recordingService: SessionRecordingService
 ) {
     companion object {
         private const val TAG = "SessionHistoryManager"
-        
+
         /** Maximum characters for display title */
         private const val MAX_TITLE_LENGTH = 50
 
         /** Length of timestamp (19) + separator dash (1) in session filenames */
         private const val TIMESTAMP_WITH_SEPARATOR_LENGTH = 20
-        
-        /**
-         * Factory method for creating a SessionHistoryManager.
-         */
+
+        /** Factory method for creating a SessionHistoryManager. */
         fun create(
             storage: SessionStorage,
             scope: CoroutineScope
@@ -55,21 +42,11 @@ class SessionHistoryManager(
     private val sessionInfoCache = HashMap<String, CachedSessionInfo>()
     private val cacheMutex = Mutex()
 
-    /**
-     * Externally-set active session ID.
-     *
-     * The per-session [SessionRecordingService] lives inside [SessionServices],
-     * not inside this manager. This field bridges that gap so the sidebar can
-     * mark the correct session as active.
-     */
+    /** Externally-set active session ID. */
     @Volatile
     private var externalActiveSessionId: String? = null
-    
-    /**
-     * List all sessions (lightweight, doesn't load full content).
-     * 
-     * @return List of SessionInfo sorted by last updated (newest first)
-     */
+
+    /** List all sessions (lightweight, doesn't load full content). */
     suspend fun listSessions(): List<SessionInfo> {
         val files = storage.listSessionFiles()
         Log.d(TAG, "Found ${files.size} session files")
@@ -78,13 +55,8 @@ class SessionHistoryManager(
             getSessionInfoCached(file)
         }
     }
-    
-    /**
-     * Load a session for resuming.
-     *
-     * @param sessionId The full session ID to load
-     * @return Result containing ResumedSessionData or an error
-     */
+
+    /** Load a session for resuming. */
     suspend fun loadSession(sessionId: String): Result<ResumedSessionData> {
         val files = storage.listSessionFiles()
         val file = files.find { extractSessionIdFromFileName(it.name) == sessionId }
@@ -92,13 +64,8 @@ class SessionHistoryManager(
 
         return loadSessionByFileName(file.name)
     }
-    
-    /**
-     * Load a session by file name.
-     *
-     * @param fileName The session file name
-     * @return Result containing ResumedSessionData or an error
-     */
+
+    /** Load a session by file name. */
     private suspend fun loadSessionByFileName(fileName: String): Result<ResumedSessionData> {
         return storage.readSession(fileName).map { record ->
             ResumedSessionData(
@@ -108,12 +75,7 @@ class SessionHistoryManager(
         }
     }
 
-    /**
-     * Delete a session.
-     *
-     * @param sessionId The full session ID to delete
-     * @return Result indicating success or failure
-     */
+    /** Delete a session. */
     suspend fun deleteSession(sessionId: String): Result<Unit> {
         val files = storage.listSessionFiles()
         val file = files.find { extractSessionIdFromFileName(it.name) == sessionId }
@@ -126,59 +88,30 @@ class SessionHistoryManager(
         }
     }
 
-    /**
-     * Start a new session.
-     * 
-     * @param model The LLM model being used
-     * @param appVersion The app version
-     * @return The new session ID
-     */
+    /** Start a new session. */
     fun startNewSession(model: String? = null, appVersion: String? = null): String {
         return recordingService.initializeNewSession(model = model, appVersion = appVersion)
     }
-    
-    /**
-     * Resume an existing session.
-     * 
-     * @param data The session data to resume
-     */
+
+    /** Resume an existing session. */
     fun resumeSession(data: ResumedSessionData) {
         recordingService.resumeSession(data)
     }
-    
-    /**
-     * Get current session ID (if any).
-     *
-     * Prefers the externally-set active session ID (from the per-session
-     * recording service). Falls back to this manager's own recording service.
-     */
+
+    /** Get current session ID (if any). */
     fun getCurrentSessionId(): String? {
         return externalActiveSessionId ?: recordingService.getCurrentSessionId()
     }
 
-    /**
-     * Set the active session ID from outside this manager.
-     *
-     * Called by [MainActivity] when a session is created or cleared.
-     */
+    /** Set the active session ID from outside this manager. */
     fun setActiveSessionId(sessionId: String?) {
         externalActiveSessionId = sessionId
     }
-    
-    /**
-     * Get the recording service (for event recording).
-     */
+
+    /** Get the recording service (for event recording). */
     fun getRecordingService(): SessionRecordingService = recordingService
 
-    // ===== Private Helpers =====
-
-    /**
-     * Extract the session ID from a filename.
-     *
-     * Filename format: `session-{yyyy-MM-dd'T'HH-mm-ss}-{sessionId}.json`
-     * The timestamp is 19 chars (e.g. `2024-01-21T14-30-45`).
-     * Returns null if the filename doesn't match the expected pattern.
-     */
+    /** Extract the session ID from a filename. */
     private fun extractSessionIdFromFileName(fileName: String): String? {
         // "session-" prefix = 8 chars, timestamp = 19 chars, separator "-" = 1 char
         val prefix = "session-"
@@ -191,11 +124,8 @@ class SessionHistoryManager(
         return afterTimestamp.ifEmpty { null }
     }
 
-    /**
-     * Extract SessionInfo from a session file. If the file cannot be parsed,
-     * returns a corrupted-placeholder entry so the user sees the file exists
-     * rather than silently missing.
-     */
+    /** Extract SessionInfo from a session file. If the file cannot be parsed, returns a corrupted-placeholder entry so the user sees
+     * the file exists rather than silently missing. */
     private suspend fun extractSessionInfo(fileName: String, lastModified: Long): SessionInfo {
         val result = storage.readSession(fileName)
         val record = result.getOrElse { error ->

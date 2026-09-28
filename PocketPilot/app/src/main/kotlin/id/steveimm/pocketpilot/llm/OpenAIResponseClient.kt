@@ -9,23 +9,16 @@ import com.openai.models.responses.ResponseInputItem
 import com.openai.models.responses.FunctionTool
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.trySendBlocking
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicReference
 
-/**
- * OpenAIResponseClient - LLM client using OpenAI Responses API.
- *
- * Features:
- * - Native function/tool calling via Responses API
- * - Automatic retry with exponential backoff on rate limits (429)
- * - Proper ResponseInputItem types for conversation history
- * - Native streaming support converted to LLMStreamEvent
- *
- * This is the cloud-based implementation that connects to OpenAI's API.
- */
+/** OpenAIResponseClient - LLM client using OpenAI Responses API. */
 class OpenAIResponseClient(
     apiKey: String,
     baseUrl: String? = null
@@ -51,12 +44,7 @@ class OpenAIResponseClient(
         Log.i(TAG, "OpenAIResponseClient created successfully")
     }
 
-    /**
-     * Call the Responses API with tool/function calling support (non-streaming).
-     *
-     * Uses proper ResponseInputItem types for conversation history,
-     * which enables correct function call/output correlation.
-     */
+    /** Call the Responses API with tool/function calling support (non-streaming). */
     override suspend fun chatWithTools(
         systemPrompt: String,
         inputItems: List<ResponseInputItem>,
@@ -74,11 +62,7 @@ class OpenAIResponseClient(
         }
     }
 
-    /**
-     * Streaming version of chatWithTools using the OpenAI SDK's streaming API.
-     *
-     * Converts OpenAI's ResponseStreamEvent to our unified LLMStreamEvent.
-     */
+    /** Streaming version of chatWithTools using the OpenAI SDK's streaming API. */
     override fun chatWithToolsStreaming(
         systemPrompt: String,
         inputItems: List<ResponseInputItem>,
@@ -90,11 +74,11 @@ class OpenAIResponseClient(
 
         val activeStream = AtomicReference<AutoCloseable?>(null)
 
-        val job = launch {
+        val job = launch(Dispatchers.IO) {
             val retryResult =
                 streamWithRetry(
                     tag = TAG,
-                    emitToFlow = { event -> trySend(event) }
+                    emitToFlow = { event -> trySendBlocking(event).getOrThrow() }
                 ) { attempt, emitter ->
                     var sawCompleted = false
                     var responseId: String? = null
@@ -110,6 +94,7 @@ class OpenAIResponseClient(
                         activeStream.set(streamResponse)
                         try {
                             streamResponse.use { sr ->
+                                currentCoroutineContext().ensureActive()
                                 sr.stream().forEach { event ->
                             when {
                                 event.isCreated() -> {
@@ -172,7 +157,7 @@ class OpenAIResponseClient(
                 }
 
             retryResult.closeFlow(
-                emitToFlow = { trySend(it) },
+                emitToFlow = { trySendBlocking(it).getOrThrow() },
                 closeFlow = { close() }
             )
         }
@@ -184,9 +169,7 @@ class OpenAIResponseClient(
         }
     }
 
-    /**
-     * Execute the Responses API call with tools.
-     */
+    /** Execute the Responses API call with tools. */
     private fun executeChatWithTools(
         systemPrompt: String,
         inputItems: List<ResponseInputItem>,
@@ -267,7 +250,6 @@ class OpenAIResponseClient(
     }
 
     override suspend fun cleanup() {
-        // No-op for cloud client, but kept suspend to match interface.
-        Log.d(TAG, "Cleanup requested (no-op for OpenAI client)")
+        withContext(Dispatchers.IO) { client.close() }
     }
 }

@@ -21,10 +21,8 @@ internal class ShizukuDisplayTransport(
                         )
         }
 
-        /**
-         * Stored callbacks from createVirtualDisplay, keyed by displayId.
-         * Required for setVirtualDisplaySurface on ROMs that validate callback tokens.
-         */
+        /** Stored callbacks from createVirtualDisplay, keyed by displayId. Required for setVirtualDisplaySurface on ROMs that validate
+         * callback tokens. */
         private val displayCallbacks = ConcurrentHashMap<Int, IVirtualDisplayCallback>()
 
         fun clear() {

@@ -20,11 +20,8 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-/**
- * Three rapid persists must collapse to a single write whose payload is the
- * latest keystroke — proves debounce + FIFO mutex defeats the out-of-order
- * race called out in codex review (AuthStore has no write lock).
- */
+/** Three rapid persists must collapse to a single write whose payload is the latest keystroke — proves debounce + FIFO mutex defeats
+ * the out-of-order race called out in codex review (AuthStore has no write lock). */
 @OptIn(ExperimentalCoroutinesApi::class)
 class LlmAuthApiKeyPersistTest {
 

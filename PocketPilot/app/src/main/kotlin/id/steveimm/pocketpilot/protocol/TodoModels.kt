@@ -1,16 +1,12 @@
 package id.steveimm.pocketpilot.protocol
 
-/**
- * Todo - A simple task item for agent planning.
- */
+/** Todo - A simple task item for agent planning. */
 data class Todo(
     val description: String,
     val status: TodoStatus
 )
 
-/**
- * TodoStatus - Status of a todo item.
- */
+/** TodoStatus - Status of a todo item. */
 enum class TodoStatus {
     PENDING,
     IN_PROGRESS,

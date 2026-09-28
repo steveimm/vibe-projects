@@ -2,19 +2,13 @@ package id.steveimm.pocketpilot.browser.cdp.shizuku
 
 import com.google.common.truth.Truth.assertThat
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
-/**
- * Coverage for [ShizukuChromeDevtoolsBridge].
- *
- * Each `setup_error_*` test exercises one of the failure modes the bridge must surface
- * distinctly. The happy-path tests prove that endpoint selection (`/json/version` vs
- * `/json/list`) actually drives the request — the FakeTransport routes by the request bytes
- * and asserts the path each call.
- */
+/** Coverage for [ShizukuChromeDevtoolsBridge]. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ShizukuChromeDevtoolsBridgeTest {
 
@@ -41,7 +35,20 @@ class ShizukuChromeDevtoolsBridgeTest {
         ioDispatcher = UnconfinedTestDispatcher(),
     )
 
-    // ── Setup errors ─────────────────────────────────────────────────────────
+    @Test
+    fun cancellation_does_not_start_the_wireless_fallback() = runTest {
+        val cancellation = CancellationException("Session closed")
+        val wireless = FakeTransport(TransportLabel.WIRELESS_ADB_SELF_PAIR, responses = defaultResponses())
+        val b = bridge(
+            userServiceProvider = FakeUserServiceProvider(error = cancellation),
+            wirelessAdbSelfPairTransport = wireless,
+        )
+
+        val error = assertFailsWith<CancellationException> { b.fetchVersion() }
+
+        assertThat(error).isSameInstanceAs(cancellation)
+        assertThat(wireless.calls).isEqualTo(0)
+    }
 
     @Test
     fun setup_error_shizuku_unavailable() = runTest {
@@ -142,8 +149,6 @@ class ShizukuChromeDevtoolsBridgeTest {
         val err = assertFailsWith<DevtoolsSetupError.MalformedResponse> { b.fetchVersion() }
         assertThat(err.message).contains("HTTP 400")
     }
-
-    // ── Happy paths and fallback ────────────────────────────────────────────
 
     @Test
     fun fetch_version_returns_parsed_payload_via_user_service_transport() = runTest {
@@ -289,9 +294,8 @@ class ShizukuChromeDevtoolsBridgeTest {
 
     @Test
     fun bridge_notbound_unknown_chrome_probe_defers_to_transport() = runTest {
-        // When socket is NotBound but Chrome state is Unknown, we must NOT lie that Chrome is
-        // not running. Defer to the transport so the actual failure mode surfaces with real
-        // diagnostics.
+        // When socket is NotBound but Chrome state is Unknown, we must NOT lie that Chrome is not running. Defer to the transport so the
+        // actual failure mode surfaces with real diagnostics.
         val user = FakeTransport(TransportLabel.USER_SERVICE, error = IOException("ECONNREFUSED"))
         val b = bridge(
             diagnostics = FakeDiagnostics(SocketProbeResult.NotBound, ChromeRunningResult.Unknown),
@@ -329,8 +333,6 @@ class ShizukuChromeDevtoolsBridgeTest {
             assertThat(e.message).contains("WIRELESS_ADB_SELF_PAIR")
         }
     }
-
-    // ── Helpers ─────────────────────────────────────────────────────────────
 
     private fun defaultResponses(): Map<String, ByteArray> = mapOf(
         ShizukuChromeDevtoolsBridge.JSON_VERSION_PATH to okResponse(versionJson()),
@@ -392,11 +394,8 @@ private class FakeDiagnostics(
     override fun isChromeRunning(): ChromeRunningResult = chrome
 }
 
-/**
- * Fake transport that routes responses by the GET path embedded in the request bytes. This
- * proves the bridge actually issues the right HTTP path for each method, instead of accepting
- * a single canned blob that could mask an endpoint-selection bug.
- */
+/** Fake transport that routes responses by the GET path embedded in the request bytes. This proves the bridge actually issues the right
+ * HTTP path for each method, instead of accepting a single canned blob that could mask an endpoint-selection bug. */
 private class FakeTransport(
     override val label: TransportLabel,
     private val responses: Map<String, ByteArray> = emptyMap(),

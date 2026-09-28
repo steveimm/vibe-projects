@@ -44,41 +44,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Free-text editor for a single memory file (`user.md`, `device.md`,
- * `apps/<pkg>.md`). Two variants:
- *
- *  - **bounded** (`bounded = true`): height capped at 240.dp + internal
- *    scroll. Renders an "↗ Open" affordance that is disabled while the
- *    editor is dirty (prevents the double-buffer race with a full-page
- *    editor).
- *  - **unbounded** (`bounded = false`): fills available space; used inside
- *    [MemoryFileEditorPage] and the standalone Settings → Memory page.
- *
- * Both observe [MemoryEditGate.memoryEditLocked]. When locked:
- *  - Save / Discard / Delete are disabled and a banner is shown.
- *  - The text field becomes `readOnly` so the buffer cannot drift further.
- *  - The typed buffer is held in memory across the lock so the user is not
- *    yanked out of EDIT mid-session.
- *
- * Locked → unlocked transition: the agent may have appended to the file on
- * disk while the editor was locked, so the buffer must be re-validated. We
- * always reload from disk; if the buffer was dirty, a one-line notice tells
- * the user their unsaved edits were dropped in favor of the agent's writes
- * (single-writer model — the agent owns memory during a session). The disk
- * read is async (withContext on the IO dispatcher); during that window a
- * `reloading` flag stands in for `locked` on every action surface so a
- * stale pre-session buffer cannot clobber the agent's append between the
- * lock flip and the buffer refresh.
- *
- * Action-time TOCTOU: every save/delete handler re-checks
- * `gate.isLockedNow()` inside the coroutine immediately before
- * [MemoryStore.write] / [MemoryStore.delete]. If a session began between
- * the click and the IO, the write aborts and a toast is shown — the file
- * on disk is never touched. `isLockedNow()` reads
- * `SessionCoordinator.currentSessionState.value` directly, bypassing the
- * map-collector tick that `memoryEditLocked` rides on.
- */
+/** Free-text editor for a single memory file (`user.md`, `device.md`, `apps/<pkg>.md`). Two variants: */
 
 internal const val MEMORY_EDIT_LOCKED_BANNER =
     "Session is open. Stop the session to edit memory."
@@ -115,11 +81,8 @@ internal fun MemoryFileEditor(
     onSaved: (() -> Unit)? = null,
     onDeleted: (() -> Unit)? = null,
     onAborted: (() -> Unit)? = null,
-    // One-shot signal: when this nonce changes (and the editor's saveKey
-    // matches the file being created), the editor enters EDIT mode after
-    // load. Used by App Access "+ Memory" so the user lands directly in
-    // an editable buffer. Consumed via a remembered "last-seen" nonce so
-    // recomposition won't re-trigger on subsequent renders.
+    // One-shot signal: when this nonce changes (and the editor's saveKey matches the file being created), the editor enters EDIT mode
+    // after load.
     startInEditOnce: String? = null,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
@@ -137,12 +100,7 @@ internal fun MemoryFileEditor(
     var writing by remember(saveKey) { mutableStateOf(false) }
     var inlineError by remember(saveKey) { mutableStateOf<String?>(null) }
     var showDeleteConfirm by remember(saveKey) { mutableStateOf(false) }
-    // Post-unlock disk reload is async (withContext on ioDispatcher). Between
-    // the locked→unlocked flip and the reload completing, the buffer is still
-    // the pre-session value: enabling Save in that window would clobber any
-    // agent appends. Treat `reloading` as functionally equivalent to `locked`
-    // for every action surface (buttons disabled, text field readOnly, IO-time
-    // re-check inside save/delete coroutines).
+    // Post-unlock disk reload is async (withContext on ioDispatcher).
     val reloadingState = remember(saveKey) { mutableStateOf(false) }
     var reloading by reloadingState
 
@@ -155,12 +113,7 @@ internal fun MemoryFileEditor(
         }
     }
 
-    // Locked → unlocked transition: the session that just ended may have
-    // appended to the file on disk while we were locked. Always reload to
-    // avoid clobbering agent writes when the user next hits Save. If the
-    // buffer was dirty, the unsaved edits are dropped and we surface a
-    // one-line toast — single-writer model means the agent owns memory
-    // during a session, and the user accepts that on session start.
+    // Locked → unlocked transition: the session that just ended may have appended to the file on disk while we were locked.
     var wasLocked by remember(saveKey) { mutableStateOf(locked) }
     LaunchedEffect(saveKey, locked, loadingDone) {
         if (!loadingDone) return@LaunchedEffect
@@ -182,11 +135,7 @@ internal fun MemoryFileEditor(
         }
     }
 
-    // Consume the one-shot start-in-edit signal exactly once per nonce. The
-    // remembered "last-seen" string survives recomposition but not process
-    // death — matching the saveKey-scoped buffer state semantics. We only
-    // honor the signal while unlocked, so a session that started during the
-    // creation race won't strand the user in an EDIT view of a locked file.
+    // Consume the one-shot start-in-edit signal exactly once per nonce.
     var lastSeenEditNonce by remember(saveKey) { mutableStateOf<String?>(null) }
     LaunchedEffect(saveKey, startInEditOnce, loadingDone, locked, reloading) {
         if (loadingDone && !locked && !reloading &&
@@ -212,12 +161,7 @@ internal fun MemoryFileEditor(
         coroutineScope.launch {
             val content = buffer
             val result: SaveResult? = withContext(ioDispatcher) {
-                // Action-time TOCTOU re-check: a session may have started or a
-                // post-unlock reload may still be in flight between the click
-                // and our IO dispatch. `gate.isLockedNow()` uses the
-                // synchronous SessionCoordinator snapshot; `reloadingState`
-                // is read fresh so a reload that armed after the click also
-                // aborts.
+                // Recheck session and reload locks immediately before IO because either can change after the click.
                 if (gate.isLockedNow() || reloadingState.value) null
                 else memoryStore.write(scope, packageName, content)
             }
@@ -289,11 +233,7 @@ internal fun MemoryFileEditor(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // readOnly when in VIEW mode OR while the gate is locked OR while a
-        // post-unlock disk reload is in flight. The locked/reloading cases
-        // keep the in-memory buffer stable so the reload has a clean
-        // dirty-vs-not signal and so the user can't type into a buffer that
-        // is about to be overwritten by the disk read.
+        // readOnly when in VIEW mode OR while the gate is locked OR while a post-unlock disk reload is in flight.
         val readOnly = mode == Mode.VIEW || locked || reloading
         val textFieldModifier = Modifier
             .fillMaxWidth()

@@ -62,30 +62,7 @@ private class TermuxBridgeManagerSessionBridge(
     override fun snapshot(enabled: Boolean): TermuxCapabilitySnapshot = manager.snapshot(enabled)
 }
 
-/**
- * SessionServices - Dependency Injection container for all session-scoped services.
- *
- * Pattern from Codex's SessionServices: A single object holding all services needed for a session.
- *
- * Each service has ONE clear responsibility:
- * - toolRegistry: Discovery and schema generation for tools
- * - toolRouter: Execution of tools with state machine (includes approval flow)
- * - historyManager: Conversation history with truncation/normalization
- * - sessionState: Planning state (todos + scratchpad)
- * - policyEngine: Decides ALLOW/DENY/ASK_USER for tool calls
- * - platform: Android-specific operations
- * - config: Session configuration
- *
- * Usage:
- * ```kotlin
- * // For OpenAI backend:
- * val services = SessionServices.create(config, platform, authStore = AuthStore(context), context = context, ...)
- *
- * // For local LLM backend:
- * val localConfig = config.copy(llm = SessionLlmConfig(backendType = LLMBackendType.LOCAL))
- * val services = SessionServices.create(localConfig, platform, authStore = null, context = context, ...)
- * ```
- */
+/** SessionServices - Dependency Injection container for all session-scoped services. */
 class SessionServices internal constructor(
         val toolRegistry: ToolRegistry,
         val toolRouter: ToolRouter,
@@ -112,16 +89,7 @@ class SessionServices internal constructor(
         private const val TAG = "SessionServices"
         private const val TERMUX_HEALTH_CHECK_TIMEOUT_MS = 2_000L
 
-        /**
-         * Create a new SessionServices container with all services initialized.
-         *
-         * @param config Session configuration
-         * @param platform Android platform abstraction
-         * @param authStore Unified credential store (OAuth + API keys). Null for test factories.
-         * @param baseUrlOverrides Debug-only per-provider base URL overrides.
-         * @param context Android context (required for LOCAL backend for model downloading)
-         * @return Fully initialized SessionServices
-         */
+        /** Create a new SessionServices container with all services initialized. */
         fun create(
                 config: SessionConfig,
                 platform: AndroidPlatform,
@@ -159,11 +127,7 @@ class SessionServices internal constructor(
                     bridge = TermuxBridgeManagerSessionBridge(termuxManager),
                     termuxShellEnabled = settingsStore.termuxShellEnabled.value
             )
-            // Merge user-pref tool exclusions (e.g. browser_script when off) into the canonical
-            // SessionConfig.excludedTools so EVERY downstream resolver sees the same gated set —
-            // bootstrapper for tool registration, SessionAgentRunner for the LLM allowlist, and
-            // any future readers of services.config. Without this, the runner would re-resolve
-            // from the pre-merge config and re-expose the gated tool to the LLM.
+            // Keep preference exclusions in the session config so tool registration and the LLM allowlist use the same set.
             val effectiveExcludedTools = config.excludedTools +
                     defaultToolsExcludedByPref(settingsStore.browserScriptEnabled.value)
             val effectiveConfig =
@@ -273,11 +237,7 @@ class SessionServices internal constructor(
                 sessionScope = scope,
                 traceRecorder = traceRecorder,
             )
-            // Skip registration when the user pref excludes browser_script. Defense in depth:
-            // the LLM allowlist already hides it via SessionConfig.excludedTools, but a missing
-            // registry entry also blocks any path that builds the tool list directly from the
-            // registry. We still construct BrowserSessionManager so the runtime path stays the
-            // same shape — its constructor is cheap and side-effect-free.
+            // Skip registration when the user pref excludes browser_script.
             if (browserScriptToolExcluded) {
                 Log.d(TAG, "Skipping BrowserScriptTool registration — excluded by pref")
                 return browserSessionManager
@@ -377,21 +337,19 @@ class SessionServices internal constructor(
         )
     }
 
-    /**
-     * Cleanup all services. Aggregates per-step failures rather than aborting,
-     * so callers can surface partial teardown errors.
-     */
+    /** Cleanup all services. Aggregates per-step failures rather than aborting, so callers can surface partial teardown errors. */
     suspend fun cleanup(): CleanupResult {
         Log.d(TAG, "Cleaning up SessionServices...")
 
-        toolRouter.cancelAll()
-        userResponseChannel.cancel()
-        historyManager.clear()
-
         val failures = mutableListOf<CleanupFailure>()
+        runStep("toolRouter.cancelAll", failures) { toolRouter.cancelAll() }
+        runStep("userResponseChannel.cancel", failures) { userResponseChannel.cancel() }
+        runStep("historyManager.clear", failures) { historyManager.clear() }
         runStep("browserSessionManager.close", failures) { browserSessionManager?.close() }
         runStep("platform.stop", failures) { platform.stop() }
-        runStep("llmClient.cleanup", failures) { llmClient.cleanup() }
+        runStep("llmClient.cleanup", failures) {
+            if (!llmClientFactory.owns(llmClient)) llmClient.cleanup()
+        }
         runStep("llmClientFactory.cleanupAll", failures) { llmClientFactory.cleanupAll() }
         // Flush/close trace last so we still capture teardown artifacts if needed
         runStep("traceRecorder.close", failures) { traceRecorder.close() }

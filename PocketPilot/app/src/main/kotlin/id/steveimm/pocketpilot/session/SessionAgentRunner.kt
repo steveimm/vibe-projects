@@ -53,18 +53,14 @@ internal class SessionAgentRunner(
     private var state = RunnerState(agent = null, agentJob = null, cancellationSignal = null)
     private val eventDispatcher = AgentEventDispatcher(sessionId = sessionId, eventEmitter = emitEvent)
 
-    /**
-     * Completion signals from the runner.
-     * AgentSession must consume these through its serialized lifecycle path —
-     * the runner never mutates session state directly.
-     */
+    /** Completion signals from the runner. AgentSession must consume these through its serialized lifecycle path — the runner never
+     * mutates session state directly. */
     val completions = Channel<AgentStopReason>(capacity = Channel.BUFFERED)
 
     fun start(taskInput: String, taskId: String) {
         val agentDef = AgentDefRegistry.main
-        // Read excludedTools from services.config — SessionServices.create stamps the user-pref
-        // tool gates (e.g. browser_script when off) into that copy. The local `config` field is
-        // the original, pre-merge SessionConfig and would re-expose the gated tool to the LLM.
+        // Read excludedTools from services.config — SessionServices.create stamps the user-pref tool gates (e.g. browser_script when off)
+        // into that copy. The local `config` field is the original, pre-merge SessionConfig and would re-expose the gated tool to the LLM.
         val resolvedAgentDef: ResolvedAgentRole = agentDef.resolve(
             snapshot = services.termuxSnapshot,
             excludedTools = services.config.excludedTools.toToolNames()
@@ -234,14 +230,7 @@ internal class SessionAgentRunner(
     }
 }
 
-/**
- * Caches the two compaction prompt strings loaded from `assets/prompts/`. Loaded
- * on first use; safe to call from any thread. Compactor's two prompt args are
- * passed as strings (not asset paths) so unit tests can construct a Compactor
- * without an AssetManager. If the assets are unreadable (e.g. relaxed-mock
- * Context in tests), both strings fall back to empty — tests don't exercise
- * compaction, and a non-empty asset is a release-build invariant.
- */
+/** Caches the two compaction prompt strings loaded from `assets/prompts/`. */
 internal object CompactionPromptCache {
     private const val TAG = "CompactionPromptCache"
     private const val INITIAL_PATH = "prompts/compaction_initial.md"
@@ -267,12 +256,7 @@ internal object CompactionPromptCache {
     }
 }
 
-/**
- * Build a [Compactor] for an agent using its resolved model. Falls back to a
- * synthetic [ModelEntry] (cloud-default context window) when the catalog
- * doesn't have the model (legacy/local path); the session [LLMClient] is used
- * in that case, mirroring [id.steveimm.pocketpilot.agent.AgentModelResolver].
- */
+/** Build a [Compactor] for an agent using its resolved model. */
 internal fun buildCompactor(
     modelName: String,
     modelCatalog: ModelCatalog,

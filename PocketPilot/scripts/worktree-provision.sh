@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Worktree provision hook — called by orchestrate's worktree-create.sh after `git worktree add`.
-# cwd = the new worktree. Symlinks per-machine untracked files from the main checkout so
-# `./gradlew` and `scripts/debug-run.sh` work immediately.
+# Worktree provision hook: called by orchestrate's worktree-create.sh after `git worktree add`.
+
 set -euo pipefail
 
 common_git_dir="$(git rev-parse --git-common-dir)"

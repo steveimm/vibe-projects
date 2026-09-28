@@ -133,8 +133,6 @@ class MemoryStoreTest {
         assertThat(entry).matches("""- \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} .+\] .+""")
     }
 
-    // --- Raw API ---
-
     @Test
     fun `read returns raw file content unchanged when written via write`() {
         val freeText = """
@@ -196,8 +194,6 @@ class MemoryStoreTest {
         assertThat(store.listAppPackages()).isEmpty()
     }
 
-    // --- Sanitation ---
-
     @Test
     fun `sanitation folds newlines to space before stripping control chars`() {
         store.appendUserFact("foo\nbar")
@@ -228,8 +224,6 @@ class MemoryStoreTest {
         assertThat(store.appendUserFact("   \n\t  ")).isFalse()
         assertThat(store.read(MemoryScope.USER)).isNull()
     }
-
-    // --- Append insertion rules ---
 
     @Test
     fun `append on new file creates full skeleton with entry under target`() {
@@ -328,10 +322,8 @@ class MemoryStoreTest {
         assertThat(content).doesNotContain("z".repeat(300))
     }
 
-    // --- Multibyte (UTF-8) cap contract ---
-    // '日' = 3 UTF-8 bytes. These tests pick sizes where a char-count check
-    // would give a different verdict than the byte-count check, so any
-    // regression to char-based sizing trips immediately.
+    // '日' = 3 UTF-8 bytes. These tests pick sizes where a char-count check would give a different verdict than the byte-count check, so
+    // any regression to char-based sizing trips immediately.
 
     @Test
     fun `write accepts multibyte content whose byte length is under cap`() {
@@ -362,9 +354,8 @@ class MemoryStoreTest {
     @Test
     fun `append rejects multibyte entry whose resulting file exceeds byte cap despite low char count`() {
         val store2 = MemoryStore(memoryDir, maxFileBytes = 200)
-        // 70 chars '日' = 210 UTF-8 bytes content; plus skeleton + "- [timestamp] " ≈ 70 bytes
-        // → resulting file ≈ 280 bytes, over the 200 byte cap.
-        // Char count of the resulting file is ≈ 140 chars, under a 200-as-chars cap.
+        // 70 chars '日' = 210 UTF-8 bytes content; plus skeleton + "- [timestamp] " ≈ 70 bytes → resulting file ≈ 280 bytes, over the 200
+        // byte cap. Char count of the resulting file is ≈ 140 chars, under a 200-as-chars cap.
         assertThat(store2.appendUserPreference("日".repeat(70))).isFalse()
         assertThat(store2.read(MemoryScope.USER)).isNull()
     }

@@ -7,9 +7,7 @@ import com.openai.models.responses.EasyInputMessage
 import com.openai.models.responses.ResponseInputItem
 import kotlinx.coroutines.CancellationException
 
-/**
- * Result of a compaction attempt. See [Compactor] state machine.
- */
+/** Result of a compaction attempt. See [Compactor] state machine. */
 sealed class CompactionOutcome {
     /** Token estimate below the trigger threshold — nothing to do. */
     data object Skipped : CompactionOutcome()
@@ -27,34 +25,7 @@ sealed class CompactionOutcome {
     data class Failed(val reason: String) : CompactionOutcome()
 }
 
-/**
- * Context-window-triggered auto-compaction.
- *
- * One instance per `Agent` (so subagents get their own model/client/window). On each
- * agent turn the runner calls [maybeCompact]; if the running token estimate is above
- * `contextWindow − reserveTokens` the older prefix is summarized via a clean LLM
- * call and the history is CAS-swapped to:
- *
- *     [USER_INTENT("Goal: <currentGoal>"), COMPACTION_SUMMARY(summary), ...kept]
- *
- * The cut point is chosen by [findSafeCutPoint]: walk back accumulating tokens until
- * `keepRecentTokens` is met, then snap to a safe boundary. A [ResponseItem.FunctionCall]
- * and its paired [ResponseItem.FunctionCallOutput] (matched by callId) form an atomic
- * group — the cut never splits a pair, so an output is never orphaned and a call is
- * never summarized away from its output.
- *
- * Concurrency: snapshot read + CAS replace via [HistoryManager.replaceAllIfRevision].
- * If a supplement is added while the LLM is summarizing, the revision moves and we
- * return [CompactionOutcome.Stale]; the next turn re-evaluates with the supplement
- * included.
- *
- * Cancellation: [CancellationException] from the LLM call propagates — it is *not*
- * a compaction failure and must not be conflated with one.
- *
- * The two prompt strings are passed in (not loaded inside this class) so the unit
- * tests can run without an `AssetManager`. Production wiring reads
- * `assets/prompts/compaction_initial.md` and `assets/prompts/compaction_update.md`.
- */
+/** Context-window-triggered auto-compaction. */
 class Compactor(
     private val llmClient: LLMClient,
     private val model: ModelEntry,
@@ -71,23 +42,15 @@ class Compactor(
         private const val TAG = "Compactor"
     }
 
-    /**
-     * Token threshold above which compaction runs. Exposed for diagnostics / tests.
-     */
+    /** Token threshold above which compaction runs. Exposed for diagnostics / tests. */
     val triggerTokens: Long get() = model.contextWindow.toLong() - reserveTokens
 
-    /**
-     * Proactive compaction. Runs only if the estimated token count exceeds
-     * `contextWindow − reserveTokens`.
-     */
+    /** Proactive compaction. Runs only if the estimated token count exceeds `contextWindow − reserveTokens`. */
     suspend fun maybeCompact(currentGoal: String, history: HistoryManager): CompactionOutcome =
         compact(currentGoal, history, keepRecentTokens, force = false)
 
-    /**
-     * Reactive compaction, used after the provider rejects with `prompt_too_long`.
-     * Runs unconditionally with a smaller `keepRecentTokens` (half the proactive
-     * value) to free more space.
-     */
+    /** Reactive compaction, used after the provider rejects with `prompt_too_long`. Runs unconditionally with a smaller
+     * `keepRecentTokens` (half the proactive value) to free more space. */
     suspend fun forceCompactNow(currentGoal: String, history: HistoryManager): CompactionOutcome =
         compact(currentGoal, history, (keepRecentTokens / 2).coerceAtLeast(1), force = true)
 
@@ -147,27 +110,7 @@ class Compactor(
         }
     }
 
-    /**
-     * Choose the cut index `c` such that `items[0..c)` is summarized and
-     * `items[c..]` is kept verbatim.
-     *
-     * Groups a [ResponseItem.FunctionCall] with the [ResponseItem.FunctionCallOutput]
-     * carrying the same callId into an atomic group. A cut never falls between
-     * a FunctionCall and its paired FunctionCallOutput — that would orphan the
-     * output (or summarize away the call its output is referencing). When the
-     * kept-tokens threshold lands inside such a group the cut snaps backward to
-     * the start of that group, so the call + output stay together in the kept
-     * tail.
-     *
-     * Valid cut points:
-     *   - Any [ResponseItem.Message]
-     *   - The index of a [ResponseItem.FunctionCall] (the call is included in
-     *     the kept tail along with its paired output to the right).
-     *
-     * Returns `items.size` when no valid cut produces any summarizable prefix
-     * (caller treats this as [CompactionOutcome.NothingToCompact]). Returns `0`
-     * when total tokens are below `keepTokens`.
-     */
+    /** Choose the cut index `c` such that `items[0..c)` is summarized and `items[c..]` is kept verbatim. */
     internal fun findSafeCutPoint(items: List<ResponseItem>, keepTokens: Long): Int {
         if (items.isEmpty()) return 0
 
@@ -184,8 +127,7 @@ class Compactor(
         }
         if (hitIdx < 0) return 0
 
-        // Walk backward from hitIdx looking for the largest safe cut.
-        // Safe iff cutting at c does not leave an FCO in items[c..) whose
+        // Walk backward from hitIdx looking for the largest safe cut. Safe iff cutting at c does not leave an FCO in items[c..) whose
         // paired FC is in items[0..c).
         for (c in hitIdx downTo 1) {
             if (!unpairedFcoAt[c]) return c
@@ -193,12 +135,8 @@ class Compactor(
         return items.size
     }
 
-    /**
-     * `unpairedFcoAt[i] == true` iff `items[i..n)` contains a
-     * [ResponseItem.FunctionCallOutput] whose paired [ResponseItem.FunctionCall]
-     * (matched by callId / id) lives in `items[0..i)`. Computed in a single
-     * reverse pass.
-     */
+    /** `unpairedFcoAt[i] == true` iff `items[i..n)` contains a [ResponseItem.FunctionCallOutput] whose paired
+     * [ResponseItem.FunctionCall] (matched by callId / id) lives in `items[0..i)`. Computed in a single reverse pass. */
     private fun computeUnpairedFcoAt(items: List<ResponseItem>): BooleanArray {
         val n = items.size
         val result = BooleanArray(n + 1)

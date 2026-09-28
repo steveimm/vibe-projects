@@ -5,13 +5,8 @@ import id.steveimm.pocketpilot.llm.ModelCatalog
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-/**
- * Regression for Sub 1c Codex review HIGH #1: auto-flip must wait until the
- * `other-custom` catalog row reflects the CURRENT normalized UI values, not the
- * mere presence of any other-custom row. A stale row from a previous valid
- * config would otherwise let a mid-edit launch hit the old endpoint with the
- * new key.
- */
+/** Regression for Sub 1c Codex review HIGH #1: auto-flip must wait until the `other-custom` catalog row reflects the CURRENT normalized
+ * UI values, not the mere presence of any other-custom row. */
 class LlmAuthOtherAutoFlipTest {
 
     @Test
@@ -147,9 +142,8 @@ class LlmAuthOtherAutoFlipTest {
 
     @Test
     fun `normalizes trailing slash before comparing`() {
-        // Catalog stores normalized URL (no trailing slash). User input still has it.
-        // Normalization must be applied before equality check, else legitimate flips
-        // would be blocked.
+        // Catalog stores normalized URL (no trailing slash). User input still has it. Normalization must be applied before equality check,
+        // else legitimate flips would be blocked.
         val flip = shouldAutoFlipToOtherCustom(
             selectedProvider = LLMProvider.OTHER,
             apiKeyText = "sk-x",

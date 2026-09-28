@@ -51,9 +51,8 @@ class ChromeCdpProbeTest {
 
     @Test
     fun `parse accepts the exact line shape grep returns from a nubia P0110 device`() {
-        // Real /proc/net/unix line captured from nubia P0110 / Android 16. Multiple processes
-        // can hold @chrome_devtools_remote at once (Chrome + system_server peers); the parser
-        // must accept any of them.
+        // Real /proc/net/unix line captured from nubia P0110 / Android 16. Multiple processes can hold @chrome_devtools_remote at once
+        // (Chrome + system_server peers); the parser must accept any of them.
         val procNetUnix =
             "0000000000000000: 00000002 00000000 00010000 0001 01 19097746 @chrome_devtools_remote\n"
 
@@ -85,9 +84,8 @@ class ChromeCdpProbeTest {
 
     @Test
     fun `probe returns NotBound when grep exits 1 with empty stdout`() = runTest {
-        // grep convention: exit 1 means "file readable, no match". This is a definitive
-        // NotBound — DON'T downgrade to Unknown or the user gets confusing "could not check"
-        // text when in reality the answer is "Chrome simply hasn't bound the socket yet".
+        // grep convention: exit 1 means "file readable, no match". This is a definitive NotBound — DON'T downgrade to Unknown or the user
+        // gets confusing "could not check" text when in reality the answer is "Chrome simply hasn't bound the socket yet".
         val procFile = java.io.File.createTempFile("chrome_probe_nomatch", ".txt").apply { delete() }
         val shell = StaticShell(ShellRunner.ShellResult(exitCode = 1, stdout = ""))
         val probe = ChromeCdpProbe(procNetUnix = procFile, shellRunner = shell)

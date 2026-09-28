@@ -3,12 +3,7 @@ package id.steveimm.pocketpilot.platform.virtualdisplay
 import android.view.Display
 import android.view.MotionEvent
 
-/**
- * Handles touch forwarding from VirtualDisplayViewerActivity into the virtual display.
- *
- * Primary path uses raw MotionEvent injection with display targeting. Fallback path uses shell
- * input commands when hidden display-id injection is unavailable.
- */
+/** Handles touch forwarding from VirtualDisplayViewerActivity into the virtual display. */
 class VirtualDisplayViewerTouchHandler(
         private val config: VirtualDisplayConfig,
         private val displayIdProvider: () -> Int,

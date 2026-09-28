@@ -392,8 +392,6 @@ class OverlayLocationPolicyTest {
         assertThat(unlocked).isFalse()
     }
 
-    // ── Capsule overlay touchability ──
-
     @Test
     fun `capsule overlay is not touchable when hidden`() {
         assertThat(shouldCapsuleOverlayBeTouchable(CapsuleMode.Hidden)).isFalse()
@@ -426,10 +424,8 @@ class OverlayLocationPolicyTest {
 
     @Test
     fun `onMainAppHidden preserves VD_VIEWER`() {
-        // Regression guard: VirtualDisplayViewerActivity.onStart calls onViewerOpened()
-        // BEFORE MainActivity.onStop. Clobbering VD_VIEWER → OTHER_APP would lose the
-        // edge glow on the first viewer entry until a second user action re-triggered
-        // onViewerOpened.
+        // Regression guard: VirtualDisplayViewerActivity.onStart calls onViewerOpened() BEFORE MainActivity.onStop. Clobbering VD_VIEWER →
+        // OTHER_APP would lose the edge glow on the first viewer entry until a second user action re-triggered onViewerOpened.
         assertThat(resolveLocationOnMainAppHidden(OverlayUserLocation.VD_VIEWER))
             .isEqualTo(OverlayUserLocation.VD_VIEWER)
     }

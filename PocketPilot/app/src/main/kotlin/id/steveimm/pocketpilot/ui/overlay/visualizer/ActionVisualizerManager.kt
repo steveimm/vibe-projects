@@ -7,9 +7,7 @@ import id.steveimm.pocketpilot.ui.overlay.compose.VisualizerOverlayHost
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleContext
 import kotlinx.coroutines.flow.StateFlow
 
-/**
- * Compose-backed touch action visualizer.
- */
+/** Compose-backed touch action visualizer. */
 class ActionVisualizerManager(
     context: AccessibilityService,
     lifecycleOwner: LifecycleOwner,

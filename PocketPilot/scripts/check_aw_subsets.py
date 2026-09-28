@@ -1,26 +1,19 @@
 #!/usr/bin/env python3
-"""Validate AW subset groups against fullset and against each other.
-
-Checks:
-1) Every task in each subset group exists in aw_fullset.txt.
-2) Subset groups have no overlaps with each other.
-
-Usage:
-  python3 scripts/check_aw_subsets.py
-  python3 scripts/check_aw_subsets.py \
-    --fullset eval/config/aw_fullset.txt \
-    --groups eval/config/aw_subset_group_1.txt eval/config/aw_subset_group_2.txt
-"""
 
 from __future__ import annotations
 
 import argparse
+import sys
 from itertools import combinations
 from pathlib import Path
-import sys
 
 
 def read_tasks(path: Path) -> list[str]:
+    """Read task names, ignoring blank lines and full-line comments.
+
+    Args:
+        path: File path to read or write.
+    """
     tasks: list[str] = []
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
@@ -31,6 +24,11 @@ def read_tasks(path: Path) -> list[str]:
 
 
 def find_duplicates(items: list[str]) -> list[str]:
+    """Return repeated task names in sorted order.
+
+    Args:
+        items: Task names to check.
+    """
     seen: set[str] = set()
     dupes: set[str] = set()
     for item in items:
@@ -42,7 +40,8 @@ def find_duplicates(items: list[str]) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    """Validate that task subsets exist in the full set and do not overlap."""
+    parser = argparse.ArgumentParser(description="Validate AndroidWorld task subsets against the full set and each other")
     parser.add_argument(
         "--fullset",
         type=Path,

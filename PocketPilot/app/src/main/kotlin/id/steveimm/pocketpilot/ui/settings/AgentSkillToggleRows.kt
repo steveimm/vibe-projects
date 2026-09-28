@@ -42,22 +42,7 @@ import java.io.File
 private const val TAG = "AgentSkillToggleRows"
 private const val NEXT_SESSION_SUBTITLE = "Takes effect next session"
 
-/**
- * Per-skill toggle rows inside the Agent Behavior → Tools section.
- *
- * Each row shows the skill name + a Switch that mirrors / mutates
- * [AppSettingsStore.disabledAgentSkills] (Switch ON = NOT in the disabled set).
- * An Info icon opens a viewer with the full SKILL.md prompt body.
- *
- * Activation timing is **next session**: [id.steveimm.pocketpilot.agent.cognition.skills.AgentSkillManager]
- * snapshots the disabled set at session start. When [isSessionRunning] is true, a
- * disabled skill's subtitle reads "Takes effect next session" to make the persisted
- * state obvious to the user.
- *
- * Bundled skills (e.g. browser-use) are installed once on first composition via
- * [SessionServices.installBundledAgentSkills] on [Dispatchers.IO] so that opening
- * Settings before any session has run still discovers the bundled catalog.
- */
+/** Per-skill toggle rows inside the Agent Behavior → Tools section. */
 @Composable
 internal fun AgentSkillToggleRows(
     isSessionRunning: Boolean = false,
@@ -175,10 +160,8 @@ private fun SkillContentDialog(
     }
 }
 
-/**
- * Result of loading a skill: the catalog entry plus the raw SKILL.md body
- * (front-matter stripped) so the viewer can show the prompt content directly.
- */
+/** Result of loading a skill: the catalog entry plus the raw SKILL.md body (front-matter stripped) so the viewer can show the prompt
+ * content directly. */
 internal data class AgentSkillLoaderResult(
     val entry: AgentSkillEntry,
     val content: String,
@@ -218,10 +201,8 @@ private fun readSkillBody(filePath: String): String = try {
     ""
 }
 
-/**
- * Strip the YAML-style `---` ... `---` front-matter block from a SKILL.md so the viewer
- * shows just the prompt body. Matches what the agent runtime injects into the model.
- */
+/** Strip the YAML-style `---` ... `---` front-matter block from a SKILL.md so the viewer shows just the prompt body. Matches what the
+ * agent runtime injects into the model. */
 private fun stripFrontMatter(raw: String): String {
     val trimmed = raw.trimStart()
     if (!trimmed.startsWith("---")) return raw

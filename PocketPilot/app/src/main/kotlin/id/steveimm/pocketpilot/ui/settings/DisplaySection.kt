@@ -20,14 +20,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
-/**
- * Display Mode section for Agent Behavior settings. Renders a single [ToolSettingsCard]
- * "Virtual Display" toggle driven by [virtualDisplayCardState].
- *
- * Toggle ON routes through [VirtualDisplayToggleGate] (Shizuku availability + permission gate);
- * toggle OFF is unconditional. Deep-link writes via `MainActivityIntentApplier` bypass the gate
- * and a [LaunchedEffect] wipes any stale gate error once `persistedMode` flips to VD.
- */
+/** Display Mode section for Agent Behavior settings. Renders a single [ToolSettingsCard] "Virtual Display" toggle driven by
+ * [virtualDisplayCardState]. */
 @Composable
 internal fun DisplaySection(
     persistedMode: PlatformMode,
@@ -61,10 +55,7 @@ internal fun DisplaySection(
         null
     } else when (cardState.rowAction) {
         VirtualDisplayRowAction.RetryEnable -> {
-            {
-                gate.clearError()
-                gate.setEnabled(true)
-            }
+            { gate.setEnabled(true) }
         }
         VirtualDisplayRowAction.RequestPermission -> {
             {
@@ -94,10 +85,7 @@ internal fun DisplaySection(
                 status = cardState.status,
                 switchChecked = cardState.switchChecked,
                 switchEnabled = cardState.switchEnabled,
-                onSwitchChange = { value ->
-                    gate.clearError()
-                    gate.setEnabled(value)
-                },
+                onSwitchChange = gate::setEnabled,
                 onRowClick = rowAction,
                 onRowClickLabel = rowClickLabel,
                 switchModifier = Modifier.testTag("display-mode-switch"),

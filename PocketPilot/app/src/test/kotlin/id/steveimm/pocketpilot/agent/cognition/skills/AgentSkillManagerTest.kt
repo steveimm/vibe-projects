@@ -366,8 +366,6 @@ class AgentSkillManagerTest {
         assertThat((results[0] as ActivationResult.Success).name).isEqualTo("date-math")
     }
 
-    // ===== Disabled skill filtering =====
-
     @Test
     fun `disabled skill is omitted from catalog prompt`() {
         createSkill("alpha", "Alpha description")
@@ -419,9 +417,8 @@ class AgentSkillManagerTest {
     @Test
     fun `disabled set for unknown skill still returns Disabled`() {
         val manager = AgentSkillManager(tempDir.root, disabledNames = setOf("ghost"))
-        // Disabled gate is checked before catalog lookup, so a name that is
-        // in the disabled set always returns Disabled — keeps the gate cheap
-        // and the failure message stable.
+        // Disabled gate is checked before catalog lookup, so a name that is in the disabled set always returns Disabled — keeps the gate
+        // cheap and the failure message stable.
         val result = manager.activate("ghost")
         assertThat(result).isInstanceOf(ActivationResult.Disabled::class.java)
     }
@@ -440,10 +437,7 @@ class AgentSkillManagerTest {
 
     @Test
     fun `toggle does not affect already-constructed manager`() {
-        // Verifies "next session" semantics: changes to a disabled-set after
-        // the manager is constructed cannot leak into the running session.
-        // The manager takes a defensive copy, so even handing it a mutable
-        // set and mutating after construction must not affect activation.
+        // A running session keeps its disabled-skill snapshot even if the original mutable set changes.
         createSkill("alpha", "Alpha", "A body.")
         val mutableDisabled = mutableSetOf<String>()
         val manager = AgentSkillManager(tempDir.root, disabledNames = mutableDisabled)

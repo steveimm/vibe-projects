@@ -7,9 +7,7 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 
-/**
- * Lifecycle and saved-state owner for Compose windows attached from AccessibilityService.
- */
+/** Lifecycle and saved-state owner for Compose windows attached from AccessibilityService. */
 class ServiceLifecycleOwner : LifecycleOwner, SavedStateRegistryOwner {
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateController = SavedStateRegistryController.create(this)

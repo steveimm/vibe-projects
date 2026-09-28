@@ -189,14 +189,7 @@ internal class ChatEventReducer(
         insertUserTurn(event.text, event.timestamp)
     }
 
-    /**
-     * Universal "user message splits the conversation" operation.
-     *
-     * Used by both [handleTaskStarted] (new task after idle) and
-     * [handleSupplement] (mid-task user amendment). The chat UI doesn't
-     * distinguish between the two — both close the current agent segment,
-     * insert a user bubble, and open a fresh agent segment.
-     */
+    /** Universal "user message splits the conversation" operation. */
     private fun insertUserTurn(text: String, timestamp: Long, agentId: String? = null) {
         // 1. Close current agent message (idempotent if already Complete or absent)
         updateLastAgentMessage { msg ->
@@ -204,9 +197,8 @@ internal class ChatEventReducer(
             msg.copy(
                 state = AgentMessageState.Complete,
                 rowState = if (msg.rowState == RowState.Error) RowState.Error else RowState.Complete,
-                // Only stamp on the Live/Waiting → terminal transition; preserve
-                // existing values (including null on legacy rows that never had
-                // their completion timestamp persisted).
+                // Only stamp on the Live/Waiting → terminal transition; preserve existing values (including null on legacy rows that never
+                // had their completion timestamp persisted).
                 completedTimestamp = if (sealing) msg.completedTimestamp ?: timestamp else msg.completedTimestamp
             )
         }
@@ -240,8 +232,7 @@ internal class ChatEventReducer(
         val index = messages.indexOfLast { it is ChatMessage.Agent }
         if (index >= 0) {
             val current = messages[index] as ChatMessage.Agent
-            // Drop late streaming events that arrive after the row sealed
-            // (e.g. ThoughtUpdate emitted after TaskCompleted). Sealed rows
+            // Drop late streaming events that arrive after the row sealed (e.g. ThoughtUpdate emitted after TaskCompleted). Sealed rows
             // are immutable per Track A spec §5.
             if (current.state == AgentMessageState.Complete) return
             messages[index] = transform(current)

@@ -9,16 +9,8 @@ import com.openai.models.responses.ResponseInputItem
 import com.openai.models.responses.ResponseInputText
 import org.junit.Test
 
-/**
- * Unit tests for ChatCompletionInterop.
- *
- * These tests validate conversion of OpenAI Responses-API types to Chat-Completions-API
- * message params, which is the real external contract for provider routing (OpenRouter /
- * chat-style models).
- */
+/** Unit tests for ChatCompletionInterop. */
 class ChatCompletionInteropTest {
-
-    // ── Assistant text + grouped tool calls ──────────────────────────────
 
     @Test
     fun `assistant text followed by function calls merges into one assistant message`() {
@@ -89,8 +81,6 @@ class ChatCompletionInteropTest {
         assertThat(toolCalls[0].asFunction().function().name()).isEqualTo("swipe")
     }
 
-    // ── Multimodal user content ──────────────────────────────────────────
-
     @Test
     fun `multimodal user content with text and image converts to content parts`() {
         val imageUrl = "data:image/png;base64,aGVsbG8="
@@ -148,8 +138,6 @@ class ChatCompletionInteropTest {
         assertThat(result).hasSize(1)
         assertThat(result[0].asUser().content().asText()).isEqualTo("hello world")
     }
-
-    // ── System-role normalization ────────────────────────────────────────
 
     @Test
     fun `system and developer roles normalize to system message and unknown role falls through to user`() {
@@ -215,8 +203,6 @@ class ChatCompletionInteropTest {
         assertThat(msg.isSystem()).isTrue()
         assertThat(msg.asSystem().content().asText()).isEqualTo("you are a helper")
     }
-
-    // ── Function call input / output ─────────────────────────────────────
 
     @Test
     fun `function call followed by function call output converts to assistant tool_calls and tool-role message`() {

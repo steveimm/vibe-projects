@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import argparse
 import copy
-from dataclasses import asdict, dataclass
-from datetime import datetime
 import json
 import logging
 import os
-from pathlib import Path
 import socket
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
@@ -21,7 +21,6 @@ from eval.aw_bridge.runner_execution import (
     run_one_task_instance,
 )
 from eval.aw_bridge.runner_preflight import (
-    TASK_REQUIRED_PACKAGES,
     create_env,
     resolve_snapshot_policy,
     run_android_world_connectivity_preflight,
@@ -29,10 +28,9 @@ from eval.aw_bridge.runner_preflight import (
     should_run_emulator_setup_retry,
 )
 from eval.aw_bridge.task_loader import (
-    TaskInstance,
     build_task_instances,
     ensure_android_world_importable,
-    load_task_names_from_file,
+    resolve_selected_tasks,
 )
 
 
@@ -82,6 +80,7 @@ _DEFAULT_CONFIG_PATH = Path("eval/config/default.yaml")
 
 
 def main() -> None:
+    """Run the selected benchmark tasks and write results with aggregate metrics."""
     args = _parse_args()
     workspace_root = Path(__file__).resolve().parents[2]
     config = load_config(workspace_root, args)
@@ -109,7 +108,7 @@ def main() -> None:
     per_task_jsonl = run_dir / "per_task.jsonl"
 
     try:
-        selected_tasks = _resolve_selected_tasks(workspace_root, args)
+        selected_tasks = resolve_selected_tasks(workspace_root, args.tasks, args.tasks_file)
         task_instances = build_task_instances(
             suite_family=config.suite_family,
             n_task_combinations=config.n_task_combinations,
@@ -124,10 +123,7 @@ def main() -> None:
             task_instances = run_preflight_checks(config, task_instances, env)
         except Exception as exc:  # pylint: disable=broad-exception-caught
             if should_run_emulator_setup_retry(config, exc):
-                logging.warning(
-                    "Preflight failed with recoverable setup issue; retrying once with "
-                    "perform_emulator_setup=true"
-                )
+                logging.warning("Preflight failed with recoverable setup issue; retrying once with perform_emulator_setup=true")
                 env.close()
                 config.perform_emulator_setup = True
                 env = create_env(config)
@@ -149,12 +145,8 @@ def main() -> None:
 
         bridge = NativeAgentBridge(config.bridge)
         for task_idx, task_instance in enumerate(task_instances):
-            task_bridge_cfg = resolve_task_bridge_config(
-                config.bridge, task_instance.task_name, config.task_overrides
-            )
-            task_bridge = bridge if task_bridge_cfg is config.bridge else NativeAgentBridge(
-                task_bridge_cfg
-            )
+            task_bridge_cfg = resolve_task_bridge_config(config.bridge, task_instance.task_name, config.task_overrides)
+            task_bridge = bridge if task_bridge_cfg is config.bridge else NativeAgentBridge(task_bridge_cfg)
             final_result = run_one_task_instance(
                 bridge=task_bridge,
                 suite_family=config.suite_family,
@@ -173,11 +165,7 @@ def main() -> None:
         env.close()
 
     summary = summarize_results(final_results)
-    safe_config = asdict(config)
-    if "bridge" in safe_config and "api_keys" in safe_config["bridge"]:
-        safe_config["bridge"]["api_keys"] = {
-            k: "***" for k in (safe_config["bridge"]["api_keys"] or {})
-        }
+    safe_config = _safe_config_for_logging(config)
     summary_payload = {
         "run_timestamp": timestamp,
         "suite_family": config.suite_family,
@@ -195,19 +183,22 @@ def main() -> None:
     print(json.dumps(summary_payload["metrics"], ensure_ascii=True, indent=2))
 
 
-def _resolve_selected_tasks(workspace_root: Path, args: argparse.Namespace) -> list[str] | None:
-    if args.tasks:
-        return [t.strip() for t in args.tasks.split(",") if t.strip()]
-    if args.tasks_file:
-        return load_task_names_from_file((workspace_root / args.tasks_file).resolve())
-    return None
-
-
 def _resolve_config_path(workspace_root: Path, config_path: str | Path) -> Path:
+    """Resolve a configuration path relative to the project root.
+
+    Args:
+        workspace_root: Project root used to resolve relative paths.
+        config_path: Runner configuration file path.
+    """
     return (workspace_root / Path(config_path)).resolve()
 
 
 def _read_config_mapping(path: Path) -> dict[str, Any]:
+    """Load a YAML configuration and reject non-mapping content.
+
+    Args:
+        path: File path to read or write.
+    """
     if not path.exists():
         raise FileNotFoundError(f"Config not found: {path}")
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -220,6 +211,12 @@ def _deep_merge_mappings(
     base: dict[str, Any],
     override: dict[str, Any],
 ) -> dict[str, Any]:
+    """Recursively apply overrides without mutating either source mapping.
+
+    Args:
+        base: Settings to preserve unless overridden.
+        override: Settings to apply over the base mapping.
+    """
     merged = copy.deepcopy(base)
     for key, override_value in override.items():
         base_value = merged.get(key)
@@ -242,6 +239,12 @@ def load_config_dict(workspace_root: Path, config_path: str | Path) -> dict[str,
 
 
 def load_config(workspace_root: Path, args: argparse.Namespace) -> RunnerConfig:
+    """Load configuration and apply the command-line overrides.
+
+    Args:
+        workspace_root: Project root used to resolve relative paths.
+        args: Parsed command-line options or command arguments.
+    """
     raw = load_config_dict(workspace_root, args.config)
 
     suite_family = args.suite or raw.get("suite_family", "android_world")
@@ -250,18 +253,10 @@ def load_config(workspace_root: Path, args: argparse.Namespace) -> RunnerConfig:
     bridge_cfg = raw.get("bridge", {})
 
     n_task_combinations = (
-        args.n_task_combinations
-        if args.n_task_combinations is not None
-        else int(runner_cfg.get("n_task_combinations", 1))
+        args.n_task_combinations if args.n_task_combinations is not None else int(runner_cfg.get("n_task_combinations", 1))
     )
-    task_random_seed = (
-        args.task_random_seed
-        if args.task_random_seed is not None
-        else int(runner_cfg.get("task_random_seed", 30))
-    )
-    snapshot_policy = resolve_snapshot_policy(
-        args.snapshot_policy or runner_cfg.get("snapshot_policy", "auto_repair")
-    ).value
+    task_random_seed = args.task_random_seed if args.task_random_seed is not None else int(runner_cfg.get("task_random_seed", 30))
+    snapshot_policy = resolve_snapshot_policy(args.snapshot_policy or runner_cfg.get("snapshot_policy", "auto_repair")).value
 
     bridge = BridgeConfig(
         package_name=str(bridge_cfg.get("package_name", "id.steveimm.pocketpilot")),
@@ -316,6 +311,12 @@ def load_config(workspace_root: Path, args: argparse.Namespace) -> RunnerConfig:
 
 
 def load_config_from_path(workspace_root: Path, config_path: str | Path) -> RunnerConfig:
+    """Load runner configuration using default command-line options.
+
+    Args:
+        workspace_root: Project root used to resolve relative paths.
+        config_path: Runner configuration file path.
+    """
     return load_config(
         workspace_root,
         argparse.Namespace(
@@ -334,6 +335,7 @@ def load_config_from_path(workspace_root: Path, config_path: str | Path) -> Runn
 
 
 def _parse_args() -> argparse.Namespace:
+    """Parse command-line options for this tool."""
     parser = argparse.ArgumentParser(description="AndroidWorld bridge runner")
     parser.add_argument("--config", default="eval/config/default.yaml")
     parser.add_argument("--suite", default=None)
@@ -358,6 +360,11 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _setup_logging(log_path: Path) -> None:
+    """Send runner logs to the console and the run log file.
+
+    Args:
+        log_path: Destination for runner log records.
+    """
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
@@ -369,6 +376,11 @@ def _setup_logging(log_path: Path) -> None:
 
 
 def _nullable_str(value: Any) -> str | None:
+    """Normalize an optional value to a nonblank string.
+
+    Args:
+        value: Input value to validate or normalize.
+    """
     if value is None:
         return None
     text = str(value).strip()
@@ -376,6 +388,11 @@ def _nullable_str(value: Any) -> str | None:
 
 
 def _nullable_path_str(value: Any) -> str | None:
+    """Expand an optional path string, preserving missing values.
+
+    Args:
+        value: Input value to validate or normalize.
+    """
     text = _nullable_str(value)
     if text is None:
         return None
@@ -409,6 +426,13 @@ def _validate_required_api_key(
     api_keys: dict[str, str],
     workspace_root: Path | None = None,
 ) -> None:
+    """Reject runs missing credentials required by the configured models.
+
+    Args:
+        config: Runner settings for the target device and benchmark.
+        api_keys: Available provider credentials and endpoint settings.
+        workspace_root: Project root used to resolve relative paths.
+    """
     backend = config.bridge.llm_backend.strip().lower()
     if backend == "local":
         return
@@ -421,14 +445,18 @@ def _validate_required_api_key(
         if config.bridge.executor_model.strip():
             models.append(config.bridge.executor_model.strip())
         raise RuntimeError(
-            "Missing required credential/config value(s) for selected model(s): "
-            f"{', '.join(missing)}. Models={models}. "
-            "Add them to .env or environment variables."
+            f"Missing required credential/config value(s) for selected model(s): {', '.join(missing)}. Models={models}. Add them to .env or environment variables."
         )
     _validate_openai_base_url(api_keys, required_keys)
 
 
 def _validate_openai_base_url(api_keys: dict[str, str], required_keys: set[str]) -> None:
+    """Reject OpenAI configurations that route chat requests to the wrong endpoint.
+
+    Args:
+        api_keys: Available provider credentials and endpoint settings.
+        required_keys: Credential names needed by the selected models.
+    """
     if "OPENAI_API_KEY" not in required_keys:
         return
 
@@ -453,12 +481,17 @@ def _validate_openai_base_url(api_keys: dict[str, str], required_keys: set[str])
         if port == 18080 and host == "127.0.0.1":
             hint = " Start the local proxy or establish the SSH tunnel before running eval."
         raise RuntimeError(
-            "OPENAI_BASE_URL is configured but not reachable from the eval host: "
-            f"{base_url} ({host}:{port}).{hint}"
+            f"OPENAI_BASE_URL is configured but not reachable from the eval host: {base_url} ({host}:{port}).{hint}"
         ) from exc
 
 
 def _resolve_required_api_keys_for_models(config: RunnerConfig, workspace_root: Path) -> set[str]:
+    """Find credential names required by the configured model selections.
+
+    Args:
+        config: Runner settings for the target device and benchmark.
+        workspace_root: Project root used to resolve relative paths.
+    """
     model_catalog_path = workspace_root / "app" / "src" / "main" / "assets" / "llm_models.json"
     if not model_catalog_path.is_file():
         raise RuntimeError(f"Model catalog not found: {model_catalog_path}")
@@ -485,15 +518,17 @@ def _resolve_required_api_keys_for_models(config: RunnerConfig, workspace_root: 
         provider = str(entry.get("provider", "")).strip().upper()
         env_name = _PROVIDER_REQUIRED_API_KEY.get(provider)
         if not env_name:
-            raise RuntimeError(
-                f"Unsupported provider '{provider}' for model '{model_name}' "
-                f"in {model_catalog_path}"
-            )
+            raise RuntimeError(f"Unsupported provider '{provider}' for model '{model_name}' in {model_catalog_path}")
         required.add(env_name)
     return required
 
 
 def _safe_config_for_logging(config: RunnerConfig) -> dict[str, Any]:
+    """Serialize runner settings with API credentials redacted.
+
+    Args:
+        config: Runner settings for the target device and benchmark.
+    """
     safe = asdict(config)
     bridge = safe.get("bridge")
     if isinstance(bridge, dict) and "api_keys" in bridge:

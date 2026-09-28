@@ -1,27 +1,17 @@
 #!/usr/bin/env python3
-"""Generate scoreboard from eval results.
-
-Scans eval/results/*/per_task.jsonl, builds a task × run matrix.
-Writes:
-  projects/autotune/meta/scoreboard.json  (SOT)
-  projects/autotune/meta/scoreboard.md   (rendered view)
-
-Usage:
-  python scripts/scoreboard.py [--run-id <id>[,<id>...]]
-"""
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RESULTS_DIR = REPO_ROOT / "eval" / "results"
 OUTPUT_DIR = REPO_ROOT / "projects" / "autotune" / "meta"
 
 
-def load_runs(run_ids: list[str] | None = None) -> dict:
+def load_runs(run_ids: list[str] | None = None) -> dict[str, list[dict[str, Any]]]:
     """Load per_task.jsonl from each run directory. Returns {run_id: [task_results]}."""
     runs = {}
     if not RESULTS_DIR.exists():
@@ -48,7 +38,7 @@ def derive_status(scores: list[float]) -> str:
     """Derive task status from score history."""
     if not scores:
         return "new"
-    recent = scores[-min(3, len(scores)):]
+    recent = scores[-min(3, len(scores)) :]
     successes = sum(1 for s in recent if s >= 1.0)
     if successes == len(recent):
         return "fixed"
@@ -63,7 +53,7 @@ def derive_status(scores: list[float]) -> str:
     return "stuck" if successes == 0 else "improving"
 
 
-def build_scoreboard(runs: dict) -> dict:
+def build_scoreboard(runs: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
     """Build scoreboard JSON from run data."""
     tasks: dict[str, dict] = {}
     run_summaries: dict[str, dict] = {}
@@ -98,7 +88,6 @@ def build_scoreboard(runs: dict) -> dict:
             "rate": round(passed / total, 3) if total > 0 else 0.0,
         }
 
-    # Compute recent_rate and status for each task
     for name, task_data in tasks.items():
         scores_by_run = []
         for run_id in sorted_run_ids:
@@ -113,7 +102,7 @@ def build_scoreboard(runs: dict) -> dict:
     return {"tasks": dict(sorted(tasks.items())), "runs": run_summaries}
 
 
-def render_markdown(scoreboard: dict) -> str:
+def render_markdown(scoreboard: dict[str, Any]) -> str:
     """Render scoreboard as markdown table."""
     lines = ["# Scoreboard", ""]
 
@@ -123,12 +112,10 @@ def render_markdown(scoreboard: dict) -> str:
         r = scoreboard["runs"][run_id]["round"]
         run_labels[run_id] = f"R{r}"
 
-    # Header
     cols = ["Task"] + [run_labels[r] for r in sorted_run_ids] + ["Recent", "Status"]
     lines.append("| " + " | ".join(cols) + " |")
     lines.append("|" + "|".join(["---"] * len(cols)) + "|")
 
-    # Rows
     for name, task_data in sorted(scoreboard["tasks"].items()):
         row = [name]
         for run_id in sorted_run_ids:
@@ -141,7 +128,6 @@ def render_markdown(scoreboard: dict) -> str:
         row.append(task_data["status"])
         lines.append("| " + " | ".join(row) + " |")
 
-    # Run summary
     lines.extend(["", "## Run Summary", ""])
     lines.append("| Run | Date | Tasks | Passed | Rate |")
     lines.append("|-----|------|-------|--------|------|")
@@ -149,15 +135,14 @@ def render_markdown(scoreboard: dict) -> str:
         info = scoreboard["runs"][run_id]
         date = f"{run_id[:4]}-{run_id[4:6]}-{run_id[6:8]}"
         rate_pct = f"{info['rate'] * 100:.1f}%"
-        lines.append(
-            f"| R{info['round']} ({run_id}) | {date} | {info['total']} | {info['passed']} | {rate_pct} |"
-        )
+        lines.append(f"| R{info['round']} ({run_id}) | {date} | {info['total']} | {info['passed']} | {rate_pct} |")
 
     lines.append("")
     return "\n".join(lines)
 
 
-def main():
+def main() -> None:
+    """Build JSON and Markdown scoreboards from saved evaluation runs."""
     parser = argparse.ArgumentParser(description="Generate autotune scoreboard")
     parser.add_argument(
         "--run-id",

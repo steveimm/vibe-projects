@@ -166,8 +166,6 @@ class SessionCoordinatorTest {
         assertThat(resultAfter).isEqualTo(SubmitResult.NO_SESSION)
     }
 
-    // --- SubmitResult guard coverage (every state branch in submit) ---
-
     @Test
     fun `submit with Created state sends immediately`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
@@ -218,8 +216,6 @@ class SessionCoordinatorTest {
         assertThat(result).isEqualTo(SubmitResult.QUEUED)
         coVerify(exactly = 0) { session.submit(Op.UserInput("takeover-input")) }
     }
-
-    // --- Drain on busy→idle transition: FIFO + state-change abort ---
 
     @Test
     fun `state observer drains queued inputs in FIFO order on Running to Idle`() = runTest {
@@ -321,8 +317,6 @@ class SessionCoordinatorTest {
         coVerify(exactly = 0) { session.submit(Op.UserInput("x")) }
     }
 
-    // --- CreateResult coverage ---
-
     @Test
     fun `concurrent createAndSubmit returns LockBusy`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
@@ -350,8 +344,6 @@ class SessionCoordinatorTest {
         coVerify { session.submit(Op.UserInput("first")) }
         coVerify(exactly = 0) { session.submit(Op.UserInput("second")) }
     }
-
-    // --- attach / detach side-effects ---
 
     @Test
     fun `detachSession clears state without shutting down session`() = runTest {
@@ -410,8 +402,6 @@ class SessionCoordinatorTest {
         coVerify { secondSession.submit(Op.UserInput("queued-on-second")) }
     }
 
-    // --- consumeDeadSessionFileName when no death recorded ---
-
     @Test
     fun `consumeDeadSessionFileName returns null when no session has died`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
@@ -436,8 +426,6 @@ class SessionCoordinatorTest {
 
         assertThat(coordinator.consumeDeadSessionFileName()).isNull()
     }
-
-    // --- Additional FSM edge coverage ---
 
     @Test
     fun `clearSession swallows shutdown exception and still tears down`() = runTest {
@@ -534,8 +522,6 @@ class SessionCoordinatorTest {
         coVerify(exactly = 1) { session.submit(Op.UserInput("q1")) }
         coVerify(exactly = 1) { session.submit(Op.UserInput("q2")) }
     }
-
-    // --- currentSessionState: source of truth for MemoryEditGate ---
 
     @Test
     fun `currentSessionState starts as null`() = runTest {
@@ -679,8 +665,6 @@ class SessionCoordinatorTest {
         assertThat(coordinator.currentSessionState.value).isNull()
     }
 
-    // --- Round-2 fixes: exception path, detach tracking, attach snapshot ---
-
     @Test
     fun `createAndSubmit resets currentSessionState to null when create throws`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
@@ -710,9 +694,8 @@ class SessionCoordinatorTest {
 
     @Test
     fun `attachSession synchronously snapshots session state so the flow is not stale`() {
-        // No runTest — assert the snapshot WITHOUT advancing the dispatcher.
-        // The launched collector cannot have run yet; only the synchronous
-        // snapshot inside attachSession can have populated the flow.
+        // No runTest — assert the snapshot WITHOUT advancing the dispatcher. The launched collector cannot have run yet; only the
+        // synchronous snapshot inside attachSession can have populated the flow.
         val dispatcher = StandardTestDispatcher()
         val scope = TestScope(dispatcher)
         val coordinator = SessionCoordinator(scope)

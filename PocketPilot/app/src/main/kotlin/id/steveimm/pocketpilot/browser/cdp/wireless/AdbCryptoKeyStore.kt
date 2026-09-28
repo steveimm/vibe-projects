@@ -27,11 +27,8 @@ import org.bouncycastle.crypto.util.PublicKeyFactory
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 
-/**
- * Persistent RSA-2048 keypair + self-signed X.509 cert used by the wireless ADB
- * self-pair flow. Mirrors AOSP `crypto/x509_generator.cpp` semantics so adbd
- * accepts the same material for both the pairing handshake and the mTLS adb session.
- */
+/** Persistent RSA-2048 keypair + self-signed X.509 cert used by the wireless ADB self-pair flow. Mirrors AOSP
+ * `crypto/x509_generator.cpp` semantics so adbd accepts the same material for both the pairing handshake and the mTLS adb session. */
 class AdbCryptoKeyStore(private val baseDir: File) {
 
     data class Material(
@@ -49,13 +46,7 @@ class AdbCryptoKeyStore(private val baseDir: File) {
         return material
     }
 
-    /**
-     * Base64-encoded 524-byte AOSP `android_pubkey` blob for our RSA-2048 key.
-     *
-     * adbd writes lines of `<base64-pubkey> <name>` into `/data/misc/adb/adb_keys` after a
-     * successful pair, where `<base64-pubkey>` is exactly the value returned here. Substring-
-     * matching the file against this string is how we decide whether re-pairing is needed.
-     */
+    /** Base64-encoded 524-byte AOSP `android_pubkey` blob for our RSA-2048 key. */
     fun androidPubkeyBase64(): String {
         val pub = loadOrCreate().keyPair.public as RSAPublicKey
         return Base64.getEncoder().encodeToString(AndroidPubkey.encode(pub))

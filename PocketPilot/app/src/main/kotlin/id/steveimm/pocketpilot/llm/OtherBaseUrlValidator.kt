@@ -30,9 +30,8 @@ object OtherBaseUrlValidator {
             return Result.failure(IllegalArgumentException("Base URL must include a host"))
         }
 
-        // Reject sensitive segments WITHOUT echoing them back. Even encoded
-        // (raw*) forms count — a user-info segment is a secret regardless of
-        // url-encoding, and we don't want it persisted to the disco cache.
+        // Reject sensitive segments WITHOUT echoing them back. Even encoded (raw*) forms count — a user-info segment is a secret
+        // regardless of url-encoding, and we don't want it persisted to the disco cache.
         if (!uri.rawUserInfo.isNullOrEmpty()) {
             return Result.failure(
                 IllegalArgumentException("Base URL must not contain credentials (user:pass@…)")

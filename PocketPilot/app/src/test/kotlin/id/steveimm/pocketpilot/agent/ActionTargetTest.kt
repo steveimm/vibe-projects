@@ -6,8 +6,6 @@ import org.junit.Test
 
 class ActionTargetTest {
 
-    // --- decodeActionTarget: basic target variants ---
-
     @Test
     fun `text target decoded`() {
         val args = JSONObject("""{"text":"Save","text_index":2}""")
@@ -69,8 +67,6 @@ class ActionTargetTest {
         assertThat(target.bounds).isNull()
     }
 
-    // --- decodeActionTarget: type action text resolution ---
-
     @Test
     fun `type action with input_text uses text as target`() {
         val args = JSONObject("""{"action":"type","input_text":"hello","text":"Search","text_index":1}""")
@@ -115,8 +111,6 @@ class ActionTargetTest {
         assertThat(ActionDescriptionFormatter.format(call))
             .isEqualTo("Click text \"Save\" (index 0)")
     }
-
-    // --- ActionDescriptionFormatter integration ---
 
     @Test
     fun `formatter click with text target`() {
@@ -181,8 +175,6 @@ class ActionTargetTest {
         assertThat(ActionDescriptionFormatter.format(call))
             .isEqualTo("Long press text \"Item\" (index 0) for 2000ms")
     }
-
-    // --- Coordinate-hint normalization: formatter priority alignment ---
 
     @Test
     fun `formatter element_index plus xy displays element-targeted`() {

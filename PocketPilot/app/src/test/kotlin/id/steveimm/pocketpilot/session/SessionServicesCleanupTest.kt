@@ -23,6 +23,7 @@ import id.steveimm.pocketpilot.tool.ToolRegistry
 import id.steveimm.pocketpilot.tool.ToolRouter
 import id.steveimm.pocketpilot.trace.NoopTraceRecorder
 import id.steveimm.pocketpilot.trace.TraceRecorder
+import com.google.common.truth.Truth.assertThat
 import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.ResponseInputItem
 import id.steveimm.pocketpilot.llm.LLMStreamEvent
@@ -193,6 +194,27 @@ class SessionServicesCleanupTest {
         assert(connectionFactory.connections.single().closeCalls == 1) {
             "expected CDP connection close once, got ${connectionFactory.connections.single().closeCalls}"
         }
+    }
+
+    @Test
+    fun `cleanup still closes resources when cancelling tools and clearing history fail`() = runBlocking {
+        val router = mockk<ToolRouter>(relaxed = true)
+        every { router.cancelAll() } throws IllegalStateException("cancel failed")
+        val history = mockk<HistoryManager>(relaxed = true)
+        every { history.clear() } throws IllegalStateException("history failed")
+        val client = mockk<LLMClient>(relaxed = true)
+        val factory = mockk<LLMClientFactory>(relaxed = true)
+        val trace = mockk<TraceRecorder>(relaxed = true)
+        val services = buildServices(client, factory, trace).copy(toolRouter = router, historyManager = history)
+
+        val result = services.cleanup()
+
+        assertThat(result).isInstanceOf(CleanupResult.PartialFailure::class.java)
+        val failures = (result as CleanupResult.PartialFailure).failures
+        assertThat(failures.map { it.step }).containsExactly("toolRouter.cancelAll", "historyManager.clear").inOrder()
+        coVerify { client.cleanup() }
+        coVerify { factory.cleanupAll() }
+        coVerify { trace.close() }
     }
 
     private fun buildServices(

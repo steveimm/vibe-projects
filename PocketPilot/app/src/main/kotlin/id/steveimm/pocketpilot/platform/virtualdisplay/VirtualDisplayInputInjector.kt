@@ -14,16 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
-/**
- * Input injector for a virtual display via Shizuku.
- *
- * Handles tap, long-press, swipe, and system button injection. Encapsulates MotionEvent/KeyEvent
- * construction and display targeting.
- *
- * Long-press and swipe are cancellation-safe: if the coroutine is cancelled after DOWN is
- * delivered, a best-effort ACTION_CANCEL is sent to release the target UI from pressed/dragging
- * state.
- */
+/** Input injector for a virtual display via Shizuku. */
 class VirtualDisplayInputInjector(
         private val shizuku: ShizukuClient,
         private val displayIdProvider: () -> Int
@@ -230,10 +221,7 @@ class VirtualDisplayInputInjector(
         return event
     }
 
-    /**
-     * Inject one raw MotionEvent action to the virtual display.
-     * Used by the Viewer to forward user touch input (down/move/up stream).
-     */
+    /** Inject one raw MotionEvent action to the virtual display. Used by the Viewer to forward user touch input (down/move/up stream). */
     fun injectMotionAction(
             action: Int,
             x: Float,
@@ -256,10 +244,8 @@ class VirtualDisplayInputInjector(
         return ok
     }
 
-    /**
-     * Whether setDisplayId reflection actually works (not just exists).
-     * Verified once by round-tripping a displayId on a test MotionEvent.
-     */
+    /** Whether setDisplayId reflection actually works (not just exists). Verified once by round-tripping a displayId on a test
+     * MotionEvent. */
     private val displayIdInjectionVerified: Boolean by lazy {
         val method = setDisplayIdMethod ?: return@lazy false
         try {
@@ -283,8 +269,6 @@ class VirtualDisplayInputInjector(
     }
 
     fun supportsDisplayIdInjection(): Boolean = displayIdInjectionVerified
-
-    // ---- Shell fallback helpers (used when setDisplayId reflection is unavailable) ----
 
     private fun shellTap(displayId: Int, x: Int, y: Int): ActionResult {
         val exitCode = shizuku.executeShellCommand(
@@ -371,10 +355,8 @@ class VirtualDisplayInputInjector(
         }
     }
 
-    /**
-     * Cached reflection handle for InputEvent.setDisplayId(int), which is @hide in AOSP.
-     * HiddenApiBypass exemptions must be active (called in VirtualDisplayPlatform.start()).
-     */
+    /** Cached reflection handle for InputEvent.setDisplayId(int), which is @hide in AOSP. HiddenApiBypass exemptions must be active
+     * (called in VirtualDisplayPlatform.start()). */
     private val setDisplayIdMethod: java.lang.reflect.Method? by lazy {
         runCatching {
                     android.view.InputEvent::class.java.getMethod(

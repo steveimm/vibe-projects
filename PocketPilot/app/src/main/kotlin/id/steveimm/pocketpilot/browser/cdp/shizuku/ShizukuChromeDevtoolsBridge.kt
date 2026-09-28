@@ -1,25 +1,21 @@
 package id.steveimm.pocketpilot.browser.cdp.shizuku
 
 import id.steveimm.pocketpilot.browser.cdp.wireless.WirelessAdbRelayHost
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
 
-/**
- * Bridge from CDP traffic to a working device-side transport. Cascade is
- * USER_SERVICE → WIRELESS_ADB_SELF_PAIR; failures map to distinct [DevtoolsSetupError] codes
- * so the capability gate can render an actionable reason instead of a generic IOException.
- */
+/** Bridge from CDP traffic to a working device-side transport. Cascade is USER_SERVICE → WIRELESS_ADB_SELF_PAIR; failures map to
+ * distinct [DevtoolsSetupError] codes so the capability gate can render an actionable reason instead of a generic IOException. */
 class ShizukuChromeDevtoolsBridge(
     private val status: ShizukuStatusProvider,
     private val diagnostics: DevtoolsDiagnostics,
     private val userServiceProvider: UserServiceProvider,
     private val wirelessAdbSelfPairTransport: DevtoolsSocketTransport? = null,
-    /**
-     * Per-session unguessable token expected on the WS Upgrade `X-PocketPilot-Token` header by
-     * both relays. Required: with no token, any local app can dial 127.0.0.1:<relayPort> and
-     * drive Chrome's CDP. See [id.steveimm.pocketpilot.browser.cdp.RelayAuthToken].
-     */
+    /** Per-session unguessable token expected on the WS Upgrade `X-PocketPilot-Token` header by both relays. Required: with no token,
+     * any local app can dial 127.0.0.1:<relayPort> and drive Chrome's CDP. See [id.steveimm.pocketpilot.browser.cdp.RelayAuthToken]. */
     private val relayAuthToken: String,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val requestTimeoutMs: Int = DEFAULT_TIMEOUT_MS,
@@ -33,12 +29,8 @@ class ShizukuChromeDevtoolsBridge(
         }
     }
 
-    /**
-     * Tracks which transport satisfied the most recent successful HTTP fetch so
-     * [resolveWebSocketHost] can pick the right WS URL transformation. Both transports terminate
-     * on Chrome's port-less abstract socket; the bridge rewrites `webSocketDebuggerUrl`'s host
-     * onto a transport-specific TCP relay so OkHttp can reach it from the app UID.
-     */
+    /** Tracks which transport satisfied the most recent successful HTTP fetch so [resolveWebSocketHost] can pick the right WS URL
+     * transformation. */
     @Volatile
     private var lastSuccessfulTransport: TransportLabel? = null
 
@@ -57,11 +49,8 @@ class ShizukuChromeDevtoolsBridge(
     /** Run preflight only — useful for explicit diagnostics endpoints. Throws on failure. */
     suspend fun preflight(): Unit = withContext(ioDispatcher) { runPreflight() }
 
-    /**
-     * Resolve the host:port the CDP WebSocket should connect to. Chrome reflects our
-     * `Host: localhost` request header verbatim, so the WS URL has no port — point it at the
-     * transport-owned device-side TCP relay instead.
-     */
+    /** Resolve the host:port the CDP WebSocket should connect to. Chrome reflects our `Host: localhost` request header verbatim, so the
+     * WS URL has no port — point it at the transport-owned device-side TCP relay instead. */
     suspend fun resolveWebSocketHost(): String? = withContext(ioDispatcher) {
         when (lastSuccessfulTransport) {
             TransportLabel.USER_SERVICE -> {
@@ -95,7 +84,7 @@ class ShizukuChromeDevtoolsBridge(
             DevtoolsHttpProtocol.parseHttpBody(
                 userServiceProvider.obtain().exchange(request, requestTimeoutMs)
             )
-        }
+        }.onFailure { if (it is CancellationException) throw it }
         userResponse.getOrNull()?.let {
             lastSuccessfulTransport = TransportLabel.USER_SERVICE
             return it
@@ -105,7 +94,7 @@ class ShizukuChromeDevtoolsBridge(
             ?: throw toUserServiceError(userError)
         val wirelessResponse = runCatching {
             DevtoolsHttpProtocol.parseHttpBody(wireless.exchange(request, requestTimeoutMs))
-        }
+        }.onFailure { if (it is CancellationException) throw it }
         wirelessResponse.getOrNull()?.let {
             lastSuccessfulTransport = TransportLabel.WIRELESS_ADB_SELF_PAIR
             return it
@@ -120,7 +109,7 @@ class ShizukuChromeDevtoolsBridge(
         else -> DevtoolsSetupError.UserServiceSocketInaccessible(error)
     }
 
-    private suspend fun runPreflight() {
+    private suspend fun runPreflight(): Unit = runInterruptible(ioDispatcher) {
         // Distinguish "DevTools socket missing" vs "Chrome not running" only when the probes are
         // *certain* — Unknown means defer to the transport so we never lie about device state.
         val socketProbe = diagnostics.isDevtoolsSocketBound()
@@ -150,11 +139,8 @@ interface ShizukuStatusProvider {
     fun hasPermission(): Boolean
 }
 
-/**
- * Side-channel diagnostics so the bridge can distinguish "Chrome not running" from "DevTools
- * socket missing" without depending on `connect()`'s `ECONNREFUSED` ambiguity. Tri-state
- * results so we never claim certainty we don't have.
- */
+/** Side-channel diagnostics so the bridge can distinguish "Chrome not running" from "DevTools socket missing" without depending on
+ * `connect()`'s `ECONNREFUSED` ambiguity. Tri-state results so we never claim certainty we don't have. */
 interface DevtoolsDiagnostics {
     fun isDevtoolsSocketBound(): SocketProbeResult
     fun isChromeRunning(): ChromeRunningResult

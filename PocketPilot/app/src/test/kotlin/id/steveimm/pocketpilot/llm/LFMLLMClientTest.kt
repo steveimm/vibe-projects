@@ -26,21 +26,7 @@ import org.junit.Before
 import org.junit.Test
 import java.io.File
 
-/**
- * Characterization tests for LFMLLMClient.ModelLoadingState transitions.
- *
- * Source of truth: doc/main/state_machines/local_model_loading.md
- *
- * The FSM has five states (NotLoaded, Downloading(p), Loading, Ready, Error)
- * and the following transitions:
- *   NotLoaded/Error -> Downloading(0f)         (loadModel, modelRunner == null)
- *   Downloading(p)  -> Downloading(p')         (progress callback, p < 1f)
- *   Downloading(*)  -> Loading                 (progress callback, p >= 1f)
- *   Loading         -> Ready                   (downloader.loadModel returns)
- *   any-in-progress -> Error(message)          (exception thrown)
- *   Ready           -> NotLoaded               (cleanup())
- *   guard: loadModel no-ops when modelRunner != null
- */
+/** Characterization tests for LFMLLMClient.ModelLoadingState transitions. */
 class LFMLLMClientTest {
 
     private lateinit var context: Context
@@ -71,8 +57,6 @@ class LFMLLMClientTest {
         return slot
     }
 
-    // ---------- Initial state ----------
-
     @Test
     fun `initial state is NotLoaded`() {
         val client = LFMLLMClient(context)
@@ -80,8 +64,6 @@ class LFMLLMClientTest {
             .isEqualTo(LFMLLMClient.ModelLoadingState.NotLoaded)
         assertThat(client.isReady()).isFalse()
     }
-
-    // ---------- NotLoaded -> Downloading(0f) -> ... -> Ready ----------
 
     @Test
     fun `loadModel emits Downloading(0f), progress updates, Loading, then Ready`() = runBlocking {
@@ -122,8 +104,6 @@ class LFMLLMClientTest {
         assertThat(client.isReady()).isTrue()
     }
 
-    // ---------- Downloading -> Loading boundary at exactly 1f ----------
-
     @Test
     fun `progress exactly 1f transitions Downloading to Loading`() = runBlocking {
         val slot = slot<Function1<ProgressData, Unit>>()
@@ -148,8 +128,6 @@ class LFMLLMClientTest {
             it is LFMLLMClient.ModelLoadingState.Downloading && it.progress >= 1f
         }).isTrue()
     }
-
-    // ---------- Downloading -> Error (exception during download phase) ----------
 
     @Test
     fun `exception during download transitions to Error and rethrows`() = runBlocking {
@@ -176,8 +154,6 @@ class LFMLLMClientTest {
         assertThat(observed.last())
             .isEqualTo(LFMLLMClient.ModelLoadingState.Error("network down"))
     }
-
-    // ---------- Loading -> Error (exception after progress hit 1f) ----------
 
     @Test
     fun `exception after Loading state transitions to Error`() = runBlocking {
@@ -207,8 +183,6 @@ class LFMLLMClientTest {
         assertThat(client.getLoadingState())
             .isEqualTo(LFMLLMClient.ModelLoadingState.Error("runtime init failed"))
     }
-
-    // ---------- Error -> Downloading on retry ----------
 
     @Test
     fun `loadModel after Error retries from Downloading(0f) and reaches Ready`() = runBlocking {
@@ -247,8 +221,6 @@ class LFMLLMClientTest {
         assertThat(client.isReady()).isTrue()
     }
 
-    // ---------- Guard: loadModel is idempotent when modelRunner != null ----------
-
     @Test
     fun `loadModel is no-op when model already loaded`() = runBlocking {
         captureProgressLambda()
@@ -271,8 +243,6 @@ class LFMLLMClientTest {
             )
         }
     }
-
-    // ---------- Ready -> NotLoaded via cleanup ----------
 
     @Test
     fun `cleanup from Ready unloads runner and returns to NotLoaded`() = runBlocking {
@@ -298,8 +268,6 @@ class LFMLLMClientTest {
         coVerify(exactly = 0) { runner.unload() }
     }
 
-    // ---------- After cleanup, loadModel can run again (NotLoaded -> Ready) ----------
-
     @Test
     fun `loadModel after cleanup re-runs full download`() = runBlocking {
         captureProgressLambda()
@@ -319,8 +287,6 @@ class LFMLLMClientTest {
         }
     }
 
-    // ---------- Error.message defaults when exception message is null ----------
-
     @Test
     fun `Error state uses Unknown error when exception message is null`() = runBlocking {
         coEvery {
@@ -338,8 +304,6 @@ class LFMLLMClientTest {
         assertThat(client.getLoadingState())
             .isEqualTo(LFMLLMClient.ModelLoadingState.Error("Unknown error"))
     }
-
-    // ---------- Final-callback ordering: Ready always last on success ----------
 
     @Test
     fun `onProgress receives Downloading then Loading then Ready in order`() = runBlocking {
@@ -368,22 +332,16 @@ class LFMLLMClientTest {
         ).inOrder()
     }
 
-    // ---------- maxOutputTokens cap enforcement ----------
-    //
-    // Leap SDK exposes no native max-output-tokens knob, so the local client
-    // enforces the cap client-side by truncating the streamed text once the
-    // running estimate (~4 chars / token) exceeds it. This test verifies the
-    // cap is honored end-to-end: an oversized provider chunk is truncated
-    // mid-stream, and subsequent chunks are dropped.
+    // Leap SDK exposes no native max-output-tokens knob, so the local client enforces the cap client-side by truncating the streamed text
+    // once the running estimate (~4 chars / token) exceeds it.
 
     @Test
     fun `chatWithTools truncates streamed text once maxOutputTokens cap is hit`() = runBlocking {
         captureProgressLambda()
         val conversation = mockk<Conversation>(relaxed = true)
         every { runner.createConversationFromHistory(any<List<ChatMessage>>()) } returns conversation
-        // Two chunks: first carries 100 chars, second another 100. With a 10-token
-        // cap (~40 chars), only ~40 chars of the first chunk should survive and the
-        // second chunk should be dropped entirely.
+        // Two chunks: first carries 100 chars, second another 100. With a 10-token cap (~40 chars), only ~40 chars of the first chunk
+        // should survive and the second chunk should be dropped entirely.
         every { conversation.generateResponse(any<ChatMessage>()) } returns flowOf(
             MessageResponse.Chunk("x".repeat(100)),
             MessageResponse.Chunk("y".repeat(100)),

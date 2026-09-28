@@ -6,12 +6,7 @@ import id.steveimm.pocketpilot.history.model.ScreenStateRecord
 import id.steveimm.pocketpilot.protocol.*
 import java.util.UUID
 
-/**
- * Encapsulates AgentEvent side effects for AgentService.
- *
- * Keeping this outside AgentService reduces service surface area and keeps
- * lifecycle/control flow separate from event-specific UI/recording updates.
- */
+/** Encapsulates AgentEvent side effects for AgentService. */
 internal class AgentServiceEventHandler(
     private val logTag: String,
     private val updateStatus: (String) -> Unit,
@@ -33,7 +28,6 @@ internal class AgentServiceEventHandler(
                 Log.i(logTag, "Session started: ${event.sessionId}, goal: ${event.goal}")
             }
 
-            // ===== Task Events (for SmartCapsule streaming) =====
             is TaskStarted -> {
                 recordingService?.onTaskStarted()
                 recordingService?.recordUserMessage(
@@ -79,10 +73,6 @@ internal class AgentServiceEventHandler(
                 // rowState ("error" vs "complete") on the persisted row.
                 recordingService?.recordTaskOutcome(event.outcome)
                 // Persist the closing answer as FinalText only when there IS one.
-                // No-answer completions (USER_STOPPED, side-effect-only) skip
-                // this so reload matches the live reducer — see uxfb-3 README §3
-                // and ChatViewModel.applyCompletionToBlocks. Error outcomes still
-                // get a fallback marker as inline ⚠ text so the row isn't empty.
                 val realAnswer = event.result?.takeIf { it.isNotBlank() }
                 when {
                     realAnswer != null && !event.outcome.isError() ->
@@ -124,7 +114,6 @@ internal class AgentServiceEventHandler(
                 )
             }
 
-            // ===== Session Lifecycle Events =====
             is SessionCompleted -> {
                 Log.i(logTag, "Session completed: ${event.sessionId}, reason: ${event.reason}")
                 recordingService?.completeSession()
@@ -139,8 +128,7 @@ internal class AgentServiceEventHandler(
             }
             is SessionError -> {
                 Log.e(logTag, "Session error: ${event.message}")
-                // Record the error text + outcome to the active agent message
-                // before it finalizes, so the persisted row carries the actual
+                // Record the error text + outcome to the active agent message before it finalizes, so the persisted row carries the actual
                 // error string instead of vanishing.
                 recordingService?.recordTaskOutcome(TaskOutcome.ERROR)
                 recordingService?.recordErrorText("⚠ ${event.message}")

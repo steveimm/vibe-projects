@@ -36,21 +36,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/**
- * Compose UI tests for TermuxShellSettingsRow inside AgentBehaviorSettingsPage.
- *
- * Strategy:
- *  - mockkObject(TermuxBridgeManager.Companion) intercepts the singleton get(), so the row
- *    binds to a mock manager whose state we control via a MutableStateFlow.
- *  - Espresso-Intents is not on the androidTest classpath. Instead, LocalContext is overridden
- *    with an IntentRecordingContext that captures startActivity() calls. It also stubs
- *    getPackageManager().getLaunchIntentForPackage("com.termux") so launchTermux() produces a
- *    deterministic intent regardless of whether Termux is installed on the test device.
- *  - AppSettingsStore is the real prefs-backed store; tests clear prefs in @Before to decouple
- *    from prior runs. Toggle persistence is asserted directly against prefs.
- *  - The row composable is private; we render it through its module-internal parent
- *    AgentBehaviorSettingsPage with dummy values for unrelated controls.
- */
+/** Compose UI tests for TermuxShellSettingsRow inside AgentBehaviorSettingsPage. */
 @RunWith(AndroidJUnit4::class)
 class SettingsTermuxRowTest {
 

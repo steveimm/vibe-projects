@@ -26,16 +26,8 @@ import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.onboarding.PermissionStateMonitor.PermissionRepairModel
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
-/**
- * PermissionRepairCard — floating advisory shown above the input bar when a
- * permission required for autonomous operation is revoked or never granted.
- *
- * Renders as a thin paper-toned card (44dp per row) with an inline Rust dot,
- * a brief sentence, and an outlined Fix button. Caller is responsible for
- * positioning it above the input bar (typical: as a Column entry inside
- * Scaffold's bottomBar, above SmartCapsuleSurface). One row per missing
- * permission so multiple issues stack visually.
- */
+/** PermissionRepairCard — floating advisory shown above the input bar when a permission required for autonomous operation is revoked or
+ * never granted. */
 @Composable
 fun PermissionRepairCard(
     model: PermissionRepairModel,

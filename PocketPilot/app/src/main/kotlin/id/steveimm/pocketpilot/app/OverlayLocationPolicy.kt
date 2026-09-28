@@ -79,19 +79,7 @@ internal fun shouldOpenAppWhenIslandTapped(
     mode: CapsuleMode,
 ): Boolean = !hasActiveTask && mode !is CapsuleMode.Done && mode !is CapsuleMode.Error
 
-/**
- * Compute the new userLocation when MainActivity.onStop fires.
- *
- * - MAIN_APP → OTHER_APP: catches the race where the new foreground app's window-state
- *   event arrived BEFORE onStop and was dropped by the `isMainAppResumed` guard. Without
- *   this fallback, userLocation stays stuck at MAIN_APP and overlays never appear on the
- *   new app.
- * - VD_VIEWER → VD_VIEWER (preserve): VirtualDisplayViewerActivity.onStart calls
- *   onViewerOpened() before MainActivity.onStop runs, so VD_VIEWER is authoritative.
- *   Clobbering it to OTHER_APP would lose the edge glow on the first viewer entry until
- *   a second user action re-triggered onViewerOpened.
- * - OTHER_APP → OTHER_APP (no-op).
- */
+/** Compute the new userLocation when MainActivity.onStop fires. */
 internal fun resolveLocationOnMainAppHidden(
     current: OverlayUserLocation,
 ): OverlayUserLocation = when (current) {
@@ -100,19 +88,8 @@ internal fun resolveLocationOnMainAppHidden(
     OverlayUserLocation.OTHER_APP -> OverlayUserLocation.OTHER_APP
 }
 
-/**
- * Whether the VirtualDisplayViewerActivity should auto-finish so the user is returned to
- * MainActivity instead of being stranded on a frozen, non-interactive VD surface.
- *
- * Trigger: VD platform + user is in the viewer + no active task + capsule has settled to
- * [CapsuleMode.Hidden]. This is the post-task quiescent state — the agent isn't acting,
- * the VD content is whatever the last action left behind, and there's no overlay UI to
- * navigate away. Without an auto-finish the user has to press back blindly.
- *
- * NOT triggered on [CapsuleMode.Done] (capsule still showing the success message — let
- * the user read it) or [CapsuleMode.Error] (user must dismiss). Both transition to Hidden
- * eventually, which is when the finish fires.
- */
+/** Whether the VirtualDisplayViewerActivity should auto-finish so the user is returned to MainActivity instead of being stranded on a
+ * frozen, non-interactive VD surface. */
 internal fun shouldFinishViewerOnIdle(
     platformMode: PlatformMode,
     location: OverlayUserLocation,
@@ -173,9 +150,8 @@ internal fun deriveOverlayVisibility(
                     normalizedShowPreference = normalizedShowPreference,
                 )
             } else {
-                // Show overlay in VD_VIEWER, OTHER_APP, or MAIN_APP when user attention needed.
-                // For needsUserAttention modes, always force capsule regardless of preference —
-                // in MAIN_APP the default preference is ISLAND, which won't show without this.
+                // Show overlay in VD_VIEWER, OTHER_APP, or MAIN_APP when user attention needed. For needsUserAttention modes, always force
+                // capsule regardless of preference — in MAIN_APP the default preference is ISLAND, which won't show without this.
                 val forceCapsule = needsUserAttention
                 OverlayVisibilityDecision(
                     showCapsule = forceCapsule || normalizedShowPreference == ShowPreference.CAPSULE,
@@ -188,12 +164,7 @@ internal fun deriveOverlayVisibility(
     }
 }
 
-/**
- * Whether user touch interaction with the underlying screen should be blocked.
- *
- * - A11y OTHER_APP: block while agent owns control (non-terminal, non-takeover modes).
- * - VD_VIEWER: block until takeover is confirmed.
- */
+/** Whether user touch interaction with the underlying screen should be blocked. */
 internal fun shouldLockUserInteraction(
     platformMode: PlatformMode,
     location: OverlayUserLocation,
@@ -211,11 +182,6 @@ internal fun shouldLockUserInteraction(
     }
 }
 
-/**
- * Whether the capsule overlay window should be touchable (i.e. NOT have FLAG_NOT_TOUCHABLE).
- *
- * Only [CapsuleMode.Hidden] passes touches through — all other modes need user interaction
- * (buttons, input fields, or the full-screen touch shield during Running).
- */
+/** Whether the capsule overlay window should be touchable (i.e. NOT have FLAG_NOT_TOUCHABLE). */
 internal fun shouldCapsuleOverlayBeTouchable(mode: CapsuleMode): Boolean =
     mode !is CapsuleMode.Hidden

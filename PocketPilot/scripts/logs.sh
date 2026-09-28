@@ -1,15 +1,5 @@
 #!/bin/bash
-#
-# logs.sh - View filtered agent logs
-#
-# Usage:
-#   ./scripts/logs.sh              # All agent logs
-#   ./scripts/logs.sh orch         # Orchestration logs
-#   ./scripts/logs.sh llm          # LLM/API call logs
-#   ./scripts/logs.sh session      # Session lifecycle logs
-#   ./scripts/logs.sh action       # Action execution logs
-#   ./scripts/logs.sh all          # Unfiltered logcat
-#
+# logs.sh: View filtered agent logs
 
 set -e
 

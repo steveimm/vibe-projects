@@ -196,3 +196,15 @@ If it fails, enable manually:
 
 1. Run `./scripts/setup.sh` to reinstall and reconfigure
 2. View logs: `./scripts/logs.sh`
+
+## Device selection
+
+The setup, debug-run, action-test, and mobile-action-test scripts share `lib/common.sh`. Set `ANDROID_SERIAL` to target a specific device. An unavailable requested device is an error. Without an explicit serial, the scripts select one physical device, or one emulator when no physical device is connected. Ambiguous selections fail before any device action.
+
+Run the device-selection checks without a connected phone:
+
+```bash
+bash scripts/tests/adb_test.sh
+```
+
+Action-test output tags accept letters, digits, underscores, dots, and hyphens and cannot start with a dot. This keeps cleanup inside the selected artifact directory.

@@ -41,26 +41,9 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
-/**
- * Characterization tests for the Agent.run() control-loop FSM.
- *
- * Spec: doc/main/state_machines/agent_run_loop.md
- *
- * Each test exercises one transition (or guard rejection) by driving the
- * inner [AgentTurnRunner] indirectly through a programmable [LLMClient].
- *
- * The Agent loop turns LLM-stream behavior into [TurnOutcome]s as follows:
- * - empty stream (no text, no tool call)         -> Continue
- * - text-only stream                             -> Complete(success=true)
- * - complete_task tool call (status=success)     -> Complete(success=true)
- * - complete_task tool call (status=failure)     -> Complete(success=false)
- * - SocketTimeoutException                       -> Error(recoverable=true)
- * - UnknownHostException                         -> Error(recoverable=false)
- */
+/** Characterization tests for the Agent.run() control-loop FSM. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AgentRunLoopTest {
-
-    // ---------------- Outcome: Continue + evalTurnBudget safety net ----------------
 
     @Test
     fun `Continue outcome loops until evalTurnBudget reached`() = runTest {
@@ -76,8 +59,6 @@ class AgentRunLoopTest {
         assertThat((reason as AgentStopReason.Error).message).contains("Eval turn budget")
         assertThat(llm.callCount).isEqualTo(2)
     }
-
-    // ---------------- Outcome: Complete(success=true) ----------------
 
     @Test
     fun `Complete success via text-only response stops with GoalAchieved`() = runTest {
@@ -103,8 +84,6 @@ class AgentRunLoopTest {
         assertThat((reason as AgentStopReason.GoalAchieved).message).isEqualTo("ok")
     }
 
-    // ---------------- Outcome: Complete(success=false) ----------------
-
     @Test
     fun `Complete failure via complete_task stops with TaskImpossible`() = runTest {
         val llm = ProgrammableLLMClient(
@@ -118,8 +97,6 @@ class AgentRunLoopTest {
         assertThat((reason as AgentStopReason.TaskImpossible).message).isEqualTo("blocked")
     }
 
-    // ---------------- Outcome: Error(non-recoverable) ----------------
-
     @Test
     fun `non recoverable error stops immediately with Error`() = runTest {
         val llm = ProgrammableLLMClient(
@@ -132,8 +109,6 @@ class AgentRunLoopTest {
         assertThat(reason).isInstanceOf(AgentStopReason.Error::class.java)
         assertThat(llm.callCount).isEqualTo(1) // no retry attempted
     }
-
-    // ---------------- Outcome: Error(recoverable) — retry & exhaustion ----------------
 
     @Test
     fun `recoverable error retries within budget and can recover via Continue`() = runTest {
@@ -188,9 +163,8 @@ class AgentRunLoopTest {
 
     @Test
     fun `recoverable error retries indefinitely without a turn-count gate`() = runTest {
-        // Regression for removal of `hasRemainingTurns` from the retry gate. The
-        // loop must keep retrying until the retry counter itself is exhausted —
-        // a high turnCount alone should not block recovery.
+        // Regression for removal of `hasRemainingTurns` from the retry gate. The loop must keep retrying until the retry counter itself is
+        // exhausted — a high turnCount alone should not block recovery.
         val llm = ProgrammableLLMClient(
             listOf(
                 LLMBehavior.Continue,                            // turn 1
@@ -208,8 +182,6 @@ class AgentRunLoopTest {
         assertThat((reason as AgentStopReason.GoalAchieved).message).isEqualTo("recovered")
         assertThat(llm.callCount).isEqualTo(5)
     }
-
-    // ---------------- Transition: Running -> UserRequested via stop() ----------------
 
     @Test
     fun `stop request before run causes UserRequested without invoking LLM`() = runTest {
@@ -236,8 +208,6 @@ class AgentRunLoopTest {
         assertThat(reason).isEqualTo(AgentStopReason.UserRequested)
         assertThat(llm.callCount).isEqualTo(0)
     }
-
-    // ---------------- Transition: Running -> Paused -> Running ----------------
 
     @Test
     fun `pause then resume then stop completes the pause Deferred`() = runTest(
@@ -290,8 +260,6 @@ class AgentRunLoopTest {
         assertThat(reason).isEqualTo(AgentStopReason.UserRequested)
     }
 
-    // ---------------- Outcome: Cancelled (in-turn) ----------------
-
     @Test
     fun `in turn Cancelled outcome maps to UserRequested`() = runTest(
         UnconfinedTestDispatcher()
@@ -311,8 +279,6 @@ class AgentRunLoopTest {
         assertThat(platform.captureCount).isEqualTo(1)
         assertThat(llm.callCount).isEqualTo(0) // confirms planning was skipped
     }
-
-    // ---------------- Compactor circuit breaker: Failed×3 stops the loop ----------------
 
     @Test
     fun `consecutive compactor Failed×3 stops the loop with Error`() = runTest {
@@ -386,8 +352,6 @@ class AgentRunLoopTest {
         assertThat(llm.callCount).isEqualTo(2)
     }
 
-    // -------------------- Helpers --------------------
-
     private fun newAgent(
         llm: LLMClient,
         registerCompleteTask: Boolean = false,
@@ -454,10 +418,7 @@ private sealed class LLMBehavior {
     data class Throw(val error: Throwable) : LLMBehavior()
 }
 
-/**
- * Returns a scripted behavior per call. Throws if the script runs out, which
- * forces tests to be explicit about expected call counts.
- */
+/** Returns a scripted behavior per call. Throws if the script runs out, which forces tests to be explicit about expected call counts. */
 private class ProgrammableLLMClient(
     private val script: List<LLMBehavior>
 ) : LLMClient() {
@@ -514,10 +475,8 @@ private class ProgrammableLLMClient(
     }
 }
 
-/**
- * Like [ProgrammableLLMClient] but each call parks until the test calls
- * [completeTurn]. Lets tests interleave pause/resume/stop deterministically.
- */
+/** Like [ProgrammableLLMClient] but each call parks until the test calls [completeTurn]. Lets tests interleave pause/resume/stop
+ * deterministically. */
 private class GatedLLMClient : LLMClient() {
     private val turnEntered = Channel<Unit>(capacity = Channel.UNLIMITED)
     private val turnRelease = Channel<LLMBehavior>(capacity = Channel.UNLIMITED)
@@ -571,10 +530,8 @@ private class GatedLLMClient : LLMClient() {
     }
 }
 
-/**
- * Platform whose [captureScreen] completes the agent's cancellation signal,
- * exercising the `isTurnCancelled()` check inside `AgentTurnRunner.executeTurn`.
- */
+/** Platform whose [captureScreen] completes the agent's cancellation signal, exercising the `isTurnCancelled()` check inside
+ * `AgentTurnRunner.executeTurn`. */
 private class CancellingCapturePlatform(
     private val signal: CompletableDeferred<AgentStopReason>
 ) : AndroidPlatform {

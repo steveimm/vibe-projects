@@ -43,31 +43,14 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 
-/**
- * Session-scoped owner for the browser runtime.
- *
- * Construction is cheap: no WebView, CDP socket, or Shizuku UserService binding is created until
- * `browser_script` is actually invoked. The manager owns the warm CDP client for the session and
- * tears down both CDP and Shizuku resources when the session shuts down.
- */
+/** Session-scoped owner for the browser runtime. */
 class BrowserSessionManager(
     context: Context,
     sessionScope: CoroutineScope,
     private val traceRecorder: TraceRecorder,
-    /**
-     * Per-session unguessable token gating the localhost CDP relays. Default generates a fresh
-     * 256-bit token at construction; tests override to assert specific values. Same token is
-     * baked into [cdpConnectionFactory] (so OkHttp sends it on the WS Upgrade) and into the
-     * bridge (so both relays verify it on accept).
-     */
+    /** Per-session unguessable token gating the localhost CDP relays. */
     relayAuthToken: String = RelayAuthToken.generate(),
-    /**
-     * Per-CDP-command timeout passed to [ChromeCdpClient]. The script's outer `timeout_ms` is
-     * a separate, larger budget for the whole script; this cap fires when a single CDP method
-     * (most importantly `Page.loadEventFired { awaitEvent: true }`) blocks longer than the
-     * cap. Defaults to [ChromeCdpClient.DEFAULT_COMMAND_TIMEOUT_MS] (30s) which leaves headroom
-     * for cellular page loads through the wireless-ADB self-pair relay.
-     */
+    /** Per-CDP-command timeout passed to [ChromeCdpClient]. */
     private val cdpCommandTimeoutMs: Long = ChromeCdpClient.DEFAULT_COMMAND_TIMEOUT_MS,
     private val bridgeFactory: () -> BrowserDevtoolsBridge = {
         ShizukuBrowserDevtoolsBridge(
@@ -96,15 +79,7 @@ class BrowserSessionManager(
     private val scriptLease = Mutex()
     private val resourceLock = Any()
 
-    /**
-     * Cumulative decoded-byte counter for storeArtifact within this session. Lives on the
-     * SessionManager (not the per-call JsInterface, not the per-bridge Runner) so that
-     * (a) repeated browser_script invocations within one session share the cap and (b) a
-     * forced CDP reconnect — which rebuilds the runner via [markBroken] — does not reset
-     * /sdcard pressure budget. The cap is enforced in [BrowserScriptJsInterface] via
-     * atomic CAS; see [BrowserScriptJsInterface.MAX_BYTES_PER_SESSION] for the value
-     * and rationale.
-     */
+    /** Cumulative decoded-byte counter for storeArtifact within this session. */
     private val sessionDecodedBytes = AtomicLong(0L)
 
     @Volatile
@@ -159,13 +134,7 @@ class BrowserSessionManager(
         client = cdpClientFactory(cdpConnectionFactory) {
             markBroken(bridgeHandle.generation, client)
         }
-        // Re-enable Page (and the rest of the core domains) every time the agent script
-        // switches targets via the `targetId` option. Each switch in direct-page mode opens
-        // a fresh WS, and each attach in attach mode opens a fresh CDP session — neither
-        // inherits the bootstrap `Page.enable`, so dialog tracking (and any other event
-        // subscription) silently breaks after the first tab switch without this hook. The
-        // callback receives the EXPLICIT session/target produced by the activation so a
-        // racing parallel switch cannot redirect this enable onto a sibling session.
+        // Re-enable Page (and the rest of the core domains) every time the agent script switches targets via the `targetId` option.
         client.onTargetActivated = { sessionId, targetId ->
             enableCoreDomainsFor(client, sessionId, targetId)
         }
@@ -223,12 +192,7 @@ class BrowserSessionManager(
         throw DevtoolsSetupError.MalformedResponse("missing webSocketDebuggerUrl")
     }
 
-    /**
-     * Replace the `[scheme]://[host[:port]]` prefix of a `ws://...` URL with the given
-     * `host:port`. Path/query are preserved verbatim. Used to redirect Chrome's
-     * `webSocketDebuggerUrl` (which has no port — defaults to 80, unreachable from app UID)
-     * onto the device-side TCP relay served by the Shizuku UserService.
-     */
+    /** Replace the `[scheme]://[host[:port]]` prefix of a `ws://...` URL with the given `host:port`. */
     private fun rewriteHost(url: String, hostAndPort: String): String {
         val schemeEnd = url.indexOf("://")
         if (schemeEnd < 0) return url
@@ -245,14 +209,7 @@ class BrowserSessionManager(
         client.send("Network.enable")
     }
 
-    /**
-     * Enables the core domains on a SPECIFIC session/target rather than the client's mutable
-     * active state. Used by the [ChromeCdpClient.onTargetActivated] hook so a racing parallel
-     * `cdp(..., {targetId: ...})` cannot redirect this enable batch onto a sibling session
-     * between the activation and the enable. In direct-page mode the targetId option re-enters
-     * `switchDirectPageTarget`, which short-circuits when `activeTargetId` already matches and
-     * therefore does not recursively fire the callback.
-     */
+    /** Enables the core domains on a SPECIFIC session/target rather than the client's mutable active state. */
     private suspend fun enableCoreDomainsFor(
         client: ChromeCdpClient,
         sessionId: String?,
@@ -378,11 +335,8 @@ interface BrowserDevtoolsBridge : Closeable {
     suspend fun preflight()
     suspend fun fetchVersion(): DevtoolsVersion
     suspend fun listPageTargets(): List<PageTarget>
-    /**
-     * Returns `host:port` to substitute into `webSocketDebuggerUrl` from Chrome, or null to
-     * use the URL as-is. Used by the Shizuku transport to route CDP through the device-side
-     * TCP relay instead of the app-UID-unreachable abstract socket.
-     */
+    /** Returns `host:port` to substitute into `webSocketDebuggerUrl` from Chrome, or null to use the URL as-is. Used by the Shizuku
+     * transport to route CDP through the device-side TCP relay instead of the app-UID-unreachable abstract socket. */
     suspend fun resolveWebSocketHost(): String? = null
 }
 
@@ -398,11 +352,8 @@ private class ShizukuBrowserDevtoolsBridge(
 
 private class OkHttpCdpConnectionFactory(
     private val client: OkHttpClient = OkHttpClient(),
-    /**
-     * Headers to attach to every WS Upgrade request. Carries the per-session
-     * `X-PocketPilot-Token` so the localhost CDP relays accept the connection — without it both
-     * relays 403 the upgrade. Map iteration order is preserved by [Request.Builder.header].
-     */
+    /** Headers to attach to every WS Upgrade request. Carries the per-session `X-PocketPilot-Token` so the localhost CDP relays accept
+     * the connection — without it both relays 403 the upgrade. Map iteration order is preserved by [Request.Builder.header]. */
     private val extraHeaders: Map<String, String> = emptyMap(),
 ) : CdpConnectionFactory {
     override suspend fun connect(

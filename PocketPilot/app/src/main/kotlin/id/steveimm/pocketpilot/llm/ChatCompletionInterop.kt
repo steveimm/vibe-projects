@@ -19,12 +19,7 @@ import com.openai.models.responses.EasyInputMessage
 import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.ResponseInputItem
 
-/**
- * Converts between OpenAI Responses API types and Chat Completions API types.
- *
- * Contained in one file per the KISS design principle. Callers produce ResponseInputItem lists;
- * ChatCompletionClient converts them internally.
- */
+/** Converts between OpenAI Responses API types and Chat Completions API types. */
 internal object ChatCompletionInterop {
 
     private const val TAG = "ChatCompletionInterop"
@@ -35,12 +30,7 @@ internal object ChatCompletionInterop {
                     ChatCompletionSystemMessageParam.builder().content(prompt).build()
             )
 
-    /**
-     * Convert ResponseInputItem list to ChatCompletionMessageParam list.
-     *
-     * Groups adjacent function calls into one assistant message (Chat API requires all tool_calls
-     * from a single turn to be in one assistant message).
-     */
+    /** Convert ResponseInputItem list to ChatCompletionMessageParam list. */
     fun convertInputItems(inputItems: List<ResponseInputItem>): List<ChatCompletionMessageParam> {
         val result = mutableListOf<ChatCompletionMessageParam>()
         var i = 0
@@ -50,9 +40,8 @@ internal object ChatCompletionInterop {
             when {
                 item.isEasyInputMessage() -> {
                     val msg = item.asEasyInputMessage()
-                    // If this is an assistant message and the next item(s) are function
-                    // calls, merge them into a single assistant message with both
-                    // content and tool_calls (required by Chat Completions API spec).
+                    // If this is an assistant message and the next item(s) are function calls, merge them into a single assistant message
+                    // with both content and tool_calls (required by Chat Completions API spec).
                     if (msg.role() == EasyInputMessage.Role.ASSISTANT &&
                                     i + 1 < inputItems.size &&
                                     inputItems[i + 1].isFunctionCall()
@@ -143,12 +132,7 @@ internal object ChatCompletionInterop {
         return toolCalls
     }
 
-    /**
-     * Convert FunctionTool list to ChatCompletionTool list.
-     *
-     * FunctionTool.Parameters stores the JSON schema as additional properties (type, properties,
-     * required). We transfer them to FunctionParameters.
-     */
+    /** Convert FunctionTool list to ChatCompletionTool list. */
     fun convertTools(tools: List<FunctionTool>): List<ChatCompletionTool> =
             tools.map { tool ->
                 val paramsBuilder = FunctionParameters.builder()
@@ -170,8 +154,6 @@ internal object ChatCompletionInterop {
                                 .build()
                 )
             }
-
-    // ── Private ─────────────────────────────────────────────────────────
 
     private fun convertEasyMessage(msg: EasyInputMessage): ChatCompletionMessageParam {
         val content = msg.content()
@@ -199,10 +181,7 @@ internal object ChatCompletionInterop {
         }
     }
 
-    /**
-     * Convert user message content, handling both plain text and multimodal (text + image) content
-     * lists.
-     */
+    /** Convert user message content, handling both plain text and multimodal (text + image) content lists. */
     private fun convertUserMessage(content: EasyInputMessage.Content): ChatCompletionMessageParam {
         // Simple string content
         if (content.isTextInput()) {

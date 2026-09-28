@@ -5,17 +5,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import id.steveimm.pocketpilot.util.recycleCompat
 
 object AccessibilityNodeFinder {
-    /**
-     * Find the clickable node whose center is closest to (x, y).
-     *
-     * Matching strategy:
-     * 1. Collect all clickable+visible nodes whose bounds contain (x, y)
-     * 2. Return the candidate whose center is nearest to (x, y)
-     *
-     * This correctly resolves overlapping nodes: the click point is the intended
-     * element's center by construction (distance = 0), so it always wins over
-     * any accidentally overlapping sibling.
-     */
+    /** Find the clickable node whose center is closest to (x, y). */
     fun findClickableNodeAtLocation(
             root: AccessibilityNodeInfo,
             x: Int,
@@ -23,10 +13,8 @@ object AccessibilityNodeFinder {
     ): AccessibilityNodeInfo? =
             findActionableNodeAtLocation(root, x, y) { node -> node.isClickable && node.isVisibleToUser }
 
-    /**
-     * Find the top-most long-clickable node whose center is closest to (x, y).
-     * Mirrors findClickableNodeAtLocation but checks isLongClickable.
-     */
+    /** Find the top-most long-clickable node whose center is closest to (x, y). Mirrors findClickableNodeAtLocation but checks
+     * isLongClickable. */
     fun findLongClickableNodeAtLocation(
             root: AccessibilityNodeInfo,
             x: Int,
@@ -79,9 +67,7 @@ object AccessibilityNodeFinder {
         return winner
     }
 
-    /**
-     * Find a focused editable node in the tree. Used when typing into the currently focused field.
-     */
+    /** Find a focused editable node in the tree. Used when typing into the currently focused field. */
     fun findFocusedEditableNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
         // First, try to find the input-focused node
         val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
@@ -117,10 +103,8 @@ object AccessibilityNodeFinder {
         return null
     }
 
-    /**
-     * Find the scrollable node at the given coordinates.
-     * Used for scroll action dispatch — finds the container to perform ACTION_SCROLL on.
-     */
+    /** Find the scrollable node at the given coordinates. Used for scroll action dispatch — finds the container to perform
+     * ACTION_SCROLL on. */
     fun findScrollableNodeAtLocation(
             root: AccessibilityNodeInfo,
             x: Int,
@@ -130,21 +114,12 @@ object AccessibilityNodeFinder {
                 node.isScrollable && node.isVisibleToUser
             }
 
-    /**
-     * Find a text-input capable node at the given screen coordinates. Helper for performType() to
-     * re-query the accessibility tree.
-     *
-     * - Properly recycles intermediate nodes during DFS traversal
-     * - Checks for ACTION_SET_TEXT support, not just isEditable (supports WebView/custom widgets)
-     */
+    /** Find a text-input capable node at the given screen coordinates. Helper for performType() to re-query the accessibility tree. */
     fun findNodeAtLocation(root: AccessibilityNodeInfo, x: Int, y: Int): AccessibilityNodeInfo? {
         val bounds = Rect()
 
-        /**
-         * Check if a node can accept text input. P2 fix: Check for ACTION_SET_TEXT action support
-         * in addition to isEditable, which handles custom widgets and WebView inputs that support
-         * text but don't set isEditable.
-         */
+        /** Check if a node can accept text input. P2 fix: Check for ACTION_SET_TEXT action support in addition to isEditable, which
+         * handles custom widgets and WebView inputs that support text but don't set isEditable. */
         fun canAcceptTextInput(node: AccessibilityNodeInfo): Boolean {
             if (node.isEditable) return true
             // P2 fix: Also check if node supports ACTION_SET_TEXT action
@@ -152,16 +127,8 @@ object AccessibilityNodeFinder {
             return actions?.any { it.id == AccessibilityNodeInfo.ACTION_SET_TEXT } == true
         }
 
-        /**
-         * DFS to find deepest text-input node containing the point. P1 fix: Properly recycles
-         * intermediate nodes obtained during traversal.
-         *
-         * @param node Current node to search
-         * @param shouldRecycle Whether this node should be recycled if not returned
-         * ```
-         *                      (false for root which is system-owned)
-         * ```
-         */
+        /** DFS to find deepest text-input node containing the point. P1 fix: Properly recycles intermediate nodes obtained during
+         * traversal. */
         fun search(node: AccessibilityNodeInfo, shouldRecycle: Boolean): AccessibilityNodeInfo? {
             node.getBoundsInScreen(bounds)
 
@@ -177,9 +144,7 @@ object AccessibilityNodeFinder {
                 val child = node.getChild(i) ?: continue
                 val found = search(child, shouldRecycle = true)
                 if (found != null) {
-                    // Found a match in subtree
-                    // Recycle current node if allowed (AccessibilityNodeInfo from getChild() are
-                    // independent)
+                    // Found a match in subtree Recycle current node if allowed (AccessibilityNodeInfo from getChild() are independent)
                     if (shouldRecycle) {
                         node.recycleCompat()
                     }

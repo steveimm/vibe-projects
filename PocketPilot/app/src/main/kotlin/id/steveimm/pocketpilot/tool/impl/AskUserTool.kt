@@ -13,16 +13,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * AskUserTool — agent asks the user for help.
- *
- * Two types:
- * - **question**: Agent needs a text answer. Capsule shows text input.
- * - **action**: Agent needs user to operate the phone. Capsule shows instruction.
- *
- * The tool suspends via [UserResponseChannel] until the user responds or
- * the 5-minute timeout expires.
- */
+/** AskUserTool — agent asks the user for help. */
 class AskUserTool(
     private val responseChannel: UserResponseChannel,
     private val eventDispatcher: AgentEventDispatcher
@@ -83,9 +74,7 @@ Use only when truly blocked by missing info or required physical action. The sys
     }
 }
 
-/**
- * Invocation for ask_user — suspends until user responds or timeout.
- */
+/** Invocation for ask_user — suspends until user responds or timeout. */
 private class AskUserInvocation(
     override val params: JSONObject,
     private val responseChannel: UserResponseChannel,

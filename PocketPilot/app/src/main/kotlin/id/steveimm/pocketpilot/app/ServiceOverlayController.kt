@@ -22,21 +22,7 @@ import id.steveimm.pocketpilot.platform.OverlayTouchGate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/**
- * ServiceOverlayController — Coordinator between state and overlay windows.
- *
- * Single source of truth: [CapsuleStateHolder].
- *
- * Window visibility is determined by ONE function: [applyVisibility].
- * It reads (platformMode, userLocation, mode, showPreference)
- * and sets exactly which overlay windows are visible.
- *
- * Invariants enforced by applyVisibility:
- *   A. Capsule and Island are never simultaneously visible.
- *   B. In MAIN_APP, no system overlays — Compose capsule handles it.
- *   C. In overlay context + active task, ShowPreference decides capsule vs island.
- *   D. WaitingFor* / Error force capsule visibility regardless preference.
- */
+/** ServiceOverlayController — Coordinator between state and overlay windows. */
 class ServiceOverlayController(
     context: AccessibilityService,
     lifecycleOwner: LifecycleOwner,
@@ -56,7 +42,6 @@ class ServiceOverlayController(
     private val onFinishViewer: (() -> Unit)? = null,
     private val statusIslandManager: IslandOverlayHost? = null
 ) {
-    // ── Unified state (single source of truth) ──
 
     val stateHolder = CapsuleStateHolder(scope)
 
@@ -66,8 +51,6 @@ class ServiceOverlayController(
     /** Touch gate for gesture injection pass-through. */
     val overlayTouchGate: OverlayTouchGate
         get() = capsuleManager.touchGate
-
-    // ── Overlay managers ──
 
     private val edgeGlowManager = GlowOverlayHost(
         service = context,
@@ -116,18 +99,10 @@ class ServiceOverlayController(
         this.onOpenViewer = { this@ServiceOverlayController.onOpenViewer?.invoke() }
     }
 
-    // ── Window-level state ──
-
     private var platformMode: PlatformMode = PlatformMode.ACCESSIBILITY
     private var userLocation = OverlayUserLocation.MAIN_APP
 
-    /**
-     * Sticky lifecycle flag set by MainActivity.onResume / onPause. Authoritative over
-     * accessibility window-state events: while the host activity is resumed we treat
-     * userLocation as MAIN_APP and ignore stale/queued window-state events from other
-     * apps that would otherwise flip it back to OTHER_APP and surface the system overlay
-     * on top of the in-app capsule.
-     */
+    /** Sticky lifecycle flag set by MainActivity.onResume / onPause. */
     private var isMainAppResumed = false
 
     /** User preference: capsule or island while overlays are visible (A11y/VD). */
@@ -160,12 +135,7 @@ class ServiceOverlayController(
         applyVisibility()
     }
 
-    // ── Visibility system (single authority) ──
-
-    /**
-     * The ONE function that decides which overlay windows are visible.
-     * Called after every state change and context change.
-     */
+    /** The ONE function that decides which overlay windows are visible. Called after every state change and context change. */
     private fun applyVisibility() {
         val mode = stateHolder.mode.value
         val decision = deriveOverlayVisibility(
@@ -211,10 +181,8 @@ class ServiceOverlayController(
             edgeGlowManager.hideImmediately()
         }
 
-        // Auto-finish the VD viewer once the agent is fully idle so the user isn't
-        // stranded on a frozen, non-interactive VD surface with no overlays. Checked
-        // here (rather than in the mode collector) so it also fires when the user opens
-        // the viewer AFTER a task has already ended — that path doesn't re-emit mode.
+        // Auto-finish the VD viewer once the agent is fully idle so the user isn't stranded on a frozen, non-interactive VD surface with
+        // no overlays.
         if (shouldFinishViewerOnIdle(
                 platformMode = platformMode,
                 location = userLocation,
@@ -226,8 +194,6 @@ class ServiceOverlayController(
             onFinishViewer?.invoke()
         }
     }
-
-    // ── Public: viewer lifecycle ──
 
     fun onIslandTapped() {
         val mode = stateHolder.mode.value
@@ -297,12 +263,7 @@ class ServiceOverlayController(
         handleWindowStateChangedInternal(packageName, className, displayId)
     }
 
-    /**
-     * MainActivity foreground callback.
-     *
-     * Accessibility window events can be delayed/missed on some devices. This explicit signal
-     * guarantees MAIN_APP invariants: no system capsule/island/glow on top of in-app Compose UI.
-     */
+    /** MainActivity foreground callback. */
     fun onMainAppVisible() {
         isMainAppResumed = true
         if (userLocation != OverlayUserLocation.MAIN_APP) {
@@ -312,18 +273,8 @@ class ServiceOverlayController(
         applyVisibility()
     }
 
-    /**
-     * MainActivity onStop callback. Releases the sticky MAIN_APP guard and, only if
-     * userLocation is still claiming MAIN_APP, force-flips it to OTHER_APP since
-     * MainActivity is no longer on screen.
-     *
-     * The force-flip exists because foreground apps' window-state events often arrive
-     * BEFORE onStop and get dropped by the guard above; without it, userLocation stays
-     * stuck at MAIN_APP and overlays never appear on the new app. We must NOT clobber
-     * VD_VIEWER here: VirtualDisplayViewerActivity.onStart calls onViewerOpened() before
-     * MainActivity.onStop runs, and that authoritative VD_VIEWER state would otherwise
-     * regress to OTHER_APP — losing the edge glow that signals viewer mode.
-     */
+    /** MainActivity onStop callback. Releases the sticky MAIN_APP guard and, only if userLocation is still claiming MAIN_APP,
+     * force-flips it to OTHER_APP since MainActivity is no longer on screen. */
     fun onMainAppHidden() {
         if (!isMainAppResumed) return
         isMainAppResumed = false
@@ -334,8 +285,6 @@ class ServiceOverlayController(
         }
         applyVisibility()
     }
-
-    // ── Event handlers ──
 
     fun onTaskStarted(taskId: String, input: String) {
         stateHolder.onTaskStarted(taskId, input)
@@ -436,8 +385,6 @@ class ServiceOverlayController(
             null
         }
 
-    // ── Private: window tracking (shared between A11y and VD) ──
-
     private fun handleWindowStateChangedInternal(
         packageName: String?,
         className: String?,
@@ -450,9 +397,8 @@ class ServiceOverlayController(
             displayId = displayId,
         ) ?: return
 
-        // While MainActivity is resumed, ignore non-self window events so a queued
-        // event from a previously-foregrounded app can't flip userLocation back to
-        // OTHER_APP and surface the system overlay over our own UI.
+        // While MainActivity is resumed, ignore non-self window events so a queued event from a previously-foregrounded app can't flip
+        // userLocation back to OTHER_APP and surface the system overlay over our own UI.
         if (isMainAppResumed && nextLocation != OverlayUserLocation.MAIN_APP) {
             Log.d(
                 logTag,

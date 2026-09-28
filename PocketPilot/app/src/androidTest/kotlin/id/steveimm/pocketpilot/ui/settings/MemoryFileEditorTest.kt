@@ -78,14 +78,12 @@ class MemoryFileEditorTest {
 
     private fun userFile(): File = File(memoryDir, "user.md")
 
-    // ------------------------------------------------------------
     // (1) Bounded: 8 KB content remains editable; tier selector
     //     visible above; Save/Discard reachable after entering EDIT.
-    // ------------------------------------------------------------
+
     @Test fun bounded_editor_handles_large_content_with_visible_controls_and_tier_selector_above() {
-        // ~4 KB of multi-line content — large enough to exceed the bounded
-        // 240.dp window so the internal scroll path is exercised, but well
-        // under the 8192-byte file cap so the editor renders normally.
+        // ~4 KB of multi-line content — large enough to exceed the bounded 240.dp window so the internal scroll path is exercised, but
+        // well under the 8192-byte file cap so the editor renders normally.
         val big = "line\n".repeat(800)
         userFile().writeText(big)
 
@@ -119,10 +117,9 @@ class MemoryFileEditorTest {
         compose.onNodeWithTag(MEMORY_EDITOR_DISCARD_TAG).assertIsDisplayed()
     }
 
-    // ------------------------------------------------------------
     // (2) Gate: session start locks the editor, banner appears,
     //     typed buffer survives.
-    // ------------------------------------------------------------
+
     @Test fun gate_lock_disables_actions_shows_banner_and_preserves_typed_buffer() {
         userFile().writeText("hello world")
 
@@ -168,18 +165,13 @@ class MemoryFileEditorTest {
         assertEquals("hello world", userFile().readText())
     }
 
-    // ------------------------------------------------------------
     // (3) TOCTOU: click Save while the lock transitions in flight,
     //     write is aborted and the file is unchanged.
-    // ------------------------------------------------------------
+
     @Test fun save_handler_re_checks_gate_inside_coroutine_and_aborts_on_locked_race() {
         userFile().writeText("untouched")
 
-        // A dispatcher that delegates to real IO until armed. When armed it
-        // queues blocks instead, letting the test interleave external state
-        // changes (e.g. gate flipping locked) with a parked IO coroutine.
-        // We arm AFTER the initial load so the editor populates normally,
-        // then park only the save-path IO hop.
+        // A dispatcher that delegates to real IO until armed.
         val parking = ParkingDispatcher()
 
         var aborts = 0
@@ -232,9 +224,8 @@ class MemoryFileEditorTest {
         assertEquals("untouched", userFile().readText())
     }
 
-    // ------------------------------------------------------------
     // (4) Bounded: ↗ Open is disabled while the editor is dirty.
-    // ------------------------------------------------------------
+
     @Test fun bounded_open_full_disabled_while_dirty() {
         userFile().writeText("original")
 
@@ -268,11 +259,9 @@ class MemoryFileEditorTest {
         compose.onNodeWithTag(MEMORY_EDITOR_OPEN_FULL_TAG).assertIsEnabled()
     }
 
-    // ------------------------------------------------------------
-    // (5) Lock cycle: agent writes to disk while locked. On unlock,
-    //     the editor reloads from disk and discards user's stale
-    //     buffer — preventing a Save from clobbering agent appends.
-    // ------------------------------------------------------------
+    // (5) Lock cycle: agent writes to disk while locked. On unlock, the editor reloads from disk and discards user's stale buffer —
+    // preventing a Save from clobbering agent appends.
+
     @Test fun locked_to_unlocked_reloads_buffer_from_disk_discarding_stale_user_edits() {
         userFile().writeText("hello world")
 
@@ -327,10 +316,9 @@ class MemoryFileEditorTest {
         assertEquals("hello world\n## agent appended this", userFile().readText())
     }
 
-    // ------------------------------------------------------------
     // (6) TOCTOU: click Delete confirm while the lock transitions
     //     in flight; delete is aborted and the file remains.
-    // ------------------------------------------------------------
+
     @Test fun delete_handler_re_checks_gate_inside_coroutine_and_aborts_on_locked_race() {
         userFile().writeText("untouched")
 
@@ -381,12 +369,9 @@ class MemoryFileEditorTest {
         assertEquals("untouched", userFile().readText())
     }
 
-    // ------------------------------------------------------------
-    // (7) Reload window: between the locked→unlocked flip and the
-    //     post-unlock disk read completing, Save must stay disabled
-    //     so a stale pre-session buffer cannot clobber agent appends.
-    //     After reload completes, normal save resumes.
-    // ------------------------------------------------------------
+    // (7) Reload window: between the locked→unlocked flip and the post-unlock disk read completing, Save must stay disabled so a stale
+    // pre-session buffer cannot clobber agent appends. After reload completes, normal save resumes.
+
     @Test fun locked_to_unlocked_reload_window_keeps_save_disabled_then_re_enables() {
         userFile().writeText("on disk pre-session")
         val parking = ParkingDispatcher()
@@ -469,13 +454,7 @@ class MemoryFileEditorTest {
     }
 }
 
-/**
- * A dispatcher that delegates to [Dispatchers.IO] by default. When [arm] is
- * called, subsequent dispatches are queued and run nothing until
- * [releaseAll] is invoked. Lets a test park a specific IO hop (e.g. the
- * save coroutine) while letting unrelated hops (e.g. the initial load) run
- * normally.
- */
+/** A dispatcher that delegates to [Dispatchers.IO] by default. */
 private class ParkingDispatcher : CoroutineDispatcher() {
     private val queue = ConcurrentLinkedQueue<Runnable>()
     @Volatile private var armed = false

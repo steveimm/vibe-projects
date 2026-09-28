@@ -2,20 +2,7 @@ package id.steveimm.pocketpilot.history
 
 import android.util.Log
 
-/**
- * HistoryManager - Manages conversation history for agent sessions.
- *
- * Key features:
- * - Tracks conversation history as a list of ResponseItems
- * - Supports truncation policies for tool outputs (to manage context window)
- * - History normalization (ensures call/output pairs match)
- * - Proactive screen downgrade on every new SCREEN_OBSERVATION
- *
- * Lossy eviction lives in the past. Context-window pressure is now handled by
- * [Compactor] via [snapshot] / [replaceAllIfRevision].
- *
- * Note: This manages CONVERSATION history, not memory files.
- */
+/** HistoryManager - Manages conversation history for agent sessions. */
 class HistoryManager(
     private val config: HistoryConfig = HistoryConfig()
 ) {
@@ -35,9 +22,8 @@ class HistoryManager(
     @Volatile
     private var onMutation: (() -> Unit)? = null
 
-    // Monotonically increasing revision — bumped by every mutation. Enables CAS
-    // swap from Compactor so a concurrent supplement during a long LLM call
-    // cannot be silently overwritten.
+    // Monotonically increasing revision — bumped by every mutation. Enables CAS swap from Compactor so a concurrent supplement during a
+    // long LLM call cannot be silently overwritten.
     @Volatile
     private var _revision: Long = 0
     val revision: Long get() = _revision
@@ -46,12 +32,7 @@ class HistoryManager(
         onMutation = listener
     }
 
-    /**
-     * Add a single item to history.
-     *
-     * When a [MessageKind.SCREEN_OBSERVATION] is added, proactively downgrades
-     * older screen observations beyond [HistoryConfig.recentFullScreens].
-     */
+    /** Add a single item to history. */
     @Synchronized
     fun addItem(item: ResponseItem) {
         val processed = processItem(item, config.defaultTruncationPolicy)
@@ -67,12 +48,7 @@ class HistoryManager(
         onMutation?.invoke()
     }
 
-    /**
-     * Record multiple items from a turn.
-     *
-     * @param newItems Items to add
-     * @param policy Truncation policy for tool outputs
-     */
+    /** Record multiple items from a turn. */
     @Synchronized
     fun recordItems(newItems: List<ResponseItem>, policy: TruncationPolicy = config.defaultTruncationPolicy) {
         var hasNewScreen = false
@@ -92,12 +68,7 @@ class HistoryManager(
         onMutation?.invoke()
     }
 
-    /**
-     * Replace the whole history with an externally prepared list.
-     *
-     * Used by session reload to restore an exact checkpoint without re-running
-     * truncation/compression side effects.
-     */
+    /** Replace the whole history with an externally prepared list. */
     @Synchronized
     fun replaceAll(newItems: List<ResponseItem>) {
         items.clear()
@@ -107,20 +78,13 @@ class HistoryManager(
         Log.d(TAG, "History replaced, total items: ${items.size}")
     }
 
-    /**
-     * Atomic read of (revision, items snapshot). Use with [replaceAllIfRevision]
-     * to perform a read-modify-write under contention without holding the
-     * monitor for the duration of the work (e.g. an LLM summarization call).
-     */
+    /** Atomic read of (revision, items snapshot). Use with [replaceAllIfRevision] to perform a read-modify-write under contention
+     * without holding the monitor for the duration of the work (e.g. an LLM summarization call). */
     @Synchronized
     fun snapshot(): Pair<Long, List<ResponseItem>> = _revision to items.toList()
 
-    /**
-     * CAS-replace history. Swaps only if [expected] matches the current
-     * revision; returns true on swap, false on mismatch (caller should discard
-     * derived state and retry). Bumps revision and notifies mutation listener
-     * on success.
-     */
+    /** CAS-replace history. Swaps only if [expected] matches the current revision; returns true on swap, false on mismatch (caller
+     * should discard derived state and retry). Bumps revision and notifies mutation listener on success. */
     @Synchronized
     fun replaceAllIfRevision(expected: Long, newItems: List<ResponseItem>): Boolean {
         if (_revision != expected) return false
@@ -136,10 +100,7 @@ class HistoryManager(
     @Synchronized
     fun getAll(): List<ResponseItem> = items.toList()
 
-    /**
-     * Get history prepared for sending to the LLM.
-     * Performs normalization to ensure call/output pairs match.
-     */
+    /** Get history prepared for sending to the LLM. Performs normalization to ensure call/output pairs match. */
     @Synchronized
     fun forPrompt(): List<ResponseItem> {
         return normalizeHistory(items.toList())
@@ -159,10 +120,7 @@ class HistoryManager(
         Log.d(TAG, "History cleared")
     }
 
-    /**
-     * Estimate total token count for context window management.
-     * Uses nullable type to avoid returning 0 on first call.
-     */
+    /** Estimate total token count for context window management. Uses nullable type to avoid returning 0 on first call. */
     @Synchronized
     fun estimateTokenCount(): Long {
         lastTokenEstimate?.let { return it }
@@ -175,18 +133,7 @@ class HistoryManager(
         return estimateTokenCount() >= (maxTokens * warningThreshold).toLong()
     }
 
-    // ===== Compression Pipeline =====
-
-    /**
-     * Lightweight compression: normalize call/output pairs and downgrade old
-     * screen observations to one-liners.
-     *
-     * Lossy eviction was removed when [Compactor] took over context-window
-     * pressure. This method now only applies the cheap, lossless passes and
-     * returns whether the result is below [targetTokens]. The [targetTokens]
-     * argument is retained for the caller's diagnostics; this method does not
-     * try to force the result under it.
-     */
+    /** Lightweight compression: normalize call/output pairs and downgrade old screen observations to one-liners. */
     @Synchronized
     fun compress(targetTokens: Long): CompressionResult {
         val before = estimateTokenCount()
@@ -227,8 +174,6 @@ class HistoryManager(
         }
     }
 
-    // ===== Private Helpers =====
-
     private fun processItem(item: ResponseItem, policy: TruncationPolicy): ResponseItem {
         return when (item) {
             is ResponseItem.FunctionCallOutput -> truncateOutput(item, policy)
@@ -245,10 +190,8 @@ class HistoryManager(
         return output.copy(content = truncated, truncated = true)
     }
 
-    /**
-     * Downgrade all but the last [HistoryConfig.recentFullScreens] screen observations
-     * to compact one-line summaries. Runs proactively on every new screen observation.
-     */
+    /** Downgrade all but the last [HistoryConfig.recentFullScreens] screen observations to compact one-line summaries. Runs proactively
+     * on every new screen observation. */
     private fun downgradeOldScreens() {
         val screenIndices = items.withIndex()
             .filter { (_, item) ->
@@ -267,9 +210,7 @@ class HistoryManager(
         lastTokenEstimate = null
     }
 
-    /**
-     * Distill a full screen-state message to a compact summary.
-     */
+    /** Distill a full screen-state message to a compact summary. */
     internal fun compressScreenContent(fullContent: String): String {
         val count = ELEMENT_COUNT_REGEX.find(fullContent)?.groupValues?.get(1)
         return if (count != null) {

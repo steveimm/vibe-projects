@@ -11,12 +11,7 @@ import java.net.SocketTimeoutException
 import java.net.URL
 import javax.net.ssl.SSLException
 
-/**
- * Validates an API key by sending a minimal inference request to the provider.
- *
- * Uses HttpURLConnection (no extra dependency) for exact HTTP status code mapping
- * and bounded timeouts. No automatic retries — UI has explicit Retry button.
- */
+/** Validates an API key by sending a minimal inference request to the provider. */
 class HttpLlmCredentialValidator(
     private val baseUrl: String,
     private val modelId: String,

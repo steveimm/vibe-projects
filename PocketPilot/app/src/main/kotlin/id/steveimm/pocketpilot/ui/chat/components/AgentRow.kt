@@ -29,16 +29,8 @@ import id.steveimm.pocketpilot.ui.chat.model.RowState
 import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
-/**
- * AgentRow — D2/D3 layout. Three vertical regions:
- *   1. Trace (collapsible) — Thought + Action + mid-stream Text blocks.
- *   2. CollapsePill (toggle) — only on Complete rows that have a trace.
- *   3. Final region (always visible) — the FinalText block, if present.
- *
- * Live/Waiting/Error rows render trace open with no pill (locked open). The row
- * root is no longer clickable; the pill owns the toggle and Role.Button. The
- * trace itself (ThoughtGroup layout) lives in [AgentTrace].
- */
+/** AgentRow — D2/D3 layout. Three vertical regions: 1. Trace (collapsible) — Thought + Action + mid-stream Text blocks. 2. CollapsePill
+ * (toggle) — only on Complete rows that have a trace. 3. Final region (always visible) — the FinalText block, if present. */
 @Composable
 internal fun AgentRow(
     message: ChatMessage.Agent,

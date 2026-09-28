@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
 import json
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-from eval.aw_bridge.runner import load_config
+from eval.aw_bridge.runner import RunnerConfig, load_config
 from eval.aw_bridge.runner_preflight import (
     SnapshotPolicy,
     collect_required_app_names,
@@ -20,11 +20,12 @@ from eval.aw_bridge.task_loader import (
     TaskInstance,
     build_task_instances,
     ensure_android_world_importable,
-    load_task_names_from_file,
+    resolve_selected_tasks,
 )
 
 
 def _parse_args() -> argparse.Namespace:
+    """Parse command-line options for this tool."""
     parser = argparse.ArgumentParser(
         description="Prepare clean AndroidWorld baseline snapshots and write manifest.",
     )
@@ -48,6 +49,11 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _build_runner_like_args(args: argparse.Namespace) -> SimpleNamespace:
+    """Adapt command-line options to the shared runner configuration loader.
+
+    Args:
+        args: Parsed command-line options or command arguments.
+    """
     return SimpleNamespace(
         config=args.config,
         suite=args.suite,
@@ -62,31 +68,25 @@ def _build_runner_like_args(args: argparse.Namespace) -> SimpleNamespace:
     )
 
 
-def _resolve_selected_tasks(workspace_root: Path, args: argparse.Namespace) -> list[str] | None:
-    if args.tasks:
-        return [t.strip() for t in args.tasks.split(",") if t.strip()]
-    if args.tasks_file:
-        return load_task_names_from_file((workspace_root / args.tasks_file).resolve())
-    return None
-
-
 def _resolve_app_names(
     workspace_root: Path,
-    config: Any,
+    config: RunnerConfig,
     args: argparse.Namespace,
     env: Any,
 ) -> tuple[list[str], list[TaskInstance] | None]:
+    """Find apps required by explicit names or the selected task instances.
+
+    Args:
+        workspace_root: Project root used to resolve relative paths.
+        config: Runner settings for the target device and benchmark.
+        args: Parsed command-line options or command arguments.
+        env: AndroidWorld device environment.
+    """
     if args.apps:
-        app_names = sorted(
-            {
-                str(name).strip().lower()
-                for name in args.apps.split(",")
-                if str(name).strip()
-            }
-        )
+        app_names = sorted({str(name).strip().lower() for name in args.apps.split(",") if str(name).strip()})
         return app_names, None
 
-    selected_tasks = _resolve_selected_tasks(workspace_root, args)
+    selected_tasks = resolve_selected_tasks(workspace_root, args.tasks, args.tasks_file)
     task_instances = build_task_instances(
         suite_family=config.suite_family,
         n_task_combinations=config.n_task_combinations,
@@ -100,11 +100,17 @@ def _resolve_app_names(
 
 
 def _default_output_path(workspace_root: Path) -> Path:
+    """Choose the timestamped baseline-preparation report path.
+
+    Args:
+        workspace_root: Project root used to resolve relative paths.
+    """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return workspace_root / "eval" / "results" / f"baseline_manifest_{timestamp}.json"
 
 
 def main() -> None:
+    """Prepare AndroidWorld app snapshots and write a baseline report."""
     args = _parse_args()
     workspace_root = Path(__file__).resolve().parents[2]
     runner_args = _build_runner_like_args(args)
@@ -143,9 +149,7 @@ def main() -> None:
     finally:
         env.close()
 
-    output_path = (workspace_root / args.output).resolve() if args.output else _default_output_path(
-        workspace_root
-    )
+    output_path = (workspace_root / args.output).resolve() if args.output else _default_output_path(workspace_root)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     payload = {

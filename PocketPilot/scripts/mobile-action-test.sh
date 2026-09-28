@@ -1,15 +1,9 @@
 #!/usr/bin/env bash
-#
-# mobile-action-test.sh — Direct MobileActionTool invocation for CTN device QA
-#
-# Sends a raw mobile_action JSON params object to the device via broadcast,
-# the device-side DebugReceiver runs it through MobileActionTool's normal
-# validate → createInvocation → execute path, and writes result.json.
-#
-# Usage:
-#   ./scripts/mobile-action-test.sh --tag ctn-1-inbounds '{"action":"click","element_index":3,"x":540,"y":1200}'
-#
+# mobile-action-test.sh: Direct MobileActionTool invocation for CTN device QA
+
 set -euo pipefail
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 
 PACKAGE="id.steveimm.pocketpilot"
 INTENT="id.steveimm.pocketpilot.ACTION_DEBUG_MOBILE_ACTION"
@@ -22,24 +16,6 @@ log()  { echo -e "${BLUE}> $1${NC}"; }
 ok()   { echo -e "${GREEN}✓ $1${NC}"; }
 warn() { echo -e "${YELLOW}! $1${NC}"; }
 err()  { echo -e "${RED}✗ $1${NC}"; }
-
-select_device() {
-    local preferred="${ANDROID_SERIAL:-}"
-    local devices
-    devices=$(adb devices | awk 'NR>1 && $2=="device" {print $1}')
-    [[ -z "$devices" ]] && return 1
-    if [[ -n "$preferred" ]] && printf "%s\n" "$devices" | grep -Fxq "$preferred"; then
-        echo "$preferred"
-        return 0
-    fi
-    local physical
-    physical=$(printf "%s\n" "$devices" | grep -v '^emulator-' || true)
-    if [[ -n "$physical" ]]; then
-        echo "$physical" | head -1
-    else
-        echo "$devices" | head -1
-    fi
-}
 
 TAG=""
 SNAPSHOT_PRE=false
@@ -76,6 +52,7 @@ log "Device: $DEVICE"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 if [[ -n "$TAG" ]]; then
+    validate_output_tag "$TAG" || exit 1
     OUT_DIR="$ROOT/debug-output/mobile-action-test/$TAG"
 else
     OUT_DIR="$ROOT/debug-output/mobile-action-test/latest"

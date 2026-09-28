@@ -2,13 +2,7 @@ package id.steveimm.pocketpilot.platform
 
 import id.steveimm.pocketpilot.model.Bounds
 
-/**
- * Identity snapshot of the intended target element from perception.
- *
- * Threaded from [TargetResolver] through [UIAction] to [NodeActionPerformer]
- * so the action layer can verify it found the right node before clicking.
- * Null for coordinate-only targets (no semantic identity available).
- */
+/** Identity snapshot of the intended target element from perception. */
 data class SemanticTargetHint(
     val resourceId: String,
     val text: String,
@@ -17,38 +11,21 @@ data class SemanticTargetHint(
     val bounds: Bounds
 )
 
-/**
- * UIAction - Platform-agnostic representation of UI actions.
- * 
- * These actions can be executed by any AndroidPlatform implementation,
- * whether real (AccessibilityPlatform) or mock (MockPlatform).
- */
+/** UIAction - Platform-agnostic representation of UI actions. */
 sealed interface UIAction {
 
-    /**
-     * Perform ACTION_CLICK on the clickable accessibility node at coordinates.
-     *
-     * This does not include any gesture fallback. Invocation code
-     * can compose retry/fallback policies explicitly.
-     */
+    /** Perform ACTION_CLICK on the clickable accessibility node at coordinates. */
     data class ClickNodeAt(
         val x: Int,
         val y: Int,
         val semanticHint: SemanticTargetHint? = null
     ) : UIAction
 
-    /**
-     * Perform a gesture tap at coordinates.
-     *
-     * This is an explicit atomic tap action used when callers need strict
-     * API-level fallback orchestration.
-     */
+    /** Perform a gesture tap at coordinates. */
     data class TapAt(
         val x: Int,
         val y: Int
     ) : UIAction
-    
-    // --- Node-based (AccessibilityNodeInfo.performAction) ---
 
     /** Find node at (x,y), perform ACTION_LONG_CLICK */
     data class LongClickNodeAt(
@@ -68,21 +45,13 @@ sealed interface UIAction {
         val text: String, val clear: Boolean = false
     ) : UIAction
 
-    // --- Gesture-based (AccessibilityService.dispatchGesture) ---
-
     /** Gesture long press (hold) at coordinates for duration */
     data class LongPressAt(
         val x: Int, val y: Int,
         val durationMs: Long
     ) : UIAction
-    
-    /**
-     * Perform a scroll action on the scrollable node at coordinates.
-     *
-     * Uses AccessibilityNodeInfo scroll actions (ACTION_SCROLL_DOWN, etc.)
-     * which work at framework level and bypass gesture interception.
-     * [direction] is content direction: "down" = reveal content below.
-     */
+
+    /** Perform a scroll action on the scrollable node at coordinates. */
     data class ScrollNodeAt(
         val x: Int,
         val y: Int,
@@ -97,25 +66,19 @@ sealed interface UIAction {
         val endY: Int,
         val durationMs: Long = 300
     ) : UIAction
-    
-    /**
-     * Press a system button.
-     */
+
+    /** Press a system button. */
     data class SystemButton(
         val button: SystemButtonType
     ) : UIAction
-    
-    /**
-     * Wait for a specified duration.
-     */
+
+    /** Wait for a specified duration. */
     data class Wait(
         val durationMs: Long
     ) : UIAction
 }
 
-/**
- * SystemButtonType - System buttons that can be pressed.
- */
+/** SystemButtonType - System buttons that can be pressed. */
 enum class SystemButtonType {
     BACK,
     HOME,

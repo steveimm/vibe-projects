@@ -430,8 +430,6 @@ class ClickExecutorTest {
         assertThat(platform.performedActions).containsExactly(UIAction.TapAt(100, 200))
     }
 
-    // ---------- Coordinate-hint normalization (Codex dual target) ----------
-
     @Test
     fun `execute semantic plus hint inside bounds uses node click first`() = runTest {
         val snapshot = snapshotWithSingleButton()
@@ -703,10 +701,7 @@ class ClickExecutorTest {
         )
     }
 
-    /**
-     * Row with two clickable children at similar distance from the title text.
-     * Ambiguity guard should fall back to container.
-     */
+    /** Row with two clickable children at similar distance from the title text. Ambiguity guard should fall back to container. */
     private fun snapshotWithRowAndTwoCloseChildren(
         titleLabel: String = "task.html"
     ): ScreenSnapshot {

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +20,7 @@ class TraceParseResult:
 
 
 def empty_trace_result() -> TraceParseResult:
+    """Return empty trace metrics when a run did not produce readable artifacts."""
     return TraceParseResult(
         answer=None,
         answer_status=None,
@@ -32,6 +33,11 @@ def empty_trace_result() -> TraceParseResult:
 
 
 def parse_trace(trace_dir: Path) -> TraceParseResult:
+    """Extract the latest answer and summary metrics from a recorded run trace.
+
+    Args:
+        trace_dir: Directory containing the raw trace and its artifacts.
+    """
     trace_file = trace_dir / "trace.jsonl"
     if not trace_file.exists():
         return empty_trace_result()
@@ -61,35 +67,21 @@ def parse_trace(trace_dir: Path) -> TraceParseResult:
     return TraceParseResult(
         answer=latest_answer,
         answer_status=latest_status,
-        completion_reason=(
-            _clean_nullable(summary_obj.get("stop_reason"))
-            if isinstance(summary_obj, dict)
-            else None
-        ),
-        turns_executed=(
-            int(summary_obj.get("turns_executed", 0))
-            if isinstance(summary_obj, dict)
-            else 0
-        ),
-        tool_calls=(
-            int(summary_obj.get("tool_calls", 0))
-            if isinstance(summary_obj, dict)
-            else 0
-        ),
-        tool_failures=(
-            int(summary_obj.get("tool_failures", 0))
-            if isinstance(summary_obj, dict)
-            else 0
-        ),
-        run_summary_path=(
-            str(summary_abs)
-            if summary_abs is not None and summary_abs.exists()
-            else None
-        ),
+        completion_reason=(_clean_nullable(summary_obj.get("stop_reason")) if isinstance(summary_obj, dict) else None),
+        turns_executed=(int(summary_obj.get("turns_executed", 0)) if isinstance(summary_obj, dict) else 0),
+        tool_calls=(int(summary_obj.get("tool_calls", 0)) if isinstance(summary_obj, dict) else 0),
+        tool_failures=(int(summary_obj.get("tool_failures", 0)) if isinstance(summary_obj, dict) else 0),
+        run_summary_path=(str(summary_abs) if summary_abs is not None and summary_abs.exists() else None),
     )
 
 
 def _find_artifact_path(event: dict[str, Any], kind: str) -> str | None:
+    """Find the path of the first artifact with the requested kind.
+
+    Args:
+        event: Raw trace event.
+        kind: Artifact kind to match.
+    """
     artifacts = event.get("artifacts", [])
     if not isinstance(artifacts, list):
         return None
@@ -104,6 +96,11 @@ def _find_artifact_path(event: dict[str, Any], kind: str) -> str | None:
 
 
 def _read_json_if_exists(path: Path) -> Any:
+    """Read a JSON artifact, returning no value when it is missing or malformed.
+
+    Args:
+        path: File path to read or write.
+    """
     if not path.exists():
         return None
     try:
@@ -113,6 +110,11 @@ def _read_json_if_exists(path: Path) -> Any:
 
 
 def _clean_nullable(value: Any) -> str | None:
+    """Normalize a trace field to a nonblank string or no value.
+
+    Args:
+        value: Input value to validate or normalize.
+    """
     if not isinstance(value, str):
         return None
     trimmed = value.strip()

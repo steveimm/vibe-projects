@@ -176,9 +176,8 @@ class ChatEventReducerTest {
 
     @Test
     fun `next user turn preserves null completedTimestamp on already-complete legacy row`() {
-        // Reproduces Finding #8: insertUserTurn used to clobber legacy
-        // already-complete rows (state == Complete, completedTimestamp == null)
-        // with a fresh wall-clock from the new turn — bogus future timestamp.
+        // Reproduces Finding #8: insertUserTurn used to clobber legacy already-complete rows (state == Complete, completedTimestamp ==
+        // null) with a fresh wall-clock from the new turn — bogus future timestamp.
         val f = Fixture()
         // Seed a legacy-shaped row: Complete with null completedTimestamp.
         f.messages.add(

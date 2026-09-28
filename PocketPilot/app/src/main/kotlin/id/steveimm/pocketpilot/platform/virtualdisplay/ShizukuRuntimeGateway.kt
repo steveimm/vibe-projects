@@ -22,11 +22,8 @@ internal class ShizukuRuntimeGateway {
         companion object {
                 private const val TAG = "ShizukuRuntime"
 
-                /**
-                 * Per-process counter for permission request codes. Each call gets a unique code so
-                 * a stale listener from a prior cancelled request never matches a new request's
-                 * grant result.
-                 */
+                /** Per-process counter for permission request codes. Each call gets a unique code so a stale listener from a prior
+                 * cancelled request never matches a new request's grant result. */
                 private val requestCodeSeed = AtomicInteger(2000)
         }
 
@@ -52,23 +49,7 @@ internal class ShizukuRuntimeGateway {
                 Shizuku.requestPermission(requestCode)
         }
 
-        /**
-         * Request Shizuku permission and suspend until the user responds.
-         *
-         * Why this exists: after `adb install -r` the app gets a fresh UID, but Shizuku's stored
-         * consent (in /data/local/tmp/shizuku/shizuku.json) is keyed by the old UID. Shizuku
-         * Manager UI matches by package name and shows "✓ granted" so the user thinks they're
-         * good, but [hasPermission] (which queries by current UID) returns false. The historic
-         * gate sent the user back to Shizuku Manager, where re-toggling did nothing visible —
-         * the only remedy is for the app itself to call `requestPermission` so Shizuku writes a
-         * new row keyed to the current UID. This helper does that inline.
-         *
-         * Shizuku's `requestPermission` does not require an Activity context — the Shizuku
-         * service shows its own system-level confirmation dialog. The grant result is delivered
-         * via [Shizuku.OnRequestPermissionResultListener]; we register a one-shot listener,
-         * match on a unique request code, and suspend until it fires. The listener is cleaned
-         * up on completion AND on coroutine cancellation (the user switching away mid-request).
-         */
+        /** Request Shizuku permission and suspend until the user responds. */
         @OptIn(InternalCoroutinesApi::class)
         suspend fun requestPermissionAndAwait(): PermissionRequestResult {
                 val reqCode = requestCodeSeed.getAndIncrement()

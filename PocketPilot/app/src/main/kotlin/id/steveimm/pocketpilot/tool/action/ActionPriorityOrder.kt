@@ -1,15 +1,6 @@
 package id.steveimm.pocketpilot.tool.action
 
-/**
- * Central action priority configuration.
- *
- * Each dual-path action's fallback chain order is defined here.
- * To swap priority for any action, just reorder the list entries.
- *
- * Single-path actions not listed here:
- *   - swipe: gesture only (no fallback)
- *   - type: node text path (SetTextOnNodeAt → TapToFocus+SetTextOnFocused)
- */
+/** Central action priority configuration. */
 object ActionPriorityOrder {
 
     /** click: node_click → gesture_tap */

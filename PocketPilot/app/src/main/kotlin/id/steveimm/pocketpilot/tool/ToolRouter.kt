@@ -15,30 +15,19 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
-/**
- * ToolRouter - Executes tool calls with state machine and policy-based approval.
- * 
- * Implements the tool call lifecycle:
- * 1. VALIDATING - Validate tool exists and parameters are correct
- * 2. POLICY CHECK - Ask PolicyEngine if allowed/denied/ask-user
- * 3. AWAITING_APPROVAL - (if needed) Wait for user decision
- * 4. EXECUTING - Run the tool
- * 5. SUCCESS/ERROR/CANCELLED - Terminal state
- * 
- * Pattern from Gemini CLI's CoreToolScheduler.
- */
+/** ToolRouter - Executes tool calls with state machine and policy-based approval. */
 class ToolRouter(
     private val registry: ToolRegistry,
     private val policyEngine: PolicyEngine
 ) {
-    
+
     companion object {
         private const val TAG = "ToolRouter"
-        
+
         /** Timeout for user approval - if not responded within this time, action is cancelled */
         private const val APPROVAL_TIMEOUT_MS = 60_000L  // 60 seconds
     }
-    
+
     // Track active tool calls for cancellation and state queries
     private val activeToolCalls = ConcurrentHashMap<String, ToolCallState>()
 
@@ -47,20 +36,8 @@ class ToolRouter(
 
     // Pending approval handlers (call ID -> deferred decision)
     private val pendingApprovals = ConcurrentHashMap<String, CompletableDeferred<ApprovalDecision>>()
-    
-    /**
-     * Execute a tool call with full state machine lifecycle.
-     * 
-     * @param toolName Name of the tool to invoke
-     * @param params Parameters for the tool
-     * @param context Execution context with platform access
-     * @param callId Optional caller-provided ID (use LLM call_id when available)
-     * @param onStateChange Callback for state changes (for UI updates)
-     * @param onApprovalRequired Suspend callback when user approval is needed.
-     *        The callback receives ApprovalDetails which includes the callId
-     *        that must be used when resolving the approval.
-     * @return The final result of the tool call
-     */
+
+    /** Execute a tool call with full state machine lifecycle. */
     suspend fun execute(
         toolName: String,
         params: JSONObject,
@@ -75,11 +52,10 @@ class ToolRouter(
         cancellationTokens[resolvedCallId] = token
 
         Log.d(TAG, "Starting tool call: $resolvedCallId ($toolName)")
-        
-        // === STATE: VALIDATING ===
+
         var state: ToolCallState = ToolCallState.Validating(resolvedCallId, toolName, params)
         updateState(state, onStateChange)
-        
+
         // Check tool exists
         val tool = registry.get(toolName)
         if (tool == null) {
@@ -88,7 +64,7 @@ class ToolRouter(
             cleanupCall(resolvedCallId)
             return ToolCallResult.Error(resolvedCallId, "Unknown tool: $toolName")
         }
-        
+
         // Validate parameters
         val validation = tool.validate(params)
         if (validation is ValidationResult.Invalid) {
@@ -98,21 +74,20 @@ class ToolRouter(
             cleanupCall(resolvedCallId)
             return ToolCallResult.Error(resolvedCallId, errorMsg)
         }
-        
+
         // Create invocation
         val invocation = tool.createInvocation(params)
-        
+
         // Track if approval was required (for snapshot refresh after approval wait)
         var approvalWasRequired = false
-        
-        // === POLICY CHECK ===
+
         val destinationPackage = if (toolName == "open_app") {
             resolveOpenAppDestination(params, context.platform)
         } else null
         val approvalPackageName = destinationPackage ?: packageName
         val policyDecision = policyEngine.check(toolName, params, packageName, destinationPackage)
         Log.d(TAG, "Policy decision for $toolName: $policyDecision")
-        
+
         when (policyDecision) {
             is PolicyDecision.Deny -> {
                 val cancelledState = ToolCallState.Cancelled(
@@ -122,7 +97,7 @@ class ToolRouter(
                 cleanupCall(resolvedCallId)
                 return ToolCallResult.Cancelled(resolvedCallId, "Policy denied: ${policyDecision.reason}")
             }
-            
+
             is PolicyDecision.AskUser -> {
                 val approvalSubjectPackage = approvalPackageName?.takeIf(::isValidApprovalPackageName)
                 if (approvalSubjectPackage == null) {
@@ -134,7 +109,6 @@ class ToolRouter(
                     return ToolCallResult.Cancelled(resolvedCallId, "Policy denied: approval package unknown")
                 }
 
-                // === STATE: AWAITING_APPROVAL ===
                 state = ToolCallState.AwaitingApproval(
                     callId = resolvedCallId,
                     toolName = toolName,
@@ -143,7 +117,7 @@ class ToolRouter(
                     description = invocation.getDescription()
                 )
                 updateState(state, onStateChange)
-                
+
                 // Prepare approval tracking BEFORE notifying UI to avoid race with fast approvals
                 val deferred = CompletableDeferred<ApprovalDecision>()
                 pendingApprovals[resolvedCallId] = deferred
@@ -173,9 +147,9 @@ class ToolRouter(
                     cleanupCall(resolvedCallId)
                     return ToolCallResult.Error(resolvedCallId, "Approval request failed: ${e.message}")
                 }
-                
+
                 // Wait for approval with timeout
-                
+
                 val decision = try {
                     withTimeout(APPROVAL_TIMEOUT_MS) {
                         deferred.await()
@@ -193,9 +167,9 @@ class ToolRouter(
                 } finally {
                     pendingApprovals.remove(resolvedCallId)
                 }
-                
+
                 Log.d(TAG, "Approval decision for $resolvedCallId: $decision")
-                
+
                 when (decision) {
                     ApprovalDecision.DENIED -> {
                         val cancelledState = ToolCallState.Cancelled(
@@ -250,14 +224,14 @@ class ToolRouter(
                     }
                 }
             }
-            
+
             PolicyDecision.Allow -> {
-                // === STATE: SCHEDULED ===
+
                 state = ToolCallState.Scheduled(resolvedCallId, toolName, params, invocation)
                 updateState(state, onStateChange)
             }
         }
-        
+
         // Check for cancellation before execution
         if (context.isCancelled() || token.isCancelled()) {
             val cancelledState = ToolCallState.Cancelled(resolvedCallId, toolName, params, "Cancelled before execution")
@@ -265,11 +239,10 @@ class ToolRouter(
             cleanupCall(resolvedCallId)
             return ToolCallResult.Cancelled(resolvedCallId, "Cancelled before execution")
         }
-        
-        // === STATE: EXECUTING ===
+
         state = ToolCallState.Executing(resolvedCallId, toolName, params, invocation)
         updateState(state, onStateChange)
-        
+
         // Re-capture snapshot if approval was required (UI may have changed during wait)
         val executionSnapshot = if (approvalWasRequired) {
             Log.d(TAG, "Re-capturing snapshot after approval wait")
@@ -279,7 +252,7 @@ class ToolRouter(
         } else {
             context.currentSnapshot
         }
-        
+
         // Execute the tool (with finally block to ensure cleanup on abnormal exit - M1)
         val executionResult = try {
             val execContext = object : ToolExecutionContext {
@@ -294,8 +267,7 @@ class ToolRouter(
             Log.e(TAG, "Tool execution failed: $toolName", e)
             ToolExecutionResult.Failure(e.message ?: "Execution failed", e)
         }
-        
-        // === TERMINAL STATE === (cleanup in finally to handle any unexpected exceptions - M1)
+
         return try {
             when (executionResult) {
                 is ToolExecutionResult.Success -> {
@@ -307,7 +279,7 @@ class ToolRouter(
                         observation = executionResult.observation
                     )
                 }
-                
+
                 is ToolExecutionResult.Failure -> {
                     val errorState = ToolCallState.Error(
                         resolvedCallId, toolName, params, executionResult.error, executionResult.exception
@@ -315,7 +287,7 @@ class ToolRouter(
                     updateState(errorState, onStateChange)
                     ToolCallResult.Error(resolvedCallId, executionResult.error, executionResult.exception)
                 }
-                
+
                 is ToolExecutionResult.Cancelled -> {
                     val cancelledState = ToolCallState.Cancelled(resolvedCallId, toolName, params, executionResult.reason)
                     updateState(cancelledState, onStateChange)
@@ -327,16 +299,8 @@ class ToolRouter(
             cleanupCall(resolvedCallId)
         }
     }
-    
-    /**
-     * Resolve a pending approval.
-     * 
-     * Called when user responds to an approval request.
-     * 
-     * @param callId The tool call ID to resolve
-     * @param decision The user's approval decision
-     * @return true if approval was resolved, false if no pending approval found for callId
-     */
+
+    /** Resolve a pending approval. */
     fun resolveApproval(callId: String, decision: ApprovalDecision): Boolean {
         val deferred = pendingApprovals[callId]
         return if (deferred != null) {
@@ -348,48 +312,31 @@ class ToolRouter(
             false
         }
     }
-    
-    /**
-     * Cancel a tool call.
-     *
-     * Signals the per-call cancellation token and aborts any pending approval.
-     * Does NOT remove from activeToolCalls — the executing coroutine reaches
-     * a terminal state and cleans up via the normal path.
-     */
+
+    /** Cancel a tool call. */
     fun cancel(callId: String) {
         cancellationTokens[callId]?.cancel()
         pendingApprovals[callId]?.complete(ApprovalDecision.ABORT)
         Log.d(TAG, "Cancelled tool call: $callId")
     }
 
-    /**
-     * Cancel all active tool calls.
-     *
-     * Signals all per-call cancellation tokens and aborts all pending approvals.
-     * Tracking in activeToolCalls persists until each call reaches a terminal state.
-     */
+    /** Cancel all active tool calls. */
     fun cancelAll() {
         cancellationTokens.values.forEach { it.cancel() }
         pendingApprovals.values.forEach { it.complete(ApprovalDecision.ABORT) }
         pendingApprovals.clear()
         Log.d(TAG, "Signalled cancellation for all tool calls")
     }
-    
-    /**
-     * Get the current state of a tool call.
-     */
+
+    /** Get the current state of a tool call. */
     fun getState(callId: String): ToolCallState? = activeToolCalls[callId]
-    
-    /**
-     * Get all active (non-terminal) tool calls.
-     */
+
+    /** Get all active (non-terminal) tool calls. */
     fun getActiveCallIds(): Set<String> = activeToolCalls.keys.toSet()
-    
-    /**
-     * Check if there are any pending approvals.
-     */
+
+    /** Check if there are any pending approvals. */
     fun hasPendingApprovals(): Boolean = pendingApprovals.isNotEmpty()
-    
+
     private fun updateState(state: ToolCallState, callback: ((ToolCallState) -> Unit)?) {
         if (!state.isTerminal()) {
             activeToolCalls[state.callId] = state
@@ -397,7 +344,7 @@ class ToolRouter(
         callback?.invoke(state)
         Log.d(TAG, "State: ${state.callId} -> ${state::class.simpleName}")
     }
-    
+
     private fun generateCallId(): String = UUID.randomUUID().toString().take(8)
 
     /** Remove a call from all tracking maps. Called when a call reaches a terminal state. */
@@ -406,10 +353,8 @@ class ToolRouter(
         cancellationTokens.remove(callId)
     }
 
-    /**
-     * Best-effort pre-flight resolution of open_app destination package.
-     * Returns null if unresolved (policy falls back to current-tier-only).
-     */
+    /** Best-effort pre-flight resolution of open_app destination package. Returns null if unresolved (policy falls back to
+     * current-tier-only). */
     private suspend fun resolveOpenAppDestination(
         params: JSONObject,
         platform: AndroidPlatform
@@ -432,25 +377,21 @@ class ToolRouter(
         packageName.isNotBlank() && '.' in packageName
 }
 
-/**
- * Context provided to ToolRouter for execution.
- */
+/** Context provided to ToolRouter for execution. */
 interface ToolRouterContext {
     val platform: AndroidPlatform
     val currentSnapshot: ScreenSnapshot?
     fun isCancelled(): Boolean
 }
 
-/**
- * Simple implementation of ToolRouterContext.
- */
+/** Simple implementation of ToolRouterContext. */
 class SimpleToolRouterContext(
     override val platform: AndroidPlatform,
     override val currentSnapshot: ScreenSnapshot? = null,
     private val cancellationFlag: AtomicBoolean = AtomicBoolean(false)
 ) : ToolRouterContext {
     override fun isCancelled(): Boolean = cancellationFlag.get()
-    
+
     fun cancel() {
         cancellationFlag.set(true)
     }

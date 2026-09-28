@@ -6,12 +6,7 @@ import android.view.Display
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 
-/**
- * Window and root access helper for a virtual display.
- *
- * Centralizes display-filtered window queries from AccessibilityService.
- * Callers must recycle returned nodes; this class does not hold references.
- */
+/** Window and root access helper for a virtual display. */
 class VirtualDisplayWindowAccessor(
     private val service: AccessibilityService,
     private val displayIdProvider: () -> Int
@@ -56,13 +51,7 @@ class VirtualDisplayWindowAccessor(
         }
     }
 
-    /**
-     * Get the a11y root node from the virtual display's topmost app window. Caller must recycle.
-     *
-     * Picks the highest-layer TYPE_APPLICATION window, falling back to any highest-layer
-     * non-overlay/non-IME window. This ensures node actions and getCurrentPackageName()
-     * target the correct foreground window under dialogs and popups.
-     */
+    /** Get the a11y root node from the virtual display's topmost app window. Caller must recycle. */
     fun getRootOnDisplay(): AccessibilityNodeInfo? {
         val windows = getWindowsOnDisplay()
         return try {
@@ -85,13 +74,7 @@ class VirtualDisplayWindowAccessor(
         }
     }
 
-    /**
-     * Get a11y roots from all relevant windows on the virtual display. Caller must recycle all.
-     *
-     * Excludes TYPE_ACCESSIBILITY_OVERLAY (our own overlay) and TYPE_INPUT_METHOD (keyboard).
-     * Remaining windows are sorted by layer ascending for deterministic element ordering
-     * across turns (background roots first, foreground roots last).
-     */
+    /** Get a11y roots from all relevant windows on the virtual display. Caller must recycle all. */
     fun getRootsOnDisplay(): List<AccessibilityNodeInfo> {
         val windows = getWindowsOnDisplay()
         return try {

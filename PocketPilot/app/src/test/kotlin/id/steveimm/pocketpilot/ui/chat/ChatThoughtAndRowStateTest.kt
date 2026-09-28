@@ -19,12 +19,8 @@ import id.steveimm.pocketpilot.ui.chat.model.RowState
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Test
 
-/**
- * Track A spec §3 + §5: ThoughtUpdate routing into ContentBlock.Thought, plus
- * the four-state RowState machine (Live → Complete / Error). Locks the
- * chronological-trace ordering invariant from §5: trace items appear in
- * arrival order with no reordering, no deduplication.
- */
+/** Track A spec §3 + §5: ThoughtUpdate routing into ContentBlock.Thought, plus the four-state RowState machine (Live → Complete /
+ * Error). */
 class ChatThoughtAndRowStateTest {
 
     private val sessionId = SessionId("s1")

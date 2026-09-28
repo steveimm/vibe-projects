@@ -3,24 +3,24 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
+from typing import Any
 
 from ux_runner_core import UXRunner, run_ux_qa
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse capture, scenario, and linked-agent command-line options."""
     parser = argparse.ArgumentParser(description="Run Android UX QA scenarios over ADB")
 
-    # -- Capture mode (AI-interactive) --
     parser.add_argument(
         "--capture",
         metavar="PREFIX",
         default=None,
-        help="Quick-capture mode: take screenshot + UI dump + visible text. "
-        "Output files: PREFIX.png, PREFIX.xml, PREFIX_visible.txt",
+        help="Capture screenshot, UI XML, and visible text under PREFIX's parent directory, using its name as the artifact label.",
     )
     parser.add_argument("--serial", default=None, help="ADB device serial")
 
-    # -- Scenario mode --
     parser.add_argument("--scenario", default=None, help="Path to scenario JSON")
     parser.add_argument("--out-root", default="debug-output/ux-qa", help="Root output folder")
 
@@ -55,14 +55,12 @@ def parse_args() -> argparse.Namespace:
 
 def run_capture(prefix: str, serial: str | None) -> int:
     """Quick-capture: screenshot + UI dump + visible text."""
-    from pathlib import Path
-
     out_dir = Path(prefix).parent
     out_dir.mkdir(parents=True, exist_ok=True)
     label = Path(prefix).name
 
-    dummy_scenario: dict = {"name": "capture", "package": "", "steps": []}
-    runner = UXRunner(dummy_scenario, out_dir, serial=serial)
+    scenario: dict[str, Any] = {"name": "capture", "package": "", "steps": []}
+    runner = UXRunner(scenario, out_dir, serial=serial)
     runner.ensure_prerequisites()
 
     artifacts = runner.capture_snapshot(label)
@@ -73,6 +71,7 @@ def run_capture(prefix: str, serial: str | None) -> int:
 
 
 def main() -> int:
+    """Capture device state or run the requested UX scenario."""
     args = parse_args()
 
     if args.capture:

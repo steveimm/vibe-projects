@@ -63,8 +63,6 @@ class ToolCallStateTest {
         assertThat(executing.isTerminal()).isFalse()
     }
 
-    // === FSM characterization: every transition in doc/main/state_machines/tool_call.md ===
-
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `entry to Validating - Validating to Error - unknown tool`() = runTest {

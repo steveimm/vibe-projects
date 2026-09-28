@@ -3,20 +3,13 @@ package id.steveimm.pocketpilot.protocol
 import id.steveimm.pocketpilot.llm.LocalLLMConfig
 import id.steveimm.pocketpilot.perception.PerceptionConfig
 
-/**
- * SessionConfig - Configuration for an agent session.
- *
- * Contains all settings that affect session behavior.
- * Immutable after session creation.
- */
+/** SessionConfig - Configuration for an agent session. */
 data class SessionConfig(
         /** Delay between actions in milliseconds (for UI to settle) */
         val actionDelayMs: Long = 2000,
         /** Approval mode for tool execution */
         val approvalMode: ApprovalMode = ApprovalMode.SMART,
-        /**
-         * Canonical LLM runtime routing config (backend + local model params).
-         */
+        /** Canonical LLM runtime routing config (backend + local model params). */
         val llm: SessionLlmConfig =
                 SessionLlmConfig(
                         backendType = LLMBackendType.OPENAI,
@@ -30,19 +23,15 @@ data class SessionConfig(
         val traceRunId: String? = null,
         /** Controls which perception modalities (a11y tree, screenshot, both) are active */
         val perceptionConfig: PerceptionConfig = PerceptionConfig.DEFAULT,
-        /**
-         * Primary model name (key in llm_models.json) for the main agent.
-         * Subagents inherit this model — there is no separate subagent model.
-         */
+        /** Primary model name (key in llm_models.json) for the main agent. Subagents inherit this model — there is no separate subagent
+         * model. */
         val mainModel: String = "glm-5",
         /** Platform mode: real screen (accessibility) or virtual display (Shizuku) */
         val platformMode: PlatformMode = PlatformMode.ACCESSIBILITY,
         /** Tool names to exclude from the agent's allowed tool set (e.g. for eval) */
         val excludedTools: Set<String> = emptySet(),
-        /**
-         * Eval-only safety net plumbed to [id.steveimm.pocketpilot.agent.AgentExecutionConfig.evalTurnBudget].
-         * Production leaves this null; eval bridge sets it from yaml `max_turns:`.
-         */
+        /** Eval-only safety net plumbed to [id.steveimm.pocketpilot.agent.AgentExecutionConfig.evalTurnBudget]. Production leaves this
+         * null; eval bridge sets it from yaml `max_turns:`. */
         val evalTurnBudget: Int? = null
 )
 

@@ -11,11 +11,8 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
 import rikka.shizuku.Shizuku
 
-/**
- * Owns the lifecycle of the Shizuku-backed [DevtoolsSocketTransport]. The bridge calls
- * [obtain] lazily on the first httpGet so we don't spawn a Shizuku helper process before
- * `browser_script` is actually invoked.
- */
+/** Owns the lifecycle of the Shizuku-backed [DevtoolsSocketTransport]. The bridge calls [obtain] lazily on the first httpGet so we
+ * don't spawn a Shizuku helper process before `browser_script` is actually invoked. */
 interface UserServiceProvider {
     /** Lazily produce a transport. Idempotent: subsequent calls return the same instance. */
     suspend fun obtain(): DevtoolsSocketTransport
@@ -24,49 +21,8 @@ interface UserServiceProvider {
     fun close()
 }
 
-/**
- * Real Shizuku-backed [UserServiceProvider]. Binds [ChromeDevtoolsUserService] through
- * `Shizuku.bindUserService` and wraps the resulting binder as a [UserServiceTransport].
- *
- * Lifecycle hardening (review HIGH rounds 3–5):
- *
- * - [obtain] guards each caller's wait with [withTimeout] so a Shizuku helper that never
- *   delivers a binder cannot suspend the caller forever. Default [DEFAULT_BIND_TIMEOUT_MS]
- *   is 10s.
- * - **Single-flight bind.** Concurrent [obtain] callers share a single in-flight bind
- *   cycle via a [CompletableDeferred]. Without this, a second [obtain] would overwrite
- *   the first cycle's [ServiceConnection] and leak it (only the latest connection can be
- *   unbound by a callback or by [close]). With single-flight there is at most one
- *   outstanding `ServiceConnection` per provider.
- * - **Refcounted teardown.** Each awaiter is counted; when the last awaiter cancels or
- *   times out before the bind completes, the cycle is torn down (unbind + drop the
- *   shared deferred). This bounds the helper process's lifetime to "at least one caller
- *   wants it" without requiring a separate bind-cycle timer.
- * - The internal [ServiceConnection] resumes the shared deferred with
- *   [DevtoolsSetupError.UserServiceSocketInaccessible] on every failure callback —
- *   [ServiceConnection.onServiceDisconnected] before connect, [ServiceConnection.onNullBinding],
- *   and [ServiceConnection.onBindingDied] — instead of silently waiting for an
- *   onServiceConnected that never comes. Every terminal failure callback also calls
- *   [Binder.unbind] before propagating the error so a failed bind never leaks the helper
- *   process.
- * - Each bind cycle is tagged with a monotonic [bindGeneration]. Every callback verifies
- *   its generation matches the current one (and that the provider is not [closed]) before
- *   mutating state. Stale callbacks from prior bind cycles — those that fire after a
- *   timeout, [close], or an earlier failure callback — are silently ignored. This prevents
- *   a delayed framework callback from corrupting state or resuming a newer pending
- *   [obtain].
- * - The success path (`onServiceConnected`) atomically transitions the cycle out of
- *   in-flight before the deferred completes. This forecloses on the race where a
- *   cancellation arriving after delivery could unbind the now-active service while
- *   leaving [transport] cached: there is no in-flight cycle for the cancellation handler
- *   to tear down.
- * - [close] is idempotent and resumes a pending bind with `UserServiceSocketInaccessible`
- *   instead of leaking the deferred. All state transitions are guarded by an internal
- *   monitor.
- *
- * The [Binder] indirection lets unit tests drive the bind/unbind/callback flow without a real
- * Shizuku binder; production calls go through [ShizukuBinder].
- */
+/** Real Shizuku-backed [UserServiceProvider]. Binds [ChromeDevtoolsUserService] through `Shizuku.bindUserService` and wraps the
+ * resulting binder as a [UserServiceTransport]. */
 class ShizukuUserServiceProvider internal constructor(
     private val binder: Binder,
     private val bindTimeoutMs: Long = DEFAULT_BIND_TIMEOUT_MS,
@@ -97,11 +53,8 @@ class ShizukuUserServiceProvider internal constructor(
     /** Number of [obtain] callers awaiting the current [inflight]. */
     private var inflightAwaiters: Int = 0
 
-    /**
-     * Monotonically increases on every new bind attempt and on every terminal event
-     * (failure callback, refcount-zero teardown, [close]). A captured value identifies a
-     * single bind cycle: callbacks that no longer match the current generation are stale.
-     */
+    /** Monotonically increases on every new bind attempt and on every terminal event (failure callback, refcount-zero teardown,
+     * [close]). A captured value identifies a single bind cycle: callbacks that no longer match the current generation are stale. */
     private var bindGeneration: Long = 0L
     private var closed = false
 
@@ -164,19 +117,13 @@ class ShizukuUserServiceProvider internal constructor(
                 )
             }
         } finally {
-            // releaseAwaiter is a no-op when [flight] is no longer the current inflight
-            // (success path cleared it, or a failure callback / close already tore it down),
-            // so it is safe to call on every exit path including normal completion.
+            // releaseAwaiter is a no-op when [flight] is no longer the current inflight (success path cleared it, or a failure callback /
+            // close already tore it down), so it is safe to call on every exit path including normal completion.
             releaseAwaiter(flight)
         }
     }
 
-    /**
-     * Decrement the awaiter count for [flight]. If we are the last awaiter for an
-     * in-flight bind cycle, tear it down: clear inflight, bump generation, unbind.
-     * No-op when [flight] is no longer the current inflight (already completed or
-     * torn down by a callback / close).
-     */
+    /** Decrement the awaiter count for [flight]. */
     private fun releaseAwaiter(flight: InflightBind) {
         val (shouldUnbind, conn) = synchronized(lock) {
             if (inflight !== flight) return
@@ -189,9 +136,8 @@ class ShizukuUserServiceProvider internal constructor(
             true to c
         }
         if (shouldUnbind) {
-            // Complete the deferred so any in-flight callback that races with us wakes
-            // up cleanly (idempotent — onServiceConnected/handleFailure may have already
-            // completed it). The IOException records why the bind was abandoned.
+            // Complete the deferred so any in-flight callback that races with us wakes up cleanly (idempotent —
+            // onServiceConnected/handleFailure may have already completed it). The IOException records why the bind was abandoned.
             flight.deferred.completeExceptionally(
                 DevtoolsSetupError.UserServiceSocketInaccessible(
                     IOException("Shizuku UserService bind abandoned by all callers")
@@ -217,9 +163,8 @@ class ShizukuUserServiceProvider internal constructor(
                 val flight = inflight
                 inflight = null
                 inflightAwaiters = 0
-                // Do NOT bump bindGeneration: a future onServiceDisconnected for this
-                // same connection should still be allowed to clear `transport` so a
-                // dead-after-delivery service doesn't masquerade as live.
+                // Do NOT bump bindGeneration: a future onServiceDisconnected for this same connection should still be allowed to clear
+                // `transport` so a dead-after-delivery service doesn't masquerade as live.
                 flight?.deferred
             } ?: return
             deferred.complete(tr)
@@ -247,18 +192,7 @@ class ShizukuUserServiceProvider internal constructor(
         }
     }
 
-    /**
-     * Process a terminal failure for a specific bind cycle. Stale callbacks (those whose
-     * generation no longer matches, or that arrive after [close]) are silently dropped so
-     * they cannot corrupt state or resume a newer pending [obtain]. For current-generation
-     * callbacks: clear connection state, bump generation to invalidate any subsequent
-     * callbacks for the same cycle, release the binding via [Binder.unbind], and complete
-     * the shared deferred with the error so every awaiter wakes up.
-     *
-     * Also handles the post-delivery service-death case (where [inflight] is already null
-     * but [connection] still references the now-dead binding): clears [transport] so a
-     * future [obtain] starts a fresh cycle.
-     */
+    /** Process a terminal failure for a specific bind cycle. */
     private fun handleFailure(generation: Long, cause: Throwable) {
         val (flight, conn) = synchronized(lock) {
             if (closed || bindGeneration != generation) return
@@ -314,14 +248,7 @@ class ShizukuUserServiceProvider internal constructor(
     )
 
     companion object {
-        // Bump whenever IChromeDevtoolsUserService.aidl changes shape. Shizuku keys cached
-        // user-service processes on (ComponentName, version), so an unchanged version + a
-        // changed AIDL would let the new client transact against an old stub via shifted
-        // transaction IDs — silently calling the wrong method. v4 adds the authToken
-        // parameter to startTcpRelay; an upgraded client hitting a cached v3 stub would
-        // bypass token gating entirely. v5 adds adbKeysReadStatus() for the pair-once cache
-        // EACCES-vs-missing distinction; without the bump, a v4 stub would 404-style fail
-        // the new transaction and the cache would silently degrade.
+        // Bump whenever IChromeDevtoolsUserService.aidl changes shape.
         const val USER_SERVICE_VERSION = 5
         const val DEFAULT_PROCESS_SUFFIX = "chrome_devtools"
         const val DEFAULT_BIND_TIMEOUT_MS = 10_000L

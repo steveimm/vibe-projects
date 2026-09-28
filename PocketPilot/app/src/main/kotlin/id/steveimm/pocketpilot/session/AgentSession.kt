@@ -115,15 +115,7 @@ private constructor(
             )
         }
 
-        /**
-         * Reload a session from a persisted [SessionRuntimeSnapshot].
-         *
-         * Hydrates HistoryManager, TodoState, ScratchpadState from the snapshot
-         * and resumes the UI recording service. Returns a session in [SessionState.Created]
-         * state — the first [Op.UserInput] triggers platform start as usual.
-         *
-         * @return the reloaded session, or null if the snapshot is invalid.
-         */
+        /** Reload a session from a persisted [SessionRuntimeSnapshot]. */
         fun reload(
                 snapshot: SessionRuntimeSnapshot,
                 service: AccessibilityService,
@@ -333,11 +325,8 @@ private constructor(
         startTask(op.text)
     }
 
-    /**
-     * Surface a bootstrap failure as chat-visible events: a [TaskStarted] so the
-     * user's input is preserved in the conversation, followed by a [SessionError]
-     * so the chat UI can render the failure reason.
-     */
+    /** Surface a bootstrap failure as chat-visible events: a [TaskStarted] so the user's input is preserved in the conversation,
+     * followed by a [SessionError] so the chat UI can render the failure reason. */
     private suspend fun emitBootstrapFailure(input: String, reason: String) {
         val failedTaskId = "task-${now()}"
         emit(
@@ -412,13 +401,7 @@ private constructor(
         Log.i(TAG, "Task started: $taskId, input: $text")
     }
 
-    /**
-     * Handle agent task completion — transition to Hot Idle.
-     *
-     * Releases agent runner but keeps platform alive (VD apps keep running).
-     * Lightweight conversation state stays in memory for instant follow-up.
-     * Schedules idle timeout for auto-shutdown.
-     */
+    /** Handle agent task completion — transition to Hot Idle. */
     private suspend fun handleAgentComplete(reason: AgentStopReason) {
         if (_state.value == SessionState.Shutdown) {
             return
@@ -434,9 +417,8 @@ private constructor(
                     else -> null
                 }
 
-        // 1. Flush trace to disk BEFORE signaling completion — guarantees all trace
-        //    events (including session_stopped + run_summary) are on disk before the
-        //    runner detects TaskCompleted in logcat and force-stops the process.
+        // 1. Flush trace to disk BEFORE signaling completion — guarantees all trace events (including session_stopped + run_summary) are
+        // on disk before the runner detects TaskCompleted in logcat and force-stops the process.
         try {
             services.traceRecorder.flush()
         } catch (e: Exception) {
@@ -483,13 +465,7 @@ private constructor(
                 is AgentStopReason.Error -> TaskOutcome.ERROR
             }
 
-    /**
-     * Capture runtime handoff metadata when running a Virtual Display platform; null otherwise.
-     *
-     * VD mode reads the current foreground package so chat can render the explicit
-     * "Open <App>" CTA. Accessibility mode emits no handoff — the agent worked on
-     * the real screen so the user is already there.
-     */
+    /** Capture runtime handoff metadata when running a Virtual Display platform; null otherwise. */
     private fun buildHandoffIfVd(): CompletionHandoff? {
         val platform = services.platform
         if (platform.mode != PlatformMode.VIRTUAL_DISPLAY) return null
@@ -680,9 +656,8 @@ private constructor(
             when (op.scope) {
                 ApprovalScope.SESSION -> services.policyEngine.allowPackageForSession(op.packageName)
                 ApprovalScope.ALWAYS -> {
-                    // Persistent "Always" — single writer is the classifier. Same code path
-                    // as the settings UI tap; IO-launched because the persistence callback
-                    // touches SharedPreferences.
+                    // Persistent "Always" — single writer is the classifier. Same code path as the settings UI tap; IO-launched because
+                    // the persistence callback touches SharedPreferences.
                     scope.launch(Dispatchers.IO) {
                         services.appClassifier.setOverride(op.packageName, AppTier.NORMAL)
                     }
@@ -704,8 +679,6 @@ private constructor(
             Log.e(TAG, "Failed to emit event: $event", e)
         }
     }
-
-    // ===== Idle Timeout =====
 
     private fun scheduleIdleTimeout() {
         idleTimeoutJob?.cancel()

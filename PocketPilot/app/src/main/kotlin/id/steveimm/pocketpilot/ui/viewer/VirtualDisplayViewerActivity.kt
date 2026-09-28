@@ -22,20 +22,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import id.steveimm.pocketpilot.app.AgentService
 import kotlinx.coroutines.launch
 
-/**
- * VirtualDisplayViewerActivity — Full-screen live preview of the virtual display.
- *
- * Shows the VD output via a SurfaceView (GPU-direct, 60fps). The Smart Capsule
- * overlay (managed by CapsuleOverlayHost via ServiceOverlayController) renders
- * as a system overlay on top of this activity — providing all UI controls.
- *
- * This activity is a pure SurfaceView container with no built-in controls.
- * All interaction (stop, takeover, exit, minimize) is via the Smart Capsule overlay.
- *
- * Lifecycle:
- * - onStart: switch VD output to SurfaceView + notify service (show capsule, hide island)
- * - onStop: switch back to ImageReader + notify service (hide capsule, show island)
- */
+/** VirtualDisplayViewerActivity — Full-screen live preview of the virtual display. */
 class VirtualDisplayViewerActivity : ComponentActivity() {
 
     companion object {
@@ -94,10 +81,8 @@ class VirtualDisplayViewerActivity : ComponentActivity() {
         }
         // Notify service: show capsule overlay, hide island, set SCREEN_VIEWING context
         AgentService.instance?.onViewerOpened()
-        // Race-proof: if the agent is already idle when the viewer opens, the SharedFlow
-        // emit from onViewerOpened()→applyVisibility() may land before the lifecycle
-        // collector subscribes (both happen this same tick). Poll synchronously so the
-        // viewer never gets stranded on a quiet VD surface.
+        // Race-proof: if the agent is already idle when the viewer opens, the SharedFlow emit from onViewerOpened()→applyVisibility() may
+        // land before the lifecycle collector subscribes (both happen this same tick).
         if (AgentService.instance?.shouldFinishViewerNow() == true && !isFinishing) {
             Log.d(TAG, "Agent already idle at viewer open - finishing immediately")
             finish()
@@ -117,12 +102,7 @@ class VirtualDisplayViewerActivity : ComponentActivity() {
     }
 }
 
-// ── Compose Screen ──────────────────────────────────────────────
-
-/**
- * Pure full-screen SurfaceView for VD live preview.
- * No built-in controls — Smart Capsule overlay provides all UI.
- */
+/** Pure full-screen SurfaceView for VD live preview. No built-in controls — Smart Capsule overlay provides all UI. */
 @Composable
 private fun VirtualDisplayViewerScreen(
     onSurfaceReady: (SurfaceView) -> Unit,
@@ -142,8 +122,6 @@ private fun VirtualDisplayViewerScreen(
         )
     }
 }
-
-// ── Components ──────────────────────────────────────────────────
 
 @Composable
 private fun LivePreviewSurface(

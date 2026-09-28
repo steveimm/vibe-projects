@@ -3,23 +3,7 @@ package id.steveimm.pocketpilot.session
 import kotlinx.coroutines.CompletableDeferred
 import java.util.concurrent.atomic.AtomicReference
 
-/**
- * UserResponseChannel — suspension bridge between ask_user tool and UI.
- *
- * The ask_user tool suspends on [awaitResponse]. The session delivers the
- * user's answer via [deliver] when Op.UserResponse arrives. Only one
- * pending request is allowed at a time.
- *
- * ## Timeout vs Cancellation
- *
- * Two exit paths exist:
- * - **Timeout**: `AskUserInvocation` wraps `awaitResponse` in `withTimeoutOrNull`.
- *   On timeout, the coroutine returns `null`, the `finally` block clears pending
- *   state, and the tool returns a "timed out" success result.
- * - **Cancellation**: [cancel] is called on stop/shutdown. It cancels the deferred,
- *   which throws `CancellationException` in the awaiting coroutine. The `finally`
- *   block clears state. `AskUserInvocation` catches this and returns `Cancelled`.
- */
+/** UserResponseChannel — suspension bridge between ask_user tool and UI. */
 class UserResponseChannel {
 
     private data class PendingRequest(
@@ -29,12 +13,7 @@ class UserResponseChannel {
 
     private val pending = AtomicReference<PendingRequest?>(null)
 
-    /**
-     * Suspend until the user responds. Called by the ask_user tool.
-     *
-     * @throws IllegalStateException if another request is already pending
-     * @throws kotlinx.coroutines.CancellationException if cancelled (stop/timeout)
-     */
+    /** Suspend until the user responds. Called by the ask_user tool. */
     suspend fun awaitResponse(callId: String): String {
         val deferred = CompletableDeferred<String>()
         val request = PendingRequest(callId = callId, deferred = deferred)
@@ -46,11 +25,7 @@ class UserResponseChannel {
         }
     }
 
-    /**
-     * Deliver the user's response. Called by AgentSession on Op.UserResponse.
-     *
-     * @return true if delivered, false if no matching pending request.
-     */
+    /** Deliver the user's response. Called by AgentSession on Op.UserResponse. */
     fun deliver(callId: String, response: String): Boolean {
         val request = pending.get() ?: return false
         if (request.callId != callId) return false

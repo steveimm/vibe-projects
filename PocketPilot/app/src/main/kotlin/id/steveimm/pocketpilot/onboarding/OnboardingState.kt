@@ -8,15 +8,7 @@ enum class WizardStep { Accessibility, Overlay, Battery, ApiKey, Demo, Complete 
 /** Durable outcome persisted for each step. */
 enum class StepOutcome { Pending, Done, Skipped }
 
-/**
- * Cloud providers selectable during onboarding's API-key path.
- *
- * Aligned one-to-one with the ApiKey-mode entries of [LLMProvider] that are
- * appropriate for first-time setup. OAuth (OPENAI_CODEX) lives on its own tab
- * and is not part of this picker. The advanced [LLMProvider.OTHER] slot is
- * intentionally excluded — it's settings-only and requires the user to supply
- * base URL + model id. The wizard links directly to those settings.
- */
+/** Cloud providers selectable during onboarding's API-key path. */
 enum class OnboardingProvider(val label: String, val llmProvider: LLMProvider) {
     OPENAI_API("OpenAI", LLMProvider.OPENAI_API),
     OPENROUTER("OpenRouter", LLMProvider.OPENROUTER);
@@ -38,8 +30,6 @@ data class StepOutcomes(
     val apiKey: StepOutcome = StepOutcome.Pending,
     val demo: StepOutcome = StepOutcome.Pending
 )
-
-// ── Per-step transient state (one active at a time) ──
 
 sealed interface OnboardingStepState
 

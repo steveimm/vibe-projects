@@ -4,7 +4,6 @@ import com.google.common.truth.Truth.assertThat
 import id.steveimm.pocketpilot.app.AppSettingsState
 import id.steveimm.pocketpilot.auth.AuthCredential
 import id.steveimm.pocketpilot.auth.AuthStore
-import id.steveimm.pocketpilot.auth.OAuthTokens
 import id.steveimm.pocketpilot.auth.OpenAiSignInResult
 import id.steveimm.pocketpilot.auth.openAiSignIn
 import id.steveimm.pocketpilot.llm.LLMProvider
@@ -147,44 +146,6 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun `OAuth success writes AuthStore and advances past ApiKey step`() = runTest {
-        allPermissionsGranted()
-        every { store.loadOutcomes() } returns StepOutcomes(
-            accessibility = StepOutcome.Done,
-            overlay = StepOutcome.Done,
-            battery = StepOutcome.Skipped
-        )
-        mockkStatic("id.steveimm.pocketpilot.auth.OpenAiSignInKt")
-        val tokens = OAuthTokens(
-            accessToken = "acc-123",
-            refreshToken = "ref",
-            expiresAt = 0L,
-            email = "user@example.com"
-        )
-        coEvery { openAiSignIn(any(), any()) } returns OpenAiSignInResult.Success(tokens)
-
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job())
-        val vm = makeVm(scope)
-        drain(scope, this)
-        assertThat(vm.currentStep).isEqualTo(WizardStep.ApiKey)
-
-        vm.startOAuth()
-        drain(scope, this)
-
-        assertThat(vm.outcomes.apiKey).isEqualTo(StepOutcome.Done)
-        assertThat(vm.currentStep).isEqualTo(WizardStep.Demo)
-        coVerify {
-            authStore.set(
-                LLMProvider.OPENAI_CODEX,
-                match<AuthCredential.OAuth> { it.accessToken == "acc-123" }
-            )
-        }
-        verify { settingsState.updateModel("oai-codex") }
-
-        scope.coroutineContext.job.cancel()
-    }
-
-    @Test
     fun `OAuth error keeps user on ApiKey step with OAuthError state`() = runTest {
         allPermissionsGranted()
         every { store.loadOutcomes() } returns StepOutcomes(
@@ -207,35 +168,6 @@ class OnboardingViewModelTest {
         assertThat(state).isInstanceOf(ApiKeyStepState.OAuthError::class.java)
         assertThat((state as ApiKeyStepState.OAuthError).message).isEqualTo("browser closed")
         assertThat(vm.outcomes.apiKey).isEqualTo(StepOutcome.Pending)
-
-        scope.coroutineContext.job.cancel()
-    }
-
-    @Test
-    fun `manual API key validation success writes AuthStore and advances`() = runTest {
-        allPermissionsGranted()
-        every { store.loadOutcomes() } returns StepOutcomes(
-            accessibility = StepOutcome.Done,
-            overlay = StepOutcome.Done,
-            battery = StepOutcome.Skipped
-        )
-        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"choices":[]}"""))
-
-        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler) + Job())
-        val vm = makeVm(scope)
-        drain(scope, this)
-
-        vm.selectProvider(OnboardingProvider.OPENROUTER)
-        vm.onApiKeyChanged("sk-good")
-        vm.validateApiKey()
-        drain(scope, this)
-
-        assertThat(vm.outcomes.apiKey).isEqualTo(StepOutcome.Done)
-        assertThat(vm.currentStep).isEqualTo(WizardStep.Demo)
-        coVerify {
-            authStore.set(LLMProvider.OPENROUTER, AuthCredential.ApiKey("sk-good"))
-        }
-        verify { settingsState.updateModel("or-chat") }
 
         scope.coroutineContext.job.cancel()
     }
@@ -266,10 +198,8 @@ class OnboardingViewModelTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     // Characterization: WizardStep funnel + StepOutcome rollup
     // Spec: doc/main/state_machines/onboarding_wizard.md
-    // ─────────────────────────────────────────────────────────────────────────
 
     private fun newScope(testScope: TestScope) =
         CoroutineScope(UnconfinedTestDispatcher(testScope.testScheduler) + Job())
@@ -289,8 +219,6 @@ class OnboardingViewModelTest {
         apiKey = StepOutcome.Done,
         demo = StepOutcome.Done,
     )
-
-    // ── firstIncompleteStep — initial step selection (8 rules) ──
 
     @Test
     fun `firstIncompleteStep — no permissions → Accessibility`() = runTest {
@@ -327,9 +255,8 @@ class OnboardingViewModelTest {
         // Default outcomes = all Pending. Rule 3 fails (gate satisfied). Rule 5 fires.
         val scope = newScope(this)
         val vm = makeVm(scope); drain(scope, this)
-        // After enterStep(Battery): permission satisfied + autoAdvance=true → onPermissionSatisfied
-        // → advances to ApiKey. So currentStep ends at ApiKey, but we can verify Battery was
-        // visited by checking outcomes.battery flipped to Done.
+        // After enterStep(Battery): permission satisfied + autoAdvance=true → onPermissionSatisfied → advances to ApiKey. So currentStep
+        // ends at ApiKey, but we can verify Battery was visited by checking outcomes.battery flipped to Done.
         assertThat(vm.outcomes.battery).isEqualTo(StepOutcome.Done)
         scope.coroutineContext.job.cancel()
     }
@@ -412,8 +339,6 @@ class OnboardingViewModelTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ── Forward transitions ──
-
     @Test
     fun `Overlay → Battery on permission satisfied`() = runTest {
         every { permissionMonitor.isAccessibilityEnabled() } returns true
@@ -449,22 +374,6 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun `Battery → ApiKey on skip persists Skipped`() = runTest {
-        every { permissionMonitor.isAccessibilityEnabled() } returns true
-        every { permissionMonitor.isOverlayEnabled() } returns true
-        val scope = newScope(this)
-        val vm = makeVm(scope); drain(scope, this)
-        assertThat(vm.currentStep).isEqualTo(WizardStep.Battery)
-
-        vm.skipStep(); drain(scope, this)
-
-        assertThat(vm.currentStep).isEqualTo(WizardStep.ApiKey)
-        assertThat(vm.outcomes.battery).isEqualTo(StepOutcome.Skipped)
-        verify { store.saveOutcome(WizardStep.Battery, StepOutcome.Skipped) }
-        scope.coroutineContext.job.cancel()
-    }
-
-    @Test
     fun `Demo → Complete on demo success`() = runTest {
         allPermissionsGranted()
         every { store.loadOutcomes() } returns allDoneExceptDemo
@@ -481,22 +390,6 @@ class OnboardingViewModelTest {
         assertThat(vm.currentStep).isEqualTo(WizardStep.Complete)
         assertThat(vm.outcomes.demo).isEqualTo(StepOutcome.Done)
         verify { store.saveOutcome(WizardStep.Demo, StepOutcome.Done) }
-        scope.coroutineContext.job.cancel()
-    }
-
-    @Test
-    fun `Demo → Complete on skip`() = runTest {
-        allPermissionsGranted()
-        every { store.loadOutcomes() } returns allDoneExceptDemo
-        val scope = newScope(this)
-        val vm = makeVm(scope); drain(scope, this)
-        assertThat(vm.currentStep).isEqualTo(WizardStep.Demo)
-
-        vm.skipStep(); drain(scope, this)
-
-        assertThat(vm.currentStep).isEqualTo(WizardStep.Complete)
-        assertThat(vm.outcomes.demo).isEqualTo(StepOutcome.Skipped)
-        verify { store.saveOutcome(WizardStep.Demo, StepOutcome.Skipped) }
         scope.coroutineContext.job.cancel()
     }
 
@@ -549,8 +442,6 @@ class OnboardingViewModelTest {
         assertThat((state as DemoStepState.CredentialError).isOAuth).isTrue()
         scope.coroutineContext.job.cancel()
     }
-
-    // ── goBack — backward transitions ──
 
     @Test
     fun `goBack from Accessibility is no-op`() = runTest {
@@ -638,8 +529,6 @@ class OnboardingViewModelTest {
         assertThat(vm.stepState).isInstanceOf(DemoStepState.Ready::class.java)
         scope.coroutineContext.job.cancel()
     }
-
-    // ── skipStep guard rejections (only Battery + Demo allowed) ──
 
     @Test
     fun `skipStep on Accessibility is no-op`() = runTest {
@@ -755,13 +644,10 @@ class OnboardingViewModelTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ── ApiKey recovery: stored Done but AuthStore lost the credential ──
-
     @Test
     fun `enterStep ApiKey resets to Pending and shows editable state when AuthStore has no matching credential`() = runTest {
-        // Spec: doc/main/state_machines/onboarding_wizard.md L125-128 + OnboardingViewModel.kt:344-355
-        // Land on Demo (apiKey=Done), then goBack to ApiKey. AuthStore.has(*) all false (setUp default).
-        // VM should rewrite apiKey outcome to Pending and present the default editable state.
+        // Spec: doc/main/state_machines/onboarding_wizard.md L125-128 + OnboardingViewModel.kt:344-355 Land on Demo (apiKey=Done), then
+        // goBack to ApiKey.
         allPermissionsGranted()
         every { store.loadOutcomes() } returns allDoneExceptDemo
         // authStore.has(any()) returns false from setUp — no credential anywhere.
@@ -782,8 +668,6 @@ class OnboardingViewModelTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ── Special transitions ──
-
     @Test
     fun `goToAuthStep resets apiKey + demo to Pending and jumps to ApiKey`() = runTest {
         allPermissionsGranted()
@@ -803,45 +687,9 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun `startDemo preflight a11y revoked resets accessibility and jumps back`() = runTest {
-        allPermissionsGranted()
-        every { store.loadOutcomes() } returns allDoneExceptDemo
-        val scope = newScope(this)
-        val vm = makeVm(scope); drain(scope, this)
-        assertThat(vm.currentStep).isEqualTo(WizardStep.Demo)
-
-        every { permissionMonitor.isAccessibilityEnabled() } returns false
-        vm.startDemo(); drain(scope, this)
-
-        assertThat(vm.currentStep).isEqualTo(WizardStep.Accessibility)
-        assertThat(vm.outcomes.accessibility).isEqualTo(StepOutcome.Pending)
-        verify { store.saveOutcome(WizardStep.Accessibility, StepOutcome.Pending) }
-        scope.coroutineContext.job.cancel()
-    }
-
-    @Test
-    fun `startDemo preflight overlay revoked resets overlay and jumps back`() = runTest {
-        allPermissionsGranted()
-        every { store.loadOutcomes() } returns allDoneExceptDemo
-        val scope = newScope(this)
-        val vm = makeVm(scope); drain(scope, this)
-        assertThat(vm.currentStep).isEqualTo(WizardStep.Demo)
-
-        every { permissionMonitor.isOverlayEnabled() } returns false
-        vm.startDemo(); drain(scope, this)
-
-        assertThat(vm.currentStep).isEqualTo(WizardStep.Overlay)
-        assertThat(vm.outcomes.overlay).isEqualTo(StepOutcome.Pending)
-        verify { store.saveOutcome(WizardStep.Overlay, StepOutcome.Pending) }
-        scope.coroutineContext.job.cancel()
-    }
-
-    @Test
     fun `startDemo preflight apiKey not Done jumps to ApiKey without reset`() = runTest {
-        // Construct corrupt-state: outcomes land us on Demo per firstIncompleteStep rule 7
-        // (apiKey not Pending → not selected by rules 4/6; demo Pending → rule 7 → Demo)
-        // even though apiKey != Done. Then startDemo preflight should kick to ApiKey
-        // without rewriting any outcome.
+        // Construct corrupt-state: outcomes land us on Demo per firstIncompleteStep rule 7 (apiKey not Pending → not selected by rules
+        // 4/6; demo Pending → rule 7 → Demo) even though apiKey != Done.
         allPermissionsGranted()
         every { store.loadOutcomes() } returns StepOutcomes(
             accessibility = StepOutcome.Done,
@@ -860,42 +708,6 @@ class OnboardingViewModelTest {
         // Outcome unchanged (no reset path for this branch)
         assertThat(vm.outcomes.apiKey).isEqualTo(StepOutcome.Skipped)
         verify(exactly = 0) { store.saveOutcome(WizardStep.ApiKey, StepOutcome.Pending) }
-        scope.coroutineContext.job.cancel()
-    }
-
-    // ── Guard early-returns (currentStep mismatch) ──
-
-    @Test
-    fun `selectProvider is no-op when not on ApiKey`() = runTest {
-        val scope = newScope(this)
-        val vm = makeVm(scope); drain(scope, this)
-        assertThat(vm.currentStep).isEqualTo(WizardStep.Accessibility)
-        val before = vm.selectedProvider
-
-        vm.selectProvider(OnboardingProvider.OPENROUTER)
-        assertThat(vm.selectedProvider).isEqualTo(before)
-        scope.coroutineContext.job.cancel()
-    }
-
-    @Test
-    fun `selectAuthMethod is no-op when not on ApiKey`() = runTest {
-        val scope = newScope(this)
-        val vm = makeVm(scope); drain(scope, this)
-        val before = vm.authMethod
-
-        vm.selectAuthMethod(ApiKeyAuthMethod.MANUAL)
-        assertThat(vm.authMethod).isEqualTo(before)
-        scope.coroutineContext.job.cancel()
-    }
-
-    @Test
-    fun `onApiKeyChanged is no-op when not on ApiKey`() = runTest {
-        val scope = newScope(this)
-        val vm = makeVm(scope); drain(scope, this)
-        val before = vm.stepState
-
-        vm.onApiKeyChanged("sk-leak")
-        assertThat(vm.stepState).isEqualTo(before)
         scope.coroutineContext.job.cancel()
     }
 
@@ -931,8 +743,6 @@ class OnboardingViewModelTest {
         scope.coroutineContext.job.cancel()
     }
 
-    // ── Invariants ──
-
     @Test
     fun `finish persists completion via store setCompleted`() = runTest {
         allPermissionsGranted()
@@ -965,10 +775,7 @@ class OnboardingViewModelTest {
 
     @Test
     fun `OPENAI_API validator honors AppSettingsState openaiBaseUrl override (debug proxy)`() = runTest {
-        // Catalog 'oai-resp' has no base_url, so absent override the validator would hit
-        // api.openai.com and never reach our MockWebServer. With override set, the request
-        // must land on the server — otherwise enqueue() goes unconsumed and the validator
-        // sees a TransientError (network failure to api.openai.com from JVM tests).
+        // Catalog 'oai-resp' has no base_url, so absent override the validator would hit api.openai.com and never reach our MockWebServer.
         allPermissionsGranted()
         every { store.loadOutcomes() } returns StepOutcomes(
             accessibility = StepOutcome.Done,

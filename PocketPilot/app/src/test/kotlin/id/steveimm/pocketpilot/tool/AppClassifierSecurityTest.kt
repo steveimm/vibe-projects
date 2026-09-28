@@ -14,13 +14,9 @@ import java.io.IOException
 import org.junit.Assert.assertThrows
 import org.junit.Test
 
-/**
- * Security regression: AppClassifier load failure must throw, preventing session start.
- * Also covers core classification and masking logic.
- */
+/** Security regression: AppClassifier load failure must throw, preventing session start. Also covers core classification and masking
+ * logic. */
 class AppClassifierSecurityTest {
-
-    // ── Load failure → IllegalStateException (prevents session start) ──
 
     @Test
     fun `fromAssets throws when asset file is missing`() {
@@ -58,8 +54,6 @@ class AppClassifierSecurityTest {
         assertThat(classifier.classify("com.example.normal")).isEqualTo(AppTier.NORMAL)
     }
 
-    // ── Unknown packages default to CAUTIOUS ───────────────────────
-
     @Test
     fun `unknown package is CAUTIOUS`() {
         val classifier = AppClassifier(emptyMap())
@@ -71,8 +65,6 @@ class AppClassifierSecurityTest {
         val classifier = AppClassifier(emptyMap())
         assertThat(classifier.classify(null)).isEqualTo(AppTier.CAUTIOUS)
     }
-
-    // ── maskIfBlocked strips data for BLOCKED apps ─────────────────
 
     @Test
     fun `maskIfBlocked strips elements and image for BLOCKED app`() {

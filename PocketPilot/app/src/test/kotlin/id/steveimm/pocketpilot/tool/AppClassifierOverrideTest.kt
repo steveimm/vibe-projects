@@ -19,8 +19,6 @@ import org.junit.Test
 
 class AppClassifierOverrideTest {
 
-    // ===== Layered resolution =====
-
     @Test
     fun `bundled NORMAL with no override classifies as NORMAL`() {
         val classifier = AppClassifier(mapOf("com.foo" to AppTier.NORMAL))
@@ -88,8 +86,6 @@ class AppClassifierOverrideTest {
         assertThat(classifier.userOverrides.value).doesNotContainKey("com.bank")
     }
 
-    // ===== Remove-on-match =====
-
     @Test
     fun `setOverride to bundled default removes entry`() = runTest {
         val classifier = AppClassifier(
@@ -113,8 +109,6 @@ class AppClassifierOverrideTest {
         assertThat(classifier.userOverrides.value).isEmpty()
     }
 
-    // ===== Persistence callback contract =====
-
     @Test
     fun `persistence callback receives final emitted snapshot`() = runTest {
         val snapshots = mutableListOf<Map<String, AppTier>>()
@@ -132,8 +126,6 @@ class AppClassifierOverrideTest {
             "com.b", AppTier.BLOCKED
         )
     }
-
-    // ===== Concurrency =====
 
     @Test
     fun `concurrent setOverride for different packages preserves final persisted snapshot`() = runTest {
@@ -177,15 +169,12 @@ class AppClassifierOverrideTest {
         assertThat(persisted.get()).isEqualTo(classifier.userOverrides.value)
     }
 
-    // ===== Real-store concurrency (end-to-end persistence) =====
-
     @After fun tearDown() = unmockkAll()
 
     @Test
     fun `concurrent setOverride persists to real AppSettingsStore - reload matches StateFlow`() = runBlocking {
-        // Wire the classifier callback through a real AppSettingsStore (in-memory-backed
-        // SharedPreferences) and then construct a *fresh* classifier from the persisted
-        // overrides. Reloaded map must equal the original classifier's StateFlow exactly.
+        // Wire the classifier callback through a real AppSettingsStore (in-memory-backed SharedPreferences) and then construct a *fresh*
+        // classifier from the persisted overrides. Reloaded map must equal the original classifier's StateFlow exactly.
         val backing = mutableMapOf<String, Any?>()
         val context = mockContextWithPrefs(backing)
         val store = AppSettingsStore(context)

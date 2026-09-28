@@ -1,11 +1,6 @@
 package id.steveimm.pocketpilot.perception
 
-/**
- * Controls which perception modalities the agent captures each turn.
- *
- * Sealed class ensures exhaustive when-handling and prevents invalid states.
- * Replaces the boolean enableScreenshotInput in SessionConfig.
- */
+/** Controls which perception modalities the agent captures each turn. */
 sealed class PerceptionConfig {
 
     /** Accessibility tree only. Current production default. */

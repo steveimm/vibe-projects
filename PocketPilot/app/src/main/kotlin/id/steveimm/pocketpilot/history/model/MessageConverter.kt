@@ -8,14 +8,10 @@ import id.steveimm.pocketpilot.ui.chat.model.ContentBlock
 import id.steveimm.pocketpilot.ui.chat.model.RowState
 import id.steveimm.pocketpilot.ui.common.formatToolName
 
-/**
- * Utility functions for converting between ChatMessage (UI) and MessageRecord (persistence).
- */
+/** Utility functions for converting between ChatMessage (UI) and MessageRecord (persistence). */
 object MessageConverter {
-    
-    /**
-     * Convert a ChatMessage to MessageRecord for persistence.
-     */
+
+    /** Convert a ChatMessage to MessageRecord for persistence. */
     fun toRecord(message: ChatMessage): MessageRecord {
         return when (message) {
             is ChatMessage.User -> MessageRecord.User(
@@ -47,12 +43,7 @@ object MessageConverter {
         }
     }
 
-    /**
-     * Convert a MessageRecord to ChatMessage for UI display.
-     *
-     * Note: [userPrompt] hydration requires the prior record, so callers that
-     * want headline restoration should use [fromRecords] instead.
-     */
+    /** Convert a MessageRecord to ChatMessage for UI display. */
     fun fromRecord(record: MessageRecord, userPrompt: String? = null): ChatMessage {
         return when (record) {
             is MessageRecord.User -> ChatMessage.User(
@@ -90,12 +81,7 @@ object MessageConverter {
         }
     }
 
-    /**
-     * Convert a list of MessageRecords to ChatMessages.
-     *
-     * Walks one-back to hydrate [ChatMessage.Agent.userPrompt] from the
-     * preceding User record so the collapsed-headline ladder survives reload.
-     */
+    /** Convert a list of MessageRecords to ChatMessages. */
     fun fromRecords(records: List<MessageRecord>): List<ChatMessage> {
         return records.mapIndexed { index, record ->
             val prev = records.getOrNull(index - 1)
@@ -103,16 +89,12 @@ object MessageConverter {
             fromRecord(record, userPrompt = userPrompt)
         }
     }
-    
-    /**
-     * Convert a list of ChatMessages to MessageRecords.
-     */
+
+    /** Convert a list of ChatMessages to MessageRecords. */
     fun toRecords(messages: List<ChatMessage>): List<MessageRecord> {
         return messages.map { toRecord(it) }
     }
-    
-    // ===== Private Helpers =====
-    
+
     private fun parseActionState(state: String): ActionState {
         return when (state.lowercase()) {
             "proposed" -> ActionState.Proposed
@@ -135,14 +117,7 @@ object MessageConverter {
         }
     }
 
-    /**
-     * Pre-uxfb-3 history persisted every closing answer as ContentBlockRecord.Text.
-     * AgentRow only renders ContentBlock.FinalText outside the collapsible trace,
-     * so legacy completed rows would default-collapse with their answer hidden.
-     * If a restored Complete row has no FinalText but does have a non-blank trailing
-     * Text, promote that Text to FinalText in place — same rule the live reducer
-     * applies when sealing a row without complete_task.
-     */
+    /** Pre-uxfb-3 history persisted every closing answer as ContentBlockRecord.Text. */
     private fun migrateLegacyFinalText(
         blocks: List<ContentBlock>,
         isComplete: Boolean

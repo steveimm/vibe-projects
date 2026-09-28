@@ -4,16 +4,8 @@ import com.google.common.truth.Truth.assertThat
 import java.security.SecureRandom
 import org.junit.Test
 
-/**
- * Spake25519 regression tests. Wire-compat with AOSP's adbd is verified separately by the
- * real-device cold-pair test on nubia (see real_device_qa.md / diag_20260504_spake_alternatives.md).
- *
- * No upstream KAT vectors exist — BoringSSL's own `spake25519_test.cc` notes
- * `// TODO(agl): add tests with fixed vectors once SPAKE2 is nailed down.` and Muntashir's
- * `spake2-c/test.c` uses `srand(time(NULL))`. The pinned vectors below are self-pinned: they
- * were captured from this implementation with deterministic SHA1PRNG seeds and any change to
- * the protocol (constants, hashing, scalar handling) breaks them, catching regressions.
- */
+/** Spake25519 regression tests. Wire-compat with AOSP's adbd is verified separately by the real-device cold-pair test on nubia (see
+ * real_device_qa.md / diag_20260504_spake_alternatives.md). */
 class Spake25519Test {
 
     private val aliceName = "adb pair client\u0000".toByteArray(Charsets.UTF_8)
@@ -128,10 +120,6 @@ class Spake25519Test {
 
     companion object {
         // Pinned vectors — captured 2026-05-04 from this implementation with the seeds below.
-        // Inputs: ALICE seed=0x1A11CE, BOB seed=0x80B (SHA1PRNG); names = production names
-        // ("adb pair client\u0000" / "adb pair server\u0000"); password = "kat-vector-password-2026".
-        // These are NOT from an external authority — BoringSSL has no upstream KAT — but they
-        // detect any drift in our implementation across refactors.
         private const val KAT_ALICE_MSG =
             "19d260377f6c343e02fbdb41ef63f399f6eb2e732651e97947efcb47546c1a14"
         private const val KAT_BOB_MSG =

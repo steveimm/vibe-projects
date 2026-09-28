@@ -37,9 +37,8 @@ class ChromeFlagDeepLinkTest {
 
     @Test
     fun `decideStrategy reports ActionView even when am start would also work`() {
-        // ActionView is now ADDITIVE — when it launches we ALSO copy the URL to the clipboard
-        // with a hint toast (lossless), so we don't need to ALSO run am start. The reported
-        // strategy is still ActionView because that's the user-visible launch attempt.
+        // ActionView is now ADDITIVE — when it launches we ALSO copy the URL to the clipboard with a hint toast (lossless), so we don't
+        // need to ALSO run am start. The reported strategy is still ActionView because that's the user-visible launch attempt.
         val outcome = ChromeFlagDeepLink.decideStrategy(
             actionViewLaunched = true,
             shizukuAmStartSucceeded = true,
@@ -50,10 +49,8 @@ class ChromeFlagDeepLinkTest {
 
     @Test
     fun `decideStrategy returning ShizukuAmStart still implies clipboard was populated`() {
-        // Lock in the ADDITIVE contract for the Shizuku branch — same silent-success risk as
-        // ActionView (am start exits 0 even when Chrome later drops the URL). The
-        // implementation in `open()` MUST also call copyUrlToClipboard() and showToast() for
-        // this branch; this test just asserts the strategy mapping that drives that code path.
+        // Lock in the ADDITIVE contract for the Shizuku branch — same silent-success risk as ActionView (am start exits 0 even when Chrome
+        // later drops the URL).
         val outcome = ChromeFlagDeepLink.decideStrategy(
             actionViewLaunched = false,
             shizukuAmStartSucceeded = true,

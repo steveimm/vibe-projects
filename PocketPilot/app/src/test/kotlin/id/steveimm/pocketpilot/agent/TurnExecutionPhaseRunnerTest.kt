@@ -42,12 +42,7 @@ import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
 import org.junit.Test
 
-/**
- * Tests for [TurnExecutionPhaseRunner.executeActions] — the tool execution seam.
- *
- * Focus: side effects (history, events) and abort-on-failure behavior.
- * Turn-outcome logic is covered separately in [TurnOutcomeDecisionTest].
- */
+/** Tests for [TurnExecutionPhaseRunner.executeActions] — the tool execution seam. */
 class TurnExecutionPhaseRunnerTest {
 
     @Test
@@ -159,8 +154,6 @@ class TurnExecutionPhaseRunnerTest {
         assertThat(capture.turnNumber).isEqualTo(3)
     }
 }
-
-// === Test harness ===
 
 private class TestHarness(
     val runner: TurnExecutionPhaseRunner,

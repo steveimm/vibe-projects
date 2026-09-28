@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Workaround for AGP 8.9.x + Compose: mergeReleaseComposeMapping is SKIPPED,
-# so mapping.txt never lands in app/build/outputs/mapping/release/ and
-# bundleRelease fails. Copy mapping from intermediates, then run bundleRelease
-# without clean (to reuse minifyReleaseWithR8 output from a previous failed run).
+
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."

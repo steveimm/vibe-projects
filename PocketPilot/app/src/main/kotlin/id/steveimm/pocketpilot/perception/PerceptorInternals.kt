@@ -38,10 +38,8 @@ internal fun enrichEmptyTextElements(
     }
     if (sourceBounds.isEmpty()) return candidates
 
-    // Sort sources by top so each candidate only scans the vertical slice of
-    // sources whose top falls within its bounds. Keep the original index so we
-    // can restore candidate-order within matched hits — preserving the
-    // pre-refactor join order.
+    // Sort sources by top so each candidate only scans the vertical slice of sources whose top falls within its bounds. Keep the original
+    // index so we can restore candidate-order within matched hits — preserving the pre-refactor join order.
     val order = (0 until sourceBounds.size).sortedBy { sourceBounds[it].top }
     val sortedTops = IntArray(order.size) { sourceBounds[order[it]].top }
     val sortedBounds = Array(order.size) { sourceBounds[order[it]] }

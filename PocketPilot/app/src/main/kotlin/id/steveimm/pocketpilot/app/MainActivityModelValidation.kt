@@ -14,23 +14,8 @@ data class MissingCredentialTarget(
     val message: String,
 )
 
-/**
- * Validate that a credential exists for the main model selected for the next session.
- * Returns one entry per missing credential with provider info so the caller can deep-link
- * into the right settings tab.
- *
- * Short-circuits on `selectedModel == "other-custom"` because when `otherBaseUrl` or
- * `otherModelId` are blank, the synth entry is not yet in the catalog and
- * `modelCatalog.resolveOrNull` returns null. Without the short-circuit the banner would
- * say "Unknown model: other-custom" instead of the actionable "Other needs base URL".
- *
- * Also short-circuits discovered OTHER entries (`selectedModel.startsWith("other:")`)
- * that have fallen out of the catalog — typically because the user changed
- * `otherBaseUrl` after a previous refresh. In that case the cache still has the entry
- * but the visible-name scope hides it (see [ModelCatalogRepository]). The banner sends
- * the user to the Other tab with a "Refresh or select a model for this endpoint" hint
- * instead of the generic "Unknown model" wall.
- */
+/** Validate that a credential exists for the main model selected for the next session. Returns one entry per missing credential with
+ * provider info so the caller can deep-link into the right settings tab. */
 internal fun findMissingCloudKeys(
     settingsState: AppSettingsState,
     modelCatalog: ModelCatalog,

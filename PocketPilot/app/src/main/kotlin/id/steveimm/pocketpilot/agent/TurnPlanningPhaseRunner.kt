@@ -247,12 +247,7 @@ internal class TurnPlanningPhaseRunner(
                 }
         }
 
-        /**
-         * Extract agent_thought from the first selected tool call and emit it
-         * as a ThoughtUpdate event for the Smart Capsule.
-         *
-         * Fallback chain: agent_thought → tool action description → nothing.
-         */
+        /** Extract agent_thought from the first selected tool call and emit it as a ThoughtUpdate event for the Smart Capsule. */
         private suspend fun emitAgentThought(
                 selectedToolCalls: List<ToolCallRequest>,
                 turnNumber: Int

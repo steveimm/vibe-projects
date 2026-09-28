@@ -59,15 +59,7 @@ import kotlin.coroutines.CoroutineContext
 
 enum class LlmAuthTab { SIGN_IN, API_KEY, LOCAL }
 
-/**
- * Surface the Local tab in LLM & Authentication settings.
- *
- * Off because LFM 1.2B Q4 on a phone CPU takes 1-3 min to emit the first tool
- * call with the current 12-tool agent schema — it works, but it's unusable.
- * Flip to true to re-expose once we have a smaller agent-capable model or a
- * chat-only path. The rest of the local stack (LFMLLMClient, auto-download,
- * LocalTabContent) stays wired so flipping this is a one-line change.
- */
+/** Surface the Local tab in LLM & Authentication settings. */
 private const val LOCAL_TAB_ENABLED = false
 
 private val VISIBLE_TABS: List<LlmAuthTab> =
@@ -150,9 +142,8 @@ internal fun LlmAuthSettingsPage(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val authStore = remember(context) { AuthStoreHolder.get(context) }
-    // Debounce + single-flight + FIFO mutex: cancel any pending write on each
-    // keystroke; the mutex serializes writes that already passed the debounce
-    // so the final keystroke wins even if an earlier write reached AuthStore.
+    // Debounce + single-flight + FIFO mutex: cancel any pending write on each keystroke; the mutex serializes writes that already passed
+    // the debounce so the final keystroke wins even if an earlier write reached AuthStore.
     val pendingApiKeyPersist = remember { arrayOf<Job?>(null) }
     val apiKeyPersistMutex = remember { Mutex() }
     val pendingOtherBaseUrlPersist = remember { arrayOf<Job?>(null) }
@@ -256,11 +247,8 @@ internal fun LlmAuthSettingsPage(
     }
 }
 
-/**
- * Section 5 canonicalization rule: `selectedProviderForTab` derivation.
- * - If [selectedModel]'s provider matches [tab]'s mode → use that provider.
- * - Else → [tab]'s default provider.
- */
+/** Section 5 canonicalization rule: `selectedProviderForTab` derivation. - If [selectedModel]'s provider matches [tab]'s mode → use
+ * that provider. - Else → [tab]'s default provider. */
 private fun resolveProviderForTab(
     tab: LlmAuthTab,
     selectedModel: String,
@@ -273,12 +261,7 @@ private fun resolveProviderForTab(
 
 private const val API_KEY_PERSIST_DEBOUNCE_MS = 300L
 
-/**
- * Debounce + single-flight + FIFO mutex for per-keystroke AuthStore writes.
- * Cancels the previous pending write; the mutex guarantees that any write that
- * already passed the debounce completes in launch order, so the final keystroke
- * always wins even though [AuthStore.set] has no internal write lock.
- */
+/** Debounce + single-flight + FIFO mutex for per-keystroke AuthStore writes. */
 internal fun launchDebouncedApiKeyPersist(
     scope: CoroutineScope,
     authStore: AuthStore,
@@ -301,14 +284,7 @@ internal fun launchDebouncedApiKeyPersist(
     }
 }
 
-/**
- * Debounce + single-flight launcher for non-AuthStore persistence (OTHER base URL,
- * custom model id). Writes hit a SharedPreferences-backed store; they're cheap and
- * already coalesce, so the per-keystroke cancel-the-pending-write pattern is enough
- * — no mutex needed. The persist action runs on the caller's scope dispatcher
- * (Main.immediate from `rememberCoroutineScope()`), which is required for the
- * downstream Compose `mutableStateOf` writes inside [AppSettingsState].
- */
+/** Debounce + single-flight launcher for non-AuthStore persistence (OTHER base URL, custom model id). */
 internal fun launchDebouncedPersist(
     scope: CoroutineScope,
     pending: Array<Job?>,
@@ -386,9 +362,8 @@ private fun ApiKeyTabContent(
         apiKeyText = (cred as? AuthCredential.ApiKey)?.key.orEmpty()
     }
 
-    // OTHER-specific text: editable in-place; debounced through onOtherBaseUrlPersist
-    // and onOtherModelIdPersist, which write to AppSettingsStore and invalidate the
-    // ModelCatalogRepository (so `modelCatalog` recomposes with the synth entry).
+    // OTHER-specific text: editable in-place; debounced through onOtherBaseUrlPersist and onOtherModelIdPersist, which write to
+    // AppSettingsStore and invalidate the ModelCatalogRepository (so `modelCatalog` recomposes with the synth entry).
     var otherBaseUrlText by remember(otherBaseUrl) { mutableStateOf(otherBaseUrl) }
     var otherModelIdText by remember(otherModelId) { mutableStateOf(otherModelId) }
 
@@ -403,9 +378,8 @@ private fun ApiKeyTabContent(
                         index = index,
                         count = API_KEY_PROVIDERS.size
                     ),
-                    // Drop the default leading-checkmark slot: "OpenRouter" truncates
-                    // when the icon eats into the (already weight-distributed) cell.
-                    // The pill background + label weight already signal selection.
+                    // Drop the default leading-checkmark slot: "OpenRouter" truncates when the icon eats into the (already
+                    // weight-distributed) cell. The pill background + label weight already signal selection.
                     icon = {},
                 ) {
                     Text(provider.displayLabel)
@@ -458,11 +432,7 @@ private fun ApiKeyTabContent(
                 otherBaseUrl = otherBaseUrlText,
                 discoveryState = discoveryState,
                 onRefresh = {
-                    // Pass the LIVE typed URL to the repo, not the persisted
-                    // value: the 300ms persist debounce can lag the typed
-                    // text and would otherwise route the current key to the
-                    // STALE persisted URL (Codex review CRITICAL #1). For
-                    // OPENROUTER, the URL is seed-fixed.
+                    // Use the live URL to avoid sending credentials to a previous server while preference persistence is debounced.
                     val baseUrl = when (selectedProvider) {
                         LLMProvider.OPENROUTER -> LLMProvider.OPENROUTER.defaultBaseUrl.orEmpty()
                         LLMProvider.OTHER ->
@@ -503,10 +473,7 @@ private fun ApiKeyTabContent(
         }
     }
 
-    // Auto-flip rule: when the user is in the OTHER sub-tab and all three fields
-    // validate, flip selectedModel to "other-custom". Logic lives in
-    // [shouldAutoFlipToOtherCustom] so it's exercised by a plain JVM unit test —
-    // the @Composable wiring here is a thin recomputation harness.
+    // Auto-flip rule: when the user is in the OTHER sub-tab and all three fields validate, flip selectedModel to "other-custom".
     LaunchedEffect(
         selectedProvider,
         otherBaseUrlText,
@@ -529,15 +496,8 @@ private fun ApiKeyTabContent(
     }
 }
 
-/**
- * Decide whether the OTHER auto-flip should fire right now. Pure function; exposed
- * `internal` so the JVM regression test can pin the stale-catalog race fix
- * (Sub 1c Codex review HIGH #1) without spinning up Compose.
- *
- * Gates the flip on the catalog entry MATCHING the current normalized UI values
- * — a stale `other-custom` row from a previous valid config would otherwise let
- * a mid-edit launch hit the old endpoint with the new key.
- */
+/** Decide whether the OTHER auto-flip should fire right now. Pure function; exposed `internal` so the JVM regression test can pin the
+ * stale-catalog race fix (Sub 1c Codex review HIGH #1) without spinning up Compose. */
 internal fun shouldAutoFlipToOtherCustom(
     selectedProvider: LLMProvider,
     apiKeyText: String,
@@ -588,10 +548,7 @@ private fun LocalTabContent(
     }
 }
 
-/**
- * Replace the current main model with the preferred one for [provider] if it isn't
- * valid for the new context.
- */
+/** Replace the current main model with the preferred one for [provider] if it isn't valid for the new context. */
 private fun canonicalizeMainModel(
     modelCatalog: ModelCatalog,
     provider: LLMProvider,

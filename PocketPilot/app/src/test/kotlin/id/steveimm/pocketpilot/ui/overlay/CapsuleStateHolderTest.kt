@@ -23,8 +23,6 @@ class CapsuleStateHolderTest {
         holder = CapsuleStateHolder(scope)
     }
 
-    // ── Initial state ──
-
     @Test
     fun `initial mode is Hidden`() {
         assertThat(holder.mode.value).isEqualTo(CapsuleMode.Hidden)
@@ -34,8 +32,6 @@ class CapsuleStateHolderTest {
     fun `initial previousMode is Hidden`() {
         assertThat(holder.previousMode).isEqualTo(CapsuleMode.Hidden)
     }
-
-    // ── Task started ──
 
     @Test
     fun `onTaskStarted sets Running mode with sanitized input`() {
@@ -62,8 +58,6 @@ class CapsuleStateHolderTest {
         assertThat(holder.mode.value).isInstanceOf(CapsuleMode.Running::class.java)
     }
 
-    // ── Thought update ──
-
     @Test
     fun `onThoughtUpdate changes thought in Running mode`() {
         holder.onTaskStarted("task1", "input")
@@ -79,8 +73,6 @@ class CapsuleStateHolderTest {
         holder.onThoughtUpdate("should be ignored")
         assertThat(holder.mode.value).isEqualTo(modeBefore)
     }
-
-    // ── Takeover flow ──
 
     @Test
     fun `onTakeoverRequested transitions from Running to TakeoverPending`() {
@@ -140,8 +132,6 @@ class CapsuleStateHolderTest {
         assertThat(holder.isAgentMidTurn.value).isFalse()
     }
 
-    // ── Ask user ──
-
     @Test
     fun `onAskUser QUESTION sets WaitingForInput`() {
         holder.onAskUser(AskUserType.QUESTION, "Which one?", "call1")
@@ -185,8 +175,6 @@ class CapsuleStateHolderTest {
         assertThat(holder.mode.value).isEqualTo(modeBefore)
     }
 
-    // ── Stop transient feedback ──
-
     @Test
     fun `onStopRequested marks stop pending in running mode`() {
         holder.onTaskStarted("task1", "input")
@@ -218,8 +206,6 @@ class CapsuleStateHolderTest {
         holder.onTaskStarted("task2", "next")
         assertThat(holder.isStopPending.value).isFalse()
     }
-
-    // ── Task completion ──
 
     @Test
     fun `onTaskCompleted GOAL_ACHIEVED sets Done`() {
@@ -297,8 +283,6 @@ class CapsuleStateHolderTest {
         assertThat(holder.mode.value).isInstanceOf(CapsuleMode.Running::class.java)
     }
 
-    // ── Error ──
-
     @Test
     fun `onError sets Error mode`() {
         holder.onError("Network error")
@@ -322,8 +306,6 @@ class CapsuleStateHolderTest {
         assertThat(holder.mode.value).isEqualTo(modeBefore)
     }
 
-    // ── Previous mode tracking ──
-
     @Test
     fun `previousMode tracks the mode before the current one`() {
         holder.onTaskStarted("task1", "input")
@@ -345,8 +327,6 @@ class CapsuleStateHolderTest {
         holder.onTakeoverConfirmed()
         assertThat(holder.previousMode).isEqualTo(afterTakeoverReq)
     }
-
-    // ── Derived properties ──
 
     @Test
     fun `hasActiveTask is false when Hidden`() {

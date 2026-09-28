@@ -3,25 +3,10 @@ package id.steveimm.pocketpilot.llm
 import id.steveimm.pocketpilot.auth.AuthStore
 import id.steveimm.pocketpilot.auth.MissingCredential
 import android.util.Log
-import java.util.concurrent.ConcurrentHashMap
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 
-/**
- * Creates [LLMClient] instances from model names using the [ModelCatalog].
- *
- * Routes purely by [LLMProvider]. Credentials are sourced from [AuthStore]; no
- * resolver lambda or signal keys. The Codex client receives a header supplier
- * closure that reads [AuthStore] per request, so cached clients stay valid
- * across token rotations and account switches.
- *
- * Each cache entry carries the [AuthStore.generation] it was built under.
- * `create()` uses [ConcurrentHashMap.compute] to atomically check-and-rebuild:
- * a stale entry is cleaned up and replaced with a fresh client inside the same
- * per-key critical section, so concurrent callers either both see a new client
- * or one old + one new — never a stale client produced after a generation bump.
- *
- * Thread-safe: [create] and [cleanupAll] may be called from any thread.
- */
+/** Creates [LLMClient] instances from model names using the [ModelCatalog]. */
 class LLMClientFactory(
         private val catalog: ModelCatalog,
         private val authStore: AuthStore?,
@@ -31,60 +16,42 @@ class LLMClientFactory(
     companion object {
         private const val TAG = "LLMClientFactory"
 
-        /**
-         * Create a factory that always returns the given [client] regardless of model name. Useful
-         * for unit tests that inject a mock/fake LLM.
-         */
+        /** Create a factory that always returns the given [client] regardless of model name. Useful for unit tests that inject a
+         * mock/fake LLM. */
         fun forTest(catalog: ModelCatalog, client: LLMClient): LLMClientFactory =
                 LLMClientFactory(catalog, authStore = null, clientOverride = client)
     }
 
     private data class Entry(val generation: Long, val client: LLMClient)
 
-    private val clientCache = ConcurrentHashMap<String, Entry>()
+    private val lock = Any()
+    private val clientCache = mutableMapOf<String, Entry>()
+    private val ownedClients = mutableListOf<LLMClient>()
+    private var closed = false
 
-    /**
-     * Create (or return cached) LLMClient for the given model name.
-     *
-     * @throws IllegalArgumentException if model is not in the catalog
-     * @throws id.steveimm.pocketpilot.auth.MissingCredential if the provider's credential is absent
-     * @throws id.steveimm.pocketpilot.auth.WrongCredentialType if the stored credential is the wrong shape
-     */
-    fun create(modelName: String): LLMClient {
-        clientOverride?.let { return it }
+    /** Create or reuse a client. Superseded clients remain usable until session teardown. */
+    fun create(modelName: String): LLMClient = synchronized(lock) {
+        check(!closed) { "LLM client factory is closed" }
+        clientOverride?.let { return@synchronized it }
 
         val entry = catalog.resolve(modelName)
-        val provider = entry.provider
-        val store = authStore
+        val currentGeneration = if (entry.provider != LLMProvider.LOCAL_LFM) {
+            authStore?.generation(entry.provider) ?: 0L
+        } else 0L
+        val existing = clientCache[modelName]
+        if (existing != null && existing.generation == currentGeneration) {
+            return@synchronized existing.client
+        }
 
-        val result = clientCache.compute(modelName) { _, existing ->
-            // Read generation inside the per-key critical section so a concurrent
-            // authStore.set() bump either happens-before this block (we see the new
-            // gen and rebuild) or happens-after (the next create() sees the bump).
-            val currentGen = if (store != null && provider != LLMProvider.LOCAL_LFM) {
-                store.generation(provider)
-            } else 0L
+        val client = build(entry)
+        ownedClients += client
+        clientCache[modelName] = Entry(currentGeneration, client)
+        Log.d(TAG, "Created ${client.javaClass.simpleName} for '$modelName' (provider=${entry.provider}, gen=$currentGeneration)")
+        client
+    }
 
-            if (existing != null && existing.generation == currentGen) {
-                existing
-            } else {
-                existing?.let { stale ->
-                    runBlocking {
-                        try { stale.client.cleanup() } catch (e: Exception) {
-                            Log.w(TAG, "cleanup of stale client failed: ${e.message}")
-                        }
-                    }
-                }
-                val built = build(entry)
-                Log.d(
-                        TAG,
-                        "Created ${built.javaClass.simpleName} for model '$modelName' " +
-                                "(provider=$provider, api=${entry.api}, gen=$currentGen)"
-                )
-                Entry(currentGen, built)
-            }
-        }!!
-        return result.client
+    internal fun owns(client: LLMClient): Boolean = synchronized(lock) {
+        ownedClients.any { it === client }
     }
 
     private fun build(entry: ModelEntry): LLMClient {
@@ -108,11 +75,7 @@ class LLMClientFactory(
             LLMProvider.OPENROUTER ->
                     ChatCompletionClient(store.requireApiKey(LLMProvider.OPENROUTER), baseUrl)
             LLMProvider.OTHER -> {
-                // Hard-require a non-blank baseUrl at this boundary. If anything upstream
-                // produced a malformed OTHER entry (synth missing settings, stale catalog),
-                // the OpenAI SDK would otherwise default to api.openai.com — leaking the
-                // user's OTHER key to OpenAI. Surface it as a missing-credential error so
-                // the UI deep-links to the OTHER tab instead of silently misrouting.
+                // Hard-require a non-blank baseUrl at this boundary.
                 val otherBaseUrl = entry.baseUrl
                 if (otherBaseUrl.isNullOrBlank()) {
                     throw MissingCredential(LLMProvider.OTHER)
@@ -126,10 +89,28 @@ class LLMClientFactory(
         }
     }
 
-    /** Cleanup all cached clients. Call from session teardown. */
-    suspend fun cleanupAll() {
-        Log.d(TAG, "Cleaning up ${clientCache.size} cached clients")
-        clientCache.values.forEach { it.client.cleanup() }
-        clientCache.clear()
+    /** Close current and superseded clients after the session's callers have stopped. */
+    suspend fun cleanupAll(): Unit = withContext(NonCancellable) {
+        val clients = synchronized(lock) {
+            if (closed) return@withContext
+            closed = true
+            ownedClients.toList().also {
+                ownedClients.clear()
+                clientCache.clear()
+            }
+        }
+        val failures = mutableListOf<Exception>()
+        for (client in clients) {
+            try {
+                client.cleanup()
+            } catch (error: Exception) {
+                failures += error
+            }
+        }
+        if (failures.isNotEmpty()) {
+            throw IllegalStateException("Failed to clean up ${failures.size} LLM clients", failures.first()).apply {
+                failures.drop(1).forEach(::addSuppressed)
+            }
+        }
     }
 }

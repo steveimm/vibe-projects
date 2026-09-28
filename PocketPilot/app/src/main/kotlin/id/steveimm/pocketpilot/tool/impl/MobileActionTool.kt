@@ -12,17 +12,7 @@ import id.steveimm.pocketpilot.tool.action.TypeExecutor
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * MobileActionTool — consolidated tool for all touch interactions.
- *
- * Implements ToolSpec directly. No base class, no ActionHandler indirection.
- * Validation is inline; execution is delegated to per-action executors.
- *
- * Targeting is canonicalized by priority: element_index, then text, then x/y.
- * Extra target fields are treated as hints. x/y may accompany a semantic
- * target as a fallback coordinate hint. Bare x/y is allowed for click/
- * long_press/type, but scroll rejects it because scroll is area-based.
- */
+/** MobileActionTool — consolidated tool for all touch interactions. */
 class MobileActionTool : ToolSpec {
 
     override val name: String = "mobile_action"
@@ -99,13 +89,7 @@ Actions:
         }
     }
 
-    // ============================================================
     // Validation: canonical target normalization
-    // ============================================================
-    //
-    // Targets are canonicalized by priority: element_index, then text, then x/y.
-    // x/y may accompany a semantic target as a fallback coordinate hint.
-    // Bare x/y is allowed for click/long_press/type, but not for scroll.
 
     private fun validateTargetedAction(
         params: JSONObject, action: String, required: Boolean
@@ -211,9 +195,7 @@ Actions:
         return ValidationResult.Valid
     }
 
-    // ============================================================
     // Target parsing + description building
-    // ============================================================
 
     private fun parseOptionalTarget(params: JSONObject): Target? {
         val hint = if (params.has("x") && params.has("y")) {
@@ -269,9 +251,7 @@ Actions:
         }
     }
 
-    // ============================================================
     // Schema
-    // ============================================================
 
     private fun buildSchema(): JSONObject {
         val properties = JSONObject().apply {

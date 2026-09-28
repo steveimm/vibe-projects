@@ -3,9 +3,7 @@ package id.steveimm.pocketpilot.session
 import id.steveimm.pocketpilot.protocol.Todo
 import id.steveimm.pocketpilot.protocol.TodoStatus
 
-/**
- * Thread-safe holder for per-session todos.
- */
+/** Thread-safe holder for per-session todos. */
 class TodoState(
     private val todos: MutableList<Todo> = mutableListOf()
 ) {

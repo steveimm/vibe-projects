@@ -24,17 +24,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/**
- * Covers spm-qa-coverage for the refactored Display Mode toggle:
- *  (a) toggling the switch OFF invokes onPlatformModeChange(ACCESSIBILITY) unconditionally
- *  (b) switch checked state strictly mirrors persistedMode, never effectiveMode
- *  (c) Home page's Agent Behavior subtitle reflects effectivePlatformMode chip
- *
- * Note on Shizuku-gated paths: the OFF→ON gate (ShizukuUnavailable / NeedsPermission) is
- * exercised by VirtualDisplayToggleGate JVM tests; the Compose layer here can't inject
- * ShizukuStatus into DisplaySection without restructuring it, so we don't reproduce that
- * coverage from the UI side.
- */
+/** Tests persisted display-mode rendering and disabling. Shizuku permission checks are covered by the JVM gate tests. */
 @RunWith(AndroidJUnit4::class)
 class DisplayModeSettingsTest {
 
@@ -86,9 +76,8 @@ class DisplayModeSettingsTest {
         ).assertExists()
     }
 
-    // (c) Home Agent Behavior subtitle pulls a "VD" chip from effectivePlatformMode.
-    //     The old combined "Setup required · Debug off · VD" string is gone — that subtitle
-    //     was split: permissions row keeps the "· Debug" half, agent-behavior row owns "· VD".
+    // (c) Home Agent Behavior subtitle pulls a "VD" chip from effectivePlatformMode. The old combined "Setup required · Debug off · VD"
+    // string is gone — that subtitle was split: permissions row keeps the "· Debug" half, agent-behavior row owns "· VD".
     @Test fun home_subtitle_reflects_effective_platform_mode() {
         var current: PlatformMode? by mutableStateOf<PlatformMode?>(null)
         compose.setContent {

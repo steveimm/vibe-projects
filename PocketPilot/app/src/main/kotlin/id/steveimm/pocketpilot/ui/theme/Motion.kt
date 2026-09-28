@@ -34,15 +34,8 @@ object PocketPilotMotion {
     const val CapsuleBreath: Int = Breath       // 900ms capsule breath in running mode
     const val GlowPulse: Int = Breath           // 900ms glow pulse
 
-    // D1 §8 reduced-motion contract:
-    //  - trace enter → instant + 120ms fade
-    //  - collapse/expand → instant
-    //  - capsule breath → static paw at full alpha
-    //  - looping decorative motion (glow, thinking pulse) → paused
-    //  - streaming cursor → keeps blinking (liveness signal)
-    //
-    // Each motion call site reads this once and chooses; there is no global wrapper
-    // that mutates every transition.
+    // D1 §8 reduced-motion contract: - trace enter → instant + 120ms fade - collapse/expand → instant - capsule breath → static paw at
+    // full alpha - looping decorative motion (glow, thinking pulse) → paused - streaming cursor → keeps blinking (liveness signal)
     @Composable
     fun reducedMotion(): Boolean {
         val context = LocalContext.current

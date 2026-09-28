@@ -8,18 +8,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Test
 
-/**
- * Unit tests for LFMLLMClient type conversion functions.
- * 
- * These tests validate the conversion logic between:
- * - OpenAI FunctionTool parameter schemas -> Leap SDK LeapFunctionParameter
- * - OpenAI ResponseInputItem -> Leap SDK ChatMessage
- * - Leap SDK function arguments -> JSON string
- */
+/** Unit tests for LFMLLMClient type conversion functions. */
 class LFMLLMClientConversionTest {
-    
-    // ========== Schema to LeapFunctionParameter Conversion Tests ==========
-    
+
     @Test
     fun `parseJsonSchemaType - string type`() {
         val schema = JSONObject().apply {
@@ -38,7 +29,7 @@ class LFMLLMClientConversionTest {
         assertThat(param.type).isInstanceOf(LeapFunctionParameterType.LeapStr::class.java)
         assertThat(param.description).isEqualTo("Test string param")
     }
-    
+
     @Test
     fun `parseJsonSchemaType - integer type`() {
         val schema = JSONObject().apply {
@@ -57,7 +48,7 @@ class LFMLLMClientConversionTest {
         assertThat(param.type).isInstanceOf(LeapFunctionParameterType.LeapInt::class.java)
         assertThat(param.description).isEqualTo("Element index")
     }
-    
+
     @Test
     fun `parseJsonSchemaType - array type with items`() {
         val schema = JSONObject().apply {
@@ -78,7 +69,7 @@ class LFMLLMClientConversionTest {
         assertThat(type.itemType).isInstanceOf(LeapFunctionParameterType.LeapInt::class.java)
         assertThat(param.description).isEqualTo("Start coordinates")
     }
-    
+
     @Test
     fun `parseJsonSchemaType - string with enum`() {
         val schema = JSONObject().apply {
@@ -98,7 +89,7 @@ class LFMLLMClientConversionTest {
 
         assertThat(type.enumValues).containsExactly("back", "home", "enter")
     }
-    
+
     @Test
     fun `extractParameters - mobile_action schema`() {
         // Simplified mobile_action parameter schema
@@ -121,7 +112,7 @@ class LFMLLMClientConversionTest {
             })
             put("required", JSONArray(listOf("action")))
         }
-        
+
         val params = parseParams(schema)
 
         assertThat(params).hasSize(3)
@@ -137,7 +128,7 @@ class LFMLLMClientConversionTest {
         assertThat(elementIndexParam.type).isInstanceOf(LeapFunctionParameterType.LeapInt::class.java)
         assertThat(elementIndexParam.optional).isTrue()
     }
-    
+
     @Test
     fun `extractParameters - complete_task schema`() {
         val schema = JSONObject().apply {
@@ -155,7 +146,7 @@ class LFMLLMClientConversionTest {
             })
             put("required", JSONArray(listOf("status", "answer")))
         }
-        
+
         val params = parseParams(schema)
 
         assertThat(params).hasSize(2)
@@ -168,58 +159,56 @@ class LFMLLMClientConversionTest {
         val answerParam = params.find { it.name == "answer" }!!
         assertThat(answerParam.optional).isFalse()
     }
-    
-    // ========== Arguments to JSON Conversion Tests ==========
-    
+
     @Test
     fun `convertArgumentsToJson - simple map`() {
         val args = mapOf(
             "action" to "click",
             "element_index" to 5
         )
-        
+
         val json = LeapJsonAdapter.toJsonString(args)
         val parsed = JSONObject(json)
-        
+
         assertThat(parsed.getString("action")).isEqualTo("click")
         assertThat(parsed.getInt("element_index")).isEqualTo(5)
     }
-    
+
     @Test
     fun `convertArgumentsToJson - nested values`() {
         val args = mapOf(
             "start" to listOf(100, 200),
             "end" to listOf(100, 800)
         )
-        
+
         val json = LeapJsonAdapter.toJsonString(args)
         val parsed = JSONObject(json)
-        
+
         val start = parsed.getJSONArray("start")
         assertThat(start.getInt(0)).isEqualTo(100)
         assertThat(start.getInt(1)).isEqualTo(200)
     }
-    
+
     @Test
     fun `convertArgumentsToJson - null values`() {
         val args = mapOf<String, Any?>(
             "action" to "click",
             "optional" to null
         )
-        
+
         val json = LeapJsonAdapter.toJsonString(args)
         val parsed = JSONObject(json)
-        
+
         assertThat(parsed.getString("action")).isEqualTo("click")
         assertThat(parsed.isNull("optional")).isTrue()
     }
-    
+
     @Test
     fun `convertArgumentsToJson - empty map`() {
         val args = emptyMap<String, Any?>()
-        
+
         val json = LeapJsonAdapter.toJsonString(args)
-        
+
         assertThat(json).isEqualTo("{}")
     }
 }

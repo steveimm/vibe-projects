@@ -1,28 +1,13 @@
 #!/usr/bin/env python3
-"""Measure prompt token counts across all three prompt layers.
-
-Extracts text from:
-  1. System prompt: StandaloneAgentDef.kt (trimIndent block)
-  2. Tool descriptions: tool/impl/*Tool.kt (description + parameterSchema)
-  3. App skills: app/src/main/assets/app_skills/*/SKILL.md
-
-Outputs:
-  projects/autotune/meta/token_counts.json  (SOT)
-  projects/autotune/meta/token_counts.md    (rendered view)
-
-Token counting: tiktoken (o200k_base, gpt-4o family) if available, else chars / 4.
-
-Usage:
-  python scripts/token_counts.py
-"""
 
 import json
 import re
-import sys
 from pathlib import Path
+from typing import Any
 
 try:
     import tiktoken
+
     _enc = tiktoken.get_encoding("o200k_base")
     _USE_TIKTOKEN = True
 except ImportError:
@@ -32,7 +17,7 @@ except ImportError:
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = REPO_ROOT / "projects" / "autotune" / "meta"
 
-AGENT_DEF = REPO_ROOT / "app/src/main/kotlin/id/steveimm/pocketpilot/agent/definition/StandaloneAgentDef.kt"
+AGENT_DEF = REPO_ROOT / "app/src/main/kotlin/id/steveimm/pocketpilot/agent/definition/DefaultAgentDef.kt"
 TOOL_DIR = REPO_ROOT / "app/src/main/kotlin/id/steveimm/pocketpilot/tool/impl"
 SKILLS_DIR = REPO_ROOT / "app/src/main/assets/app_skills"
 
@@ -77,8 +62,7 @@ def extract_param_schema_block(source: str) -> str:
     # For lazy schemas like `by lazy { buildSchema() }`, find the buildSchema function
     rest = source[idx:]
     if "by lazy" in rest[:100]:
-        # Find the builder function name
-        m = re.search(r'by lazy\s*\{\s*(\w+)\(\)', rest)
+        m = re.search(r"by lazy\s*\{\s*(\w+)\(\)", rest)
         if m:
             func_name = m.group(1)
             func_marker = f"private fun {func_name}()"
@@ -90,12 +74,10 @@ def extract_param_schema_block(source: str) -> str:
         else:
             return ""
 
-    # Find the opening brace of the JSONObject
     brace_start = rest.find("{")
     if brace_start == -1:
         return ""
 
-    # Balance braces
     depth = 0
     for i, ch in enumerate(rest[brace_start:], brace_start):
         if ch == "{":
@@ -113,21 +95,21 @@ def extract_param_descriptions(schema_block: str) -> str:
     These are the property names, types, descriptions, and enum values
     that the LLM sees in the function schema JSON.
     """
-    # Extract all quoted strings — these map to JSON keys/values the LLM reads
+
     strings = re.findall(r'"([^"]*)"', schema_block)
     return "\n".join(strings)
 
 
-def measure_system_prompt() -> dict:
-    """Measure system prompt from StandaloneAgentDef.kt."""
+def measure_system_prompt() -> dict[str, Any]:
+    """Measure system prompt from DefaultAgentDef.kt."""
     if not AGENT_DEF.exists():
         return {"chars": 0, "tokens": 0, "lines": 0}
     source = AGENT_DEF.read_text()
-    text = extract_kotlin_string_block(source, "override val systemPrompt")
+    text = extract_kotlin_string_block(source, "systemPrompt =")
     return {"chars": len(text), "tokens": estimate_tokens(text), "lines": text.count("\n") + 1}
 
 
-def measure_tool_descriptions() -> dict:
+def measure_tool_descriptions() -> dict[str, Any]:
     """Measure all tool description + parameter schema properties."""
     if not TOOL_DIR.exists():
         return {"total": {"chars": 0, "tokens": 0}, "tools": {}}
@@ -142,8 +124,6 @@ def measure_tool_descriptions() -> dict:
         param_text = extract_param_descriptions(schema_block) if schema_block else ""
         combined = desc_text + "\n" + param_text if param_text else desc_text
         chars = len(combined)
-        desc_chars = len(desc_text)
-        param_chars = len(param_text)
         tools[kt_file.stem] = {
             "chars": chars,
             "tokens": estimate_tokens(combined),
@@ -159,7 +139,7 @@ def measure_tool_descriptions() -> dict:
     }
 
 
-def measure_app_skills() -> dict:
+def measure_app_skills() -> dict[str, Any]:
     """Measure all app skill files."""
     if not SKILLS_DIR.exists():
         return {"total": {"chars": 0, "tokens": 0}, "count": 0, "avg_tokens": 0, "skills": {}}
@@ -181,7 +161,7 @@ def measure_app_skills() -> dict:
     }
 
 
-def render_markdown(data: dict) -> str:
+def render_markdown(data: dict[str, Any]) -> str:
     """Render token counts as markdown."""
     lines = ["# Prompt Token Counts", ""]
 
@@ -220,7 +200,8 @@ def render_markdown(data: dict) -> str:
     return "\n".join(lines)
 
 
-def main():
+def main() -> None:
+    """Measure prompt, tool, and app-skill tokens and write comparison reports."""
     data = {
         "system_prompt": measure_system_prompt(),
         "tool_descriptions": measure_tool_descriptions(),
@@ -235,7 +216,6 @@ def main():
     md_path = OUTPUT_DIR / "token_counts.md"
     md_path.write_text(render_markdown(data) + "\n")
 
-    # Print summary
     sp_tok = data["system_prompt"]["tokens"]
     td_tok = data["tool_descriptions"]["total"]["tokens"]
     sk_tok = data["app_skills"]["total"]["tokens"]

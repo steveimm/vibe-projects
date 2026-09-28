@@ -24,16 +24,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 private val SUBAGENT_EXCLUDED_TOOL_NAMES =
     setOf(ToolName.DelegateTask.raw, ToolName.RememberExperience.raw)
 
-/**
- * Sub-agent primitives used by `delegate_task`.
- *
- * The parent planner delegates one atomic instruction to an isolated child agent,
- * then receives a normalized success/failure message.
- */
+/** Sub-agent primitives used by `delegate_task`. */
 
-/**
- * Delegation payload passed from parent to a sub-agent.
- */
+/** Delegation payload passed from parent to a sub-agent. */
 data class SubAgentRequest(
     val query: String,
     val currentSubgoal: String? = null,
@@ -41,9 +34,7 @@ data class SubAgentRequest(
     val delegationCallId: String? = null
 )
 
-/**
- * Result returned after running a sub-agent.
- */
+/** Result returned after running a sub-agent. */
 data class SubAgentResult(
     val success: Boolean,
     val message: String
@@ -54,9 +45,7 @@ fun interface SubAgentRunner {
     suspend fun run(request: SubAgentRequest): SubAgentResult
 }
 
-/**
- * Runs a delegated sub-agent with isolated prompt state and tool access.
- */
+/** Runs a delegated sub-agent with isolated prompt state and tool access. */
 internal class IsolatedSubAgentRunner(
     private val roleDef: AgentRoleDef,
     private val parentServices: SessionServices,
@@ -67,9 +56,7 @@ internal class IsolatedSubAgentRunner(
     private val compactionUpdatePrompt: String = "",
 ) : SubAgentRunner {
 
-    /**
-     * Spins up a temporary child agent with filtered tools and shared scratchpad.
-     */
+    /** Spins up a temporary child agent with filtered tools and shared scratchpad. */
     override suspend fun run(request: SubAgentRequest): SubAgentResult {
         val childTaskId = "sub-${roleDef.name}-${System.currentTimeMillis()}"
         val childSessionId = SessionId("${parentSessionId.value}::$childTaskId")
@@ -77,9 +64,8 @@ internal class IsolatedSubAgentRunner(
             snapshot = parentServices.termuxSnapshot,
             excludedTools = parentServices.config.excludedTools.toToolNames()
         )
-        // delegate_task: prevent runaway recursion — a subagent must not spawn another subagent.
-        // remember_experience: long-term memory writes stay scoped to the main agent. The subagent's
-        // insights flow back via its delegation result; the parent decides what (if anything) to persist.
+        // delegate_task: prevent runaway recursion — a subagent must not spawn another subagent. remember_experience: long-term memory
+        // writes stay scoped to the main agent.
         val childTools = parentServices.toolRegistry.createFilteredCopy(
             allowedNames = resolvedRoleDef.allowedToolNames,
             excludedNames = SUBAGENT_EXCLUDED_TOOL_NAMES
@@ -181,9 +167,8 @@ internal class IsolatedSubAgentRunner(
     }
 
     private suspend fun bridgeEvent(event: AgentEvent) {
-        // Forward action events unchanged to the parent's stream so the chat row
-        // and capsule render subagent actions exactly like the main agent's.
-        // UUID-keyed actionIds keep recording/reducer state collision-free.
+        // Forward action events unchanged to the parent's stream so the chat row and capsule render subagent actions exactly like the main
+        // agent's. UUID-keyed actionIds keep recording/reducer state collision-free.
         if (event is ActionProposed || event is ActionExecuted) {
             parentEventEmitter(event)
             return

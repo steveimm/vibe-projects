@@ -17,13 +17,8 @@ import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Accessibility screenshot capture pipeline:
- * 1) a11y screenshot API (bounded — never waits forever)
- * 2) software bitmap conversion
- * 3) scale + jpeg compression
- * 4) optional debug/trace persistence
- */
+/** Accessibility screenshot capture pipeline: 1) a11y screenshot API (bounded — never waits forever) 2) software bitmap conversion 3)
+ * scale + jpeg compression 4) optional debug/trace persistence */
 class AccessibilityScreenshotCapturer(
         private val service: AccessibilityService,
         private val config: SessionConfig,
@@ -71,13 +66,7 @@ class AccessibilityScreenshotCapturer(
                             override fun onSuccess(
                                     screenshot: AccessibilityService.ScreenshotResult
                             ) {
-                                // No isActive check: late resume on a cancelled continuation
-                                // is silently discarded by coroutines 1.7.3+. The isActive
-                                // check creates a race where cancellation between check and
-                                // resume drops the result without passing it to compressScreenshot,
-                                // leaking the HardwareBuffer. Without the check, the non-timeout
-                                // path always works correctly, and the timeout path has a bounded
-                                // leak (one HardwareBuffer, reclaimable by GC).
+                                // No isActive check: late resume on a cancelled continuation is silently discarded by coroutines 1.7.3+.
                                 cont.resume(screenshot)
                             }
 

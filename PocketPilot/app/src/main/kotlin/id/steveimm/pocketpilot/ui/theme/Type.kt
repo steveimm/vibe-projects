@@ -15,9 +15,6 @@ val Geist: FontFamily = FontFamily(
 )
 
 // Bound Edition (ui-refresh-0422) Option B: identity uses Fraunces *italic Regular* only.
-// Upright Regular is kept here for legacy callers that have not yet migrated to PageMasthead;
-// no SemiBold/Medium ships, so any FontWeight above Normal is synthesized — new identity
-// surfaces must use italic Regular and never request a heavier weight.
 val Fraunces: FontFamily = FontFamily(
     Font(R.font.fraunces_regular, FontWeight.Normal),
     Font(R.font.fraunces_italic, FontWeight.Normal, FontStyle.Italic),

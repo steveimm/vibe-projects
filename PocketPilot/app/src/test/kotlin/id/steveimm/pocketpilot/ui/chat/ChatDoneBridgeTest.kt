@@ -7,11 +7,8 @@ import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Test
 
-/**
- * Pin: ChatScreen's onUserResponse must hit CapsuleBinding.onUserResponseSent
- * before the ViewModel send so the supplement capsule clears its waiting
- * state (regression for commit d23537e8).
- */
+/** Pin: ChatScreen's onUserResponse must hit CapsuleBinding.onUserResponseSent before the ViewModel send so the supplement capsule
+ * clears its waiting state (regression for commit d23537e8). */
 class ChatDoneBridgeTest {
 
     private fun bindingFor(
