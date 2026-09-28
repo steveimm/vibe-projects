@@ -2,8 +2,8 @@
 
 ## Owner
 
-- `app/src/main/kotlin/ai/closepaw/protocol/SessionState.kt` (state definitions)
-- `app/src/main/kotlin/ai/closepaw/session/AgentSession.kt` (transition logic, mutex)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/protocol/SessionState.kt` (state definitions)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/session/AgentSession.kt` (transition logic, mutex)
 
 ## States
 

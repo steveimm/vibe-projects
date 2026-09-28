@@ -1,4 +1,4 @@
-# ClosePaw Replay Viewer
+# PocketPilot Replay Viewer
 
 This folder contains the step-centric replay viewer (v2) and a FastAPI server to browse traces.
 

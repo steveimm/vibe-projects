@@ -2,7 +2,7 @@
 
 ## Owner
 
-- `app/src/main/kotlin/ai/closepaw/llm/LFMLLMClient.kt`
+- `app/src/main/kotlin/id/steveimm/pocketpilot/llm/LFMLLMClient.kt`
 
 ## States — `LFMLLMClient.ModelLoadingState` (LFMLLMClient.kt:103-109)
 

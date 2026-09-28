@@ -2,7 +2,7 @@
 
 > Last updated: 2026-05-12 (release-prep wave 2: signing pipeline, R8 unblock, GitHub release workflow)
 
-This guide covers the development workflow for ClosePaw - building, testing, and debugging.
+This guide covers the development workflow for PocketPilot - building, testing, and debugging.
 
 ## Debug vs Release APK — always debug unless shipping
 
@@ -104,23 +104,23 @@ Run the local JVM test suite after code changes:
 For faster iteration, run a single test class:
 
 ```bash
-./gradlew test --tests "ai.closepaw.history.HistoryManagerTest"
+./gradlew test --tests "id.steveimm.pocketpilot.history.HistoryManagerTest"
 ```
 
 ### 2b. Compose UI Tests (instrumented, on device/emulator)
 
-Behavior-guard tests for app-owned UI live under `app/src/androidTest/kotlin/ai/closepaw/qa/`. They run on a connected device or emulator via `AndroidJUnitRunner` + Compose UI Test, with `animationsDisabled=true` to prevent flake.
+Behavior-guard tests for app-owned UI live under `app/src/androidTest/kotlin/id/steveimm/pocketpilot/qa/`. They run on a connected device or emulator via `AndroidJUnitRunner` + Compose UI Test, with `animationsDisabled=true` to prevent flake.
 
 ```bash
 adb devices                                                                    # confirm device attached
 ./gradlew connectedDebugAndroidTest \
-    -Pandroid.testInstrumentationRunnerArguments.package=ai.closepaw.qa
+    -Pandroid.testInstrumentationRunnerArguments.package=id.steveimm.pocketpilot.qa
 ```
 
 What is and isn't covered:
 
 - `app/src/test/` — fast JVM unit tests (logic, state, formatting).
-- `app/src/androidTest/kotlin/ai/closepaw/qa/` — Compose UI behavior guards across Chat, SmartCapsule, Settings (45 tests as of 2026-04-17). Layout is flat, files grouped by area (`ChatHeaderTest`, `CapsuleInputTest`, `SettingsLlmAuthTest`, ...). No Robot pattern, no annotations, no base classes.
+- `app/src/androidTest/kotlin/id/steveimm/pocketpilot/qa/` — Compose UI behavior guards across Chat, SmartCapsule, Settings (45 tests as of 2026-04-17). Layout is flat, files grouped by area (`ChatHeaderTest`, `CapsuleInputTest`, `SettingsLlmAuthTest`, ...). No Robot pattern, no annotations, no base classes.
 - `eval/` — AndroidWorld-style agent benchmarks (separate Python harness, see `/autotune`).
 
 Design rule: add tests when adding behavior or fixing bugs — don't wait for bugs to grow guards.
@@ -138,7 +138,7 @@ changes:
 ./gradlew test
 ```
 
-The hidden-WebView prelude test lives in `app/src/androidTest/kotlin/ai/closepaw/browser/script/`.
+The hidden-WebView prelude test lives in `app/src/androidTest/kotlin/id/steveimm/pocketpilot/browser/script/`.
 At minimum, compile the debug androidTest source set after CDP transport signature changes:
 
 ```bash
@@ -149,16 +149,16 @@ To run the on-device browser script host test directly:
 
 ```bash
 ./gradlew :app:connectedDebugAndroidTest \
-    -Pandroid.testInstrumentationRunnerArguments.class=ai.closepaw.browser.script.BrowserScriptRunnerInstrumentedTest
+    -Pandroid.testInstrumentationRunnerArguments.class=id.steveimm.pocketpilot.browser.script.BrowserScriptRunnerInstrumentedTest
 ```
 
 To exercise real `browser_script` from the app, enable **Settings → Agent Behavior → Tools →
 Browser Script**, keep Chrome installed and the DevTools socket reachable, and
 make sure at least one transport is available:
 
-- **`USER_SERVICE`** (preferred) — Shizuku running and authorized for ClosePaw.
+- **`USER_SERVICE`** (preferred) — Shizuku running and authorized for PocketPilot.
 - **`WIRELESS_ADB_SELF_PAIR`** (fallback) — wireless debugging enabled in Developer Options
-  (Android 11+); ClosePaw self-pairs once and reuses the stored ADB key.
+  (Android 11+); PocketPilot self-pairs once and reuses the stored ADB key.
 
 SMART mode still asks for approval before `browser_script` runs against Chrome.
 
@@ -235,7 +235,7 @@ This is useful when `mobile_action` reports success but UI does not change.
 ./scripts/mobile-action-test.sh '{"action":"click","element_index":9999,"x":632,"y":1844}'  # coordinate fallback
 ```
 
-Backed by `MobileActionDebugRunner` — a debug-only (`BuildConfig.DEBUG`) `BroadcastReceiver` registered in `AgentService`. Writes `result.json` + `pre_tree.json` + `post_tree.json` to `/sdcard/Android/data/ai.closepaw/files/mobile-action-debug/latest/`.
+Backed by `MobileActionDebugRunner` — a debug-only (`BuildConfig.DEBUG`) `BroadcastReceiver` registered in `AgentService`. Writes `result.json` + `pre_tree.json` + `post_tree.json` to `/sdcard/Android/data/id.steveimm.pocketpilot/files/mobile-action-debug/latest/`.
 
 ### 4. View Logs
 
@@ -285,17 +285,17 @@ The URL is passed as an intent extra and applied at session bootstrap via `Model
 
 ### Remote Eval Helper Config
 
-The remote helper scripts read optional machine-local settings from `.closepaw-local.env`.
-Copy `.closepaw-local.env.example` to `.closepaw-local.env` and edit it for your machines:
+The remote helper scripts read optional machine-local settings from `.pocketpilot-local.env`.
+Copy `.pocketpilot-local.env.example` to `.pocketpilot-local.env` and edit it for your machines:
 
 ```bash
-cp .closepaw-local.env.example .closepaw-local.env
+cp .pocketpilot-local.env.example .pocketpilot-local.env
 ```
 
-`scripts/remote/sync.sh` and `scripts/remote/scrcpy.sh` use `CLOSEPAW_REMOTE` and
-`CLOSEPAW_REMOTE_DIR`. `scripts/remote/proxy_tunnel.sh install` uses
-`CLOSEPAW_PROXY_HOST`, `CLOSEPAW_PROXY_USER`, and `CLOSEPAW_PROXY_PORT`, then writes the
-systemd user service env file at `~/.config/closepaw/proxy-tunnel.env`.
+`scripts/remote/sync.sh` and `scripts/remote/scrcpy.sh` use `POCKETPILOT_REMOTE` and
+`POCKETPILOT_REMOTE_DIR`. `scripts/remote/proxy_tunnel.sh install` uses
+`POCKETPILOT_PROXY_HOST`, `POCKETPILOT_PROXY_USER`, and `POCKETPILOT_PROXY_PORT`, then writes the
+systemd user service env file at `~/.config/pocketpilot/proxy-tunnel.env`.
 
 ### LLM Backend Selection
 

@@ -2,9 +2,9 @@
 
 ## Owner
 
-- `app/src/main/kotlin/ai/closepaw/onboarding/OnboardingState.kt` (`PermissionStepState`)
-- `app/src/main/kotlin/ai/closepaw/onboarding/OnboardingViewModel.kt` (`enterStep`, `checkCurrentPermission`, `openSystemSettings`, `onPermissionSatisfied`)
-- `app/src/main/kotlin/ai/closepaw/onboarding/PermissionStateMonitor.kt` (live checks)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/onboarding/OnboardingState.kt` (`PermissionStepState`)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/onboarding/OnboardingViewModel.kt` (`enterStep`, `checkCurrentPermission`, `openSystemSettings`, `onPermissionSatisfied`)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/onboarding/PermissionStateMonitor.kt` (live checks)
 
 Applies to three wizard steps: `Accessibility`, `Overlay`, `Battery`.
 

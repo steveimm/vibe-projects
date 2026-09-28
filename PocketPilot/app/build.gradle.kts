@@ -12,11 +12,11 @@ plugins {
 }
 
 android {
-    namespace = "ai.closepaw"
+    namespace = "id.steveimm.pocketpilot"
     compileSdk = 36  // Required by Leap SDK 0.9.2 (depends on androidx.core:core-ktx:1.17.0)
 
     defaultConfig {
-        applicationId = "ai.closepaw"
+        applicationId = "id.steveimm.pocketpilot"
         // Required by LiquidAI Leap SDK for local inference.
         // If we need to support Android < 12, consider a cloud-only flavor.
         minSdk = 31
@@ -38,7 +38,7 @@ android {
             if (!keystorePath.isNullOrBlank() && file(keystorePath).exists()) {
                 storeFile = file(keystorePath)
                 storePassword = System.getenv("KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("KEY_ALIAS") ?: "closepaw"
+                keyAlias = System.getenv("KEY_ALIAS") ?: "pocketpilot"
                 keyPassword = System.getenv("KEY_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD")
             }
         }
@@ -105,18 +105,18 @@ android {
     }
 }
 
-val copyClosePawBridge by tasks.registering(Copy::class) {
-    val bridgeSource = rootProject.layout.projectDirectory.file("tools/termux-bridge/closepaw_bridge.py")
+val copyPocketPilotBridge by tasks.registering(Copy::class) {
+    val bridgeSource = rootProject.layout.projectDirectory.file("tools/termux-bridge/pocketpilot_bridge.py")
     val rawResourceDir = layout.projectDirectory.dir("src/main/res/raw")
 
     from(bridgeSource)
     into(rawResourceDir)
-    rename { "closepaw_bridge_py" }
+    rename { "pocketpilot_bridge_py" }
     outputs.upToDateWhen { false }
 }
 
 tasks.named("preBuild") {
-    dependsOn(copyClosePawBridge)
+    dependsOn(copyPocketPilotBridge)
 }
 
 // gradle-license-plugin config: emit JSON only and have the plugin copy it

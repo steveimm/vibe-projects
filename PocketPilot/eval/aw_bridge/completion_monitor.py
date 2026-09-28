@@ -27,8 +27,8 @@ ERROR_PATTERN = re.compile(
     r"AgentService: Session error|"
     r"Fatal error|"
     r"TurnExecutionPhase: Executing tool: ask_user|"
-    r"ANR in ai\.closepaw|"
-    r"Timeout executing service: ServiceRecord\{[^}]*ai\.closepaw/.app.AgentService)"
+    r"ANR in id\.steveimm\.pocketpilot|"
+    r"Timeout executing service: ServiceRecord\{[^}]*id\.steveimm\.pocketpilot/.app.AgentService)"
 )
 REASON_PATTERN = re.compile(r"reason[=:]\s*([A-Za-z_]+)")
 
@@ -93,11 +93,11 @@ def _extract_reason(line: str) -> str | None:
 def _infer_reason(line: str) -> str | None:
     if "Executing tool: ask_user" in line:
         return "ASK_USER_BLOCKED"
-    if "ANR in ai.closepaw" in line:
+    if "ANR in id.steveimm.pocketpilot" in line:
         return "AGENT_ANR"
     if (
         "Timeout executing service: ServiceRecord" in line
-        and "ai.closepaw/.app.AgentService" in line
+        and "id.steveimm.pocketpilot/.app.AgentService" in line
     ):
         return "AGENT_ANR"
     return None

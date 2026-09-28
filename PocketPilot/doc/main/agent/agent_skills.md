@@ -178,11 +178,11 @@ after a sentinel-marked install logs a warning and keeps the previous install.
 
 ```bash
 # Create skill directory on device
-adb shell 'run-as ai.closepaw mkdir -p files/skills/<skill-name>'
+adb shell 'run-as id.steveimm.pocketpilot mkdir -p files/skills/<skill-name>'
 
 # Push SKILL.md
 adb push /local/SKILL.md /data/local/tmp/SKILL.md
-adb shell 'run-as ai.closepaw cp /data/local/tmp/SKILL.md files/skills/<skill-name>/SKILL.md'
+adb shell 'run-as id.steveimm.pocketpilot cp /data/local/tmp/SKILL.md files/skills/<skill-name>/SKILL.md'
 ```
 
 Catalog refresh requires a new session (catalog is immutable per session).

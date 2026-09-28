@@ -15,10 +15,10 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SERVICE_NAME="openai-proxy-tunnel"
 SERVICE_FILE="${SCRIPT_DIR}/${SERVICE_NAME}.service"
 USER_SERVICE_DIR="${HOME}/.config/systemd/user"
-SERVICE_ENV_DIR="${HOME}/.config/closepaw"
+SERVICE_ENV_DIR="${HOME}/.config/pocketpilot"
 SERVICE_ENV_FILE="${SERVICE_ENV_DIR}/proxy-tunnel.env"
 
-LOCAL_ENV="${CLOSEPAW_LOCAL_ENV:-$PROJECT_ROOT/.closepaw-local.env}"
+LOCAL_ENV="${POCKETPILOT_LOCAL_ENV:-$PROJECT_ROOT/.pocketpilot-local.env}"
 if [[ -f "$LOCAL_ENV" ]]; then
   # shellcheck source=/dev/null
   source "$LOCAL_ENV"
@@ -28,14 +28,14 @@ if [[ -f "$SERVICE_ENV_FILE" ]]; then
   source "$SERVICE_ENV_FILE"
 fi
 
-PROXY_HOST="${CLOSEPAW_PROXY_HOST:-${PROXY_HOST:-}}"
-PROXY_USER="${CLOSEPAW_PROXY_USER:-${PROXY_USER:-$USER}}"
-PROXY_PORT="${CLOSEPAW_PROXY_PORT:-${PROXY_PORT:-18080}}"
+PROXY_HOST="${POCKETPILOT_PROXY_HOST:-${PROXY_HOST:-}}"
+PROXY_USER="${POCKETPILOT_PROXY_USER:-${PROXY_USER:-$USER}}"
+PROXY_PORT="${POCKETPILOT_PROXY_PORT:-${PROXY_PORT:-18080}}"
 
 write_service_env() {
   if [[ -z "$PROXY_HOST" ]]; then
-    echo "[tunnel] proxy host required. Set CLOSEPAW_PROXY_HOST in .closepaw-local.env first."
-    echo "[tunnel] See .closepaw-local.env.example."
+    echo "[tunnel] proxy host required. Set POCKETPILOT_PROXY_HOST in .pocketpilot-local.env first."
+    echo "[tunnel] See .pocketpilot-local.env.example."
     exit 1
   fi
   mkdir -p "$SERVICE_ENV_DIR"
@@ -96,7 +96,7 @@ cmd_logs() {
 cmd_manual() {
   local host="${1:-${PROXY_HOST}}"
   if [[ -z "$host" ]]; then
-    echo "[tunnel] proxy host required. Pass it as an argument or set CLOSEPAW_PROXY_HOST."
+    echo "[tunnel] proxy host required. Pass it as an argument or set POCKETPILOT_PROXY_HOST."
     exit 1
   fi
   echo "[tunnel] Forwarding localhost:${PROXY_PORT} -> ${host}:${PROXY_PORT}"

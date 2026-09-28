@@ -1,6 +1,6 @@
 # Release Signing
 
-ClosePaw release builds use the `release` signing config in
+PocketPilot release builds use the `release` signing config in
 `app/build.gradle.kts`. The signing material is supplied only through
 environment variables so keystores and passwords never live in the repo.
 
@@ -19,10 +19,10 @@ environment variables so keystores and passwords never live in the repo.
 
 - `KEYSTORE_PATH`: path to the upload keystore file, stored outside the repo.
 - `KEYSTORE_PASSWORD`: password for the keystore.
-- `KEY_ALIAS`: alias for the upload key. Use `closepaw`.
+- `KEY_ALIAS`: alias for the upload key. Use `pocketpilot`.
 - `KEY_PASSWORD`: password for the key entry.
 
-Gradle defaults `KEY_ALIAS` to `closepaw` and `KEY_PASSWORD` to
+Gradle defaults `KEY_ALIAS` to `pocketpilot` and `KEY_PASSWORD` to
 `KEYSTORE_PASSWORD` when env vars are missing so IDE sync and debug builds stay
 usable. The release scripts intentionally require all four variables to be set
 and non-empty.
@@ -32,8 +32,8 @@ and non-empty.
 Use a private location outside the checkout, for example:
 
 ```bash
-mkdir -p "$HOME/secrets/closepaw"
-chmod 700 "$HOME/secrets/closepaw"
+mkdir -p "$HOME/secrets/pocketpilot"
+chmod 700 "$HOME/secrets/pocketpilot"
 ```
 
 Store the keystore and passwords in 1Password or an equivalent secrets manager.
@@ -46,8 +46,8 @@ keystore SHA-256 in your release notes so restores can be verified.
 Set these in a trusted shell. Avoid typing passwords directly into shell history.
 
 ```bash
-export KEYSTORE_PATH="$HOME/secrets/closepaw/closepaw-upload.p12"
-export KEY_ALIAS="closepaw"
+export KEYSTORE_PATH="$HOME/secrets/pocketpilot/pocketpilot-upload.p12"
+export KEY_ALIAS="pocketpilot"
 
 read -rsp "KEYSTORE_PASSWORD / KEY_PASSWORD: " RELEASE_KEY_PASSWORD
 export KEYSTORE_PASSWORD="$RELEASE_KEY_PASSWORD"

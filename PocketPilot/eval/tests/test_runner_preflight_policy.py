@@ -17,8 +17,8 @@ from eval.aw_bridge.runner_preflight import (
 
 def _bridge_config() -> BridgeConfig:
     return BridgeConfig(
-        package_name="ai.closepaw",
-        activity="ai.closepaw/.app.MainActivity",
+        package_name="id.steveimm.pocketpilot",
+        activity="id.steveimm.pocketpilot/.app.MainActivity",
         llm_backend="openai",
         agent_mode="basic",
         perception_mode="accessibility_only",

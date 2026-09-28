@@ -54,8 +54,8 @@ class BridgeOutcome:
 
 
 class NativeAgentBridge:
-    _A11Y_SERVICE = "ai.closepaw/ai.closepaw.app.AgentService"
-    _A11Y_SERVICE_LABEL = "ClosePaw"
+    _A11Y_SERVICE = "id.steveimm.pocketpilot/id.steveimm.pocketpilot.app.AgentService"
+    _A11Y_SERVICE_LABEL = "PocketPilot"
 
     def __init__(self, config: BridgeConfig) -> None:
         self._config = config

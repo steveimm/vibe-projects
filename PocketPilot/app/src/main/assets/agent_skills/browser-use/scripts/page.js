@@ -134,9 +134,9 @@ async function pageJs(expression, options = {}) {
 async function pageInfo() {
   // Check the per-target dialog tracker BEFORE Runtime.evaluate. A pending alert/confirm/
   // prompt freezes page JS, so the evaluate would silently hang against the per-command
-  // timeout. The synthetic ClosePaw.getDialog method is resolved in Kotlin from the
+  // timeout. The synthetic PocketPilot.getDialog method is resolved in Kotlin from the
   // Page.javascriptDialogOpening/Closed event stream — it never round-trips to Chrome.
-  const dialog = await cdp("ClosePaw.getDialog");
+  const dialog = await cdp("PocketPilot.getDialog");
   if (dialog) {
     return {
       // dialog.url is the frame URL captured at javascriptDialogOpening — the only piece of

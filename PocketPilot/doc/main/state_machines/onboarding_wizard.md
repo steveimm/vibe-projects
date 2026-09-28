@@ -2,9 +2,9 @@
 
 ## Owner
 
-- `app/src/main/kotlin/ai/closepaw/onboarding/OnboardingState.kt` (`WizardStep`, `StepOutcome`, `StepOutcomes`)
-- `app/src/main/kotlin/ai/closepaw/onboarding/OnboardingViewModel.kt` (transitions, advance/back logic)
-- `app/src/main/kotlin/ai/closepaw/onboarding/OnboardingStore.kt` (durable outcomes)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/onboarding/OnboardingState.kt` (`WizardStep`, `StepOutcome`, `StepOutcomes`)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/onboarding/OnboardingViewModel.kt` (transitions, advance/back logic)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/onboarding/OnboardingStore.kt` (durable outcomes)
 
 ## States — `WizardStep` (OnboardingState.kt:6)
 

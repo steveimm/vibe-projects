@@ -11,8 +11,8 @@
 #
 set -euo pipefail
 
-PACKAGE="ai.closepaw"
-INTENT="ai.closepaw.ACTION_DEBUG_MOBILE_ACTION"
+PACKAGE="id.steveimm.pocketpilot"
+INTENT="id.steveimm.pocketpilot.ACTION_DEBUG_MOBILE_ACTION"
 DEVICE_OUTPUT_DIR="/sdcard/Android/data/$PACKAGE/files/mobile-action-debug/latest"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'

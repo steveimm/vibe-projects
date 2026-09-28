@@ -5,7 +5,7 @@
 
 ## Design System
 
-ClosePaw uses Material 3 with the **D1 visual baseline** (warm paper surfaces, deep
+PocketPilot uses Material 3 with the **D1 visual baseline** (warm paper surfaces, deep
 warm ink, scarce Claw accent, paw glyph identity). The full token set, role mapping,
 motion vocabulary, and folded-paper chrome are documented below — this file is the
 authoritative reference.
@@ -17,32 +17,32 @@ authoritative reference.
 | File | Purpose |
 |------|---------|
 | `Color.kt` | D1 palette (Paper / Ink / Claw / Moss / Amber / Rust + light + dark) |
-| `Shape.kt` | `ClosePawShapes` — three Material radii (8 / 10 / 16dp) |
-| `Theme.kt` | `ClosePawTheme` composable + D1 → Material role mapping |
-| `Tokens.kt` | `ClosePawTokens`, `ClosePawSpacing`, `Modifier.foldedPaper`, `MaterialTheme.closePaw` accessor |
-| `Motion.kt` | `ClosePawMotion` (durations, easings, named primitives, `reducedMotion()`) |
-| `Type.kt` | `ClosePawTypography` — Geist on every Material slot; identity / mono extras carried in `ClosePawTokens` |
+| `Shape.kt` | `PocketPilotShapes` — three Material radii (8 / 10 / 16dp) |
+| `Theme.kt` | `PocketPilotTheme` composable + D1 → Material role mapping |
+| `Tokens.kt` | `PocketPilotTokens`, `PocketPilotSpacing`, `Modifier.foldedPaper`, `MaterialTheme.pocketPilot` accessor |
+| `Motion.kt` | `PocketPilotMotion` (durations, easings, named primitives, `reducedMotion()`) |
+| `Type.kt` | `PocketPilotTypography` — Geist on every Material slot; identity / mono extras carried in `PocketPilotTokens` |
 | `Ornaments.kt` | `Fleuron`, `PageMasthead` (+ `Identity` / `DrillDown` wrappers), `PawGlyph`, `SectionHeader` — the Bound Edition paper-zine register |
 | `PaperGrain.kt` | `Modifier.paperGrain` (light) and `Modifier.lanternVignette` (dark) background passes |
 | `WindowInsets.kt` | `AppWindowInsets` singleton |
 
-### ClosePawTheme
+### PocketPilotTheme
 
 > See: `ui/theme/Theme.kt`
 
 ```kotlin
 @Composable
-fun ClosePawTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit)
+fun PocketPilotTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit)
 ```
 
 - Selects light/dark color scheme from D1 palette
-- Provides `LocalClosePawTokens` for the `MaterialTheme.closePaw` accessor
+- Provides `LocalPocketPilotTokens` for the `MaterialTheme.pocketPilot` accessor
 - Configures status-bar icon appearance and bar colors on API < 35
-- Applies `ClosePawTypography` and `ClosePawShapes`
+- Applies `PocketPilotTypography` and `PocketPilotShapes`
 
 Call sites use Material slots first (`MaterialTheme.colorScheme.*`, `MaterialTheme.typography.*`,
 `MaterialTheme.shapes.*`); only the D1 residue (extra text roles, identity / mono styles,
-spacing tiers, folded-paper chrome) goes through `MaterialTheme.closePaw`.
+spacing tiers, folded-paper chrome) goes through `MaterialTheme.pocketPilot`.
 
 ---
 
@@ -63,7 +63,7 @@ spacing tiers, folded-paper chrome) goes through `MaterialTheme.closePaw`.
 | `Hairline` (12% Ink) | `outline` |
 | `InkGhost` (8% Ink) | `outlineVariant` |
 
-`InkFaint` is a text role and lives in `ClosePawTokens.inkFaint`, not in any Material slot.
+`InkFaint` is a text role and lives in `PocketPilotTokens.inkFaint`, not in any Material slot.
 
 ### Light Palette ("Paper")
 
@@ -92,15 +92,15 @@ Separate from light, not inverted. `*Dark` counterparts in `ui/theme/Color.kt`.
 Three families:
 
 - **Geist** (sans) — every Material slot, including `bodyLarge`, all `title*`, `label*`, etc.
-- **Fraunces** (serif) — identity surfaces only. Reached via `ClosePawTokens.serifItalic` or local TextStyle. Never auto-applied through a Material slot.
-- **JetBrains Mono** — machine text. Reached via `ClosePawTokens.monoBody` / `monoSmall`.
+- **Fraunces** (serif) — identity surfaces only. Reached via `PocketPilotTokens.serifItalic` or local TextStyle. Never auto-applied through a Material slot.
+- **JetBrains Mono** — machine text. Reached via `PocketPilotTokens.monoBody` / `monoSmall`.
 
 Track A row voice (UXFB-4 ThoughtGroup hierarchy):
 
 | Item | Style |
 |---|---|
 | Thought header | `MaterialTheme.typography.bodyLarge` (Geist regular, `onSurface`) — group marker; `drawBehind` left rule replaces the prior `✱` glyph |
-| Action | `MaterialTheme.closePaw.monoSmall`, `onSurfaceVariant`, indented `spacing.lg` inside the group; Lucide icons for status (`Check`, `X`, `LoaderCircle`, `Ban`) and arrow (`ArrowRight`) |
+| Action | `MaterialTheme.pocketPilot.monoSmall`, `onSurfaceVariant`, indented `spacing.lg` inside the group; Lucide icons for status (`Check`, `X`, `LoaderCircle`, `Ban`) and arrow (`ArrowRight`) |
 | Final | `MaterialTheme.typography.bodyLarge` (Geist regular, `onSurface`) |
 
 Each `ContentBlock.Thought` opens a ThoughtGroup; subsequent Actions belong to
@@ -119,7 +119,7 @@ attribution in `app/src/main/assets/FONT_ATTRIBUTION.md`.
 
 > See: `ui/theme/Shape.kt`
 
-`ClosePawShapes` ships exactly three Material radii. No bubble / capsule / card / input shape globals.
+`PocketPilotShapes` ships exactly three Material radii. No bubble / capsule / card / input shape globals.
 
 | Slot | Radius | Usage |
 |---|---|---|
@@ -131,10 +131,10 @@ attribution in `app/src/main/assets/FONT_ATTRIBUTION.md`.
 
 ## Spacing
 
-> See: `ui/theme/Tokens.kt` — `ClosePawSpacing`
+> See: `ui/theme/Tokens.kt` — `PocketPilotSpacing`
 
 Five steps on the 4dp baseline grid: `xs=4` · `sm=8` · `md=12` · `lg=20` · `xl=32`.
-Reached via `MaterialTheme.closePaw.spacing`. No `xxl`; horizontal page padding is `lg`.
+Reached via `MaterialTheme.pocketPilot.spacing`. No `xxl`; horizontal page padding is `lg`.
 
 Two **intent aliases** sit on the same grid — they don't add new values, they
 name the slot:
@@ -148,7 +148,7 @@ name the slot:
 
 ## Motion
 
-> See: `ui/theme/Motion.kt` — `ClosePawMotion`
+> See: `ui/theme/Motion.kt` — `PocketPilotMotion`
 
 Durations: `120 / 240 / 480 / 900 ms`. Easings: `EaseInOutSine`, `EaseOutCubic`. No springs.
 
@@ -161,7 +161,7 @@ Named primitives map onto real surface needs:
 | `CursorBlink`, `ThinkingPulse`, `OverlayFadeOut` | 480 | streaming cursor, thinking pulse, overlay fade |
 | `CapsuleBreath`, `GlowPulse` | 900 | running-mode breath, glow pulse |
 
-`ClosePawMotion.reducedMotion()` is read once per call site; each surface picks instant-or-fade
+`PocketPilotMotion.reducedMotion()` is read once per call site; each surface picks instant-or-fade
 itself rather than wrapping every transition globally. The contract:
 
 - trace enter → instant + 120ms fade
@@ -229,7 +229,7 @@ placeholder, tinted at the call site via `Icon(tint=...)` /
 
 The `PageMasthead` running-head appears on every "page-level" identity surface:
 
-- `ChatHeader` — `[paw] ClosePaw … [+]`
+- `ChatHeader` — `[paw] PocketPilot … [+]`
 - `NavigationDrawer` `DrawerHeader` — `[paw] Sessions … [×]`
 - `SettingsHomePage` — `[paw] Settings … [×]` via `PageMastheadIdentity`
 - Every Settings sub-page — `[‹] Title … [×]` via `PageMastheadDrillDown`
@@ -294,11 +294,11 @@ The thought's marquee independently honors reduced motion via the existing
 ```
 ui/theme/
 ├── Color.kt          # D1 palette (light + dark)
-├── Shape.kt          # ClosePawShapes (small / medium / large)
-├── Theme.kt          # ClosePawTheme + D1 → Material role mapping
-├── Tokens.kt         # ClosePawTokens, ClosePawSpacing, MaterialTheme.closePaw, foldedPaper
-├── Motion.kt         # ClosePawMotion (durations, easings, primitives, reducedMotion)
-├── Type.kt           # ClosePawTypography (Geist) + identity / mono extras
+├── Shape.kt          # PocketPilotShapes (small / medium / large)
+├── Theme.kt          # PocketPilotTheme + D1 → Material role mapping
+├── Tokens.kt         # PocketPilotTokens, PocketPilotSpacing, MaterialTheme.pocketPilot, foldedPaper
+├── Motion.kt         # PocketPilotMotion (durations, easings, primitives, reducedMotion)
+├── Type.kt           # PocketPilotTypography (Geist) + identity / mono extras
 ├── Ornaments.kt      # Fleuron, PageMasthead (+ Identity / DrillDown), PawGlyph, SectionHeader
 ├── PaperGrain.kt     # Modifier.paperGrain (light) / Modifier.lanternVignette (dark)
 └── WindowInsets.kt   # AppWindowInsets singleton

@@ -14,7 +14,7 @@ import pytest
 
 
 HOST = "127.0.0.1"
-BRIDGE_SCRIPT = Path(__file__).resolve().parents[1] / "closepaw_bridge.py"
+BRIDGE_SCRIPT = Path(__file__).resolve().parents[1] / "pocketpilot_bridge.py"
 
 
 @dataclass

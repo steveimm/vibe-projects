@@ -1,4 +1,4 @@
-# ClosePaw Evaluation Harness
+# PocketPilot Evaluation Harness
 
 This folder contains the Tier 0/1 evaluation harness. See
 [`doc/main/eval/eval.md`](../doc/main/eval/eval.md) for the architecture and runbook.
@@ -229,7 +229,7 @@ emulator screen).  To run on a **Shizuku virtual display** instead:
    `bridge.shizuku_apk_path` is set -- see below).
 2. Open the Shizuku app on the emulator and start the server via the
    "Start via ADB" flow.
-3. Launch the ClosePaw app, which will trigger the Shizuku permission
+3. Launch the PocketPilot app, which will trigger the Shizuku permission
    dialog.  Tap **Allow**.
 
 This grant persists across emulator reboots (as long as you don't wipe data).

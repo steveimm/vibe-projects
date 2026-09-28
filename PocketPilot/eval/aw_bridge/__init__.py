@@ -1,2 +1,2 @@
-"""AndroidWorld bridge runner package for native ClosePaw eval."""
+"""AndroidWorld bridge runner package for native PocketPilot eval."""
 

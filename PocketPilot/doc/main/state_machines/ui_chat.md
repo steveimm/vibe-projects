@@ -4,12 +4,12 @@ Authoritative reference for how the chat screen translates `AgentEvent` streams 
 the visible message timeline.
 
 **Owner code**:
-- Message types & per-message state: `app/src/main/kotlin/ai/closepaw/ui/chat/model/ChatMessage.kt`
-- Reducer (event → state): `app/src/main/kotlin/ai/closepaw/ui/chat/ChatEventReducer.kt`
-- Hosting view-model: `app/src/main/kotlin/ai/closepaw/ui/chat/ChatViewModel.kt`
-- Renderer: `app/src/main/kotlin/ai/closepaw/ui/chat/ChatScreen.kt`,
-  `app/src/main/kotlin/ai/closepaw/ui/chat/components/MessageBubble.kt`
-- Tests: `app/src/test/kotlin/ai/closepaw/ui/chat/ChatEventReducerTest.kt`,
+- Message types & per-message state: `app/src/main/kotlin/id/steveimm/pocketpilot/ui/chat/model/ChatMessage.kt`
+- Reducer (event → state): `app/src/main/kotlin/id/steveimm/pocketpilot/ui/chat/ChatEventReducer.kt`
+- Hosting view-model: `app/src/main/kotlin/id/steveimm/pocketpilot/ui/chat/ChatViewModel.kt`
+- Renderer: `app/src/main/kotlin/id/steveimm/pocketpilot/ui/chat/ChatScreen.kt`,
+  `app/src/main/kotlin/id/steveimm/pocketpilot/ui/chat/components/MessageBubble.kt`
+- Tests: `app/src/test/kotlin/id/steveimm/pocketpilot/ui/chat/ChatEventReducerTest.kt`,
   `ChatSupplementAndActionTransitionTest.kt`,
   `ChatActionExecutionMappingTest.kt`, `ChatCompletionMessageTest.kt`,
   `ChatCompletionSummaryTest.kt`, `ChatViewModelTest.kt`

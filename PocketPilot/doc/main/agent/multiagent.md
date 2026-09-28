@@ -5,7 +5,7 @@
 
 ## Unified Delegation Model
 
-ClosePaw runs one default main agent. The main agent has the full Android toolset and may optionally call `delegate_task` for an isolated subtask. There is no Basic/Pro mode switch, no separate planner prompt, and no separate executor role definition.
+PocketPilot runs one default main agent. The main agent has the full Android toolset and may optionally call `delegate_task` for an isolated subtask. There is no Basic/Pro mode switch, no separate planner prompt, and no separate executor role definition.
 
 ```
 Main Agent (DefaultRoleDef, AgentExecutionRole.MAIN)

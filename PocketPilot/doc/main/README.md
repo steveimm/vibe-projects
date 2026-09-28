@@ -1,4 +1,4 @@
-# ClosePaw Documentation
+# PocketPilot Documentation
 
 > Entry point and navigation guide for the codebase.
 > Last updated: 2026-05-15 (unified agent mode: single Default role, AgentMode enum removed)
@@ -10,7 +10,7 @@
 | Build (default) | `./gradlew assembleDebug` |
 | Build release (R8 + resource shrink, signed APK) | `./gradlew assembleRelease` |
 | Test (JVM unit) | `./gradlew test` |
-| Test (Compose UI on connected device/emulator) | `./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.package=ai.closepaw.qa` |
+| Test (Compose UI on connected device/emulator) | `./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.package=id.steveimm.pocketpilot.qa` |
 | Lint | `./gradlew lint` |
 | Full Check | `./gradlew clean assembleDebug lint test` |
 
@@ -102,7 +102,7 @@ doc/main/
 ## Code Structure
 
 ```
-app/src/main/kotlin/ai/closepaw/
+app/src/main/kotlin/id/steveimm/pocketpilot/
 │
 ├── app/                          # Application entry points
 │   ├── MainActivity.kt           # UI entry point
@@ -271,7 +271,7 @@ app/src/main/kotlin/ai/closepaw/
 │   │   ├── ChromeCdpTarget.kt    # Page target filtering (real vs internal)
 │   │   ├── ChromeCdpEventBuffer.kt # Thread-safe event ring buffer
 │   │   ├── ChromeCdpClient.kt    # Core client: routing, attach, target-switch atomicity, recovery
-│   │   ├── RelayAuthToken.kt     # Per-session 32-byte hex token; X-ClosePaw-Token gate; slowloris deadline
+│   │   ├── RelayAuthToken.kt     # Per-session 32-byte hex token; X-PocketPilot-Token gate; slowloris deadline
 │   │   ├── shizuku/              # Shizuku transport (USER_SERVICE)
 │   │   │   ├── ShizukuChromeDevtoolsBridge.kt  # Cascade: USER_SERVICE → WIRELESS_ADB_SELF_PAIR
 │   │   │   ├── ChromeDevtoolsUserService.kt    # Shell-UID socket proxy (token-gated)

@@ -2,9 +2,9 @@
 
 ## Owner
 
-- `app/src/main/kotlin/ai/closepaw/onboarding/OnboardingState.kt` (`ApiKeyStepState`, `OnboardingProvider`, `ApiKeyAuthMethod`)
-- `app/src/main/kotlin/ai/closepaw/onboarding/OnboardingViewModel.kt` (manual + OAuth transitions)
-- `app/src/main/kotlin/ai/closepaw/onboarding/HttpLlmCredentialValidator.kt` + `LlmCredentialValidator.kt` (validation backend)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/onboarding/OnboardingState.kt` (`ApiKeyStepState`, `OnboardingProvider`, `ApiKeyAuthMethod`)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/onboarding/OnboardingViewModel.kt` (manual + OAuth transitions)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/onboarding/HttpLlmCredentialValidator.kt` + `LlmCredentialValidator.kt` (validation backend)
 
 The step is split between two paths chosen via `ApiKeyAuthMethod`:
 

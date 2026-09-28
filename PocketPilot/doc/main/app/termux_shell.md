@@ -34,7 +34,7 @@ AgentRoleDef.resolve(...) for Standalone / Planner / Executor
 ```
 
 Primary files:
-- `tools/termux-bridge/closepaw_bridge.py` - canonical bridge source, packaged into `res/raw`.
+- `tools/termux-bridge/pocketpilot_bridge.py` - canonical bridge source, packaged into `res/raw`.
 - `termux/TermuxBridgeManager.kt` - singleton bridge state, setup, restart, session readiness.
 - `termux/TermuxRunCommandAdapter.kt` - Termux `RUN_COMMAND` bootstrap adapter.
 - `tool/impl/TermuxShellTool.kt` - tool schema and HTTP execution.
@@ -54,7 +54,7 @@ Primary files:
 
 | Reason | Meaning |
 |--------|---------|
-| `PERMISSION_MISSING` | ClosePaw lacks `com.termux.permission.RUN_COMMAND`. |
+| `PERMISSION_MISSING` | PocketPilot lacks `com.termux.permission.RUN_COMMAND`. |
 | `ALLOW_EXTERNAL_APPS_MISSING` | Termux has not enabled `allow-external-apps`. |
 | `PACKAGES_MISSING` | Required Termux packages (`python3`, `git`, `rg`) are missing or failed to install. |
 | `BRIDGE_OUTDATED` | Deployed bridge version differs from the APK-packaged bridge. |
@@ -92,7 +92,7 @@ Primary files:
   `exit_code`, `stdout`, `stderr`, timeout flags, and truncation refs.
 - Command timeout defaults to 120s. The executor sub-agent timeout is raised to 150s only when
   `termux_shell` is exposed.
-- Workspace cwd defaults to `~/closepaw/workspace/`. Bridge-side cwd validation rejects paths
+- Workspace cwd defaults to `~/pocketpilot/workspace/`. Bridge-side cwd validation rejects paths
   outside that workspace. To share files with other Android apps, copy them to `/sdcard/Download/`.
 - `termux_shell` is non-screen-changing and auto-allowed like `shell`, but it must not control
   Android UI or bypass app-tier restrictions. UI work still belongs to `mobile_action`,
@@ -106,7 +106,7 @@ Primary files:
   surface and is reported as `TERMUX_RUN_COMMAND_UNAVAILABLE`.
 - Some OEM ROMs block cross-app foreground-service starts with errors such as "forbidden to start a
   3rd process by service" and may also deny background activity launch attempts. On those devices,
-  the user must open Termux manually, return to ClosePaw, and tap setup again.
+  the user must open Termux manually, return to PocketPilot, and tap setup again.
 - v1 has no `/v1/cancel` endpoint. Cancellation relies on OkHttp cancel / TCP disconnect; the bridge
   detects the closed client connection and kills the bash process group.
 - v1 does not include standalone file, search, patch, git, or process tools. The agent uses bash for

@@ -24,7 +24,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-PACKAGE="ai.closepaw"
+PACKAGE="id.steveimm.pocketpilot"
 APK_PATH="$PROJECT_ROOT/app/build/outputs/apk/debug/app-debug.apk"
 
 # Colors
@@ -73,7 +73,7 @@ select_device() {
 
 echo -e "${GREEN}"
 echo "=============================================================="
-echo "         ClosePaw - Build & Deploy                        "
+echo "         PocketPilot - Build & Deploy                        "
 echo "=============================================================="
 echo -e "${NC}"
 
@@ -162,10 +162,10 @@ else
     fi
 fi
 
-# Verify ClosePaw has Shizuku's signature permission (granted via Shizuku UI, not pm grant).
+# Verify PocketPilot has Shizuku's signature permission (granted via Shizuku UI, not pm grant).
 SHIZUKU_GRANT=$(adb shell dumpsys package "$PACKAGE" 2>/dev/null | grep -E 'API_V23.*granted=true' | head -n 1)
 if [[ -z "$SHIZUKU_GRANT" ]]; then
-    warn "ClosePaw doesn't yet hold moe.shizuku.manager.permission.API_V23. Open the Shizuku app and grant it before testing wireless-ADB self-pair."
+    warn "PocketPilot doesn't yet hold moe.shizuku.manager.permission.API_V23. Open the Shizuku app and grant it before testing wireless-ADB self-pair."
 fi
 
 # 5. Grant Overlay permission
@@ -186,7 +186,7 @@ A11Y_FLAG=$(adb shell settings get secure accessibility_enabled 2>/dev/null | tr
 if [[ "$ENABLED" == *"$PACKAGE"* && "$A11Y_FLAG" == "1" ]]; then
     ok "Accessibility service enabled"
 else
-    err "Accessibility service did NOT stick (settings get returned: enabled_accessibility_services='$ENABLED', accessibility_enabled='$A11Y_FLAG'). This OEM build (e.g. OPPO/ColorOS) blocks adb-driven a11y enablement. Toggle manually: Settings > Accessibility > Downloaded apps > ClosePaw, then re-run."
+    err "Accessibility service did NOT stick (settings get returned: enabled_accessibility_services='$ENABLED', accessibility_enabled='$A11Y_FLAG'). This OEM build (e.g. OPPO/ColorOS) blocks adb-driven a11y enablement. Toggle manually: Settings > Accessibility > Downloaded apps > PocketPilot, then re-run."
 fi
 
 # 7. Launch app

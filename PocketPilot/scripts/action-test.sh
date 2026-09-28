@@ -12,8 +12,8 @@
 #
 set -euo pipefail
 
-PACKAGE="ai.closepaw"
-ACTION_INTENT="ai.closepaw.ACTION_DEBUG_EXEC"
+PACKAGE="id.steveimm.pocketpilot"
+ACTION_INTENT="id.steveimm.pocketpilot.ACTION_DEBUG_EXEC"
 DEVICE_OUTPUT_DIR="/sdcard/Android/data/$PACKAGE/files/action-debug/latest"
 
 # Colors

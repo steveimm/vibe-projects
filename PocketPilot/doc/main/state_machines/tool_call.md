@@ -2,8 +2,8 @@
 
 ## Owner
 
-- `app/src/main/kotlin/ai/closepaw/tool/ToolCallState.kt` (state definitions)
-- `app/src/main/kotlin/ai/closepaw/tool/ToolRouter.kt` (transition logic, approval mediation, cancellation)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/tool/ToolCallState.kt` (state definitions)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/tool/ToolRouter.kt` (transition logic, approval mediation, cancellation)
 
 ## States
 

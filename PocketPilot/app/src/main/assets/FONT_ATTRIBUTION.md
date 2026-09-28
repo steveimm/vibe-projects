@@ -1,6 +1,6 @@
 # Font Attribution
 
-ClosePaw bundles the following font families under `app/src/main/res/font/`.
+PocketPilot bundles the following font families under `app/src/main/res/font/`.
 All three are open-source and free for commercial redistribution.
 
 | Family | Files | License | Source |
@@ -12,6 +12,6 @@ All three are open-source and free for commercial redistribution.
 All three families ship under the SIL Open Font License 1.1 — see each
 upstream repository's `OFL.txt` for the full license text.
 
-Wiring lives in `ai/closepaw/ui/theme/Type.kt`. The `FontFamily` aliases
+Wiring lives in `id/steveimm/pocketpilot/ui/theme/Type.kt`. The `FontFamily` aliases
 resolve directly to the bundled `R.font.*` resources; system fallbacks are
 no longer used.

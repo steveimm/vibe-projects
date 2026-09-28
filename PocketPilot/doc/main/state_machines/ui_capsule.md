@@ -3,12 +3,12 @@
 Authoritative reference for the Smart Capsule's user-facing finite state machine.
 
 **Owner code**:
-- States: `app/src/main/kotlin/ai/closepaw/ui/overlay/model/CapsuleMode.kt`
-- Transitions: `app/src/main/kotlin/ai/closepaw/ui/overlay/CapsuleStateHolder.kt`
-- Render mapping: `app/src/main/kotlin/ai/closepaw/ui/overlay/model/CapsuleRenderSpec.kt`
+- States: `app/src/main/kotlin/id/steveimm/pocketpilot/ui/overlay/model/CapsuleMode.kt`
+- Transitions: `app/src/main/kotlin/id/steveimm/pocketpilot/ui/overlay/CapsuleStateHolder.kt`
+- Render mapping: `app/src/main/kotlin/id/steveimm/pocketpilot/ui/overlay/model/CapsuleRenderSpec.kt`
 - Nav visibility: `NavSpec` (same file as `CapsuleRenderSpec`)
-- Renderer: `app/src/main/kotlin/ai/closepaw/ui/capsule/surface/SmartCapsuleSurface.kt`
-- Tests: `app/src/test/kotlin/ai/closepaw/ui/overlay/CapsuleStateHolderTest.kt`,
+- Renderer: `app/src/main/kotlin/id/steveimm/pocketpilot/ui/capsule/surface/SmartCapsuleSurface.kt`
+- Tests: `app/src/test/kotlin/id/steveimm/pocketpilot/ui/overlay/CapsuleStateHolderTest.kt`,
   `CapsuleApprovalTransitionTest.kt`, `model/CapsuleRenderSpecTest.kt`, `model/NavSpecTest.kt`
 
 > -> See: [`doc/main/ui/capsule/state_machine.md`](../ui/capsule/state_machine.md) for the broader location/visibility decision machine (CapsuleMode × OverlayUserLocation × ShowPreference) layered on top of this FSM.
@@ -33,7 +33,7 @@ there, and what the user sees.
 | `Takeover(lastThought)` | Agent confirmed pause | Amber dot + dimmed last thought; `[Resume]` `[Stop]` |
 | `WaitingForInput(question, callId)` | Agent asked a text question | Expanded body shows question; input row hint "Type your response…" |
 | `WaitingForAction(instruction, callId)` | Agent asked the user to do something on the phone | Expanded body shows instruction; `[Done]` button; input row hidden |
-| `WaitingForApproval(callId, …)` | Agent needs approval to operate an app | Status line asks `Allow ClosePaw to operate {AppName}?`; no expanded body; `[Always]` `[Session]` `[Reject]` |
+| `WaitingForApproval(callId, …)` | Agent needs approval to operate an app | Status line asks `Allow PocketPilot to operate {AppName}?`; no expanded body; `[Always]` `[Session]` `[Reject]` |
 | `Done(message)` | Task completed (any non-ERROR outcome) | Teal dot + checkmark message; auto-hides after 3 s |
 | `Error(message)` | Task ended in ERROR / `onError()` called | Red dot + warning; `[Close]` button stays until dismissed |
 

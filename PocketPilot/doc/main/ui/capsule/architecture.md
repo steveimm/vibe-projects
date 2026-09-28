@@ -47,7 +47,7 @@ sealed interface CapsuleMode {
 | **Takeover** | Amber | Last thought (60% alpha) | [Resume] | Input + "Add note" |
 | **WaitingForInput** | Hidden | "Awaiting response" + body | [Stop] only | Input + "Send" |
 | **WaitingForAction** | Hidden | "Action needed" + body | [Done] | Hidden |
-| **WaitingForApproval** | Amber | "Allow ClosePaw to operate {AppName}?" | [Always] [Session] [Reject] | Hidden |
+| **WaitingForApproval** | Amber | "Allow PocketPilot to operate {AppName}?" | [Always] [Session] [Reject] | Hidden |
 | **Done** | Teal | "message" | Hidden | Hidden |
 | **Error** | Red | "message" | [Close] | Hidden |
 | **Hidden** | Hidden | — | Hidden | Input + "Send" |
@@ -108,7 +108,7 @@ Auto-hide: `Done` → `Hidden` after 3000ms.
    - `SessionRecordingService.recordThought(full)` for history.
 4. Capsule renderers (`StatusIslandCompose`, `SmartCapsuleSurface`) display
    the full text via `Modifier.basicMarquee`. Reduced-motion users (per
-   `ClosePawMotion.reducedMotion()`) get `compactThought(full)` with
+   `PocketPilotMotion.reducedMotion()`) get `compactThought(full)` with
    ellipsis instead. `StatusIslandCompose` pins width via `widthIn(max =
    220.dp)` in both branches so the overlay can't grow off-screen (uxfb-2).
 5. `SmartCapsuleSurface` recomposes via `stateHolder.mode` StateFlow.

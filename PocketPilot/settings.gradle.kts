@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ClosePaw"
+rootProject.name = "PocketPilot"
 include(":app")

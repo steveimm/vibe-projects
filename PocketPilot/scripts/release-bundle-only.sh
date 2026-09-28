@@ -20,4 +20,4 @@ mkdir -p "$DST_DIR"
 cp "$SRC" "$DST"
 echo "release-bundle-only: copied mapping ($(wc -l < "$DST") lines)"
 
-./gradlew bundleRelease 2>&1 | tee -a /tmp/closepaw-release-build.log
+./gradlew bundleRelease 2>&1 | tee -a /tmp/pocketpilot-release-build.log

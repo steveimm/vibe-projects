@@ -15,7 +15,7 @@ Chat-first conversational interface built with Jetpack Compose and Material 3. T
 ┌────────────────────────────────────────────────────────────────┐
 │                        ChatScreen                              │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │ ChatHeader     │ [≡] · paw · ClosePaw · [+] │   │
+│  │ ChatHeader     │ [≡] · paw · PocketPilot · [+] │   │
 │  ├───────────────┼─────────────────────────────────────────┤   │
 │  │ MessageList   │ User/Agent bubbles, Action cards        │   │
 │  ├───────────────┼─────────────────────────────────────────┤   │
@@ -34,7 +34,7 @@ Chat-first conversational interface built with Jetpack Compose and Material 3. T
 
 | Component | Purpose |
 |-----------|---------|
-| **ChatHeader** | `[≡]` menu + `PageMasthead("ClosePaw")` + `[+]` new chat (when messages exist). The masthead carries the leading paw and Fraunces italic title — see `style.md` Bound Edition Ornaments |
+| **ChatHeader** | `[≡]` menu + `PageMasthead("PocketPilot")` + `[+]` new chat (when messages exist). The masthead carries the leading paw and Fraunces italic title — see `style.md` Bound Edition Ornaments |
 | **MessageBubble** | User/Agent message bubbles (asymmetric corner shapes; text wrapped in `SelectionContainer` so users can long-press to select & copy via the native menu) |
 | **StreamingText** | Text with blinking cursor (530ms alpha animation) |
 | **ThinkingIndicator** | Line-art paw with C-body always lit and 4 toes filling cumulatively (`ic_paw` shape, 900ms cycle) + Fraunces italic "Thinking…" label, polite live region |
@@ -50,7 +50,7 @@ context-appropriate trailing icon (no right-slot ledger by default):
 
 | Surface | Title | Trailing slot |
 |---|---|---|
-| `ChatHeader` | "ClosePaw" | `[+]` new-chat icon (when messages exist) |
+| `ChatHeader` | "PocketPilot" | `[+]` new-chat icon (when messages exist) |
 | `NavigationDrawer` `DrawerHeader` | "Sessions" | `[×]` close icon |
 | `SettingsHomePage` | "Settings" | `[×]` close icon |
 
@@ -60,7 +60,7 @@ Asymmetric one-screen layout, no chips:
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ [≡] · paw · ClosePaw ─────────────────  [+] │
+│ [≡] · paw · PocketPilot ─────────────────  [+] │
 ├──────────────────────────────────────────────────────────┤
 │                                            ◐ paw bleed   │
 │                                          ◐◐ (top-right,  │

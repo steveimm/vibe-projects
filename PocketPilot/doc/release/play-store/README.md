@@ -1,6 +1,6 @@
 # Play Store Submission Assets
 
-Final submission-ready assets for ClosePaw on Google Play. All files in this folder are upload-ready; the working source (Next.js editor, raw captures) lives in `marketing/`.
+Final submission-ready assets for PocketPilot on Google Play. All files in this folder are upload-ready; the working source (Next.js editor, raw captures) lives in `marketing/`.
 
 ## Files
 

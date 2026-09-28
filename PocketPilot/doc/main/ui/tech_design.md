@@ -23,11 +23,11 @@
 ui/
 ├── theme/
 │   ├── Color.kt                 # D1 palette (Paper / Ink / Claw / Moss / Amber / Rust)
-│   ├── Shape.kt                 # ClosePawShapes — three Material radii (8 / 10 / 16dp)
-│   ├── Theme.kt                 # ClosePawTheme composable + Material role mapping
-│   ├── Tokens.kt                # ClosePawTokens (extras), ClosePawSpacing, Modifier.foldedPaper
-│   ├── Motion.kt                # ClosePawMotion (durations, easings, reducedMotion())
-│   ├── Type.kt                  # ClosePawTypography — Geist on every Material slot
+│   ├── Shape.kt                 # PocketPilotShapes — three Material radii (8 / 10 / 16dp)
+│   ├── Theme.kt                 # PocketPilotTheme composable + Material role mapping
+│   ├── Tokens.kt                # PocketPilotTokens (extras), PocketPilotSpacing, Modifier.foldedPaper
+│   ├── Motion.kt                # PocketPilotMotion (durations, easings, reducedMotion())
+│   ├── Type.kt                  # PocketPilotTypography — Geist on every Material slot
 │   └── WindowInsets.kt          # AppWindowInsets singleton
 │
 ├── chat/
@@ -43,7 +43,7 @@ ui/
 │   │   ├── AgentSummary.kt      # outcomeFooter + collapsedSummary helpers
 │   │   ├── CollapsePill.kt      # Pill chip: [▸ ✓ N actions · 12s], Lucide icons, tween animation
 │   │   ├── StreamingText.kt     # Final-block Text with inlineContent serif `|` cursor
-│   │   ├── ThinkingIndicator.kt # Line-art paw: C-body always lit, 4 toes fill cumulatively over 900ms (ClosePawMotion.Breath)
+│   │   ├── ThinkingIndicator.kt # Line-art paw: C-body always lit, 4 toes fill cumulatively over 900ms (PocketPilotMotion.Breath)
 │   │   └── EmptyState.kt        # First launch with suggestion chips + serif italic question
 │   └── model/
 │       ├── ChatMessage.kt       # User + Agent message wrappers

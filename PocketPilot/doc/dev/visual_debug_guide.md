@@ -1,8 +1,8 @@
-# ClosePaw Visual Debugging Guide
+# PocketPilot Visual Debugging Guide
 
 > **Prerequisites:** Understand the agent architecture in [doc/main/README.md](../main/README.md) (start with `agent/loop.md` and `agent/overview.md`).
 
-Visual debugging approach for ClosePaw's ReAct loop using screenshots + logs.
+Visual debugging approach for PocketPilot's ReAct loop using screenshots + logs.
 
 ## Issue Categories
 
@@ -154,8 +154,8 @@ grep "=== TURN" "$RUN/agent.log"
 
 | File | Purpose |
 |------|---------|
-| `app/src/main/kotlin/ai/closepaw/agent/Agent.kt` | ReAct loop (Perceive → Think → Act → Observe) |
-| `app/src/main/kotlin/ai/closepaw/agent/Turn.kt` | Single LLM call with streaming |
-| `app/src/main/kotlin/ai/closepaw/perception/Perceptor.kt` | Accessibility tree → ScreenSnapshot |
-| `app/src/main/kotlin/ai/closepaw/tool/ToolRouter.kt` | Tool execution state machine |
-| `app/src/main/kotlin/ai/closepaw/platform/AccessibilityPlatform.kt` | Screen capture and actions |
+| `app/src/main/kotlin/id/steveimm/pocketpilot/agent/Agent.kt` | ReAct loop (Perceive → Think → Act → Observe) |
+| `app/src/main/kotlin/id/steveimm/pocketpilot/agent/Turn.kt` | Single LLM call with streaming |
+| `app/src/main/kotlin/id/steveimm/pocketpilot/perception/Perceptor.kt` | Accessibility tree → ScreenSnapshot |
+| `app/src/main/kotlin/id/steveimm/pocketpilot/tool/ToolRouter.kt` | Tool execution state machine |
+| `app/src/main/kotlin/id/steveimm/pocketpilot/platform/AccessibilityPlatform.kt` | Screen capture and actions |

@@ -1,6 +1,6 @@
 {
-  "name": "closepaw-ux-template",
-  "package": "ai.closepaw",
+  "name": "pocketpilot-ux-template",
+  "package": "id.steveimm.pocketpilot",
   "steps": [
     {
       "name": "Force stop app",
@@ -18,7 +18,7 @@
     {
       "name": "Assert app shell visible",
       "action": "assert_text",
-      "text": "ClosePaw",
+      "text": "PocketPilot",
       "continue_on_fail": true
     },
     {

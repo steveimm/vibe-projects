@@ -10,7 +10,7 @@ No correctness, lifecycle, security, or maintainability issues found.
 
 ## Verification
 
-- `./gradlew testDebugUnitTest --tests 'ai.closepaw.platform.ScrollVisualizationGeometryTest' --tests 'ai.closepaw.tool.action.ScrollExecutorTest'`
+- `./gradlew testDebugUnitTest --tests 'id.steveimm.pocketpilot.platform.ScrollVisualizationGeometryTest' --tests 'id.steveimm.pocketpilot.tool.action.ScrollExecutorTest'`
 - `./gradlew assembleDebug testDebugUnitTest`
 - `./gradlew lintDebug`
 - On-device QA log confirmed `Success: Scrolled down via a11y_scroll` and `VisualizerOverlayHost: Visualizer overlay shown` for the scroll action.

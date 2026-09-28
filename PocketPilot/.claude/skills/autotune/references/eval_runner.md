@@ -38,11 +38,11 @@ Before running, sync code to the remote:
 git push
 
 # 2. Pull and rebuild on remote
-if [[ -f .closepaw-local.env ]]; then source .closepaw-local.env; fi
-: "${CLOSEPAW_REMOTE:?Set CLOSEPAW_REMOTE in .closepaw-local.env}"
-: "${CLOSEPAW_REMOTE_DIR:?Set CLOSEPAW_REMOTE_DIR in .closepaw-local.env}"
-REMOTE="$CLOSEPAW_REMOTE"
-REMOTE_DIR="$CLOSEPAW_REMOTE_DIR"
+if [[ -f .pocketpilot-local.env ]]; then source .pocketpilot-local.env; fi
+: "${POCKETPILOT_REMOTE:?Set POCKETPILOT_REMOTE in .pocketpilot-local.env}"
+: "${POCKETPILOT_REMOTE_DIR:?Set POCKETPILOT_REMOTE_DIR in .pocketpilot-local.env}"
+REMOTE="$POCKETPILOT_REMOTE"
+REMOTE_DIR="$POCKETPILOT_REMOTE_DIR"
 ssh "$REMOTE" "cd $REMOTE_DIR && git pull && ./gradlew assembleDebug"
 ```
 

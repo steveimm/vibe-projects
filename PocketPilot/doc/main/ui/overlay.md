@@ -9,7 +9,7 @@ The overlay system provides visual feedback and interaction when the agent execu
 
 **Compact overlays** (Settings → Agent Behavior → Display Mode) keeps the capsule and island controls, but disables the full-screen touch shield, edge glow, and action visualizer. Use this when device security software revokes accessibility as full-screen overlays appear. The setting persists and applies immediately. With the touch shield disabled, tap Takeover before interacting with the underlying app.
 
-On an OPPO Find X8 running Android 16, the full-screen glow was followed by `com.oplus.safecenter:accessibility` logging `accessibility_black_screen_event` and `closeAccessibilityAndReport`, then removing ClosePaw from `enabled_accessibility_services`. There was no app crash. Compact mode avoids those full-screen windows without changing device security settings.
+On an OPPO Find X8 running Android 16, the full-screen glow was followed by `com.oplus.safecenter:accessibility` logging `accessibility_black_screen_event` and `closeAccessibilityAndReport`, then removing PocketPilot from `enabled_accessibility_services`. There was no app crash. Compact mode avoids those full-screen windows without changing device security settings.
 
 ### Mode-Aware Branching
 

@@ -92,20 +92,20 @@ Before finalizing, verify:
 ## Key Files
 
 ### Prompt layers
-- Core system prompt: `app/src/main/kotlin/ai/closepaw/agent/definition/DefaultAgentDef.kt`
-- Prompt assembly: `app/src/main/kotlin/ai/closepaw/agent/cognition/prompt/PromptBuilder.kt`
+- Core system prompt: `app/src/main/kotlin/id/steveimm/pocketpilot/agent/definition/DefaultAgentDef.kt`
+- Prompt assembly: `app/src/main/kotlin/id/steveimm/pocketpilot/agent/cognition/prompt/PromptBuilder.kt`
 - App skills directory: `app/src/main/assets/app_skills/<package>/SKILL.md`
 
 ### Tool descriptions
-- `app/src/main/kotlin/ai/closepaw/tool/impl/MobileActionTool.kt`
-- `app/src/main/kotlin/ai/closepaw/tool/impl/ShellTool.kt`
-- `app/src/main/kotlin/ai/closepaw/tool/impl/CompleteTaskTool.kt`
-- `app/src/main/kotlin/ai/closepaw/tool/impl/OpenAppTool.kt`
-- `app/src/main/kotlin/ai/closepaw/tool/impl/ScratchpadTool.kt`
-- `app/src/main/kotlin/ai/closepaw/tool/impl/WriteTodosTool.kt`
-- `app/src/main/kotlin/ai/closepaw/tool/impl/AskUserTool.kt`
-- `app/src/main/kotlin/ai/closepaw/tool/impl/SystemButtonTool.kt`
-- `app/src/main/kotlin/ai/closepaw/tool/impl/WaitTool.kt`
+- `app/src/main/kotlin/id/steveimm/pocketpilot/tool/impl/MobileActionTool.kt`
+- `app/src/main/kotlin/id/steveimm/pocketpilot/tool/impl/ShellTool.kt`
+- `app/src/main/kotlin/id/steveimm/pocketpilot/tool/impl/CompleteTaskTool.kt`
+- `app/src/main/kotlin/id/steveimm/pocketpilot/tool/impl/OpenAppTool.kt`
+- `app/src/main/kotlin/id/steveimm/pocketpilot/tool/impl/ScratchpadTool.kt`
+- `app/src/main/kotlin/id/steveimm/pocketpilot/tool/impl/WriteTodosTool.kt`
+- `app/src/main/kotlin/id/steveimm/pocketpilot/tool/impl/AskUserTool.kt`
+- `app/src/main/kotlin/id/steveimm/pocketpilot/tool/impl/SystemButtonTool.kt`
+- `app/src/main/kotlin/id/steveimm/pocketpilot/tool/impl/WaitTool.kt`
 
 ### Design reference
 - Ownership model design: prompt refactor design notes

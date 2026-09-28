@@ -5,7 +5,7 @@
 
 ## Components
 
-All in `app/src/main/kotlin/ai/closepaw/ui/capsule/voice/`.
+All in `app/src/main/kotlin/id/steveimm/pocketpilot/ui/capsule/voice/`.
 
 - **Recognizer.kt** — JVM-clean interfaces (`Recognizer`, `RecognizerCallbacks`, `VoiceError`, `RecognizerFactory`) plus `AndroidRecognizerFactory` / `AndroidRecognizer`. **The only file in the app that may import `android.speech.*`** — this isolation lets the controller stay JVM-testable. `AndroidRecognizer` translates `RecognitionListener` + `Bundle` payloads + raw error ints into the framework-free callback surface.
 - **VoiceInputController.kt** — plain Kotlin class wrapping a `Recognizer`. States: `Idle`, `Listening`, `Stopping`, `Unavailable`. Exposes `state`/`lastPartial`/`partialAtStop` as Compose `mutableStateOf`. `@Composable fun rememberVoiceInputController(...)` wraps with `DisposableEffect { onDispose { dispose() } }`. Plain class never imports `androidx.compose.*` outside that one factory.
@@ -79,5 +79,5 @@ TTS, hot-word activation, multi-language switching from UI, custom acoustic mode
 
 ## Tests
 
-- **JVM** — `app/src/test/kotlin/ai/closepaw/ui/capsule/voice/VoiceInputControllerTest.kt`: 12 cases against `FakeRecognizer` covering generation rule, `partialAtStop`, double-start, dispose-mid-listen, availability flip, hard-error-before-callback Unavailable promotion.
-- **Instrumented** — `app/src/androidTest/kotlin/ai/closepaw/qa/CapsuleVoiceInputTest.kt`: Compose UI tests with `FakeRecognizerFactory` injected covering mic visibility, overlay permission routing, partial streaming, typing-cancel, Send-disabled-during-listening.
+- **JVM** — `app/src/test/kotlin/id/steveimm/pocketpilot/ui/capsule/voice/VoiceInputControllerTest.kt`: 12 cases against `FakeRecognizer` covering generation rule, `partialAtStop`, double-start, dispose-mid-listen, availability flip, hard-error-before-callback Unavailable promotion.
+- **Instrumented** — `app/src/androidTest/kotlin/id/steveimm/pocketpilot/qa/CapsuleVoiceInputTest.kt`: Compose UI tests with `FakeRecognizerFactory` injected covering mic visibility, overlay permission routing, partial streaming, typing-cancel, Send-disabled-during-listening.

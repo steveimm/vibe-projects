@@ -1,6 +1,6 @@
 {
   "name": "agent-linked-parallel-example",
-  "package": "ai.closepaw",
+  "package": "id.steveimm.pocketpilot",
   "steps": [
     {
       "name": "Reset app",

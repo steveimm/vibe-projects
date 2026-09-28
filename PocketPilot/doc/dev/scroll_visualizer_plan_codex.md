@@ -7,9 +7,9 @@ Add visual feedback for accessibility-backed `ScrollNodeAt` actions only.
 ## Phase 1
 
 Affected files:
-- `app/src/main/kotlin/ai/closepaw/platform/AccessibilityPlatform.kt`
-- `app/src/main/kotlin/ai/closepaw/platform/ScrollVisualizationGeometry.kt`
-- `app/src/test/kotlin/ai/closepaw/platform/ScrollVisualizationGeometryTest.kt`
+- `app/src/main/kotlin/id/steveimm/pocketpilot/platform/AccessibilityPlatform.kt`
+- `app/src/main/kotlin/id/steveimm/pocketpilot/platform/ScrollVisualizationGeometry.kt`
+- `app/src/test/kotlin/id/steveimm/pocketpilot/platform/ScrollVisualizationGeometryTest.kt`
 - `doc/main/infra/platform.md`
 - `doc/main/ui/overlay.md`
 

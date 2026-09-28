@@ -2,11 +2,11 @@
 #
 # ws-relay-stress.sh — WebSocket relay stress harness for the wireless-ADB self-pair
 # transport. Runs N sequential `debug-run.sh` agent invocations (each ends in one
-# `browser_script` round-trip) on the SAME ClosePaw process, then asserts:
+# `browser_script` round-trip) on the SAME PocketPilot process, then asserts:
 #
 #   1. /proc/<pid>/fd count grows by no more than +ALLOWED_DELTA across the N runs
 #      (default +2). BOTH socket_fd and total fd are checked.
-#   2. ClosePaw process pid is the same before and after the run (no Android
+#   2. PocketPilot process pid is the same before and after the run (no Android
 #      background-killer eviction, otherwise the fd comparison is meaningless).
 #   3. No `EMFILE` / `Too many open files` lines appear in ANY iteration's child
 #      `logcat_full.log` (debug-run.sh clears logcat per-iteration, so the post-run
@@ -64,18 +64,18 @@ LOG="$OUT/stress.log"
 
 log() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG"; }
 
-closepaw_pid() {
-    adb -s "$SERIAL" shell pidof ai.closepaw 2>/dev/null | tr -d '\r\n' | awk '{print $1}'
+pocketpilot_pid() {
+    adb -s "$SERIAL" shell pidof id.steveimm.pocketpilot 2>/dev/null | tr -d '\r\n' | awk '{print $1}'
 }
 
 fd_count() {
     local pid="$1"
     if [[ -z "$pid" ]]; then echo 0; return; fi
     # `ls /proc/<pid>/fd` from adb-shell is denied on hardened OEMs (e.g. nubia P0110).
-    # `run-as ai.closepaw` runs as the app UID so it can read its own /proc/<pid>/fd.
+    # `run-as id.steveimm.pocketpilot` runs as the app UID so it can read its own /proc/<pid>/fd.
     # Requires a debug-buildable APK; both setup.sh and the production wireless path use
     # the debug APK so this is always available in this harness.
-    adb -s "$SERIAL" shell "run-as ai.closepaw ls /proc/$pid/fd 2>/dev/null | wc -l" | tr -d '\r\n '
+    adb -s "$SERIAL" shell "run-as id.steveimm.pocketpilot ls /proc/$pid/fd 2>/dev/null | wc -l" | tr -d '\r\n '
 }
 
 socket_fd_count() {
@@ -83,32 +83,32 @@ socket_fd_count() {
     # which can drift due to JIT compiler / tracing / GC artifacts.
     local pid="$1"
     if [[ -z "$pid" ]]; then echo 0; return; fi
-    adb -s "$SERIAL" shell "run-as ai.closepaw ls -l /proc/$pid/fd 2>/dev/null | grep -c socket:" | tr -d '\r\n '
+    adb -s "$SERIAL" shell "run-as id.steveimm.pocketpilot ls -l /proc/$pid/fd 2>/dev/null | grep -c socket:" | tr -d '\r\n '
 }
 
 # 1. Force fresh pair so the first iteration exercises the full bootstrap path.
 log "Forcing fresh pair (clearing files/adb_self_pair on device)"
-adb -s "$SERIAL" shell run-as ai.closepaw rm -rf files/adb_self_pair 2>/dev/null || true
+adb -s "$SERIAL" shell run-as id.steveimm.pocketpilot rm -rf files/adb_self_pair 2>/dev/null || true
 
 # 2. Confirm no host-mediated forwards are masking the wireless path.
 log "Removing any host-mediated forwards/reverses"
 adb -s "$SERIAL" forward --remove-all 2>/dev/null || true
 adb -s "$SERIAL" reverse --remove-all 2>/dev/null || true
 
-# 3. Ensure ClosePaw's accessibility service is enabled. Some OEMs (incl. nubia) wipe
+# 3. Ensure PocketPilot's accessibility service is enabled. Some OEMs (incl. nubia) wipe
 #    `enabled_accessibility_services` after `settings put`; `cmd settings put` survives.
 ensure_a11y() {
-    adb -s "$SERIAL" shell "cmd settings put secure enabled_accessibility_services ai.closepaw/ai.closepaw.app.AgentService" >/dev/null 2>&1
+    adb -s "$SERIAL" shell "cmd settings put secure enabled_accessibility_services id.steveimm.pocketpilot/id.steveimm.pocketpilot.app.AgentService" >/dev/null 2>&1
     adb -s "$SERIAL" shell "cmd settings put secure accessibility_enabled 1" >/dev/null 2>&1
 }
 ensure_a11y
 sleep 1
 
 # 4. Boot the app once so we can capture a stable baseline fd count.
-log "Launching ClosePaw to establish baseline (no agent task yet)"
-adb -s "$SERIAL" shell monkey -p ai.closepaw 1 >/dev/null 2>&1 || true
+log "Launching PocketPilot to establish baseline (no agent task yet)"
+adb -s "$SERIAL" shell monkey -p id.steveimm.pocketpilot 1 >/dev/null 2>&1 || true
 sleep 5
-PID_BEFORE="$(closepaw_pid)"
+PID_BEFORE="$(pocketpilot_pid)"
 FD_BEFORE="$(fd_count "$PID_BEFORE")"
 SOCK_BEFORE="$(socket_fd_count "$PID_BEFORE")"
 log "Baseline: pid=$PID_BEFORE fd=$FD_BEFORE socket_fd=$SOCK_BEFORE"
@@ -143,7 +143,7 @@ for i in $(seq 1 "$ITER"); do
         log "  run_dir=<not-created>"
     fi
 
-    PID_NOW="$(closepaw_pid)"
+    PID_NOW="$(pocketpilot_pid)"
     FD_NOW="$(fd_count "$PID_NOW")"
     SOCK_NOW="$(socket_fd_count "$PID_NOW")"
     ITER_FD+=("$FD_NOW")
@@ -153,7 +153,7 @@ done
 
 # 6. Final fd snapshot.
 sleep 3
-PID_AFTER="$(closepaw_pid)"
+PID_AFTER="$(pocketpilot_pid)"
 FD_AFTER="$(fd_count "$PID_AFTER")"
 SOCK_AFTER="$(socket_fd_count "$PID_AFTER")"
 
@@ -250,7 +250,7 @@ log "----------------------------------------------------------------"
 verdict=0
 
 if [[ "$PID_BEFORE" != "$PID_AFTER" ]]; then
-    log "FAIL: ClosePaw process pid changed during the run ($PID_BEFORE -> $PID_AFTER)."
+    log "FAIL: PocketPilot process pid changed during the run ($PID_BEFORE -> $PID_AFTER)."
     log "      Background killer evicted the app; fd delta is meaningless. Re-run."
     verdict=1
 fi

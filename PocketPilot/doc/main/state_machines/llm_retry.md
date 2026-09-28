@@ -2,9 +2,9 @@
 
 ## Owner
 
-- `app/src/main/kotlin/ai/closepaw/llm/CloudStreamRetryPolicy.kt` — pure-policy decision for streaming
-- `app/src/main/kotlin/ai/closepaw/llm/CloudStreamRetryRunner.kt` — `streamWithRetry` scaffold that drives the policy
-- `app/src/main/kotlin/ai/closepaw/llm/CloudLlmRetry.kt` — non-streaming retry loop + shared `advanceBackoff`
+- `app/src/main/kotlin/id/steveimm/pocketpilot/llm/CloudStreamRetryPolicy.kt` — pure-policy decision for streaming
+- `app/src/main/kotlin/id/steveimm/pocketpilot/llm/CloudStreamRetryRunner.kt` — `streamWithRetry` scaffold that drives the policy
+- `app/src/main/kotlin/id/steveimm/pocketpilot/llm/CloudLlmRetry.kt` — non-streaming retry loop + shared `advanceBackoff`
 
 Constants come from `LLMClient` companion (LLMClient.kt:29-32): `MAX_RETRIES = 5`, `INITIAL_BACKOFF_MS = 1000L`, `MAX_BACKOFF_MS = 60000L`, `BACKOFF_MULTIPLIER = 2.0`.
 

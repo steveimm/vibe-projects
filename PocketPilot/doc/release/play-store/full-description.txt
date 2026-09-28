@@ -1,6 +1,6 @@
 Your phone, on autopilot.
 
-ClosePaw is an AI agent for Android that operates your phone for you. Tell it what you need in plain English — book a ride, catch up on emails, compare prices, summarize a thread — and watch it tap through the apps to get it done.
+PocketPilot is an AI agent for Android that operates your phone for you. Tell it what you need in plain English — book a ride, catch up on emails, compare prices, summarize a thread — and watch it tap through the apps to get it done.
 
 
 HOW IT WORKS
@@ -35,15 +35,15 @@ PRIVACY BY DESIGN
 REQUIREMENTS
 
 • Android 12 or later (API 31+)
-• Accessibility service permission (so ClosePaw can read the screen and tap on your behalf)
+• Accessibility service permission (so PocketPilot can read the screen and tap on your behalf)
 • "Display over other apps" permission (for the Smart Capsule overlay)
 • An API key from OpenAI, OpenRouter, or any OpenAI-compatible endpoint you configure (microphone permission only if you want voice input)
 
 
 ABOUT THE ACCESSIBILITY SERVICE
 
-ClosePaw uses Android's Accessibility Service to read screen content and perform actions on your behalf. The service is ONLY active during explicit task execution — it does not monitor your activity in the background, and you can stop any task at any time. This is the same API used by Voice Access, Switch Access, and other assistive Android apps.
+PocketPilot uses Android's Accessibility Service to read screen content and perform actions on your behalf. The service is ONLY active during explicit task execution — it does not monitor your activity in the background, and you can stop any task at any time. This is the same API used by Voice Access, Switch Access, and other assistive Android apps.
 
 
-Source code: https://github.com/imoonkey/closepaw
+Source code: https://github.com/steveimm/vibe-projects/tree/main/PocketPilot
 License: Apache 2.0

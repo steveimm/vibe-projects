@@ -2,9 +2,9 @@
 
 ## Owner
 
-- `app/src/main/kotlin/ai/closepaw/onboarding/OnboardingState.kt` (`DemoStepState`)
-- `app/src/main/kotlin/ai/closepaw/onboarding/OnboardingViewModel.kt` (`startDemo`, `skipStep`)
-- `app/src/main/kotlin/ai/closepaw/onboarding/OnboardingDemoController.kt` (throwaway `AgentSession` driver)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/onboarding/OnboardingState.kt` (`DemoStepState`)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/onboarding/OnboardingViewModel.kt` (`startDemo`, `skipStep`)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/onboarding/OnboardingDemoController.kt` (throwaway `AgentSession` driver)
 
 ## States — `DemoStepState` (OnboardingState.kt:71-80)
 

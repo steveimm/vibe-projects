@@ -1,7 +1,7 @@
 [project]
-name = "closepaw-eval"
+name = "pocketpilot-eval"
 version = "0.1.0"
-description = "Evaluation harness for ClosePaw"
+description = "Evaluation harness for PocketPilot"
 requires-python = ">=3.11"
 dependencies = [
     "PyYAML>=6.0",

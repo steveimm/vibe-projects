@@ -2,10 +2,10 @@
 
 ## Owner
 
-- `app/src/main/kotlin/ai/closepaw/agent/Agent.kt` (loop)
-- `app/src/main/kotlin/ai/closepaw/agent/AgentRuntimeTypes.kt` (`AgentStopReason`, `TurnOutcome`, `TurnRunnerState`, `decideTurnOutcome`)
-- `app/src/main/kotlin/ai/closepaw/agent/AgentTurnRunner.kt` (per-turn execution)
-- `app/src/main/kotlin/ai/closepaw/history/Compactor.kt` (per-turn auto-compaction)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/agent/Agent.kt` (loop)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/agent/AgentRuntimeTypes.kt` (`AgentStopReason`, `TurnOutcome`, `TurnRunnerState`, `decideTurnOutcome`)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/agent/AgentTurnRunner.kt` (per-turn execution)
+- `app/src/main/kotlin/id/steveimm/pocketpilot/history/Compactor.kt` (per-turn auto-compaction)
 
 ## States
 

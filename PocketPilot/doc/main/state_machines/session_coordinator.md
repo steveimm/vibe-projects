@@ -2,7 +2,7 @@
 
 ## Owner
 
-- `app/src/main/kotlin/ai/closepaw/session/SessionCoordinator.kt`
+- `app/src/main/kotlin/id/steveimm/pocketpilot/session/SessionCoordinator.kt`
 
 ## Role
 

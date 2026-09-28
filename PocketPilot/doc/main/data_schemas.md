@@ -1,16 +1,16 @@
 # Data Schemas
 
-Catalog of core in-memory and persisted schemas in ClosePaw, plus redundancy / inconsistency findings worth tracking. Sourced from code on 2026-04-18.
+Catalog of core in-memory and persisted schemas in PocketPilot, plus redundancy / inconsistency findings worth tracking. Sourced from code on 2026-04-18.
 
 ## 1. AppSettingsState — local model
 
-File: `app/src/main/kotlin/ai/closepaw/app/AppSettingsState.kt`
+File: `app/src/main/kotlin/id/steveimm/pocketpilot/app/AppSettingsState.kt`
 
 A single non-null `localModel: LocalModelOption` identifies the on-device model. `LocalModelOption` (`ui/settings/SettingsModels.kt:27`) bundles `id`, `modelSlug`, `quantizationSlug`, plus display fields. `AppSettingsStore` persists only `id` and rehydrates by lookup in the static `AVAILABLE_LOCAL_MODELS` table; if the persisted id is unknown, `DEFAULT_LOCAL_MODEL` is returned. The catalog is the single source of truth — slug/quant are never persisted independently.
 
 ## 2. SessionRuntimeSnapshot — scratchpad dual format
 
-File: `app/src/main/kotlin/ai/closepaw/history/model/SessionRuntimeSnapshot.kt`
+File: `app/src/main/kotlin/id/steveimm/pocketpilot/history/model/SessionRuntimeSnapshot.kt`
 
 ```kotlin
 val scratchpadJson: String = "{}"
@@ -23,7 +23,7 @@ Old checkpoints serialized scratchpad as a typed map; new writes use a freeform 
 
 ## 3. ConversationConfigSnapshot — String-typed enums
 
-File: `app/src/main/kotlin/ai/closepaw/history/model/SessionRuntimeSnapshot.kt:60`
+File: `app/src/main/kotlin/id/steveimm/pocketpilot/history/model/SessionRuntimeSnapshot.kt:60`
 
 ```kotlin
 data class ConversationConfigSnapshot(
@@ -46,7 +46,7 @@ Several mode/type fields are stored as raw `String` even though strongly-typed e
 
 ## 4. OnboardingStepState — three sealed hierarchies
 
-File: `app/src/main/kotlin/ai/closepaw/onboarding/OnboardingState.kt:43`
+File: `app/src/main/kotlin/id/steveimm/pocketpilot/onboarding/OnboardingState.kt:43`
 
 `OnboardingStepState` is a marker sealed interface with three sealed children, totaling 23 concrete subtypes (description undercounted as 21):
 
@@ -62,7 +62,7 @@ Only one is active at a time per the file's comment ("Per-step transient state (
 
 ## 5. TodoSnapshot — String status parsed via valueOf
 
-File: `app/src/main/kotlin/ai/closepaw/history/model/SessionRuntimeSnapshot.kt:79`
+File: `app/src/main/kotlin/id/steveimm/pocketpilot/history/model/SessionRuntimeSnapshot.kt:79`
 
 ```kotlin
 @Serializable

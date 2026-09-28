@@ -1,6 +1,6 @@
 # Agent Core Overview
 
-> Design principles, architecture, and package structure for ClosePaw.
+> Design principles, architecture, and package structure for PocketPilot.
 > Last updated: 2026-05-16
 
 ## Design Principles
@@ -54,7 +54,7 @@
 ## Package Structure
 
 ```
-ai.closepaw/
+id.steveimm.pocketpilot/
 ├── app/                                # Application entry points
 │   ├── MainActivity.kt                 # UI entry, session management
 │   ├── MainActivityContent.kt          # Root composable

@@ -1,4 +1,4 @@
-# ClosePaw Development Scripts
+# PocketPilot Development Scripts
 
 > **See also:** [Development Guide](../doc/dev/development.md) for overall development workflow.
 
@@ -182,7 +182,7 @@ Run `./scripts/setup.sh` to build and install.
 Run `./scripts/setup.sh` - it automatically enables accessibility.
 If it fails, enable manually:
 1. Settings > Accessibility > Downloaded apps
-2. Find "ClosePaw"
+2. Find "PocketPilot"
 3. Toggle ON
 
 ### "No device detected"

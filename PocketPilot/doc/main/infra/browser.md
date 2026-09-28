@@ -41,8 +41,8 @@ all removed in the Phase 5 cleanup after each was empirically blocked on stock A
 
 | Order | Label | When it works |
 |-------|-------|---------------|
-| 1 | `USER_SERVICE` | Shizuku is running and ClosePaw has been authorized — proxies through `ChromeDevtoolsUserService` running under shell UID |
-| 2 | `WIRELESS_ADB_SELF_PAIR` | Wireless debugging is enabled in Developer Options on Android 11+; ClosePaw self-pairs and speaks the ADB wire protocol from inside the app |
+| 1 | `USER_SERVICE` | Shizuku is running and PocketPilot has been authorized — proxies through `ChromeDevtoolsUserService` running under shell UID |
+| 2 | `WIRELESS_ADB_SELF_PAIR` | Wireless debugging is enabled in Developer Options on Android 11+; PocketPilot self-pairs and speaks the ADB wire protocol from inside the app |
 
 `UserServiceTransport` is single-flight (`ShizukuUserServiceProvider` keeps one binder per process)
 and pair-once (when authorized once, subsequent sessions reuse the binder until it dies). The
@@ -55,7 +55,7 @@ compose actionable setup guidance instead of a generic error.
 
 ## Wireless ADB Self-Pair
 
-Package: `app/src/main/kotlin/ai/closepaw/browser/cdp/wireless/`
+Package: `app/src/main/kotlin/id/steveimm/pocketpilot/browser/cdp/wireless/`
 
 - `Spake25519.kt` — pure-Kotlin port of BoringSSL `spake25519.c` over `net.i2p.crypto:eddsa`
   (CC0). 183 lines of glue. Replaces the previous JitPack JNI dep
@@ -85,13 +85,13 @@ and drive Chrome DevTools the moment a script is running.
 `RelayAuthToken` (`browser/cdp/RelayAuthToken.kt`) closes that hole:
 
 - `BrowserSessionManager` generates a fresh 32-byte hex (256-bit) token at construction.
-- The same token is baked into the OkHttp client (sent as the `X-ClosePaw-Token` header on the WS
+- The same token is baked into the OkHttp client (sent as the `X-PocketPilot-Token` header on the WS
   Upgrade) and into both relays' accept loops.
 - The relay's accept loop reads the HTTP request line + headers under a TOTAL pre-auth deadline
   (5 s) — not a per-read idle timeout — so a slowloris client dribbling bytes just under any
   per-read cap is still timed out. Headers exceeding 4 KiB are 403'd; missing/wrong tokens get
   403; deadline exceeded gets 408. The buffered request bytes are forwarded verbatim once auth
-  succeeds; Chrome silently ignores `X-ClosePaw-Token`.
+  succeeds; Chrome silently ignores `X-PocketPilot-Token`.
 - `verify` is constant-time over equal-length byte arrays (length mismatch can short-circuit
   safely, byte comparison runs to completion to deny timing oracles).
 - After auth, the relay restores `soTimeout = 0` so the long-lived proxied stream isn't capped.

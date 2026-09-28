@@ -26,8 +26,8 @@ from eval.aw_bridge.runner_preflight import (
 
 def _bridge_config() -> BridgeConfig:
     return BridgeConfig(
-        package_name="ai.closepaw",
-        activity="ai.closepaw/.app.MainActivity",
+        package_name="id.steveimm.pocketpilot",
+        activity="id.steveimm.pocketpilot/.app.MainActivity",
         llm_backend="openai",
         agent_mode="basic",
         perception_mode="accessibility_only",
@@ -367,8 +367,8 @@ class RunnerConfigLoadingTest(unittest.TestCase):
                 "  auto_start_emulator: false\n"
                 "bridge:\n"
                 "  llm_backend: openai\n"
-                "  package_name: ai.closepaw\n"
-                "  activity: ai.closepaw/.app.MainActivity\n"
+                "  package_name: id.steveimm.pocketpilot\n"
+                "  activity: id.steveimm.pocketpilot/.app.MainActivity\n"
                 "  agent_mode: basic\n"
                 "  perception_mode: accessibility_only\n"
                 "  platform_mode: accessibility\n"

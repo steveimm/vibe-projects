@@ -1,6 +1,6 @@
 {
   "name": "main-and-smart-capsule-smoke",
-  "package": "ai.closepaw",
+  "package": "id.steveimm.pocketpilot",
   "steps": [
     {
       "name": "Reset app state",
