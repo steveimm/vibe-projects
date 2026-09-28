@@ -311,6 +311,18 @@ class OnboardingViewModel(
         }
     }
 
+    fun useCustomServer() {
+        if (currentStep != WizardStep.ApiKey) return
+        if ((stepState as? ApiKeyStepState)?.canUseCustomServer != true) return
+
+        store.saveOutcome(WizardStep.ApiKey, StepOutcome.Skipped)
+        store.saveOutcome(WizardStep.Demo, StepOutcome.Skipped)
+        outcomes = outcomes.copy(apiKey = StepOutcome.Skipped, demo = StepOutcome.Skipped)
+        enterStep(WizardStep.Complete, isResume = false)
+        finish()
+        _effects.trySend(OnboardingEffect.OpenCustomServerSettings)
+    }
+
     fun finish() {
         store.setCompleted()
         Log.d(TAG, "Onboarding completed")

@@ -41,6 +41,7 @@ fun OnboardingScreen(
     onApiKeyChanged: (String) -> Unit,
     onValidateApiKey: () -> Unit,
     onRetryValidation: () -> Unit,
+    onUseCustomServer: () -> Unit,
     onStartDemo: () -> Unit,
     onFinish: () -> Unit,
     onGoToAuthStep: () -> Unit,
@@ -124,7 +125,8 @@ fun OnboardingScreen(
                     onContinue = onContinue,
                     onKeyChanged = onApiKeyChanged,
                     onValidate = onValidateApiKey,
-                    onRetry = onRetryValidation
+                    onRetry = onRetryValidation,
+                    onUseCustomServer = onUseCustomServer
                 )
             }
         }

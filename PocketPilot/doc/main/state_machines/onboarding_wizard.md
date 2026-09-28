@@ -70,6 +70,14 @@ Live hard-gate checks override stored `Done`:
 
 Allowed only on `Battery` and `Demo`. Persists `Skipped`, advances.
 
+### Custom server setup — `useCustomServer`
+
+From `ApiKey`, **Use a custom server** marks `apiKey` and `demo` as `Skipped`,
+completes onboarding, and opens **LLM & Authentication → API Key → Other**.
+It does not validate cloud credentials or run a demo. The action is disabled
+during authentication and after authentication succeeds. Custom servers use
+the existing base URL, model ID, and API key settings; release builds require HTTPS.
+
 ## Diagram
 
 ```mermaid
@@ -79,6 +87,8 @@ stateDiagram-v2
     Overlay --> Battery
     Battery --> ApiKey: Done or Skipped
     ApiKey --> Demo
+    ApiKey --> CustomServerSettings: Use a custom server
+    CustomServerSettings --> [*]
     Demo --> Complete: Done or Skipped
     Complete --> [*]
 
@@ -98,7 +108,7 @@ stateDiagram-v2
 
 - `StepOutcome.Done` for hard-gate steps (`Accessibility`, `Overlay`) is always re-validated against the live system at `firstIncompleteStep` time — a revoked permission re-routes the user back even after `Done` was persisted.
 - `WizardStep.Complete` is never persisted as a `StepOutcome` (OnboardingStore.kt:67).
-- `Battery` and `Demo` are the only steps that accept `Skipped`; `OnboardingViewModel.skipStep` no-ops elsewhere (OnboardingViewModel.kt:310-311).
+- `skipStep` accepts only `Battery` and `Demo`. The separate `useCustomServer` action skips `ApiKey` and `Demo` together and hands off to settings.
 - `selectProvider`, `selectAuthMethod`, `onApiKeyChanged`, `validateApiKey`, `startOAuth`, `startDemo` all early-return unless `currentStep` matches the relevant step (OnboardingViewModel.kt:73, 86, 201, 253).
 - `init { … }` runs `enterStep(firstIncompleteStep(), isResume = false)` — the wizard is **always** entered at the first incomplete step, never from disk-state alone (OnboardingViewModel.kt:142-147).
 
@@ -119,7 +129,7 @@ Transient (process-death loses):
 - `enterStep` (OnboardingViewModel.kt:333-377) — for permission steps it calls `checkCurrentPermission`; for `ApiKey` it derives a starting `ApiKeyStepState` from `AuthStore`/provider via `tryRenderExistingCredential`; for `Demo` it sets `DemoStepState.Ready`.
 - `onPermissionSatisfied` writes `StepOutcome.Done` to `OnboardingStore`, updates `outcomes`, then schedules `advanceToNextStep` after 400 ms (OnboardingViewModel.kt:418-431).
 - OAuth success / API-key validation success / demo success all save `Done` and auto-advance.
-- `finish()` calls `store.setCompleted()` — only invoked by the `Complete` CTA (OnboardingViewModel.kt:314-319).
+- `finish()` calls `store.setCompleted()` when the `Complete` CTA is tapped or custom server setup is chosen.
 - `OnboardingEffect`s (sealed interface, OnboardingState.kt:82-91) are emitted via a buffered `Channel` for the composable to consume (open settings, launch OAuth, bring activity to front).
 
 ## Error / recovery paths

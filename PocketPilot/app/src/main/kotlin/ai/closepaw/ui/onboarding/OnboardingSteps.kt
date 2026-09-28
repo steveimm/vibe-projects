@@ -35,6 +35,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -172,7 +173,8 @@ fun ApiKeyStepContent(
     onContinue: () -> Unit,
     onKeyChanged: (String) -> Unit,
     onValidate: () -> Unit,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onUseCustomServer: () -> Unit
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
     val currentKey = when (state) {
@@ -220,6 +222,21 @@ fun ApiKeyStepContent(
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedButton(
+            onClick = onUseCustomServer,
+            enabled = state.canUseCustomServer,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Use a custom server")
+        }
+        Text(
+            text = "Connect a self-hosted model using its API URL in settings.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 

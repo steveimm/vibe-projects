@@ -9,6 +9,7 @@ import ai.closepaw.auth.OpenAiSignInResult
 import ai.closepaw.auth.openAiSignIn
 import ai.closepaw.llm.LLMProvider
 import ai.closepaw.llm.ModelCatalog
+import io.mockk.Called
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -19,6 +20,8 @@ import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.job
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -673,6 +676,66 @@ class OnboardingViewModelTest {
         vm.skipStep(); drain(scope, this)
         assertThat(vm.currentStep).isEqualTo(WizardStep.ApiKey)
         verify(exactly = 0) { store.saveOutcome(WizardStep.ApiKey, StepOutcome.Skipped) }
+        scope.coroutineContext.job.cancel()
+    }
+
+    @Test
+    fun `custom server setup completes onboarding without cloud authentication or demo`() = runTest {
+        allPermissionsGranted()
+        every { store.loadOutcomes() } returns StepOutcomes(battery = StepOutcome.Skipped)
+        val scope = newScope(this)
+        val vm = makeVm(scope)
+        drain(scope, this)
+
+        vm.useCustomServer()
+
+        assertThat(vm.effects.first()).isEqualTo(OnboardingEffect.OpenCustomServerSettings)
+        assertThat(vm.currentStep).isEqualTo(WizardStep.Complete)
+        assertThat(vm.outcomes.apiKey).isEqualTo(StepOutcome.Skipped)
+        assertThat(vm.outcomes.demo).isEqualTo(StepOutcome.Skipped)
+        verify { store.saveOutcome(WizardStep.ApiKey, StepOutcome.Skipped) }
+        verify { store.saveOutcome(WizardStep.Demo, StepOutcome.Skipped) }
+        verify(exactly = 1) { store.setCompleted() }
+        coVerify(exactly = 0) { authStore.set(any(), any()) }
+        verify { demoController wasNot Called }
+        verify { settingsState wasNot Called }
+        assertThat(server.requestCount).isEqualTo(0)
+        scope.coroutineContext.job.cancel()
+    }
+
+    @Test
+    fun `custom server setup cannot bypass required permissions`() = runTest {
+        val scope = newScope(this)
+        val vm = makeVm(scope)
+        drain(scope, this)
+
+        vm.useCustomServer()
+
+        assertThat(vm.currentStep).isEqualTo(WizardStep.Accessibility)
+        verify(exactly = 0) { store.setCompleted() }
+        verify(exactly = 0) { store.saveOutcome(WizardStep.ApiKey, any()) }
+        scope.coroutineContext.job.cancel()
+    }
+
+    @Test
+    fun `custom server setup waits for active sign in to be cancelled`() = runTest {
+        allPermissionsGranted()
+        every { store.loadOutcomes() } returns StepOutcomes(battery = StepOutcome.Skipped)
+        mockkStatic("ai.closepaw.auth.OpenAiSignInKt")
+        coEvery { openAiSignIn(any(), any()) } coAnswers { awaitCancellation() }
+        val scope = newScope(this)
+        val vm = makeVm(scope)
+        drain(scope, this)
+
+        vm.startOAuth()
+        vm.useCustomServer()
+        assertThat(vm.stepState).isEqualTo(ApiKeyStepState.OAuthInProgress)
+        verify(exactly = 0) { store.setCompleted() }
+
+        vm.cancelOAuth()
+        vm.useCustomServer()
+        assertThat(vm.effects.first()).isEqualTo(OnboardingEffect.OpenCustomServerSettings)
+        verify(exactly = 1) { store.setCompleted() }
         scope.coroutineContext.job.cancel()
     }
 

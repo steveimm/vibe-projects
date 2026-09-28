@@ -39,7 +39,7 @@ class OnboardingStore(private val context: Context) {
     val isCompleted: Boolean
         get() = prefs().getBoolean(KEY_COMPLETED, false)
 
-    /** Mark onboarding as complete. Only called from CompleteStep CTA. */
+    /** Mark onboarding as complete, including handoff to custom server settings. */
     fun setCompleted() {
         prefs().edit().putBoolean(KEY_COMPLETED, true).apply()
     }

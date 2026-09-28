@@ -15,7 +15,7 @@ enum class StepOutcome { Pending, Done, Skipped }
  * appropriate for first-time setup. OAuth (OPENAI_CODEX) lives on its own tab
  * and is not part of this picker. The advanced [LLMProvider.OTHER] slot is
  * intentionally excluded — it's settings-only and requires the user to supply
- * base URL + model id, not viable from a wizard.
+ * base URL + model id. The wizard links directly to those settings.
  */
 enum class OnboardingProvider(val label: String, val llmProvider: LLMProvider) {
     OPENAI_API("OpenAI", LLMProvider.OPENAI_API),
@@ -66,6 +66,12 @@ sealed interface ApiKeyStepState : OnboardingStepState {
     data object OAuthFinishing : ApiKeyStepState
     data class OAuthSuccess(val email: String) : ApiKeyStepState
     data class OAuthError(val message: String) : ApiKeyStepState
+
+    val canUseCustomServer: Boolean
+        get() = when (this) {
+            Empty, is Editing, is Invalid, is TransientError, OAuthReady, is OAuthError -> true
+            else -> false
+        }
 }
 
 sealed interface DemoStepState : OnboardingStepState {
@@ -86,5 +92,6 @@ sealed interface OnboardingEffect {
     data object OpenBatteryOptimization : OnboardingEffect
     data object OpenBatteryOptimizationList : OnboardingEffect
     data object BringMainActivityToFront : OnboardingEffect
+    data object OpenCustomServerSettings : OnboardingEffect
     data class LaunchOAuth(val url: String) : OnboardingEffect
 }

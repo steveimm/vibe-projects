@@ -225,6 +225,7 @@ class MainActivity : ComponentActivity() {
                         onApiKeyChanged = { vm.onApiKeyChanged(it) },
                         onValidateApiKey = { vm.validateApiKey() },
                         onRetryValidation = { vm.retryValidation() },
+                        onUseCustomServer = { vm.useCustomServer() },
                         onStartDemo = { vm.startDemo() },
                         onGoToAuthStep = { vm.goToAuthStep() },
                         onFinish = {
@@ -878,6 +879,15 @@ class MainActivity : ComponentActivity() {
                 openAccessibilitySettings(this)
             OnboardingEffect.OpenOverlaySettings ->
                 openOverlaySettings(this)
+            OnboardingEffect.OpenCustomServerSettings -> {
+                pendingSettingsDeepLink = ai.closepaw.ui.chat.SettingsDeepLink(
+                    page = ai.closepaw.ui.chat.SettingsPage.LLM_AUTH,
+                    authTab = LLMProvider.OTHER.mode,
+                    provider = LLMProvider.OTHER,
+                )
+                showSettings = true
+                onboardingRequired = false
+            }
             OnboardingEffect.OpenBatteryOptimization -> {
                 try {
                     startActivity(
