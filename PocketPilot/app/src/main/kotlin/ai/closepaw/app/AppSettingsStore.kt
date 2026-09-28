@@ -53,6 +53,7 @@ class AppSettingsStore(private val context: Context) {
         private const val KEY_OTHER_MODEL_ID = "other_model_id"
         private const val KEY_DISABLED_AGENT_SKILLS = "disabled_agent_skills"
         private const val KEY_APPROVAL_MODE = "approval_mode"
+        private const val KEY_COMPACT_OVERLAYS = "compact_overlays"
 
         const val DEFAULT_MODEL = "glm-5"
         const val DEFAULT_DEBUG_MODE = false
@@ -175,6 +176,12 @@ class AppSettingsStore(private val context: Context) {
 
     fun saveDebugMode(value: Boolean) {
         prefs().edit().putBoolean(KEY_DEBUG_MODE, value).apply()
+    }
+
+    fun loadCompactOverlays(): Boolean = prefs().getBoolean(KEY_COMPACT_OVERLAYS, false)
+
+    fun saveCompactOverlays(value: Boolean) {
+        prefs().edit().putBoolean(KEY_COMPACT_OVERLAYS, value).apply()
     }
 
     fun saveTraceEnabled(value: Boolean) {

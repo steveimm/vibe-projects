@@ -86,10 +86,14 @@ class VisualizerOverlayHost(
         addItem(item)
     }
 
-    fun dispose() {
-        disposed = true
+    fun hide() {
         items.value = emptyList()
         composeHost.hide()
+    }
+
+    fun dispose() {
+        disposed = true
+        hide()
         composeHost.dispose()
         scope.cancel()
     }

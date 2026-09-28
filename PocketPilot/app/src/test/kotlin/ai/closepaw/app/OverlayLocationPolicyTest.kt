@@ -80,6 +80,15 @@ class OverlayLocationPolicyTest {
     }
 
     @Test
+    fun `own obfuscated overlay window does not hide controls by reporting main app`() {
+        assertThat(resolveUserLocation(
+            appPackage = "ai.closepaw",
+            packageName = "ai.closepaw",
+            className = "v1.k0",
+        )).isNull()
+    }
+
+    @Test
     fun `resolve user location ignores non-default display windows`() {
         val location = resolveUserLocation(
             appPackage = "ai.closepaw",

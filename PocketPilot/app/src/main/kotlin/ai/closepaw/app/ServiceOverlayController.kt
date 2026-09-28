@@ -132,6 +132,12 @@ class ServiceOverlayController(
 
     /** User preference: capsule or island while overlays are visible (A11y/VD). */
     private var showPreference = ShowPreference.ISLAND
+    private var compactOverlaysEnabled = false
+
+    fun setCompactOverlaysEnabled(enabled: Boolean) {
+        compactOverlaysEnabled = enabled
+        applyVisibility()
+    }
 
     init {
         statusIslandManager?.startObserving(stateHolder, scope)
@@ -177,7 +183,7 @@ class ServiceOverlayController(
                 "showIsland=${decision.showIsland}, showGlow=${decision.showGlow}, " +
                 "normalizedShowPreference=${decision.normalizedShowPreference}"
         )
-        val lockInteraction = shouldLockUserInteraction(
+        val lockInteraction = !compactOverlaysEnabled && shouldLockUserInteraction(
             platformMode = platformMode,
             location = userLocation,
             mode = mode,
@@ -197,7 +203,7 @@ class ServiceOverlayController(
             statusIslandManager?.hide()
         }
 
-        if (decision.showGlow) {
+        if (decision.showGlow && !compactOverlaysEnabled) {
             if (!edgeGlowManager.isShowing()) {
                 edgeGlowManager.show(stateHolder.derivedGlowState)
             }

@@ -24,6 +24,10 @@ class ActionVisualizerManager(
 
     @Volatile
     var enabled: Boolean = true
+        set(value) {
+            field = value
+            if (!value) overlayHost.hide()
+        }
 
     fun showClick(x: Float, y: Float, longPress: Boolean = false) {
         if (!shouldRender()) return

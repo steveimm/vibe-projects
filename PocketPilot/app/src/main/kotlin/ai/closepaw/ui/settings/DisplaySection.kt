@@ -1,5 +1,9 @@
 package ai.closepaw.ui.settings
 
+import ai.closepaw.app.AgentService
+import ai.closepaw.app.AppSettingsStore
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import ai.closepaw.platform.virtualdisplay.ShizukuClient
 import ai.closepaw.platform.virtualdisplay.ShizukuRuntimeGateway
 import ai.closepaw.protocol.PlatformMode
@@ -11,7 +15,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
 /**
@@ -82,18 +88,44 @@ internal fun DisplaySection(
     }
 
     SettingsSection(title = "Display Mode") {
-        ToolSettingsCard(
-            title = "Virtual Display",
-            status = cardState.status,
-            switchChecked = cardState.switchChecked,
-            switchEnabled = cardState.switchEnabled,
-            onSwitchChange = { value ->
-                gate.clearError()
-                gate.setEnabled(value)
-            },
-            onRowClick = rowAction,
-            onRowClickLabel = rowClickLabel,
-            switchModifier = Modifier.testTag("display-mode-switch"),
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            ToolSettingsCard(
+                title = "Virtual Display",
+                status = cardState.status,
+                switchChecked = cardState.switchChecked,
+                switchEnabled = cardState.switchEnabled,
+                onSwitchChange = { value ->
+                    gate.clearError()
+                    gate.setEnabled(value)
+                },
+                onRowClick = rowAction,
+                onRowClickLabel = rowClickLabel,
+                switchModifier = Modifier.testTag("display-mode-switch"),
+            )
+            CompactOverlaysSettingsRow()
+        }
     }
+}
+
+@Composable
+private fun CompactOverlaysSettingsRow() {
+    val appContext = LocalContext.current.applicationContext
+    val store = remember(appContext) { AppSettingsStore(appContext) }
+    var enabled by remember(store) { mutableStateOf(store.loadCompactOverlays()) }
+
+    ToolSettingsCard(
+        title = "Compact overlays",
+        status = ToolStatusUi(
+            label = if (enabled) "On" else "Off",
+            subtitle = "Use if your phone turns off accessibility during automation. Keeps controls, without full-screen effects or touch blocking. Tap Takeover before using other apps.",
+            tone = ToolStatusTone.Neutral,
+        ),
+        switchChecked = enabled,
+        onSwitchChange = { value ->
+            store.saveCompactOverlays(value)
+            enabled = value
+            AgentService.instance?.setCompactOverlaysEnabled(value)
+        },
+        switchModifier = Modifier.testTag("compact-overlays-switch"),
+    )
 }

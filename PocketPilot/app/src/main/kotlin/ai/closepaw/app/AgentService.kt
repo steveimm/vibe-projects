@@ -222,11 +222,17 @@ class AgentService : AccessibilityService() {
                 savedStateRegistryOwner = serviceLifecycleOwner,
                 renderContext = controller.stateHolder.context,
         )
+        setCompactOverlaysEnabled(AppSettingsStore(this).loadCompactOverlays())
         Log.i(TAG, "ActionVisualizerManager initialized")
 
         registerDebugStopReceiverIfNeeded(this, stopReceiver)
         registerDebugExecReceiverIfNeeded(this, debugExecReceiver)
         registerDebugMobileActionReceiverIfNeeded(this, debugMobileActionReceiver)
+    }
+
+    fun setCompactOverlaysEnabled(enabled: Boolean) {
+        actionVisualizer?.enabled = !enabled
+        overlayController?.setCompactOverlaysEnabled(enabled)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
