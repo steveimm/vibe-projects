@@ -266,7 +266,7 @@ class MainActivity : ComponentActivity() {
                             TextButton(onClick = {
                                 val confirmed = goal
                                 pendingGoalForConfirmation = null
-                                ensureSessionAndSend(confirmed)
+                                scheduleGoalDispatch(confirmed)
                             }) { Text("Run") }
                         },
                         dismissButton = {

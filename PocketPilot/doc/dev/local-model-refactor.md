@@ -37,3 +37,9 @@ Verification: 1,725 release tests passed. The combined shell-removal/reasoning-h
 Removed the app-process shell implementation, registration, tool identifier, prompt instructions, and tests. Removed browser helper assets and instructions that depended on reading snippets through that tool. Optional `termux_shell` remains independently gated by actual Termux availability.
 
 Verification: the combined release suite passed 1,725 tests, UI tests compiled, and the signed ARM64 build completed the two-turn Settings task described above. No restricted shell tool remains in the runtime roster. The final Settings screen was verified separately from tool success messages.
+
+## Initial observation after goal confirmation
+
+A baseline image showed the external-goal dialog still closing after Run had been pressed. The model's first tap corresponded to that button in normalized screenshot coordinates. Confirmed goals now use the existing delayed dispatch path, allowing the dialog to disappear before the first capture.
+
+Verification: the emulator's first model image no longer contained the dialog, and "Open Settings" completed in two turns without a redundant tap. This was tested in the reduced-tool build; the launch change is independent of tool registration.
