@@ -176,3 +176,20 @@ Verification on the signed ARM64 release:
 - 983 release unit tests passed, including interleaved chunks, rebind during streaming, canonical completion, and stopped/error boundaries. Release lint passed and device UI tests compiled. Compatibility-only tests were removed.
 
 The installed APK passed the existing-signature, ARM64-only, non-debuggable, 16 KB alignment, and bundled-bridge checks. SHA-256: `5a2b96da8f8cdb4e38af4e202b1065eefb5556669ad218340b77d9acdeb43bcf`.
+
+## Tap-feedback alignment and screenshot overlays
+
+The visualizer window on the API 35 emulator began at `(0,132)` while gesture coordinates used the entire 1080 × 2400 display. Drawing those coordinates directly into that inset window shifted every tap circle down by 132 pixels. A recorded local-model task opened Settings and tapped normalized points `[250,190]` and `[750,190]` in its title area without changing settings.
+
+| Physical gesture position | Marker before | Marker after |
+| --- | --- | --- |
+| `(270,456)` | `(269,588)` | `(269,456)` |
+| `(809,456)` | `(809,588)` | `(809,456)` |
+
+Marker positions are median centers measured from recorded frames resized to half resolution, with approximately 1–2 pixels of measurement precision. Both runs used the same three successful tool calls, no failures, and four model turns. The fix sets the visualizer window to the complete display, disables inset fitting and keyboard-driven resizing, and permits drawing in cutout regions. Removed marker-only edge clamping and cached dimensions. Gesture injection coordinates are unchanged. Window frames now match `(0,0)-(1080,2400)` in portrait and `(0,0)-(2400,1080)` in landscape. Original rotation settings were restored after checking.
+
+Screenshot suppression already covers the edge glow, capsule, island, and gesture markers. Visual inspection found none of those overlays in 33 screenshots from the user's finished run. All six model screenshots in each controlled tap run also excluded the red border, while the screen recordings showed it between captures.
+
+The 80 ms pre-capture wait is an allowance for rendering the hidden overlays, not a guarantee under arbitrary device load. Screenshot completion itself uses Android's callback with a separate 5-second timeout. Android 14+ offers [`takeScreenshotOfWindow`](https://developer.android.com/reference/android/accessibilityservice/AccessibilityService#takeScreenshotOfWindow(int,java.util.concurrent.Executor,android.accessibilityservice.AccessibilityService.TakeScreenshotCallback)) to capture underneath accessibility overlays without hiding them. That captures a specified window and requires additional handling for other windows, such as keyboards and dialogs, and for coordinate offsets. This change retains full-display capture and does not claim to eliminate the fixed-delay limitation.
+
+Validation: 983 release unit tests passed, release lint passed, and device UI tests compiled. The signed ARM64 release was installed and passed the existing-signature, non-debuggable, alignment, and bundled-bridge checks. APK SHA-256: `6a8737f8b763369256a41c53d8f76a00e9705fbce68a2b012f6795030fa56b8e`.

@@ -2,9 +2,9 @@ package id.steveimm.pocketpilot.ui.overlay.compose
 
 import android.accessibilityservice.AccessibilityService
 import android.graphics.PixelFormat
-import android.os.Build
 import android.os.SystemClock
 import android.util.Log
+import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -30,7 +30,6 @@ class VisualizerOverlayHost(
         private const val TAG = "VisualizerOverlayHost"
         private const val CLICK_DURATION_MS = 500L
         private const val SWIPE_EXTRA_DURATION_MS = 400L
-        private const val EDGE_PADDING = 10f
     }
 
     private val windowManager = service.getSystemService(WindowManager::class.java)
@@ -45,8 +44,6 @@ class VisualizerOverlayHost(
     private val items = MutableStateFlow<List<VisualizationItem>>(emptyList())
     private val nextId = AtomicLong(1)
 
-    private var screenWidth = 0
-    private var screenHeight = 0
     private var disposed = false
 
     fun suppressForScreenshot(): AutoCloseable = composeHost.suppressForScreenshot()
@@ -58,8 +55,8 @@ class VisualizerOverlayHost(
             id = nextId.getAndIncrement(),
             createdAtMs = SystemClock.uptimeMillis(),
             durationMs = CLICK_DURATION_MS,
-            x = clampX(x),
-            y = clampY(y),
+            x = x,
+            y = y,
             longPress = longPress,
         )
         addItem(item)
@@ -78,10 +75,10 @@ class VisualizerOverlayHost(
             id = nextId.getAndIncrement(),
             createdAtMs = SystemClock.uptimeMillis(),
             durationMs = durationMs + SWIPE_EXTRA_DURATION_MS,
-            startX = clampX(startX),
-            startY = clampY(startY),
-            endX = clampX(endX),
-            endY = clampY(endY),
+            startX = startX,
+            startY = startY,
+            endX = endX,
+            endY = endY,
         )
         addItem(item)
     }
@@ -100,7 +97,6 @@ class VisualizerOverlayHost(
 
     private fun ensureOverlay() {
         if (composeHost.isShowing()) return
-        updateScreenDimensions()
         composeHost.show(createLayoutParams()) {
             val renderItems by items.collectAsState(initial = emptyList())
             ActionVisualizerCompose(items = renderItems)
@@ -116,36 +112,20 @@ class VisualizerOverlayHost(
         }
     }
 
-    private fun updateScreenDimensions() {
-        val metrics = service.resources.displayMetrics
-        screenWidth = metrics.widthPixels
-        screenHeight = metrics.heightPixels
-    }
-
-    private fun clampX(x: Float): Float {
-        if (screenWidth <= 0) return x
-        return x.coerceIn(EDGE_PADDING, screenWidth - EDGE_PADDING)
-    }
-
-    private fun clampY(y: Float): Float {
-        if (screenHeight <= 0) return y
-        return y.coerceIn(EDGE_PADDING, screenHeight - EDGE_PADDING)
-    }
-
     private fun createLayoutParams(): WindowManager.LayoutParams {
         return WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
-            } else {
-                @Suppress("DEPRECATION")
-                WindowManager.LayoutParams.TYPE_PHONE
-            },
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
-        )
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            setFitInsetsTypes(0)
+            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
+        }
     }
 }

@@ -8,4 +8,6 @@ Accessibility remains the Android execution mechanism and provides focused text 
 
 Blocked app content is masked before model input. A screenshot that is unavailable or no longer matches display orientation cannot be used for a gesture.
 
+Overlay suppression includes the capsule, status island, edge glow, and gesture markers. Capture currently waits 80 ms after making them transparent, then waits for Android's screenshot callback with a separate 5-second timeout. The pre-capture delay is a rendering allowance, not a frame-completion guarantee. Android 14's `takeScreenshotOfWindow` can capture beneath accessibility overlays, but a single-window image does not replace a full-display observation containing separate keyboards and dialogs.
+
 See [phone actions](tool/phone_actions.md) and [agent loop](../agent/loop.md).

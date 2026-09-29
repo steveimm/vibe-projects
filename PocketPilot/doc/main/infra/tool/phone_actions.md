@@ -2,6 +2,8 @@
 
 Each new user message starts with conversation context. The model can answer directly, open an app, or request the screen. It uses at most one tool call per response, or assistant text alone to finish. There is no action selector or semantic target selector.
 
+Gesture feedback uses the same physical display coordinates as gesture injection. Its overlay covers the complete display, including system-bar and cutout regions, without keyboard-driven resizing or marker-only edge clamping.
+
 | Tool | Parameters | Behavior |
 | --- | --- | --- |
 | `open_app` | `app_name` | Resolve an installed app and launch it |
