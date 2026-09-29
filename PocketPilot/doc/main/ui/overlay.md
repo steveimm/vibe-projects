@@ -20,7 +20,7 @@ The bubble, controls, glow, and gesture feedback are temporarily suppressed by t
 
 Expanded accessibility controls may use the existing full-screen interaction shield during automation. The bubble is placed above that window. Minimized controls have no full-screen touch shield. Takeover releases interaction locking while keeping controls available.
 
-**Compact overlays** disables the full-screen shield, edge glow, and gesture visualizer while keeping the bubble and controls. On an OPPO Find X8 running Android 16, those full-screen windows were followed by the device security service revoking accessibility. Compact mode avoids them without changing security settings.
+**Compact overlays** is enabled by default and disables the full-screen shield, edge glow, and gesture visualizer while keeping the bubble and controls. Its saved preference is loaded before the overlay hosts start. On an OPPO Find X8 running Android 16, those full-screen windows were followed by the device security service revoking accessibility. Compact mode avoids them without changing security settings. An existing explicitly disabled preference remains disabled and can be changed under Agent Behavior → Display Mode.
 
 ## MainActivity and virtual display
 

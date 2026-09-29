@@ -13,6 +13,7 @@ class ActionVisualizerManager(
     lifecycleOwner: LifecycleOwner,
     savedStateRegistryOwner: SavedStateRegistryOwner,
     private val renderContext: StateFlow<CapsuleContext>,
+    enabled: Boolean,
 ) {
     private val overlayHost = VisualizerOverlayHost(
         service = context,
@@ -21,7 +22,7 @@ class ActionVisualizerManager(
     )
 
     @Volatile
-    var enabled: Boolean = true
+    var enabled: Boolean = enabled
         set(value) {
             field = value
             if (!value) overlayHost.hide()

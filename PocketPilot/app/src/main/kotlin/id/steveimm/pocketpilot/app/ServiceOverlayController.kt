@@ -30,6 +30,7 @@ class ServiceOverlayController(
     private val scope: CoroutineScope,
     private val appPackage: String,
     private val logTag: String,
+    private var compactOverlaysEnabled: Boolean,
     private val onStop: () -> Unit,
     private val onSend: (String) -> Unit,
     private val onTakeover: () -> Unit,
@@ -115,7 +116,6 @@ class ServiceOverlayController(
 
     /** Whether the persistent bubble also displays the task controls. */
     private var showPreference = ShowPreference.BUBBLE
-    private var compactOverlaysEnabled = false
 
     fun setCompactOverlaysEnabled(enabled: Boolean) {
         compactOverlaysEnabled = enabled

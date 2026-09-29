@@ -212,3 +212,11 @@ Emulator verification with the local model:
 - Restarted the app again and verified that bubble bounds `(21,590)-(179,748)` were restored exactly.
 
 Validation: all 979 release unit tests passed, release lint passed, and device UI tests compiled. The signed ARM64 release installed on the emulator and passed the existing-signature, non-debuggable, alignment, and bundled-bridge checks. Installed APK SHA-256: `9b5f3d52e58d7045464f966f601462e0507f8b17eadc9a400db556cf2731af79`.
+
+## Compact overlays by default
+
+The user reported accessibility being disabled again on the actual OPPO phone after leaving PocketPilot, and reported that enabling Compact overlays helped. Earlier device logs had attributed the same symptom to the OPPO security service revoking accessibility after a full-screen overlay appeared. The phone was not connected over ADB during this recurrence, so no new device-log diagnosis is claimed.
+
+Compact overlays now defaults to enabled. The saved preference is read before constructing the overlay controller and gesture visualizer, so their initial configuration already matches it. Explicitly saved preferences remain respected. Compact mode keeps the bubble and task controls while disabling the edge glow, tap/swipe visualization, and full-screen touch shield. Gesture execution itself is unchanged.
+
+Validation: 979 release unit tests passed, release lint passed, and device UI tests compiled. No new APK was assembled for this setting change; the existing installed APK already applies Compact overlays immediately. The new default will be included in the next build.

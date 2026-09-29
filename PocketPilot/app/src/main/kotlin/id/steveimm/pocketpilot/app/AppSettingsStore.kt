@@ -39,6 +39,7 @@ class AppSettingsStore(context: Context) {
         val DEFAULT_PLATFORM_MODE = PlatformMode.ACCESSIBILITY
         const val DEFAULT_TRACE_ENABLED = false
         const val DEFAULT_TERMUX_SHELL_ENABLED = true
+        const val DEFAULT_COMPACT_OVERLAYS = true
         val DEFAULT_APPROVAL_MODE = ApprovalMode.SMART
     }
 
@@ -89,7 +90,7 @@ class AppSettingsStore(context: Context) {
         prefs.edit().putBoolean(KEY_DEBUG_MODE, value).apply()
     }
 
-    fun loadCompactOverlays(): Boolean = prefs.getBoolean(KEY_COMPACT_OVERLAYS, false)
+    fun loadCompactOverlays(): Boolean = prefs.getBoolean(KEY_COMPACT_OVERLAYS, DEFAULT_COMPACT_OVERLAYS)
 
     fun saveCompactOverlays(value: Boolean) {
         prefs.edit().putBoolean(KEY_COMPACT_OVERLAYS, value).apply()

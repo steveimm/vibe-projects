@@ -171,6 +171,7 @@ class AgentService : AccessibilityService() {
 
         updateStatus("Accessibility Service connected")
 
+        val compactOverlays = AppSettingsStore(this).loadCompactOverlays()
         val controller =
                 ServiceOverlayController(
                         context = this,
@@ -179,6 +180,7 @@ class AgentService : AccessibilityService() {
                         scope = serviceScope,
                         appPackage = OUR_PACKAGE,
                         logTag = TAG,
+                        compactOverlaysEnabled = compactOverlays,
                         onStop = { submitOp(Op.Shutdown) },
                         onSend = ::sendOverlayInput,
                         onTakeover = { submitOp(Op.Takeover) },
@@ -211,8 +213,8 @@ class AgentService : AccessibilityService() {
                 lifecycleOwner = serviceLifecycleOwner,
                 savedStateRegistryOwner = serviceLifecycleOwner,
                 renderContext = controller.stateHolder.context,
+                enabled = !compactOverlays,
         )
-        setCompactOverlaysEnabled(AppSettingsStore(this).loadCompactOverlays())
         Log.i(TAG, "ActionVisualizerManager initialized")
 
         registerDebugStopReceiverIfNeeded(this, stopReceiver)
