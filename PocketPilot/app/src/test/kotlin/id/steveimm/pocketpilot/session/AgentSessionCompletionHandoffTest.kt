@@ -243,6 +243,6 @@ private class QuickCompletionLLMClient : LLMClient() {
             model: String
     ): Flow<LLMStreamEvent> = flow {
         emit(LLMStreamEvent.TextDelta("done"))
-        emit(LLMStreamEvent.Completed)
+        emit(LLMStreamEvent.Completed())
     }
 }

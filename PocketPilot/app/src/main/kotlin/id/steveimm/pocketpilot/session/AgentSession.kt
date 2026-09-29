@@ -161,12 +161,8 @@ private constructor(
 
             Log.i(TAG, "Reloaded session $sessionId with ${historyItems.size} history items")
 
-            snapshot.lastTaskOutcome?.let { outcomeName ->
-                try {
-                    services.recordingService.setLastTaskOutcome(TaskOutcome.valueOf(outcomeName))
-                } catch (_: IllegalArgumentException) {
-                    Log.w(TAG, "Unknown TaskOutcome in snapshot: $outcomeName")
-                }
+            TaskOutcome.fromStoredName(snapshot.lastTaskOutcome)?.let {
+                services.recordingService.setLastTaskOutcome(it)
             }
 
             return AgentSession(
@@ -372,8 +368,7 @@ private constructor(
         val resultMessage =
                 when (reason) {
                     is AgentStopReason.Error -> reason.message
-                    is AgentStopReason.GoalAchieved -> reason.message
-                    is AgentStopReason.TaskImpossible -> reason.message
+                    is AgentStopReason.Finished -> reason.message
                     else -> null
                 }
 
@@ -419,9 +414,8 @@ private constructor(
 
     private fun AgentStopReason.toTaskOutcome(): TaskOutcome =
             when (this) {
-                is AgentStopReason.GoalAchieved -> TaskOutcome.GOAL_ACHIEVED
+                is AgentStopReason.Finished -> TaskOutcome.FINISHED
                 is AgentStopReason.UserRequested -> TaskOutcome.USER_STOPPED
-                is AgentStopReason.TaskImpossible -> TaskOutcome.TASK_IMPOSSIBLE
                 is AgentStopReason.Error -> TaskOutcome.ERROR
             }
 

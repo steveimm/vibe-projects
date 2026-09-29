@@ -75,7 +75,7 @@ class AgentTraceObservabilityTest {
                         modelName = "local-model",
                         modelId = "local-model"
                 )
-                trace.sessionStopped(AgentStopReason.GoalAchieved(), turnsExecuted = 1)
+                trace.sessionStopped(AgentStopReason.Finished(), turnsExecuted = 1)
 
                 val sessionStarted = recorder.findEvent("session_started")
                 assertThat(sessionStarted).isNotNull()

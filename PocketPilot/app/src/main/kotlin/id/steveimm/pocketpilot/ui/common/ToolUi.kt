@@ -35,7 +35,6 @@ private fun resolveToolDisplay(toolName: String): ToolDisplay {
         ToolName.OpenApp -> ToolDisplay(tool.displayName, Icons.Rounded.Apps)
         ToolName.Wait -> ToolDisplay(tool.displayName, Icons.Rounded.HourglassEmpty)
         ToolName.SystemButton -> ToolDisplay(tool.displayName, Icons.Rounded.TouchApp)
-        ToolName.CompleteTask -> ToolDisplay(tool.displayName, Icons.Rounded.CheckCircle)
         ToolName.AskUser -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
         ToolName.TermuxShell -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
         is ToolName.Unknown -> ToolDisplay(tool.displayName, Icons.Rounded.Build)

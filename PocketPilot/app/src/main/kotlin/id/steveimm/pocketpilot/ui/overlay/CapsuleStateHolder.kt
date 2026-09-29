@@ -217,11 +217,10 @@ class CapsuleStateHolder(private val scope: CoroutineScope) {
         }
         _isStopPending.value = false
         val mode = when (outcome) {
-            TaskOutcome.GOAL_ACHIEVED -> {
+            TaskOutcome.FINISHED -> {
                 val completionMessage = message?.takeIf { it.isNotBlank() } ?: "Task completed"
                 CapsuleMode.Done(completionMessage)
             }
-            TaskOutcome.TASK_IMPOSSIBLE -> CapsuleMode.Done("Task impossible")
             TaskOutcome.USER_STOPPED -> CapsuleMode.Done("Stopped")
             TaskOutcome.ERROR -> CapsuleMode.Error(
                 message?.takeIf { it.isNotBlank() }?.let(::compactThought) ?: "Error occurred"

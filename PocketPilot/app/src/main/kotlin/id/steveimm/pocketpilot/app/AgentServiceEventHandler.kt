@@ -164,17 +164,15 @@ internal class AgentServiceEventHandler(
     }
 
     private fun TaskOutcome.isError(): Boolean = when (this) {
-        TaskOutcome.TASK_IMPOSSIBLE,
         TaskOutcome.ERROR -> true
-        TaskOutcome.GOAL_ACHIEVED,
+        TaskOutcome.FINISHED,
         TaskOutcome.USER_STOPPED -> false
     }
 
     private fun defaultErrorText(outcome: TaskOutcome): String = when (outcome) {
-        TaskOutcome.TASK_IMPOSSIBLE -> "Task cannot be completed"
         TaskOutcome.ERROR -> "Error"
         // Non-error outcomes never enter defaultErrorText — kept for exhaustiveness.
-        TaskOutcome.GOAL_ACHIEVED,
+        TaskOutcome.FINISHED,
         TaskOutcome.USER_STOPPED -> ""
     }
 }

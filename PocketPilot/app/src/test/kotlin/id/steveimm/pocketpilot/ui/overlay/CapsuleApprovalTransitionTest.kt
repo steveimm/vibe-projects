@@ -123,7 +123,7 @@ class CapsuleApprovalTransitionTest {
     @Test
     fun `onStopRequested rejected from Done`() {
         holder.onTaskStarted("task1", "input")
-        holder.onTaskCompleted(TaskOutcome.GOAL_ACHIEVED)
+        holder.onTaskCompleted(TaskOutcome.FINISHED)
         assertThat(holder.onStopRequested()).isFalse()
     }
 
@@ -191,13 +191,6 @@ class CapsuleApprovalTransitionTest {
         holder.onTaskStarted("task1", "input")
         holder.onSessionEnded(SessionEndReason.INTERRUPTED)
         assertThat(holder.mode.value).isEqualTo(CapsuleMode.Hidden)
-    }
-
-    @Test
-    fun `task completed TASK_IMPOSSIBLE sets Done with impossible message`() {
-        holder.onTaskStarted("task1", "input")
-        holder.onTaskCompleted(TaskOutcome.TASK_IMPOSSIBLE)
-        assertThat((holder.mode.value as CapsuleMode.Done).message).isEqualTo("Task impossible")
     }
 
     @Test

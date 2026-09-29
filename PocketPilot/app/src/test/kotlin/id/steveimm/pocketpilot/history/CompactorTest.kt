@@ -98,7 +98,7 @@ class CompactorTest {
             inputItems: List<ResponseInputItem>,
             tools: List<FunctionTool>,
             model: String
-        ): Flow<LLMStreamEvent> = flow { emit(LLMStreamEvent.Completed) }
+        ): Flow<LLMStreamEvent> = flow { emit(LLMStreamEvent.Completed()) }
     }
 
     @Test
@@ -410,7 +410,7 @@ class CompactorTest {
                 inputItems: List<ResponseInputItem>,
                 tools: List<FunctionTool>,
                 model: String
-            ): Flow<LLMStreamEvent> = flow { emit(LLMStreamEvent.Completed) }
+            ): Flow<LLMStreamEvent> = flow { emit(LLMStreamEvent.Completed()) }
         }
         val compactor = newCompactor(
             client,

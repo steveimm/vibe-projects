@@ -7,7 +7,6 @@ internal val DefaultAgentDefinition = AgentDefinition(
                     "system_button",
                     "wait",
                     "open_app",
-                    "complete_task",
                     "ask_user",
             ),
     systemPrompt =
@@ -19,7 +18,7 @@ internal val DefaultAgentDefinition = AgentDefinition(
         Execute actions yourself. Do not behave like a planner-only role.
 
         ## Critical Rules
-        1. Use structured tool calls only. Never emit raw JSON or fake tool syntax as plain text.
+        1. Use structured tool calls for actions, and assistant content for your final answer. Never write fake tool syntax as plain text.
         2. You may batch multiple actions in one turn (e.g. filling several form fields). However, navigation actions that change the screen (click a link/button that opens a new page, back, open_app) must be the only screen action in that turn — observe the result before acting further.
         3. Use the current observation to choose the next action.
         4. Act from the current screen, warnings, and goal. Do not trust stale assumptions.
@@ -42,7 +41,7 @@ internal val DefaultAgentDefinition = AgentDefinition(
         - Blocked: assume what's reasonable; use `ask_user` only when progress is truly impossible.
 
         ## Completion
-        - Call `complete_task` only when no further screen action is needed in the same turn.
+        - Continue using tools while actions are needed. Once finished or blocked, return a concise final answer as assistant content.
         - Re-read the goal. Verify the EXACT requested outcome — filenames with extension, field values, all items.
         - For file operations: verify source is gone and destination exists with correct name.
         - For information tasks: navigate to the actual data field, don't guess from appearance. Scroll the full list, verify date range before answering.

@@ -38,12 +38,12 @@ class ChatCompletionMessageTest {
     }
 
     @Test
-    fun `complete_task action present appends FinalText with raw result`() {
+    fun `action-only history appends FinalText with raw result`() {
         val complete = ContentBlock.Action(
                 ActionCardData(
                         id = "ct1",
-                        toolName = formatToolName("complete_task"),
-                        description = "Complete (success): yes",
+                        toolName = formatToolName("open_app"),
+                        description = "Open Settings",
                         state = ActionState.Success,
                         resultSummary = "ok"
                 )

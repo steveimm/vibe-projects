@@ -2,6 +2,7 @@ package id.steveimm.pocketpilot.trace
 
 import id.steveimm.pocketpilot.agent.AgentExecutionConfig
 import id.steveimm.pocketpilot.agent.AgentStopReason
+import id.steveimm.pocketpilot.agent.label
 import id.steveimm.pocketpilot.agent.ToolCallRequest
 import id.steveimm.pocketpilot.agent.TurnResult
 import id.steveimm.pocketpilot.history.ResponseItem
@@ -56,7 +57,7 @@ internal class AgentTrace(
             type = "session_stopped",
             data =
                 buildJsonObject {
-                    put("reason", JsonPrimitive(reason::class.simpleName ?: "unknown"))
+                    put("reason", JsonPrimitive(reason.label()))
                     put("turns_executed", JsonPrimitive(turnsExecuted))
                 },
             artifacts = listOfNotNull(summaryArtifact)
@@ -185,43 +186,6 @@ internal class AgentTrace(
         )
     }
 
-    /** Emits per-turn arbitration details (selected tools vs dropped tools). */
-    fun arbitrationDecision(turnId: String, turnNumber: Int, decision: ArbitrationDecision) {
-        if (!trace.enabled) return
-        trace.emit(
-            sessionId = sessionId.value,
-            type = "tool_arbitration",
-            turnId = turnId,
-            turnNumber = turnNumber,
-            data =
-                buildJsonObject {
-                    put("original_tool_count", JsonPrimitive(decision.originalToolCount))
-                    put("selected_tool_count", JsonPrimitive(decision.selectedToolCount))
-                    put(
-                        "selected_tools",
-                        buildJsonArray {
-                            decision.selectedTools.forEach { selected ->
-                                add(JsonPrimitive(selected.name))
-                            }
-                        }
-                    )
-                    put(
-                        "dropped_tools",
-                        buildJsonArray {
-                            decision.droppedToolCalls.forEach { dropped ->
-                                add(
-                                    buildJsonObject {
-                                        put("name", JsonPrimitive(dropped.toolName))
-                                        put("reason", JsonPrimitive(dropped.reason.name))
-                                    }
-                                )
-                            }
-                        }
-                    )
-                }
-        )
-    }
-
     fun toolCall(turnId: String, turnNumber: Int, toolCall: ToolCallRequest) {
         if (!trace.enabled) return
         runMetrics.toolCalls++
@@ -298,7 +262,7 @@ internal class AgentTrace(
                 put("started_at_ms", JsonPrimitive(sessionStartedAtMs))
                 put("stopped_at_ms", JsonPrimitive(stoppedAtMs))
                 put("duration_ms", JsonPrimitive((stoppedAtMs - sessionStartedAtMs).coerceAtLeast(0)))
-                put("stop_reason", JsonPrimitive(reason::class.simpleName ?: "unknown"))
+                put("stop_reason", JsonPrimitive(reason.label()))
                 put("turns_executed", JsonPrimitive(turnsExecuted))
                 put("turns_started", JsonPrimitive(runMetrics.turnsStarted))
                 put("turns_completed", JsonPrimitive(runMetrics.turnsCompleted))

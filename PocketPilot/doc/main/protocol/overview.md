@@ -117,7 +117,7 @@ protocol/
 ├── SessionState.kt           # 6-state machine (incl. TakeoverPending)
 ├── SessionId.kt              # Session identifier
 ├── AppTier.kt                # BLOCKED / CAUTIOUS / NORMAL classification
-├── TaskOutcome.kt            # Task-level outcome (GOAL_ACHIEVED / TASK_IMPOSSIBLE / ERROR / USER_STOPPED)
+├── TaskOutcome.kt            # Task-level outcome (FINISHED / ERROR / USER_STOPPED)
 ├── SessionEndReason.kt       # Session-level shutdown reason (USER_STOPPED / IDLE_TIMEOUT / INTERRUPTED)
 ├── CompletionHandoff.kt      # VD-only completion metadata for chat CTA
 ├── SessionLifecycleEvents.kt # SessionStarted/Completed/Error/Takeover/Resumed/SupplementReceived

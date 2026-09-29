@@ -79,8 +79,10 @@ class ChatCompletionClient(
             val response = client.chat().completions().create(params)
 
             val choice = response.choices().firstOrNull()
-                ?: return ResponsesResult(textContent = null, toolCalls = emptyList(), responseId = response.id())
+                ?: error("Model response has no choices")
 
+            val finishReason = choice.finishReason().toString()
+            require(finishReason in setOf("stop", "tool_calls")) { "Model response did not finish normally: $finishReason" }
             val message = choice.message()
             val textContent = message.content().orElse(null)
             val toolCalls = message.toolCalls().orElse(emptyList())
@@ -99,6 +101,7 @@ class ChatCompletionClient(
                 toolCalls = toolCalls,
                 responseId = response.id(),
                 reasoning = readModelReasoning(message._additionalProperties()),
+                finishReason = finishReason,
             )
             Log.d(TAG, "Chat API result: ${result.textContent?.take(200)}, ${result.toolCalls.size} tool calls")
             LlmLogger.logOutput(TAG, result)
@@ -131,7 +134,7 @@ class ChatCompletionClient(
                 val toolCallBuilders = mutableMapOf<Long, Triple<String, String, StringBuilder>>()
                 val completedToolCalls = if (verbose) mutableListOf<LLMToolCall>() else null
                 var responseId: String? = null
-                var sawFinishReason = false
+                var finishReason: String? = null
 
                 val params = buildParams(systemPrompt, inputItems, tools, model)
                 Log.d(TAG, "Making streaming Chat API call (attempt $attempt)")
@@ -206,7 +209,7 @@ class ChatCompletionClient(
                                 choice.finishReason().ifPresent { reason ->
                                     when (reason.toString()) {
                                         "stop", "tool_calls" -> {
-                                            sawFinishReason = true
+                                            finishReason = reason.toString()
                                             for ((_, builder) in toolCallBuilders) {
                                                 val (callId, name, args) = builder
                                                 val toolCall =
@@ -224,12 +227,9 @@ class ChatCompletionClient(
                                             throw TransientException("Response truncated (finish_reason=length)")
                                         }
                                         "content_filter" -> {
-                                            sawFinishReason = true
-                                            emitter.emit(LLMStreamEvent.Failed("Response blocked by content filter"))
+                                            error("Response blocked by content filter")
                                         }
-                                        else -> {
-                                            sawFinishReason = true
-                                        }
+                                        else -> throw IllegalStateException("Unsupported model finish reason: $reason")
                                     }
                                 }
                             }
@@ -241,7 +241,7 @@ class ChatCompletionClient(
                     }
 
                     // Stream ended — require terminal completion
-                    if (!sawFinishReason) {
+                    if (finishReason == null) {
                         throw TransientException("Stream ended without finish_reason")
                     }
                     if (verbose && textAccumulator != null && completedToolCalls != null) {
@@ -254,7 +254,7 @@ class ChatCompletionClient(
                             )
                         )
                     }
-                    emitter.emit(LLMStreamEvent.Completed)
+                    emitter.emit(LLMStreamEvent.Completed(finishReason))
                 }
 
             retryResult.closeFlow(

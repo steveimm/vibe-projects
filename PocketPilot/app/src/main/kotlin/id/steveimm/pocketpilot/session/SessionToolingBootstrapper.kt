@@ -11,7 +11,6 @@ import id.steveimm.pocketpilot.tool.PolicyEngine
 import id.steveimm.pocketpilot.tool.ToolName
 import id.steveimm.pocketpilot.tool.ToolRegistry
 import id.steveimm.pocketpilot.tool.ToolRouter
-import id.steveimm.pocketpilot.tool.impl.CompleteTaskTool
 import id.steveimm.pocketpilot.tool.impl.MobileActionTool
 import id.steveimm.pocketpilot.tool.impl.OpenAppTool
 import id.steveimm.pocketpilot.tool.impl.SystemButtonTool
@@ -65,7 +64,6 @@ internal object SessionToolingBootstrapper {
         allowedToolNames: Set<String>,
         context: Context?
     ) {
-        if (ToolName.CompleteTask.raw in allowedToolNames) register(CompleteTaskTool())
         if (ToolName.MobileAction.raw in allowedToolNames) register(MobileActionTool())
         if (ToolName.SystemButton.raw in allowedToolNames) register(SystemButtonTool())
         if (ToolName.Wait.raw in allowedToolNames) register(WaitTool())

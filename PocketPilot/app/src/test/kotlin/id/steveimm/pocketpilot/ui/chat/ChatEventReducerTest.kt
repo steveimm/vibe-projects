@@ -124,14 +124,14 @@ class ChatEventReducerTest {
                 timestamp = 200L,
                 taskId = "task-1",
                 result = "All done",
-                outcome = TaskOutcome.GOAL_ACHIEVED
+                outcome = TaskOutcome.FINISHED
             )
         )
 
         val agent = f.messages.last() as ChatMessage.Agent
         assertThat(agent.state).isEqualTo(AgentMessageState.Complete)
         // The streaming "progress" Text gets promoted in place to FinalText with
-        // the rawResult from TaskCompleted (no complete_task action ran here).
+        // the rawResult from TaskCompleted.
         val finalTexts = agent.contentBlocks.filterIsInstance<ContentBlock.FinalText>()
         assertThat(finalTexts).hasSize(1)
         assertThat(finalTexts.last().text).isEqualTo("progress")
@@ -161,7 +161,7 @@ class ChatEventReducerTest {
                 timestamp = 200L,
                 taskId = "task-1",
                 result = "done",
-                outcome = TaskOutcome.GOAL_ACHIEVED
+                outcome = TaskOutcome.FINISHED
             )
         )
         val sealed = f.messages.last() as ChatMessage.Agent
@@ -235,7 +235,7 @@ class ChatEventReducerTest {
     }
 
     @Test
-    fun `task completion with GOAL_ACHIEVED outcome routes to RowState Complete`() {
+    fun `task completion with FINISHED outcome routes to RowState Complete`() {
         val f = Fixture()
         f.reducer.handle(TaskStarted(sessionId, 100L, taskId = "task-1", input = "go"))
 
@@ -245,7 +245,7 @@ class ChatEventReducerTest {
                 timestamp = 200L,
                 taskId = "task-1",
                 result = "done",
-                outcome = TaskOutcome.GOAL_ACHIEVED
+                outcome = TaskOutcome.FINISHED
             )
         )
 

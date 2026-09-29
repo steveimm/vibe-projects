@@ -48,7 +48,6 @@ internal class TurnExecutionPhaseRunner(
                         "Using turn snapshot for actions: ${currentSnapshot.elements.size} elements"
                 )
 
-                val executedToolIds = mutableSetOf<String>()
                 var terminatedEarly = false
                 var lastTerminalResult: ToolCallResult? = null
                 for (toolCall in toolCallsToExecute) {
@@ -59,7 +58,6 @@ internal class TurnExecutionPhaseRunner(
                                 currentSnapshot = currentSnapshot
                         )
                         currentSnapshot = result.snapshot
-                        executedToolIds += toolCall.id
                         lastTerminalResult = result.toolResult
                         if (result.toolResult !is ToolCallResult.Success) {
                                 Log.w(TAG, "Action ${toolCall.name} did not succeed; aborting remaining actions in this turn")
@@ -68,7 +66,6 @@ internal class TurnExecutionPhaseRunner(
                         }
                 }
                 return ExecutionPhaseResult(
-                        executedToolIds = executedToolIds,
                         terminatedEarly = terminatedEarly,
                         lastTerminalResult = lastTerminalResult
                 )
@@ -194,17 +191,6 @@ internal class TurnExecutionPhaseRunner(
                                 is ToolObservation.TextOutput ->
                                         ObservationCapture(observation, null)
                         }
-                }
-
-                if (toolCall.name == ToolName.CompleteTask.raw) {
-                        Log.d(TAG, "Skipping post-action capture for complete_task")
-                        return ObservationCapture(
-                                observation =
-                                        ToolObservation.TextOutput(
-                                                "Completion acknowledged; no screen captured."
-                                        ),
-                                snapshot = null
-                        )
                 }
 
                 return runCatching { captureObservationWithSnapshot() }

@@ -52,7 +52,7 @@ class TurnReactiveCompactionTest {
     private val successfulRetryStream = listOf<LLMStreamEvent>(
         LLMStreamEvent.Created("resp-2"),
         LLMStreamEvent.TextDelta("Done. Task finished."),
-        LLMStreamEvent.Completed,
+        LLMStreamEvent.Completed(),
     )
 
     @Test
@@ -63,7 +63,7 @@ class TurnReactiveCompactionTest {
                 StreamAttempt.Events(successfulRetryStream),
             )
         )
-        val registry = registryWith("complete_task")
+        val registry = registryWith("wait")
         val history = HistoryManager()
         val compactor = mockk<Compactor>()
         coEvery {
@@ -108,7 +108,7 @@ class TurnReactiveCompactionTest {
                 StreamAttempt.Throw(ContextWindowExceededException("prompt_too_long again")),
             )
         )
-        val registry = registryWith("complete_task")
+        val registry = registryWith("wait")
         val history = HistoryManager()
         val compactor = mockk<Compactor>()
         coEvery {
@@ -145,7 +145,7 @@ class TurnReactiveCompactionTest {
                 StreamAttempt.Throw(ContextWindowExceededException("prompt_too_long")),
             )
         )
-        val registry = registryWith("complete_task")
+        val registry = registryWith("wait")
         val turn = Turn(toolRegistry = registry, llmClient = llm)
 
         val events = turn.runStreaming(
@@ -166,7 +166,7 @@ class TurnReactiveCompactionTest {
                 StreamAttempt.Throw(ContextWindowExceededException("prompt_too_long")),
             )
         )
-        val registry = registryWith("complete_task")
+        val registry = registryWith("wait")
         val history = HistoryManager()
         val compactor = mockk<Compactor>()
         coEvery {
@@ -202,7 +202,7 @@ class TurnReactiveCompactionTest {
                 StreamAttempt.Throw(ContextWindowExceededException("prompt_too_long")),
             )
         )
-        val registry = registryWith("complete_task")
+        val registry = registryWith("wait")
         val history = HistoryManager()
         val compactor = mockk<Compactor>()
         coEvery {

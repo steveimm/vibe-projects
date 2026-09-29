@@ -10,7 +10,7 @@ This folder contains the Tier 0/1 evaluation harness. See
   - reuses AndroidWorld task lifecycle (`initialize_task`, `is_successful`, `tear_down`)
   - launches this app natively through ADB intent extras
   - monitors completion from logcat + timeout
-  - parses pulled trace artifacts (`run_summary`, `complete_task.answer`)
+  - parses pulled trace artifacts (`run_summary`, native final assistant text)
   - persists `per_task.jsonl` and `summary.json`
   - typed preflight error system with automatic recovery
   - snapshot policy for baseline management (strict / auto_repair / best_effort / off)

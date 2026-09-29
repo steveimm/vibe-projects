@@ -9,7 +9,6 @@
 | `system_button` | Back, Home, Enter, and Recents. |
 | `wait` | Wait for screen updates. |
 | `ask_user` | Ask for missing information or physical intervention. |
-| `complete_task` | Report completion through the current completion contract. |
 | `termux_shell` | Optional commands in the Termux workspace. |
 
 `ToolRouter` resolves the registered tool and validates arguments before creating an invocation. `PolicyEngine` applies app classification, explicit user overrides, approval mode, and session approvals. Blocked apps remain blocked. Back and Home remain available as escape actions. User handoff and other non-screen actions do not acquire screen permissions.

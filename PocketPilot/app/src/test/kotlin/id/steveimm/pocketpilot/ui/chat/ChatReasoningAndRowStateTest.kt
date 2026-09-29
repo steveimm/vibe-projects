@@ -143,7 +143,7 @@ class ChatReasoningAndRowStateTest {
                 timestamp = 200L,
                 taskId = "task-1",
                 result = "done",
-                outcome = TaskOutcome.GOAL_ACHIEVED
+                outcome = TaskOutcome.FINISHED
             )
         )
 

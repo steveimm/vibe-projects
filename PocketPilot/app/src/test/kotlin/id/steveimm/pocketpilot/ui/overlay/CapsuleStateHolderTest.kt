@@ -208,27 +208,27 @@ class CapsuleStateHolderTest {
     }
 
     @Test
-    fun `onTaskCompleted GOAL_ACHIEVED sets Done`() {
+    fun `onTaskCompleted FINISHED sets Done`() {
         holder.onTaskStarted("task1", "input")
-        holder.onTaskCompleted(TaskOutcome.GOAL_ACHIEVED, "All done")
+        holder.onTaskCompleted(TaskOutcome.FINISHED, "All done")
         val mode = holder.mode.value
         assertThat(mode).isInstanceOf(CapsuleMode.Done::class.java)
         assertThat((mode as CapsuleMode.Done).message).isEqualTo("All done")
     }
 
     @Test
-    fun `onTaskCompleted GOAL_ACHIEVED uses default message when result missing`() {
+    fun `onTaskCompleted FINISHED uses default message when result missing`() {
         holder.onTaskStarted("task1", "input")
-        holder.onTaskCompleted(TaskOutcome.GOAL_ACHIEVED, null)
+        holder.onTaskCompleted(TaskOutcome.FINISHED, null)
         val mode = holder.mode.value
         assertThat(mode).isInstanceOf(CapsuleMode.Done::class.java)
         assertThat((mode as CapsuleMode.Done).message).isEqualTo("Task completed")
     }
 
     @Test
-    fun `onTaskCompleted GOAL_ACHIEVED uses default message when result blank`() {
+    fun `onTaskCompleted FINISHED uses default message when result blank`() {
         holder.onTaskStarted("task1", "input")
-        holder.onTaskCompleted(TaskOutcome.GOAL_ACHIEVED, "   ")
+        holder.onTaskCompleted(TaskOutcome.FINISHED, "   ")
         val mode = holder.mode.value
         assertThat(mode).isInstanceOf(CapsuleMode.Done::class.java)
         assertThat((mode as CapsuleMode.Done).message).isEqualTo("Task completed")
@@ -244,7 +244,7 @@ class CapsuleStateHolderTest {
 
     @Test
     fun `onTaskCompleted ignored when already Hidden`() {
-        holder.onTaskCompleted(TaskOutcome.GOAL_ACHIEVED)
+        holder.onTaskCompleted(TaskOutcome.FINISHED)
         assertThat(holder.mode.value).isEqualTo(CapsuleMode.Hidden)
     }
 
@@ -258,7 +258,7 @@ class CapsuleStateHolderTest {
     @Test
     fun `onSessionEnded IDLE_TIMEOUT sets Hidden even after completed task`() {
         holder.onTaskStarted("task1", "input")
-        holder.onTaskCompleted(TaskOutcome.GOAL_ACHIEVED, "Summary")
+        holder.onTaskCompleted(TaskOutcome.FINISHED, "Summary")
         holder.onSessionEnded(SessionEndReason.IDLE_TIMEOUT)
         assertThat(holder.mode.value).isEqualTo(CapsuleMode.Hidden)
     }
@@ -266,7 +266,7 @@ class CapsuleStateHolderTest {
     @Test
     fun `auto-hide transitions Done to Hidden after 3 seconds`() {
         holder.onTaskStarted("task1", "input")
-        holder.onTaskCompleted(TaskOutcome.GOAL_ACHIEVED)
+        holder.onTaskCompleted(TaskOutcome.FINISHED)
         assertThat(holder.mode.value).isInstanceOf(CapsuleMode.Done::class.java)
 
         scope.advanceTimeBy(3001)
@@ -276,7 +276,7 @@ class CapsuleStateHolderTest {
     @Test
     fun `auto-hide cancelled by new task`() {
         holder.onTaskStarted("task1", "input")
-        holder.onTaskCompleted(TaskOutcome.GOAL_ACHIEVED)
+        holder.onTaskCompleted(TaskOutcome.FINISHED)
         holder.onTaskStarted("task2", "new task")
 
         scope.advanceTimeBy(3001)
@@ -342,7 +342,7 @@ class CapsuleStateHolderTest {
     @Test
     fun `hasActiveTask is false when Done`() {
         holder.onTaskStarted("task1", "input")
-        holder.onTaskCompleted(TaskOutcome.GOAL_ACHIEVED)
+        holder.onTaskCompleted(TaskOutcome.FINISHED)
         assertThat(holder.hasActiveTask).isFalse()
     }
 

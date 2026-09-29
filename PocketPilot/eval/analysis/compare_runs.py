@@ -47,10 +47,6 @@ def main() -> None:
                 base_metrics.get("duration_p90_sec"),
                 new_metrics.get("duration_p90_sec"),
             ),
-            "goal_claim_precision": _delta(
-                base_metrics.get("goal_claim_precision"),
-                new_metrics.get("goal_claim_precision"),
-            ),
             "tool_failure_rate": _delta(
                 base_metrics.get("tool_failure_rate"),
                 new_metrics.get("tool_failure_rate"),

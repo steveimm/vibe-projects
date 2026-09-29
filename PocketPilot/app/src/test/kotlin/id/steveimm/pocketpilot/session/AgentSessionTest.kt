@@ -1112,7 +1112,7 @@ private class SessionTestLLMClient(private val delayMs: Long) : LLMClient() {
                         delay(delayMs)
                 }
                 emit(LLMStreamEvent.TextDelta("done"))
-                emit(LLMStreamEvent.Completed)
+                emit(LLMStreamEvent.Completed())
         }
 }
 
@@ -1176,8 +1176,7 @@ private class GatedStreamingLLMClient : LLMClient() {
                 val gate = nextGate()
                 if (!streamStarted.isCompleted) streamStarted.complete(Unit)
                 gate.await()
-                // Intentionally emit no TextDelta so the turn does NOT mark itself complete (TurnToolPolicy treats text-only output as
-                // goal-achieved). This keeps the agent in a Continue loop so we can deterministically observe the pause confirmation path.
-                emit(LLMStreamEvent.Completed)
+                emit(LLMStreamEvent.ToolCallDone(id.steveimm.pocketpilot.llm.LLMToolCall("wait", "wait", """{"duration_ms":1}""")))
+                emit(LLMStreamEvent.Completed("tool_calls"))
         }
 }

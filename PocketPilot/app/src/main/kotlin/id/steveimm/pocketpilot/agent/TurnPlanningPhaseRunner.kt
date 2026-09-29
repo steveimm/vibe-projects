@@ -1,8 +1,6 @@
 package id.steveimm.pocketpilot.agent
 
 import android.util.Log
-import id.steveimm.pocketpilot.agent.cognition.policy.ToolArbitrationResult
-import id.steveimm.pocketpilot.agent.cognition.policy.TurnToolPolicy
 import id.steveimm.pocketpilot.agent.cognition.prompt.PromptBuilder
 import id.steveimm.pocketpilot.agent.cognition.prompt.TurnObservation
 import id.steveimm.pocketpilot.history.Compactor
@@ -13,21 +11,12 @@ import id.steveimm.pocketpilot.protocol.TurnPhase
 import id.steveimm.pocketpilot.session.SessionServices
 import id.steveimm.pocketpilot.tool.ToolName
 import id.steveimm.pocketpilot.trace.AgentTrace
-import id.steveimm.pocketpilot.trace.ArbitrationDecision
-import id.steveimm.pocketpilot.trace.DropReason
-import id.steveimm.pocketpilot.trace.DroppedToolCall
-
-internal data class PlanningPhaseOutput(
-        val turnResult: TurnResult,
-        val arbitration: ToolArbitrationResult
-)
 
 internal class TurnPlanningPhaseRunner(
         private val config: AgentExecutionConfig,
         private val services: SessionServices,
         private val eventDispatcher: AgentEventDispatcher,
         private val trace: AgentTrace,
-        private val turnPolicyEngine: TurnToolPolicy,
         private val compactor: Compactor? = null
 ) {
         companion object {
@@ -46,7 +35,7 @@ internal class TurnPlanningPhaseRunner(
                 snapshot: ScreenSnapshot,
                 currentPackageName: String?,
                 warnings: List<String>
-        ): PlanningPhaseOutput {
+        ): TurnResult {
                 eventDispatcher.turnPhaseChanged(turnId, TurnPhase.PLANNING)
                 eventDispatcher.status("🧠 Thinking...")
 
@@ -171,73 +160,9 @@ internal class TurnPlanningPhaseRunner(
                     ))
                 }
 
-                val arbitration = turnPolicyEngine.arbitrateToolCalls(result.toolCalls)
-                trace.arbitrationDecision(
-                        turnId = turnId,
-                        turnNumber = turnNumber,
-                        decision = buildArbitrationDecision(result.toolCalls, arbitration)
-                )
-                emitArbitrationWarnings(turnNumber, arbitration)
-
                 trace.llmReasoning(turnId, turnNumber, reasoning.toString())
 
-                return PlanningPhaseOutput(turnResult = result, arbitration = arbitration)
+                return result
         }
 
-        private suspend fun emitArbitrationWarnings(
-                turnNumber: Int,
-                arbitration: ToolArbitrationResult
-        ) {
-                val droppedCount = arbitration.droppedToolCalls.size
-                if (droppedCount > 0) {
-                        val keptNames = arbitration.selectedToolCalls.map { it.name }
-                        val droppedNames = arbitration.droppedToolCalls.map { it.name }
-                        Log.w(
-                                TAG,
-                                "Turn $turnNumber: Kept $keptNames, dropped $droppedNames"
-                        )
-                        eventDispatcher.status(
-                                "⚠️ Dropped $droppedCount tool call(s): $droppedNames"
-                        )
-                }
-                if (arbitration.hasCompletionTool && arbitration.hasScreenAction) {
-                        Log.w(
-                                TAG,
-                                "Turn $turnNumber: complete_task returned with screen action; completion deferred"
-                        )
-                        eventDispatcher.status(
-                                "⚠️ Completion returned with screen action; executing action first"
-                        )
-                }
-        }
-
-        private fun buildArbitrationDecision(
-                originalCalls: List<ToolCallRequest>,
-                arbitration: ToolArbitrationResult
-        ): ArbitrationDecision {
-                val originalNameCounts = originalCalls.groupingBy { it.name }.eachCount()
-                val selectedToolIds = arbitration.selectedToolCalls.map { it.id }.toSet()
-                val dropped =
-                        originalCalls.filterNot { it.id in selectedToolIds }.map { call ->
-                                val reason =
-                                        when {
-                                                call.name == ToolName.CompleteTask.raw &&
-                                                        arbitration.hasScreenAction ->
-                                                        DropReason.COMPLETE_TASK_DEFERRED
-                                                (originalNameCounts[call.name] ?: 0) > 1 ->
-                                                        DropReason.DUPLICATE_TOOL
-                                                arbitration.selectedToolCalls.isNotEmpty() ->
-                                                        DropReason.MAX_TOOLS_EXCEEDED
-                                                else -> DropReason.POLICY_REJECTION
-                                        }
-                                DroppedToolCall(toolName = call.name, reason = reason)
-                        }
-
-                return ArbitrationDecision(
-                        selectedTools = arbitration.selectedToolCalls,
-                        droppedToolCalls = dropped,
-                        selectedToolCount = arbitration.selectedToolCalls.size,
-                        originalToolCount = originalCalls.size
-                )
-        }
 }

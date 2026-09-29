@@ -11,7 +11,6 @@ from eval.aw_bridge.jsonl_utils import read_jsonl
 @dataclass
 class TraceParseResult:
     answer: str | None
-    answer_status: str | None
     completion_reason: str | None
     turns_executed: int
     tool_calls: int
@@ -23,7 +22,6 @@ def empty_trace_result() -> TraceParseResult:
     """Return empty trace metrics when a run did not produce readable artifacts."""
     return TraceParseResult(
         answer=None,
-        answer_status=None,
         completion_reason=None,
         turns_executed=0,
         tool_calls=0,
@@ -43,20 +41,17 @@ def parse_trace(trace_dir: Path) -> TraceParseResult:
         return empty_trace_result()
 
     latest_answer: str | None = None
-    latest_status: str | None = None
     run_summary_rel: str | None = None
 
     for event in read_jsonl(trace_file):
         event_type = event.get("type")
-        if event_type == "tool_call":
-            data = event.get("data", {})
-            if data.get("name") == "complete_task":
-                args_path = _find_artifact_path(event, kind="tool_call_args")
-                if args_path:
-                    args_obj = _read_json_if_exists(trace_dir / args_path)
-                    if isinstance(args_obj, dict):
-                        latest_answer = _clean_nullable(args_obj.get("answer"))
-                        latest_status = _clean_nullable(args_obj.get("status"))
+        if event_type == "session_started":
+            latest_answer = None
+            run_summary_rel = None
+        if event_type == "llm_response" and event.get("data", {}).get("is_complete") is True:
+            answer_path = _find_artifact_path(event, kind="llm_response_text")
+            if answer_path and (trace_dir / answer_path).is_file():
+                latest_answer = _clean_nullable((trace_dir / answer_path).read_text(encoding="utf-8", errors="replace"))
         if event_type == "session_stopped":
             summary_path = _find_artifact_path(event, kind="run_summary")
             if summary_path:
@@ -66,7 +61,6 @@ def parse_trace(trace_dir: Path) -> TraceParseResult:
     summary_obj = _read_json_if_exists(summary_abs) if summary_abs else None
     return TraceParseResult(
         answer=latest_answer,
-        answer_status=latest_status,
         completion_reason=(_clean_nullable(summary_obj.get("stop_reason")) if isinstance(summary_obj, dict) else None),
         turns_executed=(int(summary_obj.get("turns_executed", 0)) if isinstance(summary_obj, dict) else 0),
         tool_calls=(int(summary_obj.get("tool_calls", 0)) if isinstance(summary_obj, dict) else 0),

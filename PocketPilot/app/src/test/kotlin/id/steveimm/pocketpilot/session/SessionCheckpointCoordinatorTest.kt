@@ -60,7 +60,7 @@ class SessionCheckpointCoordinatorTest {
         val recording = mockk<SessionRecordingService>(relaxed = true)
         val captured = slot<SessionRuntimeSnapshot>()
         coEvery { recording.forceCheckpoint(capture(captured)) } returns true
-        every { recording.getLastTaskOutcome() } returns TaskOutcome.GOAL_ACHIEVED
+        every { recording.getLastTaskOutcome() } returns TaskOutcome.FINISHED
 
         val coordinator = buildCoordinator(
             recording = recording,
@@ -76,7 +76,7 @@ class SessionCheckpointCoordinatorTest {
         assertThat(snapshot.sessionId).isEqualTo("abc-123")
         assertThat(snapshot.checkpointState).isEqualTo(CheckpointState.IDLE_READY)
         assertThat(snapshot.historyItems).isEmpty()
-        assertThat(snapshot.lastTaskOutcome).isEqualTo("GOAL_ACHIEVED")
+        assertThat(snapshot.lastTaskOutcome).isEqualTo("FINISHED")
         assertThat(snapshot.lastCheckpointAt).isAtLeast(beforeMs)
         assertThat(snapshot.lastCheckpointAt).isAtMost(afterMs)
         assertThat(snapshot.config.mainModel).isEqualTo(SessionConfig().mainModel)

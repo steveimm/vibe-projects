@@ -91,7 +91,6 @@ class ObservationFallbackTest {
             toolCallsToExecute = listOf(toolCall)
         )
 
-        assertThat(result.executedToolIds).containsExactly("call-1")
         assertThat(result.terminatedEarly).isFalse()
         assertThat(result.lastTerminalResult).isInstanceOf(ToolCallResult.Success::class.java)
         assertThat(platform.captureAttempts).isEqualTo(1)

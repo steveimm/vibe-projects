@@ -13,9 +13,8 @@
 
 | Variant | Data | Meaning |
 |---|---|---|
-| `GoalAchieved` | `message: String = "Goal achieved"` | `complete_task` succeeded |
+| `Finished` | `message: String` | Native final assistant response; no success claim |
 | `UserRequested` | none | User stopped or cancellation signal fired |
-| `TaskImpossible` | `message: String` | `complete_task(success=false)` |
 | `Error` | `message: String` | Non-recoverable turn error, recoverable error after retries exhausted, OR 3 consecutive compaction failures, OR `evalTurnBudget` exceeded |
 
 `MaxTurnsReached` was removed when context-window auto-compaction replaced the
@@ -26,7 +25,7 @@ production turn cap.
 | Variant | Data | Meaning |
 |---|---|---|
 | `Continue` | none | Loop runs another turn |
-| `Complete` | `message: String, success: Boolean = true` | Stops loop; mapped to `GoalAchieved` or `TaskImpossible` |
+| `Complete` | `message: String` | Stops with `Finished(message)` |
 | `Error` | `message: String, recoverable: Boolean` | Stops or retries based on flag |
 | `Cancelled` | none | Stops with `UserRequested` |
 
@@ -39,7 +38,6 @@ Tracked locally per run:
 - `stopRequested: AtomicBoolean`
 - `recoverableRetryCount: Int` (resets to 0 on `Continue`)
 - `consecutiveCompactionFailures: Int` (resets to 0 on any non-`Failed` compaction outcome)
-- `lastKnownPackage: String?` (for auto-retain memory note)
 - `turnRunnerState: TurnRunnerState` (carries `NavigationState`)
 
 ## Transitions
@@ -54,15 +52,14 @@ Tracked locally per run:
 | `Running` | terminal `Error` | compactor returned `Failed` 3 consecutive times | `consecutiveCompactionFailures >= 3` |
 | `Running` | terminal `Error` | `config.evalTurnBudget != null && turnCount >= evalTurnBudget` | eval-only safety net |
 | `Running` (turn) | `Continue` | `TurnOutcome.Continue` from `executeTurn` | resets `recoverableRetryCount`, delays `uiSettleDelayMs` |
-| `Running` (turn) | terminal `GoalAchieved` | `TurnOutcome.Complete(success=true)` | — |
-| `Running` (turn) | terminal `TaskImpossible` | `TurnOutcome.Complete(success=false)` | — |
+| `Running` (turn) | terminal `Finished` | `TurnOutcome.Complete` | — |
 | `Running` (turn) | terminal `Error` | `TurnOutcome.Error(recoverable=false)` | — |
 | `Running` (turn) | retry | `TurnOutcome.Error(recoverable=true)` AND `recoverableRetryCount < MAX_RECOVERABLE_RETRIES (=1)` | increments retry count, delays `uiSettleDelayMs` |
 | `Running` (turn) | terminal `Error` | recoverable error but retry budget exhausted | — |
 | `Running` (turn) | terminal `UserRequested` | `TurnOutcome.Cancelled` | — |
 
 If the loop exits without setting `stopReason`, the fallback is `UserRequested`
-(when stop/cancellation observed) or `GoalAchieved()` otherwise.
+(when stop/cancellation observed) or `Error("Agent stopped without a final response")` otherwise.
 
 ## Compaction sub-state
 
@@ -102,15 +99,13 @@ stateDiagram-v2
     CheckEvalBudget --> ExecuteTurn
     ExecuteTurn --> Continue: TurnOutcome.Continue
     Continue --> LoopStart: delay(uiSettleDelayMs)
-    ExecuteTurn --> GoalAchieved: Complete(success=true)
-    ExecuteTurn --> TaskImpossible: Complete(success=false)
+    ExecuteTurn --> Finished: Complete
     ExecuteTurn --> Error_NonRecoverable: Error(recoverable=false)
     ExecuteTurn --> RetryDecision: Error(recoverable=true)
     RetryDecision --> LoopStart: count < 1 (retry)
     RetryDecision --> Error_Exhausted: budget exhausted
     ExecuteTurn --> UserRequested: Cancelled
-    GoalAchieved --> [*]
-    TaskImpossible --> [*]
+    Finished --> [*]
     Error_NonRecoverable --> [*]
     Error_Exhausted --> [*]
     Error_CompactionBroken --> [*]
@@ -120,14 +115,13 @@ stateDiagram-v2
 
 ## `decideTurnOutcome`
 
-Maps `(TurnResult, ToolArbitrationResult, ExecutionPhaseResult)` to `TurnOutcome`. Key rules:
+Maps `(TurnResult, ExecutionPhaseResult)` to `TurnOutcome`. Key rules:
 
 1. If `execution.terminatedEarly`:
    - last result `Cancelled` → `TurnOutcome.Cancelled`
    - last result `Error` → `TurnOutcome.Error(recoverable=true)`
    - else → `TurnOutcome.Error("Tool execution aborted before completion", recoverable=true)`
-2. Else if `complete_task` was selected but its id is **not** in `executedToolIds` → `TurnOutcome.Error("complete_task was planned but did not execute", recoverable=true)`
-3. Else `policy.decideCompletion`: if `shouldComplete`, emit `Complete(summary, success)`, otherwise `Continue`.
+2. Else a validated native final response emits `Complete(content)`; tool turns emit `Continue`.
 
 ## Invariants
 
@@ -156,11 +150,9 @@ The loop itself is fully transient; what makes it onto disk is what the turn wri
   - `CancellationException` is rethrown.
   - All other exceptions go through `TurnErrorClassifier.classify(...)` → `TurnOutcome.Error(message, recoverable)`.
 - Recoverable error retry: at most 1 retry per "streak"; `Continue` resets the counter.
-- If `complete_task` was planned but did not execute, the loop emits `recoverable=true` error and may retry once.
 - Context-window-exceeded errors from the provider are handled inside `Turn.runStreaming` via one `Compactor.forceCompactNow` + retry; a second occurrence propagates as a `TurnStreamEvent.Error` and goes through `TurnErrorClassifier`.
 
 ## Open questions / smells
 
 - A stop request that arrives during pause is honored on resume. A stop request arriving **between** the post-pause re-check and `executeTurn` will not be observed until the next iteration.
-- `lastKnownPackage` is updated **after** `executeTurn` returns, so the auto-retain memory entry for a failed `Complete` may use a stale package if the turn navigated mid-flight.
 - `MAX_RECOVERABLE_RETRIES = 1` and `MAX_CONSECUTIVE_COMPACTION_FAILURES = 3` are private constants; not configurable per session.

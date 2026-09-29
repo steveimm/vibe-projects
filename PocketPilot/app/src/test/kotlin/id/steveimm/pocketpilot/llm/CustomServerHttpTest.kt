@@ -133,6 +133,28 @@ class CustomServerHttpTest {
     }
 
     @Test
+    fun `truncated filtered and unterminated streams never emit completion`() = runTest {
+        MockWebServer().use { server ->
+            server.start()
+            val client = ChatCompletionClient(server.url("/v1").toString())
+            try {
+                for (reason in listOf("length", "content_filter", null)) {
+                    val terminal = reason?.let { ",\"finish_reason\":\"$it\"" }.orEmpty()
+                    val body = """data: {"id":"r","choices":[{"index":0,"delta":{"content":"Partial answer"}$terminal}]}""" +
+                        "\n\ndata: [DONE]\n\n"
+                    server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody(body))
+                    val events = mutableListOf<LLMStreamEvent>()
+                    client.chatWithToolsStreaming("help", listOf(message()), emptyList(), "local").collect { events += it }
+                    assertThat(events.filterIsInstance<LLMStreamEvent.Completed>()).isEmpty()
+                    assertThat(events.filterIsInstance<LLMStreamEvent.Failed>()).hasSize(1)
+                }
+            } finally {
+                client.cleanup()
+            }
+        }
+    }
+
+    @Test
     fun `a slow collector receives every streaming delta from the configured server`() = runTest {
         MockWebServer().use { server ->
             server.start()

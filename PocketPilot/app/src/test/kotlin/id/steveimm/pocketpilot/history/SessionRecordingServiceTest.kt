@@ -59,7 +59,7 @@ class SessionRecordingServiceTest {
         service.startAgentMessage(id = "a1", timestamp = 120L)
         service.appendTextDelta("done")
         service.completeAgentMessage()
-        service.recordTaskOutcome(TaskOutcome.GOAL_ACHIEVED)
+        service.recordTaskOutcome(TaskOutcome.FINISHED)
         service.completeSession()
 
         advanceTimeBy(600L)

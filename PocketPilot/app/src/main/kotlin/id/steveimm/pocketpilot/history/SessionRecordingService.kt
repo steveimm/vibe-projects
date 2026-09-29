@@ -263,7 +263,7 @@ class SessionRecordingService(
     /** Mark session as completed. completedNormally derives from last task outcome. */
     fun completeSession() {
         val completedNormally = synchronized(stateLock) {
-            lastTaskOutcome == TaskOutcome.GOAL_ACHIEVED
+            lastTaskOutcome == TaskOutcome.FINISHED
         }
         val pendingSave: Job? =
                 synchronized(stateLock) {

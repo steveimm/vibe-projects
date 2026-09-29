@@ -57,7 +57,6 @@ class TurnExecutionPhaseRunnerTest {
             toolCallsToExecute = listOf(ToolCallRequest("call-1", tool.name, JSONObject()))
         )
 
-        assertThat(result.executedToolIds).containsExactly("call-1")
         assertThat(result.terminatedEarly).isFalse()
 
         val items = harness.services.historyManager.getAll()
@@ -123,7 +122,6 @@ class TurnExecutionPhaseRunnerTest {
         )
 
         assertThat(result.terminatedEarly).isTrue()
-        assertThat(result.executedToolIds).containsExactly("call-1")
         assertThat(result.lastTerminalResult).isInstanceOf(ToolCallResult.Error::class.java)
         assertThat(first.executionCount).isEqualTo(1)
         assertThat(second.executionCount).isEqualTo(0)

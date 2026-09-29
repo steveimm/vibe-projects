@@ -3,8 +3,6 @@ package id.steveimm.pocketpilot.agent
 import android.util.Log
 import id.steveimm.pocketpilot.agent.cognition.policy.LoopDetectionPolicy
 import id.steveimm.pocketpilot.agent.cognition.policy.LoopDetectionResult
-import id.steveimm.pocketpilot.agent.cognition.policy.ToolArbitrationResult
-import id.steveimm.pocketpilot.agent.cognition.policy.TurnToolPolicy
 import id.steveimm.pocketpilot.history.Compactor
 import id.steveimm.pocketpilot.model.ScreenSnapshot
 import id.steveimm.pocketpilot.protocol.AppTier
@@ -23,7 +21,6 @@ internal class AgentTurnRunner(
         private val cancellationSignal: CompletableDeferred<AgentStopReason>,
         private val stopRequested: AtomicBoolean,
         private val trace: AgentTrace,
-        private val turnPolicyEngine: TurnToolPolicy,
         private val compactor: Compactor? = null
 ) {
         companion object {
@@ -49,7 +46,6 @@ internal class AgentTurnRunner(
                         services = services,
                         eventDispatcher = eventDispatcher,
                         trace = trace,
-                        turnPolicyEngine = turnPolicyEngine,
                         compactor = compactor
                 )
         }
@@ -90,15 +86,12 @@ internal class AgentTurnRunner(
                                                         turnNumber = turnNumber,
                                                         initialSnapshot = snapshot,
                                                         toolCallsToExecute =
-                                                                planningResult
-                                                                        .arbitration
-                                                                        .selectedToolCalls
+                                                                planningResult.toolCalls
                                                 )
 
                                         decideTurnOutcome(
                                                 turnNumber = turnNumber,
-                                                result = planningResult.turnResult,
-                                                arbitration = planningResult.arbitration,
+                                                result = planningResult,
                                                 execution = executionResult
                                         )
                                 }
@@ -214,13 +207,10 @@ internal class AgentTurnRunner(
         private fun decideTurnOutcome(
                 turnNumber: Int,
                 result: TurnResult,
-                arbitration: ToolArbitrationResult,
                 execution: ExecutionPhaseResult
         ): TurnOutcome {
                 val outcome = decideTurnOutcome(
-                        policy = turnPolicyEngine,
                         turnResult = result,
-                        arbitration = arbitration,
                         execution = execution
                 )
                 if (outcome is TurnOutcome.Complete) {

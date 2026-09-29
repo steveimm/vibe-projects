@@ -88,8 +88,7 @@ Two distinct completion events:
 
 | AgentStopReason | TaskOutcome |
 |-----------------|-------------|
-| `GoalAchieved` | `GOAL_ACHIEVED` |
-| `TaskImpossible` | `TASK_IMPOSSIBLE` |
+| `Finished` | `FINISHED` (native final answer, no success claim) |
 | `UserRequested` | `USER_STOPPED` |
 | `Error` | `ERROR` |
 
@@ -105,7 +104,7 @@ turn cap. The eval-only `evalTurnBudget` overrun maps to `Error` (with message
 | `IdleTimeout` | `IDLE_TIMEOUT` | Idle timeout job fires after `IDLE_TIMEOUT_MS` (5 min) in `Idle` |
 | `ReacquireFailed` | `INTERRUPTED` | 3rd consecutive `platform.start()` failure on `Op.UserInput` from `Idle` |
 
-The split (pc-completion-semantics, 2026-04-16) removes the impossible-state overlap where `SessionCompleted` carried task-outcome values like `GOAL_ACHIEVED`.
+The split (pc-completion-semantics, 2026-04-16) removes the impossible-state overlap where `SessionCompleted` carried task-outcome values like `FINISHED`.
 
 ## 5. Hot Idle
 

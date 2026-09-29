@@ -3,7 +3,6 @@ package id.steveimm.pocketpilot.agent
 import id.steveimm.pocketpilot.test.testModelCatalog
 
 import com.google.common.truth.Truth.assertThat
-import id.steveimm.pocketpilot.agent.cognition.policy.TurnToolPolicy
 import id.steveimm.pocketpilot.history.HistoryManager
 import id.steveimm.pocketpilot.history.MessageKind
 import id.steveimm.pocketpilot.history.ResponseItem
@@ -59,37 +58,6 @@ class TurnPlanningPhaseRunnerTest {
             item is ResponseItem.Message && item.kind == MessageKind.SCREEN_OBSERVATION
         }
         assertThat(hasScreenObs).isTrue()
-    }
-
-    @Test
-    fun `arbitration warning emitted when tools are dropped by policy`() = runTest {
-        val harness = PlanningHarness.build(
-            toolCalls = listOf(
-                LLMToolCall(
-                    callId = "call-action",
-                    name = "mobile_action",
-                    arguments = """{"action_type":"click","target_id":"1"}"""
-                ),
-                LLMToolCall(
-                    callId = "call-complete",
-                    name = "complete_task",
-                    arguments = """{"status":"success","answer":"done"}"""
-                )
-            )
-        )
-
-        val output = harness.runner.runPlanningPhase(
-            turnId = "turn-1",
-            turnNumber = 1,
-            snapshot = ScreenSnapshot(timestamp = 1L, elements = emptyList()),
-            currentPackageName = null,
-            warnings = emptyList()
-        )
-
-        assertThat(output.arbitration.droppedToolCalls.map { it.name })
-            .containsExactly("complete_task")
-        val statuses = harness.events.filterIsInstance<StatusUpdate>().map { it.status }
-        assertThat(statuses.any { it.contains("Dropped 1 tool call") }).isTrue()
     }
 
     @Test
@@ -154,7 +122,7 @@ private class PlanningHarness(
     companion object {
         fun build(
             toolCalls: List<LLMToolCall> = emptyList(),
-            textContent: String? = null,
+            textContent: String? = if (toolCalls.isEmpty()) "Done" else null,
             catalogJson: String =
                 """{"gpt-5.2":{"display_name":"GPT-5.2","model_id":"gpt-5.2"}}""",
             modelName: String = "gpt-5.2"
@@ -200,7 +168,6 @@ private class PlanningHarness(
                 services = services,
                 eventDispatcher = dispatcher,
                 trace = trace,
-                turnPolicyEngine = TurnToolPolicy()
             )
             return PlanningHarness(runner, services, llmClient, events)
         }
@@ -238,6 +205,6 @@ private class CapturingLLMClient(
         emit(LLMStreamEvent.ReasoningDelta("Tapping settings icon"))
         textContent?.let { emit(LLMStreamEvent.TextDelta(it)) }
         toolCalls.forEach { emit(LLMStreamEvent.ToolCallDone(it)) }
-        emit(LLMStreamEvent.Completed)
+        emit(LLMStreamEvent.Completed())
     }
 }

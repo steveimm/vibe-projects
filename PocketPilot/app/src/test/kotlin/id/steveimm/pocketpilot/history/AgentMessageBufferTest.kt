@@ -100,7 +100,7 @@ class AgentMessageBufferTest {
 
     @Test
     fun `recordFinalAnswer with mismatched answer drops streamed text and appends final`() {
-        // complete_task path: arguments.answer can differ from any streamed prose.
+        // The final event may arrive after earlier streamed prose.
         val buffer = AgentMessageBuffer()
         buffer.start("msg", timestamp = 1L)
         buffer.appendText("Trying to open the app...")

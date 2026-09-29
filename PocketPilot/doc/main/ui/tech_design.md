@@ -145,7 +145,7 @@ Maps protocol events to UI mutations:
 | `MessageDelta` | Append to buffer, update Agent message to Streaming |
 | `ActionProposed` | Add Action content block |
 | `ActionExecuted` | Update action state + result summary |
-| `TaskCompleted` | Apply Turn.kt:205-209 rule: complete_task path → append `FinalText(answer)`; tool-less path → promote trailing non-blank `Text` in place to `FinalText`; missing answer → no final block. Mark Complete. |
+| `TaskCompleted` | Promote the native final answer to `FinalText` without duplication. Missing answer → no final block. Mark Complete. |
 | `SessionError` | Append inline `⚠ ...` Text block; mark agent state Complete |
 | `SupplementReceived` | Add user message for supplement |
 
@@ -162,7 +162,7 @@ sealed interface ChatMessage {
 sealed interface ContentBlock {
     data class Text(text: String)        // Mid-stream prose (rendered inside trace)
     data class FinalText(text: String)   // Closing answer — uxfb-3, Turn.kt:205-209 stop criteria.
-                                          // Set by reducer when complete_task.answer arrives OR
+                                          // Set by reducer when the final assistant answer arrives OR
                                           // when row seals with no tools and a non-blank text.
                                           // AgentRow renders this in the always-visible final
                                           // region below the CollapsePill.

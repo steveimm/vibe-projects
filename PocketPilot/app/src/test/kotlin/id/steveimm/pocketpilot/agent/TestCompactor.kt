@@ -40,5 +40,5 @@ internal object SkippedLLMClient : LLMClient() {
         inputItems: List<ResponseInputItem>,
         tools: List<FunctionTool>,
         model: String
-    ): Flow<LLMStreamEvent> = flow { emit(LLMStreamEvent.Completed) }
+    ): Flow<LLMStreamEvent> = flow { emit(LLMStreamEvent.Completed()) }
 }

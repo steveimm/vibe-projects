@@ -49,7 +49,6 @@ class TurnToolFilteringTest {
                     register(TestTurnTool("mobile_action"))
                     register(TestTurnTool("open_app"))
                     register(TestTurnTool("open_app"))
-                    register(TestTurnTool("complete_task"))
                     register(TestTurnTool("wait"))
                 }
 
@@ -57,7 +56,7 @@ class TurnToolFilteringTest {
                 Turn(
                         toolRegistry = registry,
                         llmClient = llm,
-                        allowedToolNames = setOf("open_app", "complete_task", "wait")
+                        allowedToolNames = setOf("open_app", "wait")
                 )
 
         val result =
@@ -69,7 +68,7 @@ class TurnToolFilteringTest {
 
         assertThat(result.toolCalls).isEmpty()
         assertThat(llm.lastToolNames)
-                .containsExactly("open_app", "complete_task", "wait")
+                .containsExactly("open_app", "wait")
     }
 
     @Test
@@ -143,100 +142,7 @@ class TurnToolFilteringTest {
 
         assertThat(result.toolCalls).hasSize(1)
         assertThat(result.toolCalls.single().id).isNotEmpty()
-        assertThat(result.toolCalls.single().id).startsWith("synthetic_mobile_action_0_")
-    }
-
-    @Test
-    fun `run recovers inline tool call from text payload`() = runTest {
-        val llm =
-                CapturingTurnLLMClient(
-                        response =
-                                ResponsesResult(
-                                        textContent =
-                                                """mobile_action{"action":"type","element_index":1,"input_text":"张韶涵"}""",
-                                        toolCalls = emptyList(),
-                                        responseId = "resp"
-                                )
-                )
-        val registry = ToolRegistry().apply { register(TestTurnTool("mobile_action")) }
-        val turn = Turn(toolRegistry = registry, llmClient = llm)
-
-        val result =
-                turn.run(
-                        model = "test-model",
-                        systemPrompt = "standalone",
-                        inputItems = minimalInputItems
-                )
-
-        assertThat(result.toolCalls).hasSize(1)
-        val toolCall = result.toolCalls.single()
-        assertThat(toolCall.name).isEqualTo("mobile_action")
-        assertThat(toolCall.arguments.getString("action")).isEqualTo("type")
-        assertThat(toolCall.arguments.getInt("element_index")).isEqualTo(1)
-        assertThat(toolCall.arguments.getString("input_text")).isEqualTo("张韶涵")
-        assertThat(result.isComplete).isFalse()
-        assertThat(result.content).isNull()
-    }
-
-    @Test
-    fun `run recovers inline tool call wrapped in prose`() = runTest {
-        val llm =
-                CapturingTurnLLMClient(
-                        response =
-                                ResponsesResult(
-                                        textContent =
-                                                """
-                                                I will perform the requested action now.
-                                                mobile_action{"action":"click","element_index":7}
-                                                Action prepared.
-                                                """.trimIndent(),
-                                        toolCalls = emptyList(),
-                                        responseId = "resp"
-                                )
-                )
-        val registry = ToolRegistry().apply { register(TestTurnTool("mobile_action")) }
-        val turn = Turn(toolRegistry = registry, llmClient = llm)
-
-        val result =
-                turn.run(
-                        model = "test-model",
-                        systemPrompt = "standalone",
-                        inputItems = minimalInputItems
-                )
-
-        assertThat(result.toolCalls).hasSize(1)
-        val toolCall = result.toolCalls.single()
-        assertThat(toolCall.name).isEqualTo("mobile_action")
-        assertThat(toolCall.arguments.getString("action")).isEqualTo("click")
-        assertThat(toolCall.arguments.getInt("element_index")).isEqualTo(7)
-        assertThat(result.isComplete).isFalse()
-        assertThat(result.content).isNull()
-    }
-
-    @Test
-    fun `run does not complete when known inline call marker is malformed`() = runTest {
-        val llm =
-                CapturingTurnLLMClient(
-                        response =
-                                ResponsesResult(
-                                        textContent = """Trying now: mobile_action{"action":"click","element_index":7""",
-                                        toolCalls = emptyList(),
-                                        responseId = "resp"
-                                )
-                )
-        val registry = ToolRegistry().apply { register(TestTurnTool("mobile_action")) }
-        val turn = Turn(toolRegistry = registry, llmClient = llm)
-
-        val result =
-                turn.run(
-                        model = "test-model",
-                        systemPrompt = "standalone",
-                        inputItems = minimalInputItems
-                )
-
-        assertThat(result.toolCalls).isEmpty()
-        assertThat(result.isComplete).isFalse()
-        assertThat(result.content).contains("mobile_action")
+        assertThat(result.toolCalls.single().id).startsWith("call_")
     }
 
     @Test
@@ -266,6 +172,34 @@ class TurnToolFilteringTest {
     }
 
     @Test
+    fun `reasoning alone and invalid terminal responses cannot finish`() = runTest {
+        val cases = listOf(
+            listOf(LLMStreamEvent.ReasoningDelta("Need to inspect"), LLMStreamEvent.Completed()),
+            listOf(LLMStreamEvent.TextDelta(" "), LLMStreamEvent.Completed()),
+            listOf(LLMStreamEvent.TextDelta("Done")),
+            listOf(LLMStreamEvent.TextDelta("Done"), LLMStreamEvent.Completed("length")),
+            listOf(LLMStreamEvent.TextDelta("Done"), LLMStreamEvent.Completed("tool_calls")),
+            listOf(LLMStreamEvent.TextDelta("Done"), LLMStreamEvent.Failed("Stream interrupted")),
+        )
+        for (events in cases) {
+            val llm = CapturingTurnLLMClient(ResponsesResult(null, emptyList(), "r"), events)
+            val output = Turn(ToolRegistry(), llm).runStreaming("test", minimalInputItems, "local").toList()
+            assertThat(output.filterIsInstance<TurnStreamEvent.Complete>()).isEmpty()
+            assertThat(output.filterIsInstance<TurnStreamEvent.Error>()).hasSize(1)
+        }
+    }
+
+    @Test
+    fun `native final text never executes tool syntax embedded in prose`() = runTest {
+        val content = "The example is open_app{\"app_name\":\"Settings\"}."
+        val llm = CapturingTurnLLMClient(ResponsesResult(content, emptyList(), "r"))
+        val result = Turn(ToolRegistry(), llm).run("test", minimalInputItems, "local")
+        assertThat(result.toolCalls).isEmpty()
+        assertThat(result.content).isEqualTo(content)
+        assertThat(result.isComplete).isTrue()
+    }
+
+    @Test
     fun `runStreaming suppresses disallowed tool events`() = runTest {
         val llm =
                 CapturingTurnLLMClient(
@@ -284,7 +218,7 @@ class TurnToolFilteringTest {
                                                         arguments = "{}"
                                                 )
                                         ),
-                                        LLMStreamEvent.Completed
+                                        LLMStreamEvent.Completed()
                                 )
                 )
         val registry =
@@ -315,7 +249,7 @@ class TurnToolFilteringTest {
 
 private class CapturingTurnLLMClient(
         private val response: ResponsesResult,
-        private val streamEvents: List<LLMStreamEvent> = listOf(LLMStreamEvent.Completed)
+        private val streamEvents: List<LLMStreamEvent> = listOf(LLMStreamEvent.Completed())
 ) : LLMClient() {
     var lastToolNames: List<String> = emptyList()
 

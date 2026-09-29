@@ -50,14 +50,14 @@ class AgentServiceEventHandlerTest {
             timestamp = 2_000L,
             taskId = "t1",
             result = "ok",
-            outcome = TaskOutcome.GOAL_ACHIEVED
+            outcome = TaskOutcome.FINISHED
         )
 
         handler.handleEvent(event, recording)
 
         verify { recording.completeAgentMessage() }
-        verify { recording.recordTaskOutcome(TaskOutcome.GOAL_ACHIEVED) }
-        verify { overlay.onTaskCompleted(TaskOutcome.GOAL_ACHIEVED, "ok") }
+        verify { recording.recordTaskOutcome(TaskOutcome.FINISHED) }
+        verify { overlay.onTaskCompleted(TaskOutcome.FINISHED, "ok") }
     }
 
     @Test

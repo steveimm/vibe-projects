@@ -14,6 +14,7 @@ import id.steveimm.pocketpilot.tool.ToolRegistry
 import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.ResponseInputItem
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import org.json.JSONObject
@@ -29,24 +30,12 @@ class Turn(
 ) {
     companion object {
         private const val TAG = "Turn"
-        private const val TEXT_RECOVERY_TAG = "TextRecovery"
-        private const val COMPLETE_TASK_TOOL = "complete_task"
     }
 
     private data class TurnRequest(
             val inputItems: List<ResponseInputItem>,
             val tools: List<FunctionTool>,
             val model: String
-    )
-
-    private data class TextRecovery(
-            val toolCall: ToolCallRequest?,
-            val hasMalformedKnownToolMarker: Boolean
-    )
-
-    private data class InlineToolMarker(
-            val toolName: String,
-            val argsStart: Int
     )
 
     suspend fun run(
@@ -70,7 +59,7 @@ class Turn(
                 TAG,
                 "LLM response: text=${response.textContent?.take(200)}, toolCalls=${response.toolCalls.size}"
         )
-        return processResponse(response.textContent, response.toolCalls, response.reasoning)
+        return processResponse(response.textContent, response.toolCalls, response.reasoning, response.finishReason)
     }
 
     fun runStreaming(
@@ -89,6 +78,8 @@ class Turn(
                 return@flow
             } catch (e: ContextWindowExceededException) {
                 e
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 // Some servers surface overflow as a Failed event whose message bubbles up as an unclassified
                 // RuntimeException. Re-classify here so we route to compaction instead of treating it as a generic terminal error.
@@ -178,6 +169,7 @@ class Turn(
         val textAccumulator = StringBuilder()
         val reasoningAccumulator = StringBuilder()
         var reasoningField = "reasoning"
+        var finishReason: String? = null
         val toolCalls = mutableListOf<LLMToolCall>()
 
         llmClient.chatWithToolsStreaming(
@@ -220,7 +212,7 @@ class Turn(
                             }
                         }
                         is LLMStreamEvent.Completed -> {
-                            Log.d(TAG, "Response completed, building final result")
+                            finishReason = event.finishReason
                         }
                         is LLMStreamEvent.Failed -> {
                             Log.e(TAG, event.error)
@@ -232,7 +224,7 @@ class Turn(
 
         val textContent = textAccumulator.toString().takeIf { it.isNotEmpty() }
         val reasoning = reasoningAccumulator.toString().takeIf { it.isNotEmpty() }?.let { ModelReasoning(it, reasoningField) }
-        val result = processResponse(textContent, toolCalls, reasoning)
+        val result = processResponse(textContent, toolCalls, reasoning, finishReason)
 
         Log.d(
                 TAG,
@@ -272,190 +264,21 @@ class Turn(
         return TurnRequest(inputItems = inputItems, tools = tools, model = model)
     }
 
-    private fun processResponse(textContent: String?, llmToolCalls: List<LLMToolCall>, reasoning: ModelReasoning? = null): TurnResult {
-        val parsedToolCalls =
-                llmToolCalls.mapIndexed { index, llmToolCall ->
-                    val converted = convertToToolCallRequest(llmToolCall)
-                    if (converted.id.isBlank()) {
-                        val syntheticId =
-                                "synthetic_${llmToolCall.name}_${index}_${UUID.randomUUID()}"
-                        converted.copy(id = syntheticId)
-                    } else {
-                        converted
-                    }
-                }
-        val textRecovery = if (parsedToolCalls.isEmpty()) recoverToolCallFromText(textContent) else null
-        val recoveredToolCall = textRecovery?.toolCall
-        val allToolCalls = recoveredToolCall?.let { listOf(it) } ?: parsedToolCalls
-        val toolCalls = allToolCalls.filter { allowedToolNames?.contains(it.name) != false }
-        val recoveredAccepted = recoveredToolCall != null && toolCalls.any { it.id == recoveredToolCall.id }
-        val effectiveTextContent = if (recoveredAccepted) null else textContent
-
-        if (toolCalls.size != allToolCalls.size) {
-            val acceptedNames = toolCalls.map { it.name }.toSet()
-            val dropped = allToolCalls.map { it.name }.toSet() - acceptedNames
-            Log.w(TAG, "Dropped disallowed tool calls: $dropped")
-        }
-
-        val completeTaskCall = toolCalls.find { it.name == COMPLETE_TASK_TOOL }
-        val hasMalformedKnownToolMarker = textRecovery?.hasMalformedKnownToolMarker == true
-        if (hasMalformedKnownToolMarker) {
-            Log.w(TAG, "Detected malformed known inline tool call marker in text response")
-        }
-        val isComplete =
-                completeTaskCall != null ||
-                        (toolCalls.isEmpty() &&
-                                effectiveTextContent != null &&
-                                !hasMalformedKnownToolMarker)
-
-        Log.d(TAG, "Process result: ${toolCalls.size} tool calls, isComplete=$isComplete")
-
-        return TurnResult(content = effectiveTextContent, toolCalls = toolCalls, isComplete = isComplete, reasoning = reasoning)
-    }
-
-    private fun recoverToolCallFromText(textContent: String?): TextRecovery? {
-        val candidate = textContent?.trim()?.takeIf { it.isNotEmpty() } ?: run {
-            Log.i(TEXT_RECOVERY_TAG, "path=none reason=empty-text")
-            return null
-        }
-        val compact = stripMarkdownCodeFence(candidate)
-
-        parseObjectWrappedToolCall(compact)?.let { recovered ->
-            Log.w(TAG, "Recovered tool call from text payload: ${recovered.name}")
-            Log.i(TEXT_RECOVERY_TAG, "path=object-wrapped tool=${recovered.name}")
-            return TextRecovery(toolCall = recovered, hasMalformedKnownToolMarker = false)
-        }
-
-        val knownToolNames = resolveRecoverableToolNames()
-        if (knownToolNames.isEmpty()) {
-            Log.i(TEXT_RECOVERY_TAG, "path=none reason=no-known-tools")
-            return null
-        }
-
-        val markers = findInlineToolMarkers(compact, knownToolNames)
-        if (markers.isEmpty()) {
-            Log.i(TEXT_RECOVERY_TAG, "path=none reason=no-markers")
-            return null
-        }
-
-        for (marker in markers.asReversed()) {
-            val argsRaw = extractBalancedJsonObject(compact, marker.argsStart) ?: continue
-            val args =
-                    try {
-                        JSONObject(argsRaw)
-                    } catch (_: Exception) {
-                        continue
-                    }
-            val syntheticId = "synthetic_${marker.toolName}_text_${UUID.randomUUID()}"
-            Log.w(TAG, "Recovered inline tool call from text payload: ${marker.toolName}")
-            Log.i(TEXT_RECOVERY_TAG, "path=inline-marker tool=${marker.toolName}")
-            return TextRecovery(
-                    toolCall =
-                            ToolCallRequest(
-                                    id = syntheticId,
-                                    name = marker.toolName,
-                                    arguments = args
-                            ),
-                    hasMalformedKnownToolMarker = false
-            )
-        }
-
-        Log.i(TEXT_RECOVERY_TAG, "path=none reason=malformed-markers markers=${markers.size}")
-        return TextRecovery(
-                toolCall = null,
-                hasMalformedKnownToolMarker = true
-        )
-    }
-
-    private fun resolveRecoverableToolNames(): Set<String> {
-        return toolRegistry.getNames().filterTo(mutableSetOf()) { name ->
-            allowedToolNames?.contains(name) != false
-        }
-    }
-
-    private fun findInlineToolMarkers(text: String, knownToolNames: Set<String>): List<InlineToolMarker> {
-        return knownToolNames.flatMap { toolName ->
-            val pattern = Regex("""(?<![A-Za-z0-9_])${Regex.escape(toolName)}\s*\{""")
-            pattern.findAll(text).map { match ->
-                InlineToolMarker(toolName = toolName, argsStart = match.range.last)
-            }.toList()
-        }.sortedBy { it.argsStart }
-    }
-
-    private fun extractBalancedJsonObject(text: String, startIndex: Int): String? {
-        if (startIndex !in text.indices || text[startIndex] != '{') return null
-        var depth = 0
-        var inString = false
-        var escaped = false
-
-        for (index in startIndex until text.length) {
-            val ch = text[index]
-            if (inString) {
-                if (escaped) {
-                    escaped = false
-                    continue
-                }
-                if (ch == '\\') {
-                    escaped = true
-                    continue
-                }
-                if (ch == '"') {
-                    inString = false
-                }
-                continue
+    private fun processResponse(
+        textContent: String?,
+        llmToolCalls: List<LLMToolCall>,
+        reasoning: ModelReasoning?,
+        finishReason: String?,
+    ): TurnResult {
+        require(finishReason in setOf("stop", "tool_calls")) { "Model response did not finish normally: $finishReason" }
+        val calls = llmToolCalls.map { call ->
+            convertToToolCallRequest(call).let { parsed ->
+                if (parsed.id.isBlank()) parsed.copy(id = "call_${UUID.randomUUID()}") else parsed
             }
-
-            when (ch) {
-                '"' -> inString = true
-                '{' -> depth += 1
-                '}' -> {
-                    depth -= 1
-                    if (depth == 0) {
-                        return text.substring(startIndex, index + 1)
-                    }
-                }
-            }
-        }
-        return null
-    }
-
-    private fun parseObjectWrappedToolCall(candidate: String): ToolCallRequest? {
-        val payload =
-                try {
-                    JSONObject(candidate)
-                } catch (_: Exception) {
-                    return null
-                }
-        val toolName =
-                payload.optString("name")
-                        .ifBlank { payload.optString("tool_name") }
-                        .ifBlank { return null }
-        val argumentsValue = payload.opt("arguments") ?: payload.opt("args")
-        val arguments =
-                when (argumentsValue) {
-                    is JSONObject -> argumentsValue
-                    is String ->
-                            try {
-                                JSONObject(argumentsValue)
-                            } catch (_: Exception) {
-                                JSONObject()
-                            }
-                    else -> JSONObject()
-                }
-        return ToolCallRequest(
-                id = "synthetic_${toolName}_text_${UUID.randomUUID()}",
-                name = toolName,
-                arguments = arguments
-        )
-    }
-
-    private fun stripMarkdownCodeFence(text: String): String {
-        val trimmed = text.trim()
-        if (!trimmed.startsWith("```")) return trimmed
-        val firstNewline = trimmed.indexOf('\n')
-        if (firstNewline < 0) return trimmed.removePrefix("```").removeSuffix("```").trim()
-        val withoutHeader = trimmed.substring(firstNewline + 1)
-        return withoutHeader.removeSuffix("```").trim()
+        }.filter { allowedToolNames?.contains(it.name) != false }
+        val finalResponse = llmToolCalls.isEmpty() && finishReason == "stop" && !textContent.isNullOrBlank()
+        require(llmToolCalls.isNotEmpty() || finalResponse) { "Model returned no tool call or final answer" }
+        return TurnResult(textContent, calls, finalResponse, reasoning)
     }
 }
 

@@ -41,7 +41,7 @@ class CapsuleLifecycleTest {
             val holder = CapsuleStateHolder(scope)
             withContext(Dispatchers.Main) {
                 holder.onTaskStarted("task-1", "start")
-                holder.onTaskCompleted(TaskOutcome.GOAL_ACHIEVED, "Task complete")
+                holder.onTaskCompleted(TaskOutcome.FINISHED, "Task complete")
             }
             assertEquals(
                 CapsuleMode.Done("Task complete"),

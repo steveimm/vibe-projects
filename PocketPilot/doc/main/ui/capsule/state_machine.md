@@ -47,8 +47,7 @@ Invalid source/callId are ignored.
 
 Guard: ignore when already `Hidden|Done|Error`. Clears `isStopPending`.
 
-- `GOAL_ACHIEVED` → `Done(message ?: "Task completed")`
-- `TASK_IMPOSSIBLE` → `Done("Task impossible")`
+- `FINISHED` → `Done(message ?: "Task completed")`
 - `USER_STOPPED` → `Done("Stopped")`
 - `ERROR` → `Error("Error occurred")`
 

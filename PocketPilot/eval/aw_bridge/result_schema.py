@@ -54,7 +54,6 @@ def summarize_results(results: list[TaskResult]) -> dict[str, Any]:
             "error_rate": 0.0,
             "duration_p50_sec": 0.0,
             "duration_p90_sec": 0.0,
-            "goal_claim_precision": None,
             "tool_failure_rate": None,
         }
 
@@ -64,8 +63,6 @@ def summarize_results(results: list[TaskResult]) -> dict[str, Any]:
     error_count = sum(1 for r in results if r.bridge_status == "error")
     durations = sorted(r.duration_sec for r in results)
 
-    claimed_goal = [r for r in results if (r.agent_completion_reason or "").strip().lower().replace("_", "") == "goalachieved"]
-    claimed_goal_successes = sum(1 for r in claimed_goal if r.scripted_success)
 
     total_tool_calls = sum(r.tool_calls for r in results)
     total_tool_failures = sum(r.tool_failures for r in results)
@@ -78,7 +75,6 @@ def summarize_results(results: list[TaskResult]) -> dict[str, Any]:
         "error_rate": error_count / total,
         "duration_p50_sec": _percentile(durations, 50),
         "duration_p90_sec": _percentile(durations, 90),
-        "goal_claim_precision": (claimed_goal_successes / len(claimed_goal) if claimed_goal else None),
         "tool_failure_rate": (total_tool_failures / total_tool_calls if total_tool_calls > 0 else None),
     }
 

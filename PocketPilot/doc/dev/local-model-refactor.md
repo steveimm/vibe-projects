@@ -49,3 +49,13 @@ Verification: the emulator's first model image no longer contained the dialog, a
 Removed todo/scratchpad state, persistent memory and automatic recall, runtime skills, browser scripting, their settings surfaces, and related tests, assets, and dependencies. App Access now manages only access rules. User handoff and optional Termux commands remain. Conversation history and native reasoning provide the model's retained context.
 
 Verification: 1,135 release tests passed, release lint passed, and UI tests compiled. The emulator completed "Open Settings" in two turns with two successful tools and no errors. The second request's trace contains the first assistant turn's native reasoning. Settings no longer shows Memory or skill controls, and changing Clock to Allow through App Access persisted the expected override. Python tooling tests passed (125 tests).
+
+## Native task completion
+
+Removed the completion tool, completion arbitration, raw-text tool recovery, and synthetic success/failure classification. A nonblank native assistant answer with `finish_reason=stop` and no tool calls ends the task. Reasoning-only, empty, truncated, filtered, and unterminated responses fail instead. Structured tool calls continue execution. Stored legacy outcome names load as `FINISHED` without inventing a success verdict.
+
+Trace summaries use stable `finished`, `error`, and `user_stopped` labels in the minified release. Evaluation reads the native final text and relies on independent scripted checks for success. Onboarding verifies that Settings actually opened before reporting demo success.
+
+Validation: 1,116 release unit tests passed, release lint passed, device UI tests compiled, and the signed ARM64 release installed on the API 35 emulator. With `qwen3.8-27b`, an explicit `open_app` Settings request completed in 3 turns with 2 successful calls and a final answer. The screen showed Android Settings. Opening the absent `ZyphraTestApp927` completed in 2 turns with 1 failed call and a final explanation of the missing app, recorded as `finished`, not success.
+
+The first natural-language Settings run still chose `mobile_action(action=open_app)` and then incorrectly concluded app opening was unavailable. This remains evidence for the next action-schema simplification, not a successful task result.

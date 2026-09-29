@@ -83,7 +83,7 @@ class NewSessionNoHandoffTest {
                 timestamp = 200L,
                 taskId = "task-1",
                 result = "Opened YouTube on VD.",
-                outcome = TaskOutcome.GOAL_ACHIEVED,
+                outcome = TaskOutcome.FINISHED,
                 handoff = handoff,
             )
         )

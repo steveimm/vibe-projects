@@ -10,7 +10,7 @@ sealed class ToolName(
         get() =
             when (this) {
                 MobileAction, OpenApp, SystemButton -> true
-                Wait, CompleteTask, AskUser, TermuxShell -> false
+                Wait, AskUser, TermuxShell -> false
                 is Unknown -> true
             }
 
@@ -33,11 +33,6 @@ sealed class ToolName(
         raw = "system_button",
         canonical = "system_button",
         displayName = "System button"
-    )
-    data object CompleteTask : ToolName(
-        raw = "complete_task",
-        canonical = "complete_task",
-        displayName = "Complete task"
     )
     data object AskUser : ToolName(
         raw = "ask_user",
@@ -62,7 +57,6 @@ sealed class ToolName(
                 OpenApp.canonical -> OpenApp
                 Wait.canonical -> Wait
                 SystemButton.canonical -> SystemButton
-                CompleteTask.canonical -> CompleteTask
                 AskUser.canonical -> AskUser
                 TermuxShell.canonical -> TermuxShell
                 else -> Unknown(raw)

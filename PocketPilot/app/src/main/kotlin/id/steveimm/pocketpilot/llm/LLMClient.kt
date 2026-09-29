@@ -55,7 +55,7 @@ sealed interface LLMStreamEvent {
     data class ToolCallDone(val toolCall: LLMToolCall) : LLMStreamEvent
 
     /** Response completed successfully */
-    data object Completed : LLMStreamEvent
+    data class Completed(val finishReason: String = "stop") : LLMStreamEvent
 
     /** Response failed */
     data class Failed(val error: String) : LLMStreamEvent
@@ -70,6 +70,7 @@ data class ResponsesResult(
     /** Response ID for multi-turn conversation tracking */
     val responseId: String,
     val reasoning: ModelReasoning? = null,
+    val finishReason: String = if (toolCalls.isEmpty()) "stop" else "tool_calls",
 )
 
 /** A tool call from the LLM. */

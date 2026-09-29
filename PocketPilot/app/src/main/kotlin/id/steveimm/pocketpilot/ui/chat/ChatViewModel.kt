@@ -26,16 +26,12 @@ import kotlinx.coroutines.launch
 internal fun completionSummary(result: String?): String =
         result?.takeIf { it.isNotBlank() } ?: "Task completed"
 
-/** Display name of `complete_task` after [formatToolName] — used to detect the Turn.kt:205-209 stop signal in the chat trace (the
- * tool's args.answer is surfaced via [TaskCompleted.result]). */
-private val COMPLETE_TASK_DISPLAY = id.steveimm.pocketpilot.ui.common.formatToolName("complete_task")
-
 internal fun shouldHandleReboundEvent(
         eventTimestamp: Long,
         replayCutoffTimestamp: Long?
 ): Boolean = replayCutoffTimestamp == null || eventTimestamp > replayCutoffTimestamp
 
-/** Use complete_task output as final text, or promote the last streamed text when no completion tool ran. */
+/** Promote the streamed final answer without duplicating it. */
 internal fun appendCompletionToMessages(
         messages: MutableList<ChatMessage>,
         rawResult: String?,
@@ -83,15 +79,6 @@ private fun applyCompletionToBlocks(
         return blocks + ContentBlock.Text("⚠️ ${completionSummary(rawResult)}")
     }
     val realAnswer = rawResult?.trim()?.takeIf { it.isNotBlank() }
-    val hasCompleteTask = blocks.any { block ->
-        block is ContentBlock.Action && block.data.toolName == COMPLETE_TASK_DISPLAY
-    }
-    if (hasCompleteTask) {
-        // complete_task path: only emit FinalText when the answer is real.
-        // Missing/empty answer ⇒ no final region (per uxfb-3 README §3).
-        return if (realAnswer != null) blocks + ContentBlock.FinalText(realAnswer) else blocks
-    }
-    // Last-text-without-tools path (Turn.kt:205-209 second branch): promote the most recent non-blank Text in place.
     val lastTextIndex = blocks.indexOfLast {
         it is ContentBlock.Text && it.text.isNotBlank()
     }

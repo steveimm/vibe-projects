@@ -116,7 +116,7 @@ class SessionCheckpointReloadAndListenersTest {
                     argumentsRawJson = """{"target":"OK","x":42}"""
                 )
             ),
-            lastTaskOutcome = TaskOutcome.GOAL_ACHIEVED.name
+            lastTaskOutcome = TaskOutcome.FINISHED.name
         )
 
         val reloaded = AgentSession.reload(
@@ -135,7 +135,7 @@ class SessionCheckpointReloadAndListenersTest {
         assertThat(restoredCall.arguments.getString("target")).isEqualTo("OK")
         assertThat(restoredCall.arguments.getInt("x")).isEqualTo(42)
 
-        verify { recordingService.setLastTaskOutcome(TaskOutcome.GOAL_ACHIEVED) }
+        verify { recordingService.setLastTaskOutcome(TaskOutcome.FINISHED) }
 
         reloaded.submit(Op.Shutdown)
         advanceUntilIdle()
@@ -323,7 +323,7 @@ class SessionCheckpointReloadAndListenersTest {
             model: String
         ): Flow<LLMStreamEvent> = flow {
             emit(LLMStreamEvent.TextDelta("ok"))
-            emit(LLMStreamEvent.Completed)
+            emit(LLMStreamEvent.Completed())
         }
     }
 }

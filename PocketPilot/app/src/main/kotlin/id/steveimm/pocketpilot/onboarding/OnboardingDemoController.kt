@@ -124,21 +124,20 @@ class OnboardingDemoController(
                 // Deliver callbacks on Main dispatcher (they mutate Compose state)
                 withContext(Dispatchers.Main) {
                     if (completed != null) {
-                        val isGoalAchieved = completed.outcome == TaskOutcome.GOAL_ACHIEVED
+                        val runFinished = completed.outcome == TaskOutcome.FINISHED
                         val isSettingsOpen = lastPackageName == SETTINGS_PACKAGE
 
-                        if (isGoalAchieved && isSettingsOpen) {
+                        if (runFinished && isSettingsOpen) {
                             Log.d(TAG, "Demo succeeded: Settings app opened")
                             onBringToFront()
                             onSuccess("Settings app opened successfully!")
-                        } else if (isGoalAchieved) {
-                            Log.w(TAG, "Demo goal achieved but package=$lastPackageName")
+                        } else if (runFinished) {
+                            Log.w(TAG, "Demo finished without verifying Settings: package=$lastPackageName")
                             onBringToFront()
-                            onSuccess("Demo task completed!")
+                            onFailure("Settings did not open. Check the model response and try again.")
                         } else {
                             val reason = when (completed.outcome) {
                                 TaskOutcome.ERROR -> "Demo encountered an error"
-                                TaskOutcome.TASK_IMPOSSIBLE -> "Demo could not complete the task"
                                 else -> "Demo ended: ${completed.outcome}"
                             }
                             Log.w(TAG, "Demo failed: ${completed.outcome}")

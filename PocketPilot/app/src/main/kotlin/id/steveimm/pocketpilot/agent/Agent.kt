@@ -1,7 +1,6 @@
 package id.steveimm.pocketpilot.agent
 
 import android.util.Log
-import id.steveimm.pocketpilot.agent.cognition.policy.TurnToolPolicy
 import id.steveimm.pocketpilot.history.CompactionOutcome
 import id.steveimm.pocketpilot.history.Compactor
 import id.steveimm.pocketpilot.trace.AgentTrace
@@ -52,7 +51,6 @@ class Agent(
                     cancellationSignal = cancellationSignal,
                     stopRequested = stopRequested,
                     trace = trace,
-                    turnPolicyEngine = TurnToolPolicy(),
                     compactor = compactor
             )
 
@@ -137,13 +135,8 @@ class Agent(
                     delay(config.uiSettleDelayMs)
                 }
                 is TurnOutcome.Complete -> {
-                    if (result.success) {
-                        eventDispatcher.status("✅ Goal achieved!")
-                        stopReason = AgentStopReason.GoalAchieved(result.message)
-                    } else {
-                        eventDispatcher.status("❌ Task failed: ${result.message}")
-                        stopReason = AgentStopReason.TaskImpossible(result.message)
-                    }
+                    eventDispatcher.status("Finished")
+                    stopReason = AgentStopReason.Finished(result.message)
                     break
                 }
                 is TurnOutcome.Error -> {
@@ -186,7 +179,7 @@ class Agent(
                         ?: when {
                             stopRequested.get() || cancellationSignal.isCompleted ->
                                     AgentStopReason.UserRequested
-                            else -> AgentStopReason.GoalAchieved()
+                            else -> AgentStopReason.Error("Agent stopped without a final response")
                         }
 
         trace.sessionStopped(finalReason, turnCount)

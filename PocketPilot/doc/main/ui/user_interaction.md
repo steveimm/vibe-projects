@@ -255,7 +255,7 @@ While agent is running (Running/Takeover mode):
 ### VD Handoff Flow
 
 ```
-Task completes with GOAL_ACHIEVED in VirtualDisplay mode:
+Task completes with FINISHED in VirtualDisplay mode:
     │
     ├──► AgentService relaunches foreground app on default display
     │

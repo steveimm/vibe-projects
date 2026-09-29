@@ -21,7 +21,7 @@ class StreamRetryRunnerTest {
         ) { _, emitter ->
             emitter.emit(LLMStreamEvent.Created("resp-1"))
             emitter.emit(LLMStreamEvent.TextDelta("hello"))
-            emitter.emit(LLMStreamEvent.Completed)
+            emitter.emit(LLMStreamEvent.Completed())
         }
 
         assertThat(result.completed).isTrue()

@@ -10,7 +10,6 @@ object ActionDescriptionFormatter {
             "wait" -> "Wait ${toolCall.arguments.optLong("duration_ms", 1000)}ms"
             "system_button" -> "Press ${toolCall.arguments.optString("button", "")} button"
             "open_app" -> formatOpenApp(toolCall.arguments)
-            "complete_task" -> formatCompleteTask(toolCall.arguments)
             else -> "Execute ${toolCall.name}"
         }
     }
@@ -83,9 +82,4 @@ object ActionDescriptionFormatter {
         }
     }
 
-    private fun formatCompleteTask(args: JSONObject): String {
-        val status = args.optString("status", "")
-        val answer = args.optString("answer", "")
-        return "Complete ($status): $answer"
-    }
 }

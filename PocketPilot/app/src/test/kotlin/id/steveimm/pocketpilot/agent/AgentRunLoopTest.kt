@@ -24,7 +24,7 @@ import id.steveimm.pocketpilot.tool.AppClassifier
 import id.steveimm.pocketpilot.tool.PolicyEngine
 import id.steveimm.pocketpilot.tool.ToolRegistry
 import id.steveimm.pocketpilot.tool.ToolRouter
-import id.steveimm.pocketpilot.tool.impl.CompleteTaskTool
+import id.steveimm.pocketpilot.tool.impl.WaitTool
 import id.steveimm.pocketpilot.trace.NoopTraceRecorder
 import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.ResponseInputItem
@@ -60,40 +60,20 @@ class AgentRunLoopTest {
     }
 
     @Test
-    fun `Complete success via text-only response stops with GoalAchieved`() = runTest {
+    fun `native final answer stops with Finished`() = runTest {
         val llm = ProgrammableLLMClient(listOf(LLMBehavior.TextOnly("done")))
         val agent = newAgent(llm)
 
         val reason = agent.run()
 
-        assertThat(reason).isInstanceOf(AgentStopReason.GoalAchieved::class.java)
-        assertThat((reason as AgentStopReason.GoalAchieved).message).isEqualTo("done")
+        assertThat(reason).isInstanceOf(AgentStopReason.Finished::class.java)
+        assertThat((reason as AgentStopReason.Finished).message).isEqualTo("done")
     }
 
     @Test
-    fun `Complete success via complete_task tool stops with GoalAchieved`() = runTest {
-        val llm = ProgrammableLLMClient(
-            listOf(LLMBehavior.CompleteTaskCall(success = true, answer = "ok"))
-        )
-        val agent = newAgent(llm, registerCompleteTask = true)
-
-        val reason = agent.run()
-
-        assertThat(reason).isInstanceOf(AgentStopReason.GoalAchieved::class.java)
-        assertThat((reason as AgentStopReason.GoalAchieved).message).isEqualTo("ok")
-    }
-
-    @Test
-    fun `Complete failure via complete_task stops with TaskImpossible`() = runTest {
-        val llm = ProgrammableLLMClient(
-            listOf(LLMBehavior.CompleteTaskCall(success = false, answer = "blocked"))
-        )
-        val agent = newAgent(llm, registerCompleteTask = true)
-
-        val reason = agent.run()
-
-        assertThat(reason).isInstanceOf(AgentStopReason.TaskImpossible::class.java)
-        assertThat((reason as AgentStopReason.TaskImpossible).message).isEqualTo("blocked")
+    fun `blocked native answer finishes without claiming success`() = runTest {
+        val reason = newAgent(ProgrammableLLMClient(listOf(LLMBehavior.TextOnly("Cannot open the missing app.")))).run()
+        assertThat(reason).isEqualTo(AgentStopReason.Finished("Cannot open the missing app."))
     }
 
     @Test
@@ -122,7 +102,7 @@ class AgentRunLoopTest {
 
         val reason = agent.run()
 
-        assertThat(reason).isInstanceOf(AgentStopReason.GoalAchieved::class.java)
+        assertThat(reason).isInstanceOf(AgentStopReason.Finished::class.java)
         assertThat(llm.callCount).isEqualTo(3)
     }
 
@@ -156,7 +136,7 @@ class AgentRunLoopTest {
 
         val reason = agent.run()
 
-        assertThat(reason).isInstanceOf(AgentStopReason.GoalAchieved::class.java)
+        assertThat(reason).isInstanceOf(AgentStopReason.Finished::class.java)
         assertThat(llm.callCount).isEqualTo(4)
     }
 
@@ -177,8 +157,8 @@ class AgentRunLoopTest {
 
         val reason = agent.run()
 
-        assertThat(reason).isInstanceOf(AgentStopReason.GoalAchieved::class.java)
-        assertThat((reason as AgentStopReason.GoalAchieved).message).isEqualTo("recovered")
+        assertThat(reason).isInstanceOf(AgentStopReason.Finished::class.java)
+        assertThat((reason as AgentStopReason.Finished).message).isEqualTo("recovered")
         assertThat(llm.callCount).isEqualTo(5)
     }
 
@@ -222,11 +202,8 @@ class AgentRunLoopTest {
         llm.awaitTurnCalled()
         llm.completeTurn(LLMBehavior.Continue)
 
-        val pauseConfirmed = agent.pause()
-        // Turn 2 enters the LLM gate; loop returns to top and observes pause.
         llm.awaitTurnCalled()
-        // Release turn 2's behavior so the runner finishes; the next iteration
-        // is where the pause check fires.
+        val pauseConfirmed = agent.pause()
         llm.completeTurn(LLMBehavior.Continue)
         pauseConfirmed.await()
 
@@ -308,7 +285,7 @@ class AgentRunLoopTest {
                 inputItems: List<ResponseInputItem>,
                 tools: List<FunctionTool>,
                 model: String
-            ): Flow<LLMStreamEvent> = flow { emit(LLMStreamEvent.Completed) }
+            ): Flow<LLMStreamEvent> = flow { emit(LLMStreamEvent.Completed()) }
         }
         val compactor = id.steveimm.pocketpilot.history.Compactor(
             llmClient = failingCompactorLlm,
@@ -351,7 +328,6 @@ class AgentRunLoopTest {
 
     private fun newAgent(
         llm: LLMClient,
-        registerCompleteTask: Boolean = false,
         cancellationSignal: CompletableDeferred<AgentStopReason> = CompletableDeferred(),
         platform: AndroidPlatform = FakeAndroidPlatform(),
         evalTurnBudget: Int? = null,
@@ -359,7 +335,7 @@ class AgentRunLoopTest {
         historyManager: HistoryManager = HistoryManager(),
     ): Agent {
         val toolRegistry = ToolRegistry().apply {
-            if (registerCompleteTask) register(CompleteTaskTool())
+            register(WaitTool())
         }
         val policyEngine = PolicyEngine(appClassifier = AppClassifier(emptyMap()))
         val sessionConfig = SessionConfig(
@@ -401,14 +377,12 @@ class AgentRunLoopTest {
 
 /** Per-call scripted behaviors for [ProgrammableLLMClient]. */
 private sealed class LLMBehavior {
-    /** Empty stream — yields TurnResult(isComplete=false) -> TurnOutcome.Continue. */
+    /** Wait tool call keeps the loop running. */
     data object Continue : LLMBehavior()
 
-    /** Text-only stream — yields TurnResult(isComplete=true) -> Complete(success=true). */
+    /** Native final answer ends the loop. */
     data class TextOnly(val text: String) : LLMBehavior()
 
-    /** Streams a complete_task tool call so it can be executed by the registry. */
-    data class CompleteTaskCall(val success: Boolean, val answer: String) : LLMBehavior()
 
     /** Throws on streaming — classified by [TurnErrorClassifier]. */
     data class Throw(val error: Throwable) : LLMBehavior()
@@ -445,26 +419,10 @@ private class ProgrammableLLMClient(
             ?: error("ProgrammableLLMClient ran out of scripted behaviors at call $index")
         emit(LLMStreamEvent.Created("resp-$index"))
         when (behavior) {
-            LLMBehavior.Continue -> {
-                emit(LLMStreamEvent.Completed)
-            }
+            LLMBehavior.Continue -> emitWait()
             is LLMBehavior.TextOnly -> {
                 emit(LLMStreamEvent.TextDelta(behavior.text))
-                emit(LLMStreamEvent.Completed)
-            }
-            is LLMBehavior.CompleteTaskCall -> {
-                val status = if (behavior.success) "success" else "failure"
-                val args = """{"status":"$status","answer":"${behavior.answer}"}"""
-                emit(
-                    LLMStreamEvent.ToolCallDone(
-                        LLMToolCall(
-                            callId = "ct-$index",
-                            name = "complete_task",
-                            arguments = args
-                        )
-                    )
-                )
-                emit(LLMStreamEvent.Completed)
+                emit(LLMStreamEvent.Completed())
             }
             is LLMBehavior.Throw -> throw behavior.error
         }
@@ -503,23 +461,10 @@ private class GatedLLMClient : LLMClient() {
         val behavior = turnRelease.receive()
         emit(LLMStreamEvent.Created("gated"))
         when (behavior) {
-            LLMBehavior.Continue -> emit(LLMStreamEvent.Completed)
+            LLMBehavior.Continue -> emitWait()
             is LLMBehavior.TextOnly -> {
                 emit(LLMStreamEvent.TextDelta(behavior.text))
-                emit(LLMStreamEvent.Completed)
-            }
-            is LLMBehavior.CompleteTaskCall -> {
-                val status = if (behavior.success) "success" else "failure"
-                emit(
-                    LLMStreamEvent.ToolCallDone(
-                        LLMToolCall(
-                            callId = "ct",
-                            name = "complete_task",
-                            arguments = """{"status":"$status","answer":"${behavior.answer}"}"""
-                        )
-                    )
-                )
-                emit(LLMStreamEvent.Completed)
+                emit(LLMStreamEvent.Completed())
             }
             is LLMBehavior.Throw -> throw behavior.error
         }
@@ -548,4 +493,9 @@ private class CancellingCapturePlatform(
         DisplayInfo(widthPixels = 1080, heightPixels = 1920, density = 2f)
     override suspend fun getInstalledApps(): List<AppInfo> = emptyList()
     override suspend fun launchApp(packageName: String): ActionResult = ActionResult.Success()
+}
+
+private suspend fun kotlinx.coroutines.flow.FlowCollector<LLMStreamEvent>.emitWait() {
+    emit(LLMStreamEvent.ToolCallDone(LLMToolCall("wait", "wait", """{"duration_ms":1}""")))
+    emit(LLMStreamEvent.Completed("tool_calls"))
 }

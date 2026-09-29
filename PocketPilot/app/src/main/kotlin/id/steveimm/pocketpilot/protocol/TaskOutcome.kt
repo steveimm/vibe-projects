@@ -1,16 +1,15 @@
 package id.steveimm.pocketpilot.protocol
 
-/** How a task within a session ended. */
+/** How execution ended; FINISHED does not assert that the user's goal was verified. */
 enum class TaskOutcome {
-    /** Goal was achieved successfully. */
-    GOAL_ACHIEVED,
-
-    /** Agent decided the task cannot be completed. */
-    TASK_IMPOSSIBLE,
-
-    /** An error occurred during the task. */
+    FINISHED,
     ERROR,
+    USER_STOPPED;
 
-    /** User requested the task be stopped. */
-    USER_STOPPED,
+    companion object {
+        fun fromStoredName(name: String?): TaskOutcome? = when (name) {
+            "GOAL_ACHIEVED", "TASK_IMPOSSIBLE" -> FINISHED
+            else -> entries.firstOrNull { it.name == name }
+        }
+    }
 }

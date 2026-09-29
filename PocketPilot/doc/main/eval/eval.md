@@ -202,7 +202,7 @@ AVDs sequentially before parallel runs.
 |-------|------|-------------|
 | `task_name` | str | AndroidWorld task class name |
 | `bridge_status` | str | `completed` / `error` / `timeout` / `infra_failure` |
-| `agent_completion_reason` | str | Agent's stop reason (e.g., `GOAL_ACHIEVED`) |
+| `agent_completion_reason` | str | Agent's stop reason (e.g., `FINISHED`) |
 | `scripted_score` | float | AndroidWorld score (0.0-1.0) |
 | `scripted_success` | bool | Score > 0.5 |
 | `turns_executed` | int | LLM turns used |
@@ -217,7 +217,6 @@ AVDs sequentially before parallel runs.
 - `scripted_success_rate` -- fraction of tasks with `scripted_success=true`
 - `timeout_rate`, `infra_failure_rate`, `error_rate` -- failure breakdowns
 - `duration_p50_sec`, `duration_p90_sec` -- latency percentiles
-- `goal_claim_precision` -- fraction of `GOAL_ACHIEVED` claims that scored > 0.5
 - `tool_failure_rate` -- `tool_failures / tool_calls`
 
 ### Output Layout
