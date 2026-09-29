@@ -52,7 +52,7 @@ internal object ChatCompletionInterop {
                         i += toolCalls.size
                         result.add(
                                 ChatCompletionMessageParam.ofAssistant(
-                                        ChatCompletionAssistantMessageParam.builder()
+                                        assistantMessageBuilder(msg)
                                                 .content(textContent)
                                                 .toolCalls(toolCalls)
                                                 .build()
@@ -155,13 +155,20 @@ internal object ChatCompletionInterop {
                 )
             }
 
+    private fun assistantMessageBuilder(message: EasyInputMessage): ChatCompletionAssistantMessageParam.Builder =
+        ChatCompletionAssistantMessageParam.builder().apply {
+            readModelReasoning(message._additionalProperties())?.let {
+                putAdditionalProperty(it.field, com.openai.core.JsonValue.from(it.content))
+            }
+        }
+
     private fun convertEasyMessage(msg: EasyInputMessage): ChatCompletionMessageParam {
         val content = msg.content()
         return when (msg.role()) {
             EasyInputMessage.Role.USER -> convertUserMessage(content)
             EasyInputMessage.Role.ASSISTANT ->
                     ChatCompletionMessageParam.ofAssistant(
-                            ChatCompletionAssistantMessageParam.builder()
+                            assistantMessageBuilder(msg)
                                     .content(extractStringContent(content))
                                     .build()
                     )

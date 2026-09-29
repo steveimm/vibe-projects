@@ -97,7 +97,8 @@ class ChatCompletionClient(
             val result = ResponsesResult(
                 textContent = textContent,
                 toolCalls = toolCalls,
-                responseId = response.id()
+                responseId = response.id(),
+                reasoning = readModelReasoning(message._additionalProperties()),
             )
             Log.d(TAG, "Chat API result: ${result.textContent?.take(200)}, ${result.toolCalls.size} tool calls")
             LlmLogger.logOutput(TAG, result)
@@ -158,10 +159,9 @@ class ChatCompletionClient(
                                     }
                                 }
 
-                                val extra = delta._additionalProperties()
-                                val reasoning = extra["reasoning"]?.asString()?.orElse(null)
-                                    ?: extra["reasoning_content"]?.asString()?.orElse(null)
-                                if (!reasoning.isNullOrEmpty()) emitter.emit(LLMStreamEvent.ReasoningDelta(reasoning))
+                                readModelReasoning(delta._additionalProperties())?.let {
+                                    emitter.emit(LLMStreamEvent.ReasoningDelta(it.content, it.field))
+                                }
 
                                 // Tool call deltas (streamed incrementally)
                                 delta.toolCalls().ifPresent { calls ->

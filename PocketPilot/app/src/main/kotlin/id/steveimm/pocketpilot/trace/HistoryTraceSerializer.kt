@@ -20,6 +20,7 @@ internal object HistoryTraceSerializer {
                     put("role", JsonPrimitive(item.role))
                     put("content", JsonPrimitive(item.content))
                     item.name?.let { put("name", JsonPrimitive(it)) }
+                    item.reasoning?.let { put(it.field, JsonPrimitive(it.content)) }
                 }
 
             is ResponseItem.FunctionCall ->

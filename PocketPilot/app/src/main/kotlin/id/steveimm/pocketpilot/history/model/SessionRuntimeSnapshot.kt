@@ -1,5 +1,6 @@
 package id.steveimm.pocketpilot.history.model
 
+import id.steveimm.pocketpilot.llm.ModelReasoning
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -27,6 +28,7 @@ sealed interface PersistedHistoryItem {
         val kind: String? = null,
         val content: String,
         val name: String? = null,
+        val reasoning: ModelReasoning? = null,
         // Legacy fields for backward compatibility with pre-MessageKind checkpoints. New writes always set `kind` and omit these.
         // HistoryItemConverter.fromRecord uses role+isScreenObservation to infer kind when kind is absent.
         val role: String? = null,

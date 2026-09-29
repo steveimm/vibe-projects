@@ -23,3 +23,11 @@ Test setup note: avoid `uiautomator dump` during an active agent run. In this em
 Removed the delegation tool, child runtime, role registry, child-only service copying, lifecycle events, prompt instructions, and replay hierarchy. The runtime now resolves one definition against enabled capabilities. Eval configuration no longer sends the unused agent mode field.
 
 Verification: 1,757 release tests and 127 Python tooling tests passed. UI tests compiled, and replay JavaScript syntax checks passed. The signed ARM64 build completed "Open Settings" through the emulator in three turns with three successful tools and no errors. The captured prompt contains no delegation instructions.
+
+## Reasoning on subsequent requests
+
+The deployed server's tokenize endpoint confirms that assistant `reasoning` is retained in its rendered prompt, including before a new screen observation. The same server ignores `reasoning_content` on input. The app therefore preserves the reasoning field used by the server rather than changing it to another alias.
+
+Native reasoning now survives the turn result, conversation history, runtime checkpoint, prompt assembly, and Chat Completions serialization. The HTTP integration test verifies both supported field names alongside their assistant tool call and matching tool response after checkpoint serialization. Token estimation includes the reasoning text.
+
+Verification: 1,725 release tests passed. The combined shell-removal/reasoning-history build completed "Open Settings" in two turns with two successful tools and no errors. The emulator checkpoint retained 645 and 399 characters of native reasoning from its two assistant turns.

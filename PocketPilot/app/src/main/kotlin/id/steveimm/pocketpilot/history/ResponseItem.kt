@@ -1,5 +1,6 @@
 package id.steveimm.pocketpilot.history
 
+import id.steveimm.pocketpilot.llm.ModelReasoning
 import org.json.JSONObject
 
 /** Classification of [ResponseItem.Message] content. */
@@ -24,12 +25,13 @@ sealed class ResponseItem {
     data class Message(
         val kind: MessageKind,
         val content: String,
-        val name: String? = null
+        val name: String? = null,
+        val reasoning: ModelReasoning? = null,
     ) : ResponseItem() {
         /** API role derived from [kind]. */
         val role: String get() = kind.apiRole
 
-        override fun estimateTokens(): Long = (content.length * TOKENS_PER_CHAR).toLong() + 4
+        override fun estimateTokens(): Long = ((content.length + (reasoning?.content?.length ?: 0)) * TOKENS_PER_CHAR).toLong() + 4
     }
 
     data class FunctionCall(

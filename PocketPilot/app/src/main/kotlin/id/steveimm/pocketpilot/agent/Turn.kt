@@ -1,5 +1,6 @@
 package id.steveimm.pocketpilot.agent
 
+import id.steveimm.pocketpilot.llm.ModelReasoning
 import android.util.Log
 import id.steveimm.pocketpilot.history.CompactionOutcome
 import id.steveimm.pocketpilot.history.Compactor
@@ -69,7 +70,7 @@ class Turn(
                 TAG,
                 "LLM response: text=${response.textContent?.take(200)}, toolCalls=${response.toolCalls.size}"
         )
-        return processResponse(response.textContent, response.toolCalls)
+        return processResponse(response.textContent, response.toolCalls, response.reasoning)
     }
 
     fun runStreaming(
@@ -175,6 +176,8 @@ class Turn(
         Log.d(TAG, "Streaming turn with ${request.inputItems.size} input items")
 
         val textAccumulator = StringBuilder()
+        val reasoningAccumulator = StringBuilder()
+        var reasoningField = "reasoning"
         val toolCalls = mutableListOf<LLMToolCall>()
 
         llmClient.chatWithToolsStreaming(
@@ -188,7 +191,11 @@ class Turn(
                         is LLMStreamEvent.Created -> {
                             Log.d(TAG, "Response created with ID: ${event.responseId}")
                         }
-                        is LLMStreamEvent.ReasoningDelta -> emit(TurnStreamEvent.ReasoningDelta(event.delta))
+                        is LLMStreamEvent.ReasoningDelta -> {
+                            reasoningAccumulator.append(event.delta)
+                            reasoningField = event.field
+                            emit(TurnStreamEvent.ReasoningDelta(event.delta))
+                        }
                         is LLMStreamEvent.TextDelta -> {
                             textAccumulator.append(event.delta)
                             emit(TurnStreamEvent.TextDelta(event.delta))
@@ -224,7 +231,8 @@ class Turn(
                 }
 
         val textContent = textAccumulator.toString().takeIf { it.isNotEmpty() }
-        val result = processResponse(textContent, toolCalls)
+        val reasoning = reasoningAccumulator.toString().takeIf { it.isNotEmpty() }?.let { ModelReasoning(it, reasoningField) }
+        val result = processResponse(textContent, toolCalls, reasoning)
 
         Log.d(
                 TAG,
@@ -264,7 +272,7 @@ class Turn(
         return TurnRequest(inputItems = inputItems, tools = tools, model = model)
     }
 
-    private fun processResponse(textContent: String?, llmToolCalls: List<LLMToolCall>): TurnResult {
+    private fun processResponse(textContent: String?, llmToolCalls: List<LLMToolCall>, reasoning: ModelReasoning? = null): TurnResult {
         val parsedToolCalls =
                 llmToolCalls.mapIndexed { index, llmToolCall ->
                     val converted = convertToToolCallRequest(llmToolCall)
@@ -302,7 +310,7 @@ class Turn(
 
         Log.d(TAG, "Process result: ${toolCalls.size} tool calls, isComplete=$isComplete")
 
-        return TurnResult(content = effectiveTextContent, toolCalls = toolCalls, isComplete = isComplete)
+        return TurnResult(content = effectiveTextContent, toolCalls = toolCalls, isComplete = isComplete, reasoning = reasoning)
     }
 
     private fun recoverToolCallFromText(textContent: String?): TextRecovery? {
@@ -462,7 +470,8 @@ sealed interface TurnStreamEvent {
 data class TurnResult(
         val content: String?,
         val toolCalls: List<ToolCallRequest>,
-        val isComplete: Boolean
+        val isComplete: Boolean,
+        val reasoning: ModelReasoning? = null,
 )
 
 data class ToolCallRequest(val id: String, val name: String, val arguments: JSONObject)

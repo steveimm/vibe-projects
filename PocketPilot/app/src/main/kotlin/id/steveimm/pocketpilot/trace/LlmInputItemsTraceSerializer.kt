@@ -1,6 +1,7 @@
 package id.steveimm.pocketpilot.trace
 
 import id.steveimm.pocketpilot.llm.ChatCompletionInterop
+import id.steveimm.pocketpilot.llm.readModelReasoning
 import com.openai.models.responses.ResponseInputItem
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -28,6 +29,7 @@ internal object LlmInputItemsTraceSerializer {
                     put("type", "message")
                     put("role", msg.role().toString().lowercase())
                     put("content", content)
+                    readModelReasoning(msg._additionalProperties())?.let { put(it.field, it.content) }
                 }
             }
             item.isFunctionCall() -> {

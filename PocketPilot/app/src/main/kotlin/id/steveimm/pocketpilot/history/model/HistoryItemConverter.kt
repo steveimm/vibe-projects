@@ -10,7 +10,8 @@ object HistoryItemConverter {
         is ResponseItem.Message -> PersistedHistoryItem.Message(
             kind = item.kind.name,
             content = item.content,
-            name = item.name
+            name = item.name,
+            reasoning = item.reasoning,
         )
         is ResponseItem.FunctionCall -> PersistedHistoryItem.FunctionCall(
             id = item.id,
@@ -29,7 +30,8 @@ object HistoryItemConverter {
         is PersistedHistoryItem.Message -> ResponseItem.Message(
             kind = resolveMessageKind(record),
             content = record.content,
-            name = record.name
+            name = record.name,
+            reasoning = record.reasoning,
         )
         is PersistedHistoryItem.FunctionCall -> ResponseItem.FunctionCall(
             id = record.id,

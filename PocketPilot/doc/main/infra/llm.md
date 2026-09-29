@@ -33,3 +33,5 @@ Streaming producers run on IO and wait for channel capacity. Each collection own
 ## Inspecting model reasoning
 
 The streaming client reads native `reasoning` and `reasoning_content` deltas independently of assistant `content` and `tool_calls`. Reasoning is streamed into the chat, saved with the conversation, and recorded in `llm_reasoning` trace artifacts. It is not used as a completion signal, a tool parameter, or a generated step title. Reasoning that the server does not expose cannot be displayed.
+
+Retained reasoning is also sent back on its original assistant message, under the same field name the server used. This includes turns containing only reasoning and tool calls. Runtime checkpoints preserve it, and context budgeting includes its length. It remains separate from visible answer text and tool arguments.

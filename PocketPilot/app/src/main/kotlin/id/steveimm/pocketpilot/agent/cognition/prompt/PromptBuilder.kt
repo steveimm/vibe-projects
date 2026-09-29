@@ -5,6 +5,7 @@ import id.steveimm.pocketpilot.history.MessageKind
 import id.steveimm.pocketpilot.history.ResponseItem
 import id.steveimm.pocketpilot.model.ScreenImage
 import id.steveimm.pocketpilot.session.AgentSessionState
+import com.openai.core.JsonValue
 import com.openai.models.responses.EasyInputMessage
 import com.openai.models.responses.ResponseFunctionToolCall
 import com.openai.models.responses.ResponseInputContent
@@ -134,7 +135,9 @@ internal class PromptBuilder(
                     content
                 }
                 ResponseInputItem.ofEasyInputMessage(
-                    EasyInputMessage.builder().role(role).content(body).build()
+                    EasyInputMessage.builder().role(role).content(body).apply {
+                        reasoning?.let { putAdditionalProperty(it.field, JsonValue.from(it.content)) }
+                    }.build()
                 )
             }
         }

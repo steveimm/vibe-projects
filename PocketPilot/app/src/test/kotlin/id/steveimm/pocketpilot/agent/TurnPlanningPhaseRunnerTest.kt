@@ -118,6 +118,10 @@ class TurnPlanningPhaseRunnerTest {
         val thoughts = harness.events.filterIsInstance<ReasoningDelta>()
         assertThat(thoughts).hasSize(1)
         assertThat(thoughts[0].delta).isEqualTo("Tapping settings icon")
+        val assistant = harness.services.historyManager.getAll().filterIsInstance<ResponseItem.Message>()
+            .last { it.kind == MessageKind.ASSISTANT_TEXT }
+        assertThat(assistant.reasoning?.content).isEqualTo("Tapping settings icon")
+        assertThat(assistant.content).isEmpty()
     }
 
     @Test

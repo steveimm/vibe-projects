@@ -49,7 +49,7 @@ sealed interface LLMStreamEvent {
     /** Incremental text delta */
     data class TextDelta(val delta: String) : LLMStreamEvent
 
-    data class ReasoningDelta(val delta: String) : LLMStreamEvent
+    data class ReasoningDelta(val delta: String, val field: String = "reasoning") : LLMStreamEvent
 
     /** A complete tool call has been received */
     data class ToolCallDone(val toolCall: LLMToolCall) : LLMStreamEvent
@@ -68,7 +68,8 @@ data class ResponsesResult(
     /** Tool calls requested by the model */
     val toolCalls: List<LLMToolCall>,
     /** Response ID for multi-turn conversation tracking */
-    val responseId: String
+    val responseId: String,
+    val reasoning: ModelReasoning? = null,
 )
 
 /** A tool call from the LLM. */

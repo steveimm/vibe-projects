@@ -191,10 +191,12 @@ internal class TurnPlanningPhaseRunner(
                 Log.d(TAG, "Turn $turnNumber: Tool calls: ${result.toolCalls.map { it.name }}")
 
                 trace.llmResponse(turnId, turnNumber, result)
-                result.content?.let { content ->
-                        services.historyManager.addItem(
-                                ResponseItem.Message(kind = MessageKind.ASSISTANT_TEXT, content = content)
-                        )
+                if (result.content != null || result.reasoning != null) {
+                    services.historyManager.addItem(ResponseItem.Message(
+                        kind = MessageKind.ASSISTANT_TEXT,
+                        content = result.content.orEmpty(),
+                        reasoning = result.reasoning,
+                    ))
                 }
 
                 val arbitration = turnPolicyEngine.arbitrateToolCalls(result.toolCalls)
