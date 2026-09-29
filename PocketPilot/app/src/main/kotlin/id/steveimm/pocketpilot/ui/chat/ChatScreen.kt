@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -352,7 +350,7 @@ private fun MessageList(
                         when (block) {
                             is ContentBlock.Text -> signal += block.text.length
                             is ContentBlock.FinalText -> signal += block.text.length
-                            is ContentBlock.Thought -> signal += block.text.length
+                            is ContentBlock.Reasoning -> signal += block.text.length
                             is ContentBlock.Action -> signal += block.data.state.ordinal +
                                 (block.data.resultSummary?.length ?: 0)
                         }

@@ -31,7 +31,7 @@ class ChatAgentRowDisclosureTest {
     @get:Rule val compose = createComposeRule()
 
     private val traceBlocks = listOf(
-        ContentBlock.Thought("opening Settings"),
+        ContentBlock.Reasoning("opening Settings"),
         ContentBlock.Action(
             ActionCardData(
                 id = "a1",

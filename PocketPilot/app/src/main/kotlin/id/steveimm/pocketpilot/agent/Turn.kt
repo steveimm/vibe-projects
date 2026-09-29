@@ -188,6 +188,7 @@ class Turn(
                         is LLMStreamEvent.Created -> {
                             Log.d(TAG, "Response created with ID: ${event.responseId}")
                         }
+                        is LLMStreamEvent.ReasoningDelta -> emit(TurnStreamEvent.ReasoningDelta(event.delta))
                         is LLMStreamEvent.TextDelta -> {
                             textAccumulator.append(event.delta)
                             emit(TurnStreamEvent.TextDelta(event.delta))
@@ -451,6 +452,7 @@ class Turn(
 }
 
 sealed interface TurnStreamEvent {
+    data class ReasoningDelta(val delta: String) : TurnStreamEvent
     data class TextDelta(val text: String) : TurnStreamEvent
     data class ToolCallReceived(val toolCall: ToolCallRequest) : TurnStreamEvent
     data class Complete(val result: TurnResult) : TurnStreamEvent

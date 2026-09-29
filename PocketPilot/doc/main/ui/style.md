@@ -95,19 +95,7 @@ Three families:
 - **Fraunces** (serif) — identity surfaces only. Reached via `PocketPilotTokens.serifItalic` or local TextStyle. Never auto-applied through a Material slot.
 - **JetBrains Mono** — machine text. Reached via `PocketPilotTokens.monoBody` / `monoSmall`.
 
-Track A row voice (UXFB-4 ThoughtGroup hierarchy):
-
-| Item | Style |
-|---|---|
-| Thought header | `MaterialTheme.typography.bodyLarge` (Geist regular, `onSurface`) — group marker; `drawBehind` left rule replaces the prior `✱` glyph |
-| Action | `MaterialTheme.pocketPilot.monoSmall`, `onSurfaceVariant`, indented `spacing.lg` inside the group; Lucide icons for status (`Check`, `X`, `LoaderCircle`, `Ban`) and arrow (`ArrowRight`) |
-| Final | `MaterialTheme.typography.bodyLarge` (Geist regular, `onSurface`) |
-
-Each `ContentBlock.Thought` opens a ThoughtGroup; subsequent Actions belong to
-it until the next Thought. Groups render as `Column` with a 3dp `drawBehind` left rule
-(`tertiary`) plus start padding — see `ui/chat/components/AgentTrace.kt`. Italic + `onSurfaceVariant` thought styling
-was retired in UXFB-4 (inverted hierarchy made actions read as more prominent
-than the reasoning that produced them).
+Agent traces render actions, assistant text, and collapsible native model reasoning in chronological order. Reasoning is selectable `bodyMedium` text behind a "Show model reasoning" control. Actions use `monoSmall` with status icons. There are no generated step headings or thought groups.
 
 Font binaries ship in `app/src/main/res/font/` (`geist_{regular,medium}.ttf`,
 `fraunces_{regular,italic}.ttf`, `jetbrains_mono_{regular,medium}.ttf`) with
@@ -276,12 +264,12 @@ thought `Text` inside the same `Row`, never nested inside the thought's
 
 **Latch contract (N1 correctness gate, 2026-04-22 codex review):**
 `CapsuleStateHolder` recreates `CapsuleMode.Running(...)` on every
-`onThoughtUpdate`, so the ticker MUST NOT key off the full `mode` value.
+`setTurnPhase`, so the ticker MUST NOT key off the full `mode` value.
 `SmartCapsuleSurface` latches a `runningStartedAtMs: Long?` when the surface
 transitions *into* `Running` from a non-`Running` mode and clears it on
 transition out. Elapsed = `System.currentTimeMillis() - runningStartedAtMs`,
 ticking at 1Hz. Verified: counter advances `[t+40s] → [t+55s]` across
-multiple thought updates within a single Running session.
+multiple phase updates within a single Running session.
 
 The ledger is a status, not motion — `reducedMotion()` has no effect on it.
 The thought's marquee independently honors reduced motion via the existing

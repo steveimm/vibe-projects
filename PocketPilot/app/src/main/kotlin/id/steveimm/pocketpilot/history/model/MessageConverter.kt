@@ -26,7 +26,7 @@ object MessageConverter {
                     when (block) {
                         is ContentBlock.Text -> ContentBlockRecord.Text(block.text)
                         is ContentBlock.FinalText -> ContentBlockRecord.FinalText(block.text)
-                        is ContentBlock.Thought -> ContentBlockRecord.Thought(block.text)
+                        is ContentBlock.Reasoning -> ContentBlockRecord.Reasoning(block.text)
                         is ContentBlock.Action -> ContentBlockRecord.Action(
                             id = block.data.id,
                             toolName = block.data.toolName,
@@ -56,7 +56,8 @@ object MessageConverter {
                     when (block) {
                         is ContentBlockRecord.Text -> ContentBlock.Text(block.text)
                         is ContentBlockRecord.FinalText -> ContentBlock.FinalText(block.text)
-                        is ContentBlockRecord.Thought -> ContentBlock.Thought(block.text)
+                        is ContentBlockRecord.Reasoning -> ContentBlock.Reasoning(block.text)
+                        is ContentBlockRecord.LegacyStepCaption -> ContentBlock.Text(block.text)
                         is ContentBlockRecord.Action -> ContentBlock.Action(
                             ActionCardData(
                                 id = block.id,

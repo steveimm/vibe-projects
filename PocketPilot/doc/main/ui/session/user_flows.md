@@ -38,7 +38,7 @@ User types goal in capsule input → taps Send
   │   ├─ Capsule → Running mode (blue dot)
   │
   ├─ Agent executes turns
-  │   ├─ ThoughtUpdate → capsule shows current thought
+  │   ├─ TurnPhaseChanged → capsule shows execution phase
   │   ├─ MessageDelta → agent bubble streams text
   │   ├─ ActionProposed / ActionExecuted → action cards in chat
   │

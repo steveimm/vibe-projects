@@ -94,15 +94,8 @@ class AgentEventDispatcher(
         ))
     }
 
-    /** Emit a thought update for the Smart Capsule. Extracted from agent_thought in tool call parameters. */
-    suspend fun thoughtUpdate(full: String, compact: String) {
-        Log.d(TAG, "ThoughtUpdate: $compact")
-        eventEmitter(ThoughtUpdate(
-            sessionId = sessionId,
-            timestamp = now(),
-            full = full,
-            compact = compact
-        ))
+    suspend fun reasoningDelta(turnId: String, delta: String) {
+        eventEmitter(ReasoningDelta(sessionId, now(), turnId, delta))
     }
 
     /** Emit an AskUser event — agent is requesting user help. */

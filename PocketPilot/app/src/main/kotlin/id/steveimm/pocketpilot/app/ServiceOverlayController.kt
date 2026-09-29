@@ -322,11 +322,6 @@ class ServiceOverlayController(
         applyVisibility()
     }
 
-    fun onThoughtUpdate(thought: String) {
-        stateHolder.onThoughtUpdate(thought)
-        // Capsule and island auto-render via observer
-    }
-
     fun onSessionTakeover() {
         stateHolder.onTakeoverConfirmed()
         refreshGlowState()

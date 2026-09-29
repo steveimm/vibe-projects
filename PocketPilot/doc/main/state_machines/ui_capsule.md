@@ -59,7 +59,7 @@ stateDiagram-v2
     Hidden --> Running: onTaskStarted
     Hidden --> Error: onError
 
-    Running --> Running: onThoughtUpdate
+    Running --> Running: setTurnPhase
     Running --> TakeoverPending: onTakeoverRequested
     Running --> Takeover: onTakeoverConfirmed (skip pending)
     Running --> WaitingForInput: onAskUser(QUESTION)
@@ -112,7 +112,7 @@ allowed source state, the event is silently logged and ignored. This is enforced
 | `onAskUser` | Any | Universal; replaces mode |
 | `onApprovalRequired` | Any | Universal; replaces mode |
 | `onSessionEnded` | Any | Always returns to `Hidden` |
-| `onThoughtUpdate` | `Running` only | Silently dropped otherwise |
+| `setTurnPhase` | `Running` only | Silently dropped otherwise |
 | `onTakeoverRequested` | `Running` only | |
 | `onTakeoverConfirmed` | `Running`, `TakeoverPending` | Pending is the normal path |
 | `onResumed` | `Takeover`, `TakeoverPending` | Resets `turnPhase` and `isAgentMidTurn` |

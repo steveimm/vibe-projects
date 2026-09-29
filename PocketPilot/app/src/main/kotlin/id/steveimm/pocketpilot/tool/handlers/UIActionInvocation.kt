@@ -24,14 +24,7 @@ class UIActionInvocation(
         private const val UI_SETTLE_DELAY_MS = 300L
     }
 
-    override fun getDescription(): String {
-        val agentThought = params.optString("agent_thought", "").trim()
-        return if (agentThought.isNotEmpty()) {
-            "$description (reason: $agentThought)"
-        } else {
-            description
-        }
-    }
+    override fun getDescription(): String = description
 
     override suspend fun execute(context: ToolExecutionContext): ToolExecutionResult {
         if (context.isCancelled()) {

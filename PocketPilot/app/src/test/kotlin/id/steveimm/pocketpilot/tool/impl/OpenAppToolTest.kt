@@ -38,18 +38,6 @@ class OpenAppToolTest {
     }
 
     @Test
-    fun `open_app with app_name and agent_thought is valid`() {
-        val tool = OpenAppTool()
-        val params = JSONObject()
-            .put("app_name", "Settings")
-            .put("agent_thought", "Need to change Wi-Fi settings")
-
-        val result = tool.validate(params)
-
-        assertThat(result).isEqualTo(ValidationResult.Valid)
-    }
-
-    @Test
     fun `tool name is open_app`() {
         val tool = OpenAppTool()
 
@@ -64,15 +52,6 @@ class OpenAppToolTest {
         val required = schema.getJSONArray("required")
         assertThat(required.length()).isEqualTo(1)
         assertThat(required.getString(0)).isEqualTo("app_name")
-    }
-
-    @Test
-    fun `schema has only app_name and agent_thought properties`() {
-        val tool = OpenAppTool()
-        val properties = tool.parameterSchema.getJSONObject("properties")
-
-        val keys = properties.keys().asSequence().toSet()
-        assertThat(keys).containsExactly("app_name", "agent_thought")
     }
 
     @Test

@@ -76,7 +76,17 @@ class CapsuleStateHolder(private val scope: CoroutineScope) {
 
     fun setPlatformMode(mode: PlatformMode) { _platformMode.value = mode }
 
-    fun setTurnPhase(phase: TurnPhase) { _turnPhase.value = phase }
+    fun setTurnPhase(phase: TurnPhase) {
+        _turnPhase.value = phase
+        if (_mode.value is CapsuleMode.Running) {
+            val status = when (phase) {
+                TurnPhase.PERCEPTION -> "Reading screen"
+                TurnPhase.PLANNING -> "Thinking"
+                TurnPhase.EXECUTION -> "Acting"
+            }
+            setMode(CapsuleMode.Running(status))
+        }
+    }
 
     fun setAgentMidTurn(midTurn: Boolean) { _isAgentMidTurn.value = midTurn }
 
@@ -131,11 +141,6 @@ class CapsuleStateHolder(private val scope: CoroutineScope) {
         }
         setMode(CapsuleMode.Running("Processing..."))
         return true
-    }
-
-    fun onThoughtUpdate(thought: String) {
-        if (_mode.value !is CapsuleMode.Running) return
-        setMode(CapsuleMode.Running(thought))
     }
 
     fun onTakeoverRequested() {

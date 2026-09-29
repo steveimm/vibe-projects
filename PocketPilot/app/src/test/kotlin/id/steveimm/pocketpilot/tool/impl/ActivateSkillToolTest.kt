@@ -1,6 +1,5 @@
 package id.steveimm.pocketpilot.tool.impl
 
-import id.steveimm.pocketpilot.agent.cognition.skills.ActivationResult
 import id.steveimm.pocketpilot.agent.cognition.skills.AgentSkillManager
 import id.steveimm.pocketpilot.tool.ToolExecutionContext
 import id.steveimm.pocketpilot.tool.ToolExecutionResult
@@ -115,18 +114,6 @@ class ActivateSkillToolTest {
         val invocation = t.createInvocation(params)
 
         assertThat(invocation.getDescription()).contains("date-math")
-    }
-
-    @Test
-    fun `description includes agent thought when provided`() {
-        createSkill("date-math", "Compute dates")
-        val t = tool()
-        val params = JSONObject()
-            .put("name", "date-math")
-            .put("agent_thought", "need date calculations")
-        val invocation = t.createInvocation(params)
-
-        assertThat(invocation.getDescription()).contains("need date calculations")
     }
 
     @Test

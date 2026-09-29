@@ -97,18 +97,6 @@ class WriteTodosToolTest {
     }
 
     @Test
-    fun `schema documents agent thought plan change rationale`() {
-        val tool = WriteTodosTool(TodoState())
-
-        val description = tool.parameterSchema
-            .getJSONObject("properties")
-            .getJSONObject("agent_thought")
-            .getString("description")
-
-        assertThat(description).contains("changing the plan")
-    }
-
-    @Test
     fun `description includes discovery and small task guidance`() {
         val tool = WriteTodosTool(TodoState())
 

@@ -41,10 +41,7 @@ internal class AgentServiceEventHandler(
             is MessageDelta -> {
                 recordingService?.appendTextDelta(event.delta)
             }
-            is ThoughtUpdate -> {
-                recordingService?.recordThought(event.full)
-                overlay?.onThoughtUpdate(event.full)
-            }
+            is ReasoningDelta -> recordingService?.appendReasoningDelta(event.turnId, event.delta)
             is TurnPhaseChanged -> {
                 overlay?.onTurnPhaseChanged(event.phase)
             }

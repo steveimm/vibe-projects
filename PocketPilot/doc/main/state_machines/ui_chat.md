@@ -105,7 +105,7 @@ stateDiagram-v2
 | `MessageDelta` | Append delta to `streamingBuffer`; replace the trailing `ContentBlock.Text`, or append a new Text block if the last block is an Action or the bubble is empty (the first-delta case); set state `Streaming`. |
 | `ActionProposed` | Clear `streamingBuffer`; append `ContentBlock.Action(state = Proposed)` to the open agent. (Buffer cleared so the next `MessageDelta` starts a fresh text block after the action card.) |
 | `ActionExecuted` | If matching `Proposed` block exists, mutate it in place; otherwise append a new `Action` block already in the executed state. |
-| `ThoughtUpdate` | Append a new `ContentBlock.Thought(text)` to the open agent's `contentBlocks`. Each update is a distinct trace item — no merging with the prior Thought (Track A spec §4.1). Empty thoughts are dropped. Streaming buffer is cleared so the next `MessageDelta` starts a fresh Text block. |
+| `ReasoningDelta` | Merge native reasoning chunks from the same turn into `ContentBlock.Reasoning`. Keep reasoning separate from assistant text and tool actions. |
 | `TaskCompleted` | Append a completion summary text block (per `completionSummary(result)`); set state `Complete`; set `rowState = Complete` (preserved as `Error` if already errored); copy `TaskCompleted.handoff` onto the row (VD-only metadata that drives the post-completion `Open <App>` CTA — see [ui/session/user_flows.md](../ui/session/user_flows.md#vd-completion-handoff)); clear buffer; clear `currentAgentMessageId`. |
 | `SessionError` | If an `Agent` exists, append `⚠️ <message>` text block, mark `Complete`, set `rowState = Error`. Otherwise create a fresh `Agent` containing only the error and set `showEmptyState = false`. |
 | `SupplementReceived` | Same operation as `TaskStarted` minus the agent-id binding (id is `supplement-<timestamp>`). |
@@ -133,7 +133,7 @@ the user just sees their message split the conversation in the same way.
 - `TurnStarted` (each turn starts a fresh text accumulator)
 - `ActionProposed` / `ActionExecuted` (when no matching proposal — text after an
   action card is a new text block)
-- `ThoughtUpdate` (text after a thought is a new text block — chronological trace)
+- `ReasoningDelta` (reasoning and assistant text remain separate)
 - `TaskCompleted`
 
 This means after every action card the next chunk of LLM text begins in a *new*
@@ -178,10 +178,6 @@ subsequent user turn closes them — the error remains visible in history.
 `Waiting` is reserved for future AskUser/Approval routing in the chat reducer
 (no current event triggers it; the capsule still owns the live affordance).
 
-## Trace items: `ContentBlock.Thought`
+## Trace items: native reasoning
 
-`ThoughtUpdate` events append `ContentBlock.Thought(text)` items into the
-chronological trace (same `contentBlocks: List<ContentBlock>` already used for
-Text and Action). Ordering invariant from Track A spec §5: trace items appear
-in event arrival order with no reordering and no deduplication. Multiple
-consecutive `ThoughtUpdate`s become multiple Thought blocks — never merged.
+Native `ReasoningDelta` events merge into `ContentBlock.Reasoning` per turn. Expanded traces render reasoning behind a "Show model reasoning" control. Tool actions remain chronological, without generated thought headings. The overlay uses execution phase status only.

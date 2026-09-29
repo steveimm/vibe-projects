@@ -12,6 +12,7 @@ internal class AgentMessageBuffer {
     private var messageId: String? = null
     private var startTimestamp: Long = 0L
     private val textBuffer = StringBuilder()
+    private var reasoningTurnId: String? = null
     private val contentBlocks = mutableListOf<ContentBlockRecord>()
 
     fun hasActiveMessage(): Boolean = messageId != null
@@ -34,9 +35,16 @@ internal class AgentMessageBuffer {
         textBuffer.append(delta)
     }
 
-    fun recordThought(text: String) {
+    fun appendReasoning(turnId: String, delta: String) {
+        if (delta.isEmpty()) return
         finalizeTextBlock()
-        contentBlocks.add(ContentBlockRecord.Thought(text))
+        val last = contentBlocks.lastOrNull()
+        if (last is ContentBlockRecord.Reasoning && reasoningTurnId == turnId) {
+            contentBlocks[contentBlocks.lastIndex] = last.copy(text = last.text + delta)
+        } else {
+            contentBlocks.add(ContentBlockRecord.Reasoning(delta))
+        }
+        reasoningTurnId = turnId
     }
 
     /** Append a final-answer block (TaskCompleted with non-blank result that carries the agent's closing answer). Mirrors

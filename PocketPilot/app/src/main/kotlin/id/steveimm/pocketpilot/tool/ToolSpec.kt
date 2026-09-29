@@ -116,7 +116,3 @@ class CancellationToken {
     fun cancel() { cancelled.set(true) }
     fun isCancelled(): Boolean = cancelled.get()
 }
-
-/** Appends a reason suffix in a consistent format. */
-fun appendReason(base: String, reason: String): String =
-        reason.takeIf { it.isNotBlank() }?.let { "$base (reason: $it)" } ?: base

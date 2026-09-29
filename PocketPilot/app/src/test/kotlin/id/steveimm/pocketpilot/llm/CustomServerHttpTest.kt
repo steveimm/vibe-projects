@@ -58,6 +58,32 @@ class CustomServerHttpTest {
     }
 
     @Test
+    fun `native reasoning fields stream separately from the assistant answer`() = runTest {
+        MockWebServer().use { server ->
+            server.start()
+            val client = ChatCompletionClient(server.url("/v1").toString())
+            try {
+                for (field in listOf("reasoning", "reasoning_content")) {
+                    val body = listOf(
+                        """data: {"id":"r","choices":[{"index":0,"delta":{"$field":"First "}}]}""",
+                        """data: {"id":"r","choices":[{"index":0,"delta":{"$field":"check the screen."}}]}""",
+                        """data: {"id":"r","choices":[{"index":0,"delta":{"content":"Done."},"finish_reason":"stop"}]}""",
+                        "data: [DONE]",
+                    ).joinToString("\n\n", postfix = "\n\n")
+                    server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody(body))
+                    val events = mutableListOf<LLMStreamEvent>()
+                    client.chatWithToolsStreaming("help", listOf(message()), emptyList(), "local-model").collect { events += it }
+                    assertThat(events.filterIsInstance<LLMStreamEvent.ReasoningDelta>().joinToString("") { it.delta })
+                        .isEqualTo("First check the screen.")
+                    assertThat(events.filterIsInstance<LLMStreamEvent.TextDelta>().joinToString("") { it.delta }).isEqualTo("Done.")
+                }
+            } finally {
+                client.cleanup()
+            }
+        }
+    }
+
+    @Test
     fun `a slow collector receives every streaming delta from the configured server`() = runTest {
         MockWebServer().use { server ->
             server.start()

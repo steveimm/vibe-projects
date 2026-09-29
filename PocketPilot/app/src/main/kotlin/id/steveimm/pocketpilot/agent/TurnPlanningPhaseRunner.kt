@@ -11,7 +11,6 @@ import id.steveimm.pocketpilot.history.MessageKind
 import id.steveimm.pocketpilot.history.ResponseItem
 import id.steveimm.pocketpilot.model.ScreenSnapshot
 import id.steveimm.pocketpilot.protocol.TurnPhase
-import id.steveimm.pocketpilot.protocol.compactThought
 import id.steveimm.pocketpilot.session.SessionServices
 import id.steveimm.pocketpilot.tool.ToolName
 import id.steveimm.pocketpilot.trace.AgentTrace
@@ -132,6 +131,7 @@ internal class TurnPlanningPhaseRunner(
                         modelId = model.modelId
                 )
 
+                val reasoning = StringBuilder()
                 var turnResult: TurnResult? = null
                 var streamError: Throwable? = null
                 turn.runStreaming(
@@ -155,6 +155,10 @@ internal class TurnPlanningPhaseRunner(
                         )
                         .collect { event ->
                                 when (event) {
+                                        is TurnStreamEvent.ReasoningDelta -> {
+                                                reasoning.append(event.delta)
+                                                eventDispatcher.reasoningDelta(turnId, event.delta)
+                                        }
                                         is TurnStreamEvent.TextDelta ->
                                                 eventDispatcher.messageDelta(turnId, event.text)
                                         is TurnStreamEvent.ToolCallReceived ->
@@ -201,8 +205,7 @@ internal class TurnPlanningPhaseRunner(
                 )
                 emitArbitrationWarnings(turnNumber, arbitration)
 
-                // Extract agent_thought from the first selected tool call for capsule display.
-                emitAgentThought(arbitration.selectedToolCalls, turnNumber)
+                trace.llmReasoning(turnId, turnNumber, reasoning.toString())
 
                 return PlanningPhaseOutput(turnResult = result, arbitration = arbitration)
         }
@@ -245,31 +248,6 @@ internal class TurnPlanningPhaseRunner(
                                 "⚠️ Completion returned with screen action; executing action first"
                         )
                 }
-        }
-
-        /** Extract agent_thought from the first selected tool call and emit it as a ThoughtUpdate event for the Smart Capsule. */
-        private suspend fun emitAgentThought(
-                selectedToolCalls: List<ToolCallRequest>,
-                turnNumber: Int
-        ) {
-                val firstCall = selectedToolCalls.firstOrNull() ?: return
-                val agentThought =
-                        firstCall.arguments
-                                .optString("agent_thought", "")
-                                .trim()
-                                .takeIf { it.isNotEmpty() }
-
-                val thought =
-                        agentThought
-                                ?: ActionDescriptionFormatter.format(firstCall).takeIf {
-                                        it.isNotEmpty()
-                                }
-                                ?: return
-
-                val full = thought.trim()
-                val compact = compactThought(full)
-                Log.d(TAG, "Turn $turnNumber: agent_thought = $compact")
-                eventDispatcher.thoughtUpdate(full = full, compact = compact)
         }
 
         private fun buildArbitrationDecision(

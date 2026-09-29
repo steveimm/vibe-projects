@@ -7,10 +7,8 @@ import id.steveimm.pocketpilot.tool.action.buildObservation
 import id.steveimm.pocketpilot.tool.ToolExecutionContext
 import id.steveimm.pocketpilot.tool.ToolExecutionResult
 import id.steveimm.pocketpilot.tool.ToolInvocation
-import id.steveimm.pocketpilot.tool.ToolObservation
 import id.steveimm.pocketpilot.tool.ToolSpec
 import id.steveimm.pocketpilot.tool.ValidationResult
-import id.steveimm.pocketpilot.tool.appendReason
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
@@ -71,10 +69,6 @@ If the app is not found, suggestions will be provided.
         JSONObject().apply {
             put("type", "object")
             put("properties", JSONObject().apply {
-                put("agent_thought", JSONObject().apply {
-                    put("type", "string")
-                    put("description", "Brief reason for this action")
-                })
                 put("app_name", JSONObject().apply {
                     put("type", "string")
                     put("description", "Name of the app to open (e.g., 'Gmail', 'Settings', 'Chrome'). Case-insensitive.")
@@ -95,9 +89,8 @@ If the app is not found, suggestions will be provided.
 
     override fun createInvocation(params: JSONObject): ToolInvocation {
         val appName = params.optString("app_name", "").trim()
-        val agentThought = params.optString("agent_thought", "").trim()
 
-        val desc = appendReason("Open app: $appName", agentThought)
+        val desc = "Open app: $appName"
 
         return OpenAppInvocation(params, desc, appName)
     }

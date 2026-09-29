@@ -158,6 +158,11 @@ class ChatCompletionClient(
                                     }
                                 }
 
+                                val extra = delta._additionalProperties()
+                                val reasoning = extra["reasoning"]?.asString()?.orElse(null)
+                                    ?: extra["reasoning_content"]?.asString()?.orElse(null)
+                                if (!reasoning.isNullOrEmpty()) emitter.emit(LLMStreamEvent.ReasoningDelta(reasoning))
+
                                 // Tool call deltas (streamed incrementally)
                                 delta.toolCalls().ifPresent { calls ->
                                     for (tcDelta in calls) {

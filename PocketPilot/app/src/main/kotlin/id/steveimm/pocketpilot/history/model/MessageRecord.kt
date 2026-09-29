@@ -48,10 +48,15 @@ sealed interface ContentBlockRecord {
     @SerialName("final_text")
     data class FinalText(val text: String) : ContentBlockRecord
 
-    /** Agent reasoning emitted via `ThoughtUpdate`. */
+    /** Reasoning received from the model server. */
+    @Serializable
+    @SerialName("reasoning")
+    data class Reasoning(val text: String) : ContentBlockRecord
+
+    /** Read older captions as ordinary text; new sessions never write this type. */
     @Serializable
     @SerialName("thought")
-    data class Thought(val text: String) : ContentBlockRecord
+    data class LegacyStepCaption(val text: String) : ContentBlockRecord
 
     /** An action card (tool execution). */
     @Serializable

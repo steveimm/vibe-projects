@@ -114,7 +114,7 @@ monospaced elapsed-time chip (`[t+12s]`, `monoSmall`, `inkFaint`) wedged
 between the paw glyph and the thought text. The counter latches at the
 moment the surface enters `Running` and ticks at 1Hz; it does NOT reset
 when the agent emits a new thought (the `Running` mode value is
-recreated on every `onThoughtUpdate`, but the latch is keyed off the
+recreated on every `setTurnPhase`, but the latch is keyed off the
 running-vs-not transition only). See `style.md` "Ledger Counter
 (Capsule Running Mode)" for the implementation contract.
 
@@ -177,7 +177,7 @@ Opens via menu button (≡). Contains session history and settings access.
 | `TaskCompleted` | Append completion text, mark bubble Complete. Session enters Hot Idle (follow-up available). |
 | `SessionError` | Mark bubble Complete |
 | `SupplementReceived` | Add user message for supplement |
-| `ThoughtUpdate` | Update capsule thought text |
+| `TurnPhaseChanged` | Update capsule execution phase |
 | `AskUser` | Capsule transitions to WaitingForInput/WaitingForAction |
 
 ---

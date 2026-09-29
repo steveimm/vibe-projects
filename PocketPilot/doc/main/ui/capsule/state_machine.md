@@ -24,7 +24,7 @@ Ownership:
 
 ### 2.1 Universal events (any source mode)
 
-- `onTaskStarted(taskId, input)` → `Running(compactThought(input))` — also clears `isStopPending` and `turnPhase`. CapsuleStateHolder uses `compactThought` because the input echo here is for the bare title slot; live thought updates from `onThoughtUpdate(full)` carry the full text and override.
+- `onTaskStarted(taskId, input)` → `Running(compactThought(input))` — also clears `isStopPending` and `turnPhase`. CapsuleStateHolder uses `compactThought` because the input echo here is for the bare title slot; phase changes replace the initial status with Reading screen, Thinking, or Acting.
 - `onError(message)` → `Error(compactThought(message))` — also clears `isStopPending`
 - `onAskUser(QUESTION, msg, callId)` → `WaitingForInput(msg, callId)`
 - `onAskUser(ACTION, msg, callId)` → `WaitingForAction(msg, callId)`
@@ -32,7 +32,7 @@ Ownership:
 
 ### 2.2 Guarded events
 
-- `onThoughtUpdate(t)`: `Running` only → `Running(t)`
+- `setTurnPhase(phase)`: updates phase state and the Running status label
 - `onTakeoverRequested()`: `Running` only → `TakeoverPending(lastThought)`
 - `onTakeoverConfirmed()`: `Running|TakeoverPending` → `Takeover(lastThought)`
 - `onResumed()`: `Takeover|TakeoverPending` → `Running("Thinking...")` — also clears `turnPhase` and `isAgentMidTurn`

@@ -45,7 +45,7 @@ private fun firstHeadline(message: ChatMessage.Agent): String? {
     message.userPrompt?.takeIf { it.isNotBlank() }?.let { return truncateWords(it, 6) }
     message.contentBlocks.firstNotNullOfOrNull { block ->
         when (block) {
-            is ContentBlock.Thought -> block.text.takeIf { it.isNotBlank() }
+            is ContentBlock.Reasoning -> null
             is ContentBlock.Action -> block.data.description.takeIf { it.isNotBlank() }
             is ContentBlock.Text -> block.text.takeIf { it.isNotBlank() }
             is ContentBlock.FinalText -> block.text.takeIf { it.isNotBlank() }

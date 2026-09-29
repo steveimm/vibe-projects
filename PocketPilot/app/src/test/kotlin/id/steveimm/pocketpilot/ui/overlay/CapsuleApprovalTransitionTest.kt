@@ -99,11 +99,11 @@ class CapsuleApprovalTransitionTest {
     @Test
     fun `onTakeoverConfirmed from Running directly transitions to Takeover`() {
         holder.onTaskStarted("task1", "input")
-        holder.onThoughtUpdate("doing thing")
+        holder.setTurnPhase(id.steveimm.pocketpilot.protocol.TurnPhase.PLANNING)
         holder.onTakeoverConfirmed()
         val mode = holder.mode.value
         assertThat(mode).isInstanceOf(CapsuleMode.Takeover::class.java)
-        assertThat((mode as CapsuleMode.Takeover).lastThought).isEqualTo("doing thing")
+        assertThat((mode as CapsuleMode.Takeover).lastThought).isEqualTo("Thinking")
     }
 
     @Test

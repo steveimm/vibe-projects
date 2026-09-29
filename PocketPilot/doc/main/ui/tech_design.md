@@ -39,7 +39,7 @@ ui/
 │   │   ├── ChatHeader.kt        # Header: [≡] Title [+]
 │   │   ├── MessageBubble.kt     # Dispatcher: User bubble | AgentRow (slim, ~90 lines post-uxfb-3)
 │   │   ├── AgentRow.kt          # Agent row shell: [trace · CollapsePill · final region]
-│   │   ├── AgentTrace.kt        # ThoughtGroup hierarchy (uxfb-4): one Thought + N Actions per group, drawBehind left rule
+│   │   ├── AgentTrace.kt        # Chronological tool actions and collapsible native reasoning
 │   │   ├── AgentSummary.kt      # outcomeFooter + collapsedSummary helpers
 │   │   ├── CollapsePill.kt      # Pill chip: [▸ ✓ N actions · 12s], Lucide icons, tween animation
 │   │   ├── StreamingText.kt     # Final-block Text with inlineContent serif `|` cursor
@@ -166,7 +166,7 @@ sealed interface ContentBlock {
                                           // when row seals with no tools and a non-blank text.
                                           // AgentRow renders this in the always-visible final
                                           // region below the CollapsePill.
-    data class Thought(text: String)     // Opens a ThoughtGroup; bodyLarge header (no italic, no ✱)
+    data class Reasoning(text: String)   // Native model reasoning, inspectable in the expanded trace
     data class Action(data: ActionCardData)  // Indented monoSmall row inside the group, Lucide status icon right
 }
 

@@ -28,13 +28,6 @@ Buttons: back, home, enter (IME enter to focused field), recents.
             "properties",
             JSONObject().apply {
                 put(
-                    "agent_thought",
-                    JSONObject().apply {
-                        put("type", "string")
-                        put("description", "Brief reason for pressing this button")
-                    }
-                )
-                put(
                     "button",
                     JSONObject().apply {
                         put("type", "string")

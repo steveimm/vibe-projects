@@ -155,17 +155,11 @@ class SessionRecordingService(
         // Don't save on every delta - wait for action or completion
     }
 
-    /** Record a thought block in the current agent message. */
-    fun recordThought(text: String) {
+    fun appendReasoningDelta(turnId: String, delta: String) {
         synchronized(stateLock) {
-            if (!agentMessageBuffer.hasActiveMessage()) {
-                Log.w(TAG, "No active agent message for thought")
-                return
-            }
-            agentMessageBuffer.recordThought(text)
+            if (!agentMessageBuffer.hasActiveMessage()) return
+            agentMessageBuffer.appendReasoning(turnId, delta)
         }
-        updateAgentMessageInSession()
-        scheduleSave()
     }
 
     /** Record an action in current agent message. */

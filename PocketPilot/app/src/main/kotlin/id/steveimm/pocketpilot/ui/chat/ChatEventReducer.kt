@@ -10,7 +10,7 @@ import id.steveimm.pocketpilot.protocol.SessionError
 import id.steveimm.pocketpilot.protocol.SupplementReceived
 import id.steveimm.pocketpilot.protocol.TaskCompleted
 import id.steveimm.pocketpilot.protocol.TaskStarted
-import id.steveimm.pocketpilot.protocol.ThoughtUpdate
+import id.steveimm.pocketpilot.protocol.ReasoningDelta
 import id.steveimm.pocketpilot.protocol.TurnPhaseChanged
 import id.steveimm.pocketpilot.protocol.TurnStarted
 import id.steveimm.pocketpilot.ui.chat.model.ActionCardData
@@ -32,6 +32,8 @@ internal class ChatEventReducer(
     private val stateLock: Any,
     private val setCurrentAgentMessageId: (String?) -> Unit
 ) {
+    private var reasoningTurnId: String? = null
+
     companion object {
         private const val TAG = "ChatViewModel"
     }
@@ -43,7 +45,7 @@ internal class ChatEventReducer(
                 is TurnStarted -> handleTurnStarted(event)
                 is TurnPhaseChanged -> Unit
                 is MessageDelta -> handleMessageDelta(event)
-                is ThoughtUpdate -> handleThoughtUpdate(event)
+                is ReasoningDelta -> handleReasoningDelta(event)
                 is ActionProposed -> handleActionProposed(event)
                 is ActionExecuted -> handleActionExecuted(event)
                 is TaskCompleted -> handleTaskCompleted(event)
@@ -84,15 +86,19 @@ internal class ChatEventReducer(
         }
     }
 
-    private fun handleThoughtUpdate(event: ThoughtUpdate) {
-        val text = event.full
-        if (text.isEmpty()) return
-        // Streaming text after a thought begins a new Text block, mirroring the
-        // ActionProposed behavior — the trace is chronological.
-        streamingBuffer.clear()
+    private fun handleReasoningDelta(event: ReasoningDelta) {
+        if (event.delta.isEmpty()) return
         updateLastAgentMessage { msg ->
-            msg.copy(contentBlocks = msg.contentBlocks + ContentBlock.Thought(text))
+            val last = msg.contentBlocks.lastOrNull()
+            val blocks = if (last is ContentBlock.Reasoning && reasoningTurnId == event.turnId) {
+                msg.contentBlocks.dropLast(1) + last.copy(text = last.text + event.delta)
+            } else {
+                msg.contentBlocks + ContentBlock.Reasoning(event.delta)
+            }
+            reasoningTurnId = event.turnId
+            msg.copy(contentBlocks = blocks, state = AgentMessageState.Streaming)
         }
+        streamingBuffer.clear()
     }
 
     private fun handleActionProposed(event: ActionProposed) {
@@ -232,7 +238,7 @@ internal class ChatEventReducer(
         val index = messages.indexOfLast { it is ChatMessage.Agent }
         if (index >= 0) {
             val current = messages[index] as ChatMessage.Agent
-            // Drop late streaming events that arrive after the row sealed (e.g. ThoughtUpdate emitted after TaskCompleted). Sealed rows
+            // Drop late streaming events that arrive after the row sealed (e.g. ReasoningDelta emitted after TaskCompleted). Sealed rows
             // are immutable per Track A spec §5.
             if (current.state == AgentMessageState.Complete) return
             messages[index] = transform(current)

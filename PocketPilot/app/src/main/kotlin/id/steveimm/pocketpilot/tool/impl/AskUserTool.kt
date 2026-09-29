@@ -36,10 +36,6 @@ Use only when truly blocked by missing info or required physical action. The sys
     override val parameterSchema: JSONObject = JSONObject().apply {
         put("type", "object")
         put("properties", JSONObject().apply {
-            put("agent_thought", JSONObject().apply {
-                put("type", "string")
-                put("description", "Brief reason for asking the user")
-            })
             put("type", JSONObject().apply {
                 put("type", "string")
                 put("enum", JSONArray(listOf("question", "action")))
@@ -84,9 +80,9 @@ private class AskUserInvocation(
     override val toolName = "ask_user"
 
     override fun getDescription(): String {
-        val thought = params.optString("agent_thought", "").trim()
+
         val message = params.optString("message", "")
-        return if (thought.isNotEmpty()) thought else "Asking user: ${message.take(40)}"
+        return "Asking user: ${message.take(40)}"
     }
 
     override suspend fun execute(context: ToolExecutionContext): ToolExecutionResult {

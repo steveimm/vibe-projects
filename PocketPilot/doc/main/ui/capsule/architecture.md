@@ -79,7 +79,7 @@ sealed interface CapsuleMode {
 | Method | Guard | Transition |
 |--------|-------|------------|
 | `onTaskStarted(taskId, input)` | Any | → `Running(sanitized input)` |
-| `onThoughtUpdate(thought)` | Must be `Running` | → `Running(thought)` |
+| `setTurnPhase(phase)` | Updates status while `Running` | → `Running(phase status)` |
 | `onTakeoverRequested()` | Must be `Running` | → `TakeoverPending(thought)` |
 | `onTakeoverConfirmed()` | `TakeoverPending` or `Running` | → `Takeover(thought)` |
 | `onResumed()` | `Takeover` or `TakeoverPending` | → `Running("Thinking...")` |
@@ -96,22 +96,7 @@ Auto-hide: `Done` → `Hidden` after 3000ms.
 
 ## Thought Pipeline
 
-1. LLM returns tool call with `agent_thought` parameter.
-2. `TurnPlanningPhaseRunner.emitAgentThought` trims whitespace and emits
-   `ThoughtUpdate(full, compact)` — `full` is the untouched text, `compact`
-   is the ~80-char single-line preview produced via `compactThought()` (uxfb-1
-   replaced the old 40-char `sanitizeThought` which silently dropped data).
-3. `AgentEvent.ThoughtUpdate` →
-   - `CapsuleStateHolder.onThoughtUpdate(full)` → `Running(full)` for the
-     overlay surfaces.
-   - `ChatEventReducer` stores `full` as `ContentBlock.Thought` for the chat.
-   - `SessionRecordingService.recordThought(full)` for history.
-4. Capsule renderers (`StatusIslandCompose`, `SmartCapsuleSurface`) display
-   the full text via `Modifier.basicMarquee`. Reduced-motion users (per
-   `PocketPilotMotion.reducedMotion()`) get `compactThought(full)` with
-   ellipsis instead. `StatusIslandCompose` pins width via `widthIn(max =
-   220.dp)` in both branches so the overlay can't grow off-screen (uxfb-2).
-5. `SmartCapsuleSurface` recomposes via `stateHolder.mode` StateFlow.
+The capsule shows phase status from `TurnPhaseChanged`: "Reading screen", "Thinking", or "Acting". Native server reasoning is streamed to the chat and persisted separately. It is never extracted from tool arguments or used as a generated capsule heading.
 
 ## Supplement & Stop Feedback
 

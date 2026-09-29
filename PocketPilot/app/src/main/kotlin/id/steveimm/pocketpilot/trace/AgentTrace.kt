@@ -65,6 +65,13 @@ internal class AgentTrace(
         )
     }
 
+    fun llmReasoning(turnId: String, turnNumber: Int, text: String) {
+        if (text.isEmpty()) return
+        val artifact = trace.storeText(kind = "llm_reasoning", filenameHint = "${turnId}.txt", content = text)
+        trace.emit(sessionId = sessionId.value, type = "llm_reasoning", turnId = turnId, turnNumber = turnNumber,
+            artifacts = listOfNotNull(artifact))
+    }
+
     fun turnStarted(turnId: String, turnNumber: Int) {
         runMetrics.turnsStarted++
         trace.emit(

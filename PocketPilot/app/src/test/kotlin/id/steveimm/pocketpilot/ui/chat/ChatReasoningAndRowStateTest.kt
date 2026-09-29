@@ -11,7 +11,7 @@ import id.steveimm.pocketpilot.protocol.SessionId
 import id.steveimm.pocketpilot.protocol.TaskCompleted
 import id.steveimm.pocketpilot.protocol.TaskOutcome
 import id.steveimm.pocketpilot.protocol.TaskStarted
-import id.steveimm.pocketpilot.protocol.ThoughtUpdate
+import id.steveimm.pocketpilot.protocol.ReasoningDelta
 import id.steveimm.pocketpilot.ui.chat.model.ChatMessage
 import id.steveimm.pocketpilot.ui.chat.model.ChatUiState
 import id.steveimm.pocketpilot.ui.chat.model.ContentBlock
@@ -19,9 +19,9 @@ import id.steveimm.pocketpilot.ui.chat.model.RowState
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Test
 
-/** Track A spec §3 + §5: ThoughtUpdate routing into ContentBlock.Thought, plus the four-state RowState machine (Live → Complete /
+/** Track A spec §3 + §5: ReasoningDelta routing into ContentBlock.Reasoning, plus the four-state RowState machine (Live → Complete /
  * Error). */
-class ChatThoughtAndRowStateTest {
+class ChatReasoningAndRowStateTest {
 
     private val sessionId = SessionId("s1")
 
@@ -40,14 +40,28 @@ class ChatThoughtAndRowStateTest {
     }
 
     @Test
+    fun `reasoning chunks merge within a turn and stay separate from answers`() {
+        val f = Fixture()
+        f.reducer.handle(TaskStarted(sessionId, 100L, taskId = "task-1", input = "go"))
+        f.reducer.handle(ReasoningDelta(sessionId, 110L, turnId = "t1", delta = "First "))
+        f.reducer.handle(ReasoningDelta(sessionId, 111L, turnId = "t1", delta = "inspect."))
+        f.reducer.handle(MessageDelta(sessionId, 112L, turnId = "t1", delta = "Done."))
+        f.reducer.handle(ReasoningDelta(sessionId, 113L, turnId = "t2", delta = "New turn."))
+        val blocks = (f.messages.last() as ChatMessage.Agent).contentBlocks
+        assertThat(blocks).containsExactly(
+            ContentBlock.Reasoning("First inspect."), ContentBlock.Text("Done."), ContentBlock.Reasoning("New turn."),
+        ).inOrder()
+    }
+
+    @Test
     fun `thought update appends a Thought block`() {
         val f = Fixture()
         f.reducer.handle(TaskStarted(sessionId, 100L, taskId = "task-1", input = "go"))
 
-        f.reducer.handle(ThoughtUpdate(sessionId, 110L, full = "I should open Settings", compact = "I should open Settings"))
+        f.reducer.handle(ReasoningDelta(sessionId, 110L, turnId = "t110", delta = "I should open Settings"))
 
         val agent = f.messages.last() as ChatMessage.Agent
-        val thought = agent.contentBlocks.single() as ContentBlock.Thought
+        val thought = agent.contentBlocks.single() as ContentBlock.Reasoning
         assertThat(thought.text).isEqualTo("I should open Settings")
     }
 
@@ -56,12 +70,12 @@ class ChatThoughtAndRowStateTest {
         val f = Fixture()
         f.reducer.handle(TaskStarted(sessionId, 100L, taskId = "task-1", input = "go"))
 
-        f.reducer.handle(ThoughtUpdate(sessionId, 110L, full = "step one", compact = "step one"))
-        f.reducer.handle(ThoughtUpdate(sessionId, 111L, full = "step two", compact = "step two"))
-        f.reducer.handle(ThoughtUpdate(sessionId, 112L, full = "step three", compact = "step three"))
+        f.reducer.handle(ReasoningDelta(sessionId, 110L, turnId = "t110", delta = "step one"))
+        f.reducer.handle(ReasoningDelta(sessionId, 111L, turnId = "t111", delta = "step two"))
+        f.reducer.handle(ReasoningDelta(sessionId, 112L, turnId = "t112", delta = "step three"))
 
         val agent = f.messages.last() as ChatMessage.Agent
-        val thoughts = agent.contentBlocks.filterIsInstance<ContentBlock.Thought>()
+        val thoughts = agent.contentBlocks.filterIsInstance<ContentBlock.Reasoning>()
         assertThat(thoughts.map { it.text })
             .containsExactly("step one", "step two", "step three")
             .inOrder()
@@ -72,15 +86,15 @@ class ChatThoughtAndRowStateTest {
         val f = Fixture()
         f.reducer.handle(TaskStarted(sessionId, 100L, taskId = "task-1", input = "go"))
 
-        f.reducer.handle(ThoughtUpdate(sessionId, 110L, full = "open Settings", compact = "open Settings"))
+        f.reducer.handle(ReasoningDelta(sessionId, 110L, turnId = "t110", delta = "open Settings"))
         f.reducer.handle(
             ActionProposed(sessionId, 111L, actionId = "a1", toolName = "click", description = "tap")
         )
-        f.reducer.handle(ThoughtUpdate(sessionId, 112L, full = "now find Accessibility", compact = "now find Accessibility"))
+        f.reducer.handle(ReasoningDelta(sessionId, 112L, turnId = "t112", delta = "now find Accessibility"))
 
         val agent = f.messages.last() as ChatMessage.Agent
         val kinds = agent.contentBlocks.map { it::class.simpleName }
-        assertThat(kinds).containsExactly("Thought", "Action", "Thought").inOrder()
+        assertThat(kinds).containsExactly("Reasoning", "Action", "Reasoning").inOrder()
     }
 
     @Test
@@ -88,13 +102,13 @@ class ChatThoughtAndRowStateTest {
         val f = Fixture()
         f.reducer.handle(TaskStarted(sessionId, 100L, taskId = "task-1", input = "go"))
         f.reducer.handle(MessageDelta(sessionId, 105L, turnId = "t1", delta = "first"))
-        f.reducer.handle(ThoughtUpdate(sessionId, 110L, full = "rethinking", compact = "rethinking"))
+        f.reducer.handle(ReasoningDelta(sessionId, 110L, turnId = "t110", delta = "rethinking"))
         f.reducer.handle(MessageDelta(sessionId, 115L, turnId = "t1", delta = "second"))
 
         val agent = f.messages.last() as ChatMessage.Agent
         assertThat(agent.contentBlocks).hasSize(3)
         assertThat((agent.contentBlocks[0] as ContentBlock.Text).text).isEqualTo("first")
-        assertThat(agent.contentBlocks[1]).isInstanceOf(ContentBlock.Thought::class.java)
+        assertThat(agent.contentBlocks[1]).isInstanceOf(ContentBlock.Reasoning::class.java)
         assertThat((agent.contentBlocks[2] as ContentBlock.Text).text).isEqualTo("second")
     }
 
@@ -103,10 +117,10 @@ class ChatThoughtAndRowStateTest {
         val f = Fixture()
         f.reducer.handle(TaskStarted(sessionId, 100L, taskId = "task-1", input = "go"))
 
-        f.reducer.handle(ThoughtUpdate(sessionId, 110L, full = "", compact = ""))
+        f.reducer.handle(ReasoningDelta(sessionId, 110L, turnId = "t110", delta = ""))
 
         val agent = f.messages.last() as ChatMessage.Agent
-        assertThat(agent.contentBlocks.filterIsInstance<ContentBlock.Thought>()).isEmpty()
+        assertThat(agent.contentBlocks.filterIsInstance<ContentBlock.Reasoning>()).isEmpty()
     }
 
     @Test
@@ -179,11 +193,11 @@ class ChatThoughtAndRowStateTest {
                 result = "ok"
             )
         )
-        f.reducer.handle(ThoughtUpdate(sessionId, 103L, full = "now what", compact = "now what"))
+        f.reducer.handle(ReasoningDelta(sessionId, 103L, turnId = "t103", delta = "now what"))
 
         val agent = f.messages.last() as ChatMessage.Agent
         assertThat(agent.contentBlocks).hasSize(2)
         assertThat(agent.contentBlocks[0]).isInstanceOf(ContentBlock.Action::class.java)
-        assertThat((agent.contentBlocks[1] as ContentBlock.Thought).text).isEqualTo("now what")
+        assertThat((agent.contentBlocks[1] as ContentBlock.Reasoning).text).isEqualTo("now what")
     }
 }

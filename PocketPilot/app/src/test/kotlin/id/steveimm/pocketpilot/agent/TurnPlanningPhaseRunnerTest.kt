@@ -18,7 +18,7 @@ import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.protocol.SessionId
 import id.steveimm.pocketpilot.protocol.SessionLlmConfig
 import id.steveimm.pocketpilot.protocol.StatusUpdate
-import id.steveimm.pocketpilot.protocol.ThoughtUpdate
+import id.steveimm.pocketpilot.protocol.ReasoningDelta
 import id.steveimm.pocketpilot.session.AgentSessionState
 import id.steveimm.pocketpilot.session.SessionServices
 import id.steveimm.pocketpilot.test.FakeAndroidPlatform
@@ -94,14 +94,13 @@ class TurnPlanningPhaseRunnerTest {
     }
 
     @Test
-    fun `agent_thought event emitted during planning with LLM reasoning content`() = runTest {
+    fun `native model reasoning is emitted independently from tool arguments`() = runTest {
         val harness = PlanningHarness.build(
             toolCalls = listOf(
                 LLMToolCall(
                     callId = "call-1",
                     name = "mobile_action",
                     arguments = JSONObject()
-                        .put("agent_thought", "Tapping settings icon")
                         .put("action_type", "click")
                         .toString()
                 )
@@ -116,9 +115,9 @@ class TurnPlanningPhaseRunnerTest {
             warnings = emptyList()
         )
 
-        val thoughts = harness.events.filterIsInstance<ThoughtUpdate>()
+        val thoughts = harness.events.filterIsInstance<ReasoningDelta>()
         assertThat(thoughts).hasSize(1)
-        assertThat(thoughts[0].full).isEqualTo("Tapping settings icon")
+        assertThat(thoughts[0].delta).isEqualTo("Tapping settings icon")
     }
 
     @Test
@@ -234,6 +233,7 @@ private class CapturingLLMClient(
         historyAtCall = historySnapshotProvider?.invoke()
         streamingCalls += 1
         emit(LLMStreamEvent.Created("stream-1"))
+        emit(LLMStreamEvent.ReasoningDelta("Tapping settings icon"))
         textContent?.let { emit(LLMStreamEvent.TextDelta(it)) }
         toolCalls.forEach { emit(LLMStreamEvent.ToolCallDone(it)) }
         emit(LLMStreamEvent.Completed)

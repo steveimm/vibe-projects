@@ -8,7 +8,6 @@ import id.steveimm.pocketpilot.tool.ToolExecutionResult
 import id.steveimm.pocketpilot.tool.ToolInvocation
 import id.steveimm.pocketpilot.tool.ToolSpec
 import id.steveimm.pocketpilot.tool.ValidationResult
-import id.steveimm.pocketpilot.tool.appendReason
 import id.steveimm.pocketpilot.tool.textToolSuccess
 import org.json.JSONArray
 import org.json.JSONObject
@@ -31,10 +30,6 @@ class WriteTodosTool(
         JSONObject().apply {
             put("type", "object")
             put("properties", JSONObject().apply {
-                put("agent_thought", JSONObject().apply {
-                    put("type", "string")
-                    put("description", "Brief reason for this update. When changing the plan, explain what changed and why.")
-                })
                 put("todos", JSONObject().apply {
                     put("type", "array")
                     put("description", "Full list of todo items")
@@ -80,8 +75,8 @@ class WriteTodosTool(
 
     override fun createInvocation(params: JSONObject): ToolInvocation {
         val todos = parseTodos(params.getJSONArray("todos"), mutableListOf())
-        val agentThought = params.optString("agent_thought", "").trim()
-        val description = appendReason("Update todos (${todos.size} items)", agentThought)
+
+        val description = "Update todos (${todos.size} items)"
 
         return WriteTodosInvocation(
             state = state,

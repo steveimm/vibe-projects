@@ -13,14 +13,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.ArrowRight
 import com.composables.icons.lucide.Ban
@@ -34,127 +35,38 @@ import id.steveimm.pocketpilot.ui.chat.model.AgentMessageState
 import id.steveimm.pocketpilot.ui.chat.model.ContentBlock
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
-/** AgentTrace — UXFB-4 ThoughtGroup layout. */
-
-internal data class ThoughtGroup(
-    val thought: ContentBlock.Thought?,
-    val items: List<ContentBlock>,
-)
-
-internal fun groupTrace(blocks: List<ContentBlock>): List<ThoughtGroup> {
-    val groups = mutableListOf<ThoughtGroup>()
-    var thought: ContentBlock.Thought? = null
-    var items = mutableListOf<ContentBlock>()
-    fun flush() {
-        if (thought != null || items.isNotEmpty()) {
-            groups += ThoughtGroup(thought, items.toList())
-        }
-        thought = null
-        items = mutableListOf()
-    }
-    for (block in blocks) {
-        when (block) {
-            is ContentBlock.Thought -> {
-                flush()
-                thought = block
-            }
-            is ContentBlock.Action, is ContentBlock.Text -> items += block
-            is ContentBlock.FinalText -> Unit
-        }
-    }
-    flush()
-    return groups
-}
-
 @Composable
 internal fun ExpandedTrace(blocks: List<ContentBlock>, state: AgentMessageState) {
     val spacing = MaterialTheme.pocketPilot.spacing
-    val groups = groupTrace(blocks)
-    val isStreaming = state == AgentMessageState.Streaming
     val lastTextIndex = blocks.indexOfLast { it is ContentBlock.Text }
-    Column(
-        verticalArrangement = Arrangement.spacedBy(spacing.md),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        groups.forEach { group ->
-            ThoughtGroupView(
-                group = group,
-                isStreaming = isStreaming,
-                streamingTextBlockIndex = lastTextIndex,
-                allBlocks = blocks,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ThoughtGroupView(
-    group: ThoughtGroup,
-    isStreaming: Boolean,
-    streamingTextBlockIndex: Int,
-    allBlocks: List<ContentBlock>,
-) {
-    val spacing = MaterialTheme.pocketPilot.spacing
-    val ruleColor = MaterialTheme.colorScheme.tertiary
-    val ruleWidthDp = 3.dp
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .drawBehind {
-                drawRect(
-                    color = ruleColor,
-                    topLeft = Offset.Zero,
-                    size = Size(ruleWidthDp.toPx(), size.height),
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.md), modifier = Modifier.fillMaxWidth()) {
+        blocks.forEachIndexed { index, block ->
+            when (block) {
+                is ContentBlock.Reasoning -> ReasoningBlock(block.text)
+                is ContentBlock.Action -> ActionRow(block.data)
+                is ContentBlock.Text -> StreamingText(
+                    text = block.text,
+                    isStreaming = state == AgentMessageState.Streaming && index == lastTextIndex,
+                    textColor = MaterialTheme.colorScheme.onSurface,
                 )
-            }
-            .padding(start = ruleWidthDp + spacing.md),
-        verticalArrangement = Arrangement.spacedBy(spacing.xs),
-    ) {
-        group.thought?.let { ThoughtHeader(it.text) }
-        group.items.forEach { item ->
-            when (item) {
-                is ContentBlock.Action -> ActionRow(
-                    data = item.data,
-                    modifier = Modifier.padding(start = spacing.lg),
-                )
-                is ContentBlock.Text -> {
-                    val streamingTail =
-                        isStreaming && allBlocks.indexOf(item) == streamingTextBlockIndex
-                    if (streamingTail) {
-                        StreamingText(
-                            text = item.text,
-                            isStreaming = true,
-                            textColor = MaterialTheme.colorScheme.onSurface,
-                        )
-                    } else if (item.text.isNotEmpty()) {
-                        SelectionContainer(modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                text = item.text,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                    }
-                }
-                else -> Unit
+                is ContentBlock.FinalText -> Unit
             }
         }
     }
 }
 
 @Composable
-private fun ThoughtHeader(text: String) {
-    SelectionContainer(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+private fun ReasoningBlock(text: String) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    Column {
+        TextButton(onClick = { expanded = !expanded }) {
+            Text(if (expanded) "Hide model reasoning" else "Show model reasoning")
+        }
+        if (expanded) SelectionContainer { Text(text, style = MaterialTheme.typography.bodyMedium) }
     }
 }
 
-/** ActionRow — inline trace row for an action. UXFB-4: monoSmall + onSurfaceVariant inside a ThoughtGroup; status glyph stays
- * right-aligned. Caller supplies the group's start indent via [modifier]. */
+/** A tool action and its execution result. */
 @Composable
 internal fun ActionRow(
     data: ActionCardData,

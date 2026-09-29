@@ -6,7 +6,6 @@ import id.steveimm.pocketpilot.tool.ToolExecutionResult
 import id.steveimm.pocketpilot.tool.ToolInvocation
 import id.steveimm.pocketpilot.tool.ToolSpec
 import id.steveimm.pocketpilot.tool.ValidationResult
-import id.steveimm.pocketpilot.tool.appendReason
 import id.steveimm.pocketpilot.tool.textToolSuccess
 import org.json.JSONArray
 import org.json.JSONObject
@@ -30,10 +29,6 @@ class ScratchpadTool(
         JSONObject().apply {
             put("type", "object")
             put("properties", JSONObject().apply {
-                put("agent_thought", JSONObject().apply {
-                    put("type", "string")
-                    put("description", "Brief reason for why this action is being performed")
-                })
                 put("action", JSONObject().apply {
                     put("type", "string")
                     put("enum", JSONArray(listOf("write", "read", "delete")))
@@ -107,8 +102,8 @@ class ScratchpadTool(
 
     override fun createInvocation(params: JSONObject): ToolInvocation {
         val action = params.getString("action")
-        val agentThought = params.optString("agent_thought", "").trim()
-        val description = buildDescription(action, params, agentThought)
+
+        val description = buildDescription(action, params)
         return ScratchpadInvocation(
             state = state,
             params = params,
@@ -117,7 +112,7 @@ class ScratchpadTool(
         )
     }
 
-    private fun buildDescription(action: String, params: JSONObject, agentThought: String): String {
+    private fun buildDescription(action: String, params: JSONObject): String {
         val base = when (action) {
             "write" -> {
                 val content = params.optString("content", "")
@@ -134,7 +129,7 @@ class ScratchpadTool(
             "delete" -> "Delete scratchpad key '${params.optString("key", "")}'"
             else -> "Scratchpad action '$action'"
         }
-        return appendReason(base, agentThought)
+        return base
     }
 }
 

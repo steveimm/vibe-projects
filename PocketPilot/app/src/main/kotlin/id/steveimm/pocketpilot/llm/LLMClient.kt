@@ -49,6 +49,8 @@ sealed interface LLMStreamEvent {
     /** Incremental text delta */
     data class TextDelta(val delta: String) : LLMStreamEvent
 
+    data class ReasoningDelta(val delta: String) : LLMStreamEvent
+
     /** A complete tool call has been received */
     data class ToolCallDone(val toolCall: LLMToolCall) : LLMStreamEvent
 

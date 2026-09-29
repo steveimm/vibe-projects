@@ -59,29 +59,29 @@ class CapsuleStateHolderTest {
     }
 
     @Test
-    fun `onThoughtUpdate changes thought in Running mode`() {
+    fun `setTurnPhase changes thought in Running mode`() {
         holder.onTaskStarted("task1", "input")
-        holder.onThoughtUpdate("Searching...")
-        assertThat((holder.mode.value as CapsuleMode.Running).thought).isEqualTo("Searching...")
+        holder.setTurnPhase(id.steveimm.pocketpilot.protocol.TurnPhase.PLANNING)
+        assertThat((holder.mode.value as CapsuleMode.Running).thought).isEqualTo("Thinking")
     }
 
     @Test
-    fun `onThoughtUpdate ignored when not in Running mode`() {
+    fun `setTurnPhase ignored when not in Running mode`() {
         holder.onTaskStarted("task1", "input")
         holder.onTakeoverRequested()
         val modeBefore = holder.mode.value
-        holder.onThoughtUpdate("should be ignored")
+        holder.setTurnPhase(id.steveimm.pocketpilot.protocol.TurnPhase.PLANNING)
         assertThat(holder.mode.value).isEqualTo(modeBefore)
     }
 
     @Test
     fun `onTakeoverRequested transitions from Running to TakeoverPending`() {
         holder.onTaskStarted("task1", "input")
-        holder.onThoughtUpdate("current thought")
+        holder.setTurnPhase(id.steveimm.pocketpilot.protocol.TurnPhase.PLANNING)
         holder.onTakeoverRequested()
         val mode = holder.mode.value
         assertThat(mode).isInstanceOf(CapsuleMode.TakeoverPending::class.java)
-        assertThat((mode as CapsuleMode.TakeoverPending).lastThought).isEqualTo("current thought")
+        assertThat((mode as CapsuleMode.TakeoverPending).lastThought).isEqualTo("Thinking")
     }
 
     @Test
@@ -94,12 +94,12 @@ class CapsuleStateHolderTest {
     @Test
     fun `onTakeoverConfirmed transitions from TakeoverPending to Takeover`() {
         holder.onTaskStarted("task1", "input")
-        holder.onThoughtUpdate("current thought")
+        holder.setTurnPhase(id.steveimm.pocketpilot.protocol.TurnPhase.PLANNING)
         holder.onTakeoverRequested()
         holder.onTakeoverConfirmed()
         val mode = holder.mode.value
         assertThat(mode).isInstanceOf(CapsuleMode.Takeover::class.java)
-        assertThat((mode as CapsuleMode.Takeover).lastThought).isEqualTo("current thought")
+        assertThat((mode as CapsuleMode.Takeover).lastThought).isEqualTo("Thinking")
     }
 
     @Test
@@ -311,7 +311,7 @@ class CapsuleStateHolderTest {
         holder.onTaskStarted("task1", "input")
         assertThat(holder.previousMode).isEqualTo(CapsuleMode.Hidden)
 
-        holder.onThoughtUpdate("new thought")
+        holder.setTurnPhase(id.steveimm.pocketpilot.protocol.TurnPhase.PLANNING)
         assertThat(holder.previousMode).isInstanceOf(CapsuleMode.Running::class.java)
     }
 

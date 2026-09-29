@@ -17,10 +17,7 @@ class MobileActionInvocation(
 ) : ToolInvocation {
     override val toolName = "mobile_action"
 
-    override fun getDescription(): String {
-        val thought = params.optString("agent_thought", "").trim()
-        return if (thought.isNotEmpty()) "$description ($thought)" else description
-    }
+    override fun getDescription(): String = description
 
     override suspend fun execute(context: ToolExecutionContext): ToolExecutionResult {
         if (context.isCancelled()) return ToolExecutionResult.Cancelled()

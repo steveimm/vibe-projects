@@ -47,7 +47,7 @@ internal suspend fun streamWithRetry(
                 if (event is LLMStreamEvent.Failed) {
                     failureEmitted = true
                 }
-                if (event is LLMStreamEvent.TextDelta || event is LLMStreamEvent.ToolCallDone || event is LLMStreamEvent.Failed) {
+                if (event is LLMStreamEvent.TextDelta || event is LLMStreamEvent.ReasoningDelta || event is LLMStreamEvent.ToolCallDone || event is LLMStreamEvent.Failed) {
                     emittedEvent = true
                 }
                 emitToFlow(event)

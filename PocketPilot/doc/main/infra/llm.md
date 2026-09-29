@@ -29,3 +29,7 @@ Each session factory owns its clients, including superseded credential generatio
 Streaming producers run on IO and wait for channel capacity. Each collection owns its response. Cancellation closes that response and propagates without retrying or changing endpoints. Requests cancelled before the SDK returns headers close when their response becomes available.
 
 `LlmRetry` and `StreamRetryRunner` handle transient transport errors. Streaming does not retry after partial output, preventing duplicate text or tool calls.
+
+## Inspecting model reasoning
+
+The streaming client reads native `reasoning` and `reasoning_content` deltas independently of assistant `content` and `tool_calls`. Reasoning is streamed into the chat, saved with the conversation, and recorded in `llm_reasoning` trace artifacts. It is not used as a completion signal, a tool parameter, or a generated step title. Reasoning that the server does not expose cannot be displayed.

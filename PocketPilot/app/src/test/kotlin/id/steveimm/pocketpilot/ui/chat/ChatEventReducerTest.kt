@@ -11,7 +11,7 @@ import id.steveimm.pocketpilot.protocol.SessionId
 import id.steveimm.pocketpilot.protocol.TaskCompleted
 import id.steveimm.pocketpilot.protocol.TaskOutcome
 import id.steveimm.pocketpilot.protocol.TaskStarted
-import id.steveimm.pocketpilot.protocol.ThoughtUpdate
+import id.steveimm.pocketpilot.protocol.ReasoningDelta
 import id.steveimm.pocketpilot.ui.chat.model.ActionState
 import id.steveimm.pocketpilot.ui.chat.model.AgentMessageState
 import id.steveimm.pocketpilot.ui.chat.model.ChatMessage
@@ -152,7 +152,7 @@ class ChatEventReducerTest {
     }
 
     @Test
-    fun `late ThoughtUpdate after TaskCompleted does not mutate sealed row`() {
+    fun `late ReasoningDelta after TaskCompleted does not mutate sealed row`() {
         val f = Fixture()
         f.reducer.handle(TaskStarted(sessionId, 100L, taskId = "task-1", input = "go"))
         f.reducer.handle(
@@ -167,7 +167,7 @@ class ChatEventReducerTest {
         val sealed = f.messages.last() as ChatMessage.Agent
         val sealedBlocks = sealed.contentBlocks.toList()
 
-        f.reducer.handle(ThoughtUpdate(sessionId, 250L, full = "stale thought", compact = "stale thought"))
+        f.reducer.handle(ReasoningDelta(sessionId, 250L, turnId = "t250", delta = "stale thought"))
 
         val after = f.messages.last() as ChatMessage.Agent
         assertThat(after.state).isEqualTo(AgentMessageState.Complete)

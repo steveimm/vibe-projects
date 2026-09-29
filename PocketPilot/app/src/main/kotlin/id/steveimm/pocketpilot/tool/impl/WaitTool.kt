@@ -27,13 +27,6 @@ Wait for UI updates to settle when transitions, animations, or async loading are
             "properties",
             JSONObject().apply {
                 put(
-                    "agent_thought",
-                    JSONObject().apply {
-                        put("type", "string")
-                        put("description", "Brief reason for waiting")
-                    }
-                )
-                put(
                     "duration_ms",
                     JSONObject().apply {
                         put("type", "integer")

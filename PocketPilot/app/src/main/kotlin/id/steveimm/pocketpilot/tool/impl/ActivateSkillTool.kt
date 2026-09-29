@@ -7,7 +7,6 @@ import id.steveimm.pocketpilot.tool.ToolExecutionResult
 import id.steveimm.pocketpilot.tool.ToolInvocation
 import id.steveimm.pocketpilot.tool.ToolSpec
 import id.steveimm.pocketpilot.tool.ValidationResult
-import id.steveimm.pocketpilot.tool.appendReason
 import id.steveimm.pocketpilot.tool.textToolSuccess
 import org.json.JSONArray
 import org.json.JSONObject
@@ -29,10 +28,6 @@ class ActivateSkillTool(
                     put("type", "string")
                     put("description", "Name of the skill to activate")
                 })
-                put("agent_thought", JSONObject().apply {
-                    put("type", "string")
-                    put("description", "Brief reason for activating this skill")
-                })
             })
             put("required", JSONArray(listOf("name")))
             put("additionalProperties", false)
@@ -48,8 +43,8 @@ class ActivateSkillTool(
 
     override fun createInvocation(params: JSONObject): ToolInvocation {
         val skillName = params.getString("name").trim()
-        val agentThought = params.optString("agent_thought", "").trim()
-        val description = appendReason("Activate skill '$skillName'", agentThought)
+
+        val description = "Activate skill '$skillName'"
         return ActivateSkillInvocation(
             manager = manager,
             params = params,

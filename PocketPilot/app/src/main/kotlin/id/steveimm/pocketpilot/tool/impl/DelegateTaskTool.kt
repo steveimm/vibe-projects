@@ -10,7 +10,6 @@ import id.steveimm.pocketpilot.tool.ToolExecutionResult
 import id.steveimm.pocketpilot.tool.ToolInvocation
 import id.steveimm.pocketpilot.tool.ToolSpec
 import id.steveimm.pocketpilot.tool.ValidationResult
-import id.steveimm.pocketpilot.tool.appendReason
 import id.steveimm.pocketpilot.tool.textToolSuccess
 import org.json.JSONArray
 import org.json.JSONObject
@@ -35,10 +34,6 @@ internal class DelegateTaskTool(
     override val parameterSchema: JSONObject = JSONObject().apply {
         put("type", "object")
         put("properties", JSONObject().apply {
-            put("agent_thought", JSONObject().apply {
-                put("type", "string")
-                put("description", "Brief reason for this delegation")
-            })
             put("query", JSONObject().apply {
                 put("type", "string")
                 put("description", "Complete instruction for the sub-agent")
@@ -76,8 +71,8 @@ internal class DelegateTaskTool(
         val query = params.getString("query").trim()
         val currentSubgoal = params.optString("current_subgoal", "").trim().ifEmpty { null }
         val importantNotes = parseStringArray(params.optJSONArray("important_notes"))
-        val agentThought = params.optString("agent_thought", "").trim()
-        val description = buildDescription(roleDef.name, query, agentThought)
+
+        val description = buildDescription(roleDef.name, query)
 
         return DelegateTaskInvocation(
             params = params,
@@ -93,10 +88,10 @@ internal class DelegateTaskTool(
         )
     }
 
-    private fun buildDescription(agentName: String, query: String, thought: String): String {
+    private fun buildDescription(agentName: String, query: String): String {
         val queryPreview = query.take(80)
         val base = "Delegate to $agentName: $queryPreview"
-        return appendReason(base, thought)
+        return base
     }
 
     private fun parseStringArray(array: JSONArray?): List<String> {

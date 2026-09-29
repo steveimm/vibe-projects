@@ -223,17 +223,17 @@ class MessageConverterTest {
         val original = ChatMessage.Agent(
             id = "a-long",
             timestamp = 1L,
-            contentBlocks = listOf(ContentBlock.Thought(longThought)),
+            contentBlocks = listOf(ContentBlock.Reasoning(longThought)),
             state = AgentMessageState.Streaming
         )
 
         val record = MessageConverter.toRecord(original) as MessageRecord.Agent
         val thoughtRecord = record.contentBlocks.single() as
-            id.steveimm.pocketpilot.history.model.ContentBlockRecord.Thought
+            id.steveimm.pocketpilot.history.model.ContentBlockRecord.Reasoning
         assertThat(thoughtRecord.text).isEqualTo(longThought)
 
         val restored = MessageConverter.fromRecord(record) as ChatMessage.Agent
-        val restoredThought = restored.contentBlocks.single() as ContentBlock.Thought
+        val restoredThought = restored.contentBlocks.single() as ContentBlock.Reasoning
         assertThat(restoredThought.text).isEqualTo(longThought)
     }
 
@@ -245,7 +245,7 @@ class MessageConverterTest {
             id = "legacy",
             timestamp = 1L,
             contentBlocks = listOf(
-                ContentBlockRecord.Thought("planning"),
+                ContentBlockRecord.Reasoning("planning"),
                 ContentBlockRecord.Text("Yes, Wi-Fi is on.")
             ),
             isComplete = true,
@@ -255,7 +255,7 @@ class MessageConverterTest {
 
         val restored = MessageConverter.fromRecord(legacyRecord) as ChatMessage.Agent
         assertThat(restored.contentBlocks).containsExactly(
-            ContentBlock.Thought("planning"),
+            ContentBlock.Reasoning("planning"),
             ContentBlock.FinalText("Yes, Wi-Fi is on.")
         ).inOrder()
     }

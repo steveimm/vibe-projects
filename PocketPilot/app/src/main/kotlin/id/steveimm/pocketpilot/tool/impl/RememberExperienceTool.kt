@@ -11,7 +11,6 @@ import id.steveimm.pocketpilot.tool.ToolExecutionResult
 import id.steveimm.pocketpilot.tool.ToolInvocation
 import id.steveimm.pocketpilot.tool.ToolSpec
 import id.steveimm.pocketpilot.tool.ValidationResult
-import id.steveimm.pocketpilot.tool.appendReason
 import id.steveimm.pocketpilot.tool.textToolSuccess
 import org.json.JSONArray
 import org.json.JSONObject
@@ -40,10 +39,6 @@ class RememberExperienceTool(
         JSONObject().apply {
             put("type", "object")
             put("properties", JSONObject().apply {
-                put("agent_thought", JSONObject().apply {
-                    put("type", "string")
-                    put("description", "Brief reason for saving this experience")
-                })
                 put("scope", JSONObject().apply {
                     put("type", "string")
                     put("enum", SCOPE_VALUES)
@@ -100,7 +95,7 @@ class RememberExperienceTool(
     }
 
     override fun createInvocation(params: JSONObject): ToolInvocation {
-        val agentThought = params.optString("agent_thought", "").trim()
+
         val scope =
             requireNotNull(MemoryScope.fromWireValue(params.getString("scope"))) {
                 "scope must be valid"
@@ -119,7 +114,7 @@ class RememberExperienceTool(
             section = section,
             content = content,
             packageName = packageName,
-            description = appendReason("Save experience (${scope.wireValue}/${section.wireValue})", agentThought)
+            description = "Save experience (${scope.wireValue}/${section.wireValue})"
         )
     }
 }

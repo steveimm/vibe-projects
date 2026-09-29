@@ -25,7 +25,8 @@ AgentEvent (sealed interface)
 │   ├── TurnCompleted(turnId, turnNumber)
 │   └── TurnPhaseChanged(turnId, phase)
 ├── StreamingDomainEvent
-│   └── MessageDelta(turnId, delta)
+│   ├── MessageDelta(turnId, delta)
+│   └── ReasoningDelta(turnId, delta)
 ├── ActionDomainEvent
 │   ├── ActionProposed(actionId, toolName, description)
 │   └── ActionExecuted(actionId, toolName, outcome: ActionOutcome, result?)
@@ -33,8 +34,6 @@ AgentEvent (sealed interface)
 │   └── ApprovalRequired(description, details: ApprovalDetails)
 ├── AskUserDomainEvent
 │   └── AskUser(type: AskUserType, message, callId)
-├── ThoughtDomainEvent
-│   └── ThoughtUpdate(full, compact)
 ├── SubAgentDomainEvent
 │   ├── SubAgentStarted(agentName, query)
 │   ├── SubAgentActivity(agentName, activity)
@@ -52,7 +51,7 @@ AgentEvent (sealed interface)
 | `SessionStarted` | First Created → Running | `goal` |
 | `TaskStarted` | New task begins | `taskId`, `input` |
 | `MessageDelta` | Streaming text chunk | `turnId`, `delta` |
-| `ThoughtUpdate` | Agent selects tool with `agent_thought` | `full`, `compact` |
+| `ReasoningDelta` | Server streams native reasoning | `turnId`, `delta` |
 | `ActionExecuted` | Tool completes | `actionId`, `toolName`, `outcome` |
 | `AskUser` | Agent needs user help | `type`, `message`, `callId` |
 | `SupplementReceived` | User sent mid-task supplement | `text` |

@@ -8,8 +8,8 @@ sealed interface ContentBlock {
     /** The row's concluding answer. Promoted from [Text] by the reducer. */
     data class FinalText(val text: String) : ContentBlock
 
-    /** Agent reasoning emitted via `ThoughtUpdate`. One block per update. */
-    data class Thought(val text: String) : ContentBlock
+    /** Reasoning received from the model server. Chunks are merged within each turn. */
+    data class Reasoning(val text: String) : ContentBlock
 
     /** An action card (tool execution). */
     data class Action(val data: ActionCardData) : ContentBlock

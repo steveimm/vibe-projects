@@ -27,8 +27,5 @@ sealed interface ApprovalDomainEvent : AgentEvent
 /** ask_user workflow domain events. */
 sealed interface AskUserDomainEvent : AgentEvent
 
-/** Agent-thought domain events. */
-sealed interface ThoughtDomainEvent : AgentEvent
-
 /** Generic status line domain events. */
 sealed interface StatusDomainEvent : AgentEvent
