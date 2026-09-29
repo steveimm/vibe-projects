@@ -63,6 +63,14 @@ class TouchToolsTest {
         }
     }
 
+    @Test
+    fun `typing without a screen observation never changes a field`() = runTest {
+        val context = context(null, null)
+        val result = TypeTextTool().createInvocation(JSONObject().put("text", "example")).execute(context)
+        assertThat(result).isInstanceOf(ToolExecutionResult.Failure::class.java)
+        coVerify(exactly = 0) { context.platform.performAction(any()) }
+    }
+
     private fun context(width: Int?, height: Int?): ToolExecutionContext {
         val image = if (width != null && height != null) ScreenImage(width, height, "image/jpeg", byteArrayOf(1),
             ScreenImageSource.ACCESSIBILITY_SCREENSHOT) else null

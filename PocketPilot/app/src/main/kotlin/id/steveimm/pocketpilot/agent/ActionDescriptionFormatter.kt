@@ -8,7 +8,7 @@ object ActionDescriptionFormatter {
             "type_text" -> "Enter \"${optString("text").take(40)}\""
             "open_app" -> "Open ${optString("app_name")}"
             "system_button" -> "Press ${optString("button")}"
-            "wait" -> "Wait ${optLong("duration_ms", 1000)} ms"
+            "read_screen" -> "Read screen${optLong("delay_ms", 0).takeIf { it > 0 }?.let { " after $it ms" }.orEmpty()}"
             else -> call.name.replace('_', ' ')
         }
     }

@@ -33,7 +33,7 @@ internal class TurnExecutionPhaseRunner(
         suspend fun executeActions(
                 turnId: String,
                 turnNumber: Int,
-                initialSnapshot: ScreenSnapshot,
+                initialSnapshot: ScreenSnapshot?,
                 toolCallsToExecute: List<ToolCallRequest>
         ): ExecutionPhaseResult {
                 if (toolCallsToExecute.isEmpty()) return ExecutionPhaseResult.EMPTY
@@ -45,7 +45,7 @@ internal class TurnExecutionPhaseRunner(
                 var currentSnapshot = initialSnapshot
                 Log.d(
                         TAG,
-                        "Using turn snapshot for actions: ${currentSnapshot.elements.size} elements"
+                        "Using turn snapshot for actions: ${currentSnapshot?.elements?.size ?: 0} elements"
                 )
 
                 var terminatedEarly = false
@@ -75,7 +75,7 @@ internal class TurnExecutionPhaseRunner(
         }
 
         private data class SingleToolCallResult(
-                val snapshot: ScreenSnapshot,
+                val snapshot: ScreenSnapshot?,
                 val toolResult: ToolCallResult
         )
 
@@ -83,7 +83,7 @@ internal class TurnExecutionPhaseRunner(
                 turnId: String,
                 turnNumber: Int,
                 toolCall: ToolCallRequest,
-                currentSnapshot: ScreenSnapshot
+                currentSnapshot: ScreenSnapshot?
         ): SingleToolCallResult {
                 Log.d(TAG, "Executing tool: ${toolCall.name} with args: ${toolCall.arguments}")
                 trace.toolCall(turnId, turnNumber, toolCall)
@@ -118,7 +118,7 @@ internal class TurnExecutionPhaseRunner(
                                 onApprovalRequired = { details -> emitApprovalRequired(details) }
                         )
 
-                val observationCapture = resolveObservation(toolResult)
+                val observationCapture = resolveObservation(toolCall, toolResult)
                 val observation = observationCapture.observation
                 val observedSnapshot = observationCapture.snapshot
                 val snapshotForNextTool = observedSnapshot ?: currentSnapshot
@@ -185,6 +185,7 @@ internal class TurnExecutionPhaseRunner(
         }
 
         private suspend fun resolveObservation(
+                toolCall: ToolCallRequest,
                 toolResult: ToolCallResult
         ): ObservationCapture {
                 if (toolResult is ToolCallResult.Success && toolResult.observation != null) {
@@ -197,6 +198,9 @@ internal class TurnExecutionPhaseRunner(
                         }
                 }
 
+                if (!toolCall.requestsScreenObservation() || !services.toolRegistry.contains(toolCall.name)) {
+                        return ObservationCapture(ToolObservation.TextOutput(formatToolResult(toolResult)), null)
+                }
                 return try {
                         captureObservationWithSnapshot()
                 } catch (e: kotlinx.coroutines.CancellationException) {
@@ -259,3 +263,13 @@ internal fun ToolCallResult.toActionOutcome(): ActionOutcome =
                 is ToolCallResult.Error -> ActionOutcome.FAILED
                 is ToolCallResult.Cancelled -> ActionOutcome.SKIPPED
         }
+
+internal fun ToolCallRequest.requestsScreenObservation(): Boolean {
+    if (validationError != null) return false
+    return when (ToolName.from(name)) {
+        ToolName.OpenApp, ToolName.Tap, ToolName.LongPress, ToolName.Swipe,
+        ToolName.TypeText, ToolName.SystemButton, ToolName.ReadScreen -> true
+        ToolName.AskUser -> arguments.optString("type") == "action"
+        else -> false
+    }
+}

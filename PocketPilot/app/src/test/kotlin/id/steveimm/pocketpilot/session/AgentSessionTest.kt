@@ -196,8 +196,8 @@ class AgentSessionTest {
 
         @Test
         fun `paused not observable before pause confirmation`() = runTest {
-                // Use shorter delay so agent can complete and confirm the pause
-                val session = buildSession(scope = this, captureDelayMs = 50L, llmDelayMs = 0L)
+                // Keep the first model response in flight while takeover requests a pause.
+                val session = buildSession(scope = this, captureDelayMs = 0L, llmDelayMs = 50L)
                 val states = mutableListOf<SessionState>()
                 val stateJob = launch { session.state.collect { states.add(it) } }
                 val events = mutableListOf<AgentEvent>()
@@ -1175,7 +1175,7 @@ private class GatedStreamingLLMClient : LLMClient() {
                 val gate = nextGate()
                 if (!streamStarted.isCompleted) streamStarted.complete(Unit)
                 gate.await()
-                emit(LLMStreamEvent.ToolCallDone(id.steveimm.pocketpilot.llm.LLMToolCall("wait", "wait", """{"duration_ms":1}""")))
+                emit(LLMStreamEvent.ToolCallDone(id.steveimm.pocketpilot.llm.LLMToolCall("read_screen", "read_screen", """{"delay_ms":1}""")))
                 emit(LLMStreamEvent.Completed("tool_calls"))
         }
 }

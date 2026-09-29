@@ -20,7 +20,8 @@ sealed class TurnOutcome {
 
 /** Mutable runtime state carried across turns. */
 internal data class TurnRunnerState(
-    val navigationState: NavigationState = NavigationState()
+    val navigationState: NavigationState = NavigationState(),
+    val observeScreen: Boolean = false,
 )
 
 /** Full output of one `AgentTurnRunner.executeTurn()` call: - `outcome`: control decision for the outer Agent loop - `nextState`: state

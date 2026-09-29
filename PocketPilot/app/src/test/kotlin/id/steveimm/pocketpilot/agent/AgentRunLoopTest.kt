@@ -24,7 +24,7 @@ import id.steveimm.pocketpilot.tool.AppClassifier
 import id.steveimm.pocketpilot.tool.PolicyEngine
 import id.steveimm.pocketpilot.tool.ToolRegistry
 import id.steveimm.pocketpilot.tool.ToolRouter
-import id.steveimm.pocketpilot.tool.impl.WaitTool
+import id.steveimm.pocketpilot.tool.impl.ReadScreenTool
 import id.steveimm.pocketpilot.trace.NoopTraceRecorder
 import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.ResponseInputItem
@@ -43,6 +43,37 @@ import org.junit.Test
 /** Characterization tests for the Agent.run() control-loop FSM. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AgentRunLoopTest {
+
+    @Test
+    fun `direct reply never reads the phone and keeps the user message unchanged`() = runTest {
+        val platform = object : AndroidPlatform by FakeAndroidPlatform() {
+            override suspend fun captureScreen(): ScreenSnapshot = error("Unexpected screen capture")
+            override fun getCurrentPackageName(): String? = error("Unexpected app inspection")
+        }
+        val llm = ProgrammableLLMClient(listOf(LLMBehavior.TextOnly("Reply")))
+        val history = HistoryManager()
+        assertThat(newAgent(llm, platform = platform, historyManager = history).run()).isEqualTo(AgentStopReason.Finished("Reply"))
+        assertThat(llm.requests.single()).hasSize(1)
+        assertThat(llm.requests.single().single().asEasyInputMessage().content().asTextInput()).isEqualTo("goal")
+        assertThat(history.getAll().filterIsInstance<id.steveimm.pocketpilot.history.ResponseItem.Message>()
+            .any { it.kind == id.steveimm.pocketpilot.history.MessageKind.SCREEN_OBSERVATION }).isFalse()
+    }
+
+    @Test
+    fun `explicit screen request captures only before the next model turn`() = runTest {
+        var captures = 0
+        val platform = object : AndroidPlatform by FakeAndroidPlatform() {
+            override suspend fun captureScreen(): ScreenSnapshot {
+                captures++
+                return ScreenSnapshot(1, emptyList())
+            }
+        }
+        val llm = ProgrammableLLMClient(listOf(LLMBehavior.Continue, LLMBehavior.TextOnly("Screen inspected")))
+        assertThat(newAgent(llm, platform = platform).run()).isEqualTo(AgentStopReason.Finished("Screen inspected"))
+        assertThat(captures).isEqualTo(1)
+        assertThat(llm.requests[0]).hasSize(1)
+        assertThat(llm.requests[1].last().asEasyInputMessage().content().asTextInput()).contains("Foreground app")
+    }
 
     @Test
     fun `Continue outcome loops until evalTurnBudget reached`() = runTest {
@@ -242,7 +273,7 @@ class AgentRunLoopTest {
     ) {
         val cancellation = CompletableDeferred<AgentStopReason>()
         val platform = CancellingCapturePlatform(cancellation)
-        val llm = ProgrammableLLMClient(emptyList())
+        val llm = ProgrammableLLMClient(listOf(LLMBehavior.Continue))
         val agent = newAgent(
             llm,
             cancellationSignal = cancellation,
@@ -253,7 +284,7 @@ class AgentRunLoopTest {
 
         assertThat(reason).isEqualTo(AgentStopReason.UserRequested)
         assertThat(platform.captureCount).isEqualTo(1)
-        assertThat(llm.callCount).isEqualTo(0) // confirms planning was skipped
+        assertThat(llm.callCount).isEqualTo(1) // only the initial screen request ran
     }
 
     @Test
@@ -335,7 +366,8 @@ class AgentRunLoopTest {
         historyManager: HistoryManager = HistoryManager(),
     ): Agent {
         val toolRegistry = ToolRegistry().apply {
-            register(WaitTool())
+            register(ReadScreenTool())
+            register(id.steveimm.pocketpilot.tool.impl.OpenAppTool())
         }
         val policyEngine = PolicyEngine(appClassifier = AppClassifier(emptyMap()))
         val sessionConfig = SessionConfig(
@@ -377,7 +409,7 @@ class AgentRunLoopTest {
 
 /** Per-call scripted behaviors for [ProgrammableLLMClient]. */
 private sealed class LLMBehavior {
-    /** Wait tool call keeps the loop running. */
+    /** A screen request keeps the loop running. */
     data object Continue : LLMBehavior()
 
     /** Native final answer ends the loop. */
@@ -394,6 +426,7 @@ private class ProgrammableLLMClient(
 ) : LLMClient() {
     var callCount: Int = 0
         private set
+    val requests = mutableListOf<List<ResponseInputItem>>()
 
     override suspend fun chatWithTools(
         systemPrompt: String,
@@ -413,13 +446,14 @@ private class ProgrammableLLMClient(
         tools: List<FunctionTool>,
         model: String
     ): Flow<LLMStreamEvent> = flow {
+        requests += inputItems
         val index = callCount
         callCount += 1
         val behavior = script.getOrNull(index)
             ?: error("ProgrammableLLMClient ran out of scripted behaviors at call $index")
         emit(LLMStreamEvent.Created("resp-$index"))
         when (behavior) {
-            LLMBehavior.Continue -> emitWait()
+            LLMBehavior.Continue -> emitReadScreen()
             is LLMBehavior.TextOnly -> {
                 emit(LLMStreamEvent.TextDelta(behavior.text))
                 emit(LLMStreamEvent.Completed())
@@ -461,7 +495,7 @@ private class GatedLLMClient : LLMClient() {
         val behavior = turnRelease.receive()
         emit(LLMStreamEvent.Created("gated"))
         when (behavior) {
-            LLMBehavior.Continue -> emitWait()
+            LLMBehavior.Continue -> emitReadScreen()
             is LLMBehavior.TextOnly -> {
                 emit(LLMStreamEvent.TextDelta(behavior.text))
                 emit(LLMStreamEvent.Completed())
@@ -495,7 +529,7 @@ private class CancellingCapturePlatform(
     override suspend fun launchApp(packageName: String): ActionResult = ActionResult.Success()
 }
 
-private suspend fun kotlinx.coroutines.flow.FlowCollector<LLMStreamEvent>.emitWait() {
-    emit(LLMStreamEvent.ToolCallDone(LLMToolCall("wait", "wait", """{"duration_ms":1}""")))
+private suspend fun kotlinx.coroutines.flow.FlowCollector<LLMStreamEvent>.emitReadScreen() {
+    emit(LLMStreamEvent.ToolCallDone(LLMToolCall("read_screen", "read_screen", """{"delay_ms":1}""")))
     emit(LLMStreamEvent.Completed("tool_calls"))
 }

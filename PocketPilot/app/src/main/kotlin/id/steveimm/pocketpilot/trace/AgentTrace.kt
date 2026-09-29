@@ -127,7 +127,7 @@ internal class AgentTrace(
     fun llmRequest(
         turnId: String,
         turnNumber: Int,
-        snapshot: ScreenSnapshot,
+        snapshot: ScreenSnapshot?,
         systemPrompt: String,
         userContextText: String,
         history: List<ResponseItem>,
@@ -159,7 +159,7 @@ internal class AgentTrace(
                     put("input_items", JsonPrimitive(inputItems.size))
                     put("model", JsonPrimitive(modelName))
                     put("model_id", JsonPrimitive(modelId))
-                    put("screenshot_attached", JsonPrimitive(snapshot.image != null))
+                    put("screenshot_attached", JsonPrimitive(snapshot?.image != null))
                 },
             artifacts = llmRequestArtifacts
         )

@@ -15,7 +15,7 @@ import kotlinx.serialization.json.buildJsonObject
 internal class AgentTraceArtifacts(private val trace: TraceRecorder) {
     fun llmRequestArtifacts(
         turnNumber: Int,
-        snapshot: ScreenSnapshot,
+        snapshot: ScreenSnapshot?,
         systemPrompt: String,
         userContextText: String,
         history: List<ResponseItem>,
@@ -70,7 +70,7 @@ internal class AgentTraceArtifacts(private val trace: TraceRecorder) {
             contextArtifact,
             fullPromptArtifact,
             inputItemsArtifact
-        ) + snapshotArtifacts(snapshot, postAction = false)
+        ) + (snapshot?.let { snapshotArtifacts(it, postAction = false) } ?: emptyList())
     }
 
     fun llmResponseArtifacts(turnNumber: Int, result: TurnResult): List<TraceArtifactRef> {

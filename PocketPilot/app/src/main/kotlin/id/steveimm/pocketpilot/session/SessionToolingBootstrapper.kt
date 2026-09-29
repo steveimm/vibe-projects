@@ -16,7 +16,7 @@ import id.steveimm.pocketpilot.tool.impl.TypeTextTool
 import id.steveimm.pocketpilot.tool.impl.OpenAppTool
 import id.steveimm.pocketpilot.tool.impl.SystemButtonTool
 import id.steveimm.pocketpilot.tool.impl.TermuxShellTool
-import id.steveimm.pocketpilot.tool.impl.WaitTool
+import id.steveimm.pocketpilot.tool.impl.ReadScreenTool
 import okhttp3.OkHttpClient
 
 internal data class SessionToolingBootstrap(
@@ -68,7 +68,7 @@ internal object SessionToolingBootstrapper {
         listOf("tap", "long_press", "swipe").filter { it in allowedToolNames }.forEach { register(TouchTool(it)) }
         if (ToolName.TypeText.raw in allowedToolNames) register(TypeTextTool())
         if (ToolName.SystemButton.raw in allowedToolNames) register(SystemButtonTool())
-        if (ToolName.Wait.raw in allowedToolNames) register(WaitTool())
+        if (ToolName.ReadScreen.raw in allowedToolNames) register(ReadScreenTool())
         if (ToolName.OpenApp.raw in allowedToolNames) register(OpenAppTool())
         if (ToolName.TermuxShell.raw in allowedToolNames) registerTermuxShellTool(context)
     }

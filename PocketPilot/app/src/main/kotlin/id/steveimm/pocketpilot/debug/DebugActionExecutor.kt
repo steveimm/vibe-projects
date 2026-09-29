@@ -139,9 +139,6 @@ class DebugActionExecutor(private val service: AgentService) {
                 )
             is UIAction.SetTextOnFocused ->
                 nodePerformer.performSetTextOnFocused(action.text, action.clear)
-            is UIAction.Wait -> {
-                delay(action.durationMs); ActionResult.Success()
-            }
         }
     }
 

@@ -49,14 +49,14 @@ class TurnToolFilteringTest {
                     register(TestTurnTool("tap"))
                     register(TestTurnTool("open_app"))
                     register(TestTurnTool("open_app"))
-                    register(TestTurnTool("wait"))
+                    register(TestTurnTool("read_screen"))
                 }
 
         val turn =
                 Turn(
                         toolRegistry = registry,
                         llmClient = llm,
-                        allowedToolNames = setOf("open_app", "wait")
+                        allowedToolNames = setOf("open_app", "read_screen")
                 )
 
         val result =
@@ -68,7 +68,7 @@ class TurnToolFilteringTest {
 
         assertThat(result.toolCalls).isEmpty()
         assertThat(llm.lastToolNames)
-                .containsExactly("open_app", "wait")
+                .containsExactly("open_app", "read_screen")
     }
 
     @Test

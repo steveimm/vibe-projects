@@ -72,10 +72,6 @@ sealed interface UIAction {
         val button: SystemButtonType
     ) : UIAction
 
-    /** Wait for a specified duration. */
-    data class Wait(
-        val durationMs: Long
-    ) : UIAction
 }
 
 /** SystemButtonType - System buttons that can be pressed. */

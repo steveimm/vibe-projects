@@ -403,10 +403,6 @@ class VirtualDisplayPlatform(
                         nodeActionPerformer.performScrollAt(action.x, action.y, action.direction)
                 is UIAction.Swipe -> performSwipe(action)
                 is UIAction.SystemButton -> inputInjector.injectSystemButton(action.button)
-                is UIAction.Wait -> {
-                    delay(action.durationMs)
-                    ActionResult.Success("Waited ${action.durationMs}ms")
-                }
             }
 
     private fun showClick(x: Int, y: Int, longPress: Boolean = false) {

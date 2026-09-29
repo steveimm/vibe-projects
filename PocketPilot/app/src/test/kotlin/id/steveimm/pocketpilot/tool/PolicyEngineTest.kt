@@ -120,7 +120,7 @@ class PolicyEngineTest {
         val engine = engineWith(
             tiers = mapOf("com.bank" to AppTier.BLOCKED)
         )
-        val decision = engine.check("wait", JSONObject(), "com.bank")
+        val decision = engine.check("read_screen", JSONObject(), "com.bank")
         assertThat(decision).isEqualTo(PolicyDecision.Allow)
     }
 

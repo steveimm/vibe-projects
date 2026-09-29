@@ -10,7 +10,7 @@ sealed class ToolName(
         get() =
             when (this) {
                 Tap, LongPress, Swipe, TypeText, OpenApp, SystemButton -> true
-                Wait, AskUser, TermuxShell -> false
+                ReadScreen, AskUser, TermuxShell -> false
                 is Unknown -> true
             }
 
@@ -23,10 +23,10 @@ sealed class ToolName(
         canonical = "open_app",
         displayName = "Open app"
     )
-    data object Wait : ToolName(
-        raw = "wait",
-        canonical = "wait",
-        displayName = "Wait"
+    data object ReadScreen : ToolName(
+        raw = "read_screen",
+        canonical = "read_screen",
+        displayName = "Read screen"
     )
     data object SystemButton : ToolName(
         raw = "system_button",
@@ -57,7 +57,7 @@ sealed class ToolName(
                 Swipe.canonical -> Swipe
                 TypeText.canonical -> TypeText
                 OpenApp.canonical -> OpenApp
-                Wait.canonical -> Wait
+                ReadScreen.canonical -> ReadScreen
                 SystemButton.canonical -> SystemButton
                 AskUser.canonical -> AskUser
                 TermuxShell.canonical -> TermuxShell

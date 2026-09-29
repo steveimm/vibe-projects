@@ -55,7 +55,7 @@ PocketPilot is an open-source **agent harness for Android**. Give it a natural-l
   - 🐧 **`termux_shell`** — full Linux toolchain on the device: `python` / `git` / `curl` / `jq`, plus anything you `pkg install`. Needs [Termux](https://github.com/termux/termux-app).
 - 🪟 **Virtual display platform.** Hybrid background sessions via Shizuku — the agent operates a parallel Android display so the foreground stays yours.
 - 🔌 **Local model server.** Supply the server URL and model ID. Discover models from `/models` or enter an ID manually. Requests have no cloud default or fallback.
-- 👁️ **Visual phone control.** A fresh screenshot accompanies each model turn, with normalized touch coordinates. Use a local model that accepts images.
+- 👁️ **Visual phone control.** The assistant reads the screen when needed and after phone actions, with normalized touch coordinates. Use a local model that accepts images.
 - 🔍 **Inspectable traces.** Every session writes LLM calls, tool calls, and perception snapshots to on-device storage; pull with `adb` for inspection.
 - 🔁 **Eval-driven agent-harness autotune loop.** Run an AndroidWorld task suite (`eval/`) against the agent; an autotune harness analyzes failures, proposes prompt and tool fixes, and re-runs.
 

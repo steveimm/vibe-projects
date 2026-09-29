@@ -7,7 +7,6 @@ import id.steveimm.pocketpilot.trace.AgentTrace
 import id.steveimm.pocketpilot.history.MessageKind
 import id.steveimm.pocketpilot.history.ResponseItem
 import id.steveimm.pocketpilot.protocol.AgentEvent
-import id.steveimm.pocketpilot.protocol.TurnPhase
 import id.steveimm.pocketpilot.session.SessionServices
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CompletableDeferred
@@ -60,7 +59,7 @@ class Agent(
         trace.sessionStarted(config)
 
         services.historyManager.addItem(
-                ResponseItem.Message(kind = MessageKind.USER_INTENT, content = "Goal: ${config.goal}")
+                ResponseItem.Message(kind = MessageKind.USER_INTENT, content = config.goal)
         )
 
         var stopReason: AgentStopReason? = null
@@ -124,11 +123,9 @@ class Agent(
             val turnId = "turn-$turnCount"
             Log.d(TAG, "=== TURN $turnCount START ===")
             eventDispatcher.turnStarted(turnId, turnCount)
-            eventDispatcher.turnPhaseChanged(turnId, TurnPhase.PERCEPTION)
 
             val turnExecution = turnRunner.executeTurn(turnId, turnCount, turnRunnerState)
             turnRunnerState = turnExecution.nextState
-            // Track foreground package for auto-retain fallback
             when (val result = turnExecution.outcome) {
                 is TurnOutcome.Continue -> {
                     recoverableRetryCount = 0

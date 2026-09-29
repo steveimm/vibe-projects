@@ -49,10 +49,9 @@ Pick one or both entry points:
 - **Debug-run entry**:
   - Use latest run or a provided run directory under `debug-output/`.
   - Run a debug session with specific config when needed:
-    - `./scripts/debug-run.sh "goal"` (default: basic mode, accessibility-only)
-    - `./scripts/debug-run.sh --pro "goal"` (planner+executor mode)
-    - `./scripts/debug-run.sh --hybrid "goal"` (a11y + screenshot perception)
-    - `./scripts/debug-run.sh --main-model <model> --executor-model <model> "goal"`
+    - `./scripts/debug-run.sh "request"` (configured local model)
+    - `./scripts/debug-run.sh --main-model <model> "request"`
+    - New messages start with conversation history. Screenshots follow explicit screen reads and phone actions.
   - If derived replay files are missing/outdated, compile them:
     - `inspection_tool/.venv/bin/python inspection_tool/replay_compiler.py <run_dir>/trace`
   - Optional helper: `python3 .claude/skills/cog-tune/scripts/prepare_cog_review.py --latest`
@@ -180,4 +179,4 @@ Configure POCKETPILOT_SERVER_URL and POCKETPILOT_MODEL_ID for the reachable mode
 
 ## Related skills
 
-- `/prompt-tune` — Apply prompt, tool description, and app skill changes based on this skill's diagnosis. Enforces the three-layer ownership model. Use after analysis is complete.
+- `/prompt-tune` — Apply core prompt and tool-description changes based on this skill's diagnosis. Use after analysis is complete.

@@ -7,7 +7,7 @@
 | `open_app` | Open an installed app by name. |
 | `tap`, `long_press`, `swipe`, `type_text` | One gesture or text entry per call. |
 | `system_button` | Back, Home, Enter, and Recents. |
-| `wait` | Wait for screen updates. |
+| `read_screen` | Inspect the phone when needed, with an optional delay for loading. |
 | `ask_user` | Ask for missing information or physical intervention. |
 | `termux_shell` | Optional commands in the Termux workspace. |
 

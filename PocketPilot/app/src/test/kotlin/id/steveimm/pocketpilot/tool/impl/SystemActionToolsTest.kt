@@ -8,16 +8,18 @@ import org.junit.Test
 class SystemActionToolsTest {
 
     @Test
-    fun `wait validates duration range`() {
-        val tool = WaitTool()
+    fun `read_screen validates delay range and types`() {
+        val tool = ReadScreenTool()
 
-        val valid = tool.validate(JSONObject().put("duration_ms", 1500))
-        val tooLong = tool.validate(JSONObject().put("duration_ms", 30_001))
-        val negative = tool.validate(JSONObject().put("duration_ms", -1))
+        val valid = tool.validate(JSONObject().put("delay_ms", 1500))
+        val tooLong = tool.validate(JSONObject().put("delay_ms", 30_001))
+        val negative = tool.validate(JSONObject().put("delay_ms", -1))
 
         assertThat(valid).isEqualTo(ValidationResult.Valid)
         assertThat(tooLong).isInstanceOf(ValidationResult.Invalid::class.java)
         assertThat(negative).isInstanceOf(ValidationResult.Invalid::class.java)
+        assertThat(tool.validate(JSONObject().put("delay_ms", "1000"))).isInstanceOf(ValidationResult.Invalid::class.java)
+        assertThat(tool.validate(JSONObject().put("duration_ms", 1000))).isInstanceOf(ValidationResult.Invalid::class.java)
     }
 
     @Test

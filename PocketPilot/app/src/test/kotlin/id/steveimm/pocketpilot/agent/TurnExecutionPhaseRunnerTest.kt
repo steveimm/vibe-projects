@@ -58,6 +58,7 @@ class TurnExecutionPhaseRunnerTest {
         )
 
         assertThat(result.terminatedEarly).isFalse()
+        assertThat(platform.captureCount).isEqualTo(0)
 
         val items = harness.services.historyManager.getAll()
         val call = items.filterIsInstance<ResponseItem.FunctionCall>().single()
@@ -136,7 +137,7 @@ class TurnExecutionPhaseRunnerTest {
         val platform = FakePlatform()
         // Tool returns no observation → runner falls through to captureObservationWithSnapshot.
         val tool = StubTool(
-            name = "no_obs_tool",
+            name = "tap",
             result = ToolExecutionResult.Success(output = "ok", observation = null)
         )
         val harness = TestHarness.build(platform, listOf(tool))

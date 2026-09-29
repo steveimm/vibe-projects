@@ -38,7 +38,7 @@ Tracked locally per run:
 - `stopRequested: AtomicBoolean`
 - `recoverableRetryCount: Int` (resets to 0 on `Continue`)
 - `consecutiveCompactionFailures: Int` (resets to 0 on any non-`Failed` compaction outcome)
-- `turnRunnerState: TurnRunnerState` (carries `NavigationState`)
+- `turnRunnerState: TurnRunnerState` (carries `NavigationState` and whether the next turn should observe the screen)
 
 ## Transitions
 
@@ -130,7 +130,7 @@ Maps `(TurnResult, ExecutionPhaseResult)` to `TurnOutcome`. Key rules:
 - `turnCount` is incremented after the compaction step and the eval-budget guard, so the eval safety net catches the (N+1)-th attempt rather than letting it start.
 - Pause is cooperative — pause check happens once per loop iteration, immediately before stop check.
 - The agent's `pauseConfirmed` deferred is **always** completed in the `finally` block so `AgentSession.handleTakeover()` cannot hang past run termination.
-- Cross-turn state lives only in `TurnRunnerState` (currently `NavigationState`); no other mutable state is passed across turns.
+- Cross-turn state lives only in `TurnRunnerState` (`NavigationState` and `observeScreen`); no other mutable state is passed across turns.
 - The compactor never silently drops data on contention — `HistoryManager.replaceAllIfRevision` rejects stale swaps and the loop retries.
 
 ## Persistence
@@ -139,9 +139,9 @@ The loop itself is fully transient; what makes it onto disk is what the turn wri
 
 ## Entry / exit side-effects
 
-- Entry: emits `🚀 Starting agent...` status, calls `trace.sessionStarted`, appends `USER_INTENT` history item with `Goal: …`.
+- Entry: emits `🚀 Starting agent...` status, calls `trace.sessionStarted`, appends the unchanged user message as `USER_INTENT`.
 - Per turn (top): `compactor.maybeCompact`; on `Compacted` emits `📚 Compacted history (before → after tokens)`; on `Failed` increments the counter.
-- Per turn: `trace.turnStarted`, `eventDispatcher.turnStarted`, screen capture, planning, execution, `trace.turnCompleted`.
+- Per turn: `trace.turnStarted`, `eventDispatcher.turnStarted`, conditional screen capture, planning, execution, `trace.turnCompleted`.
 - Exit: `pauseConfirmed?.complete(Unit)`, `trace.sessionStopped(reason, turnCount)`.
 
 ## Error / recovery paths

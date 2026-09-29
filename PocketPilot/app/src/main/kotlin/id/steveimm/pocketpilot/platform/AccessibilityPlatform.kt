@@ -317,7 +317,6 @@ class AccessibilityPlatform(
                         SystemButtonType.ENTER -> nodeActionPerformer.performEnterKey()
                         else -> gestureInjector.injectSystemButton(action.button)
                     }
-            is UIAction.Wait -> performWait(action)
         }
     }
 
@@ -449,11 +448,6 @@ class AccessibilityPlatform(
                 endY = endY.toFloat(),
                 durationMs = action.durationMs
         )
-    }
-
-    private suspend fun performWait(action: UIAction.Wait): ActionResult {
-        delay(action.durationMs)
-        return ActionResult.Success("Waited ${action.durationMs}ms")
     }
 
     private fun recordOutOfBoundsActionTarget(actionName: String, x: Int, y: Int) {

@@ -9,7 +9,6 @@ import id.steveimm.pocketpilot.history.ResponseItem
 import id.steveimm.pocketpilot.model.ScreenSnapshot
 import id.steveimm.pocketpilot.protocol.TurnPhase
 import id.steveimm.pocketpilot.session.SessionServices
-import id.steveimm.pocketpilot.tool.ToolName
 import id.steveimm.pocketpilot.trace.AgentTrace
 
 internal class TurnPlanningPhaseRunner(
@@ -32,7 +31,7 @@ internal class TurnPlanningPhaseRunner(
         suspend fun runPlanningPhase(
                 turnId: String,
                 turnNumber: Int,
-                snapshot: ScreenSnapshot,
+                snapshot: ScreenSnapshot?,
                 currentPackageName: String?,
                 warnings: List<String>
         ): TurnResult {
@@ -57,10 +56,7 @@ internal class TurnPlanningPhaseRunner(
                         }
 
                 // Canonical observation — computed once, consumed by prompt and history.
-                val observation = TurnObservation.capture(
-                        snapshot = snapshot,
-                        currentPackageName = currentPackageName
-                )
+                val observation = snapshot?.let { TurnObservation.capture(it, currentPackageName) }
 
                 val promptBuilder =
                         PromptBuilder(
@@ -73,14 +69,9 @@ internal class TurnPlanningPhaseRunner(
                                 turnNumber = turnNumber,
                         )
 
-                // Record screen observation for future turns.
-                // Uses the same canonical screenBlock — no ordering dependency.
-                services.historyManager.addItem(
-                        ResponseItem.Message(
-                                kind = MessageKind.SCREEN_OBSERVATION,
-                                content = observation.screenBlock.trim()
-                        )
-                )
+                observation?.let {
+                        services.historyManager.addItem(ResponseItem.Message(MessageKind.SCREEN_OBSERVATION, it.screenBlock))
+                }
 
                 trace.llmRequest(
                         turnId = turnId,

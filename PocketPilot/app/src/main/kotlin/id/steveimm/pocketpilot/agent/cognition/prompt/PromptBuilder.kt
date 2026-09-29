@@ -19,12 +19,12 @@ internal class PromptBuilder(
 
     /** Assemble all input items for one LLM call. */
     fun buildInputItems(
-        observation: TurnObservation,
+        observation: TurnObservation? = null,
         warnings: List<String> = emptyList(),
         turnNumber: Int = 0,
     ): List<ResponseInputItem> = buildList {
         addAll(buildHistorySection())
-        add(buildObservationSection(observation, warnings, turnNumber))
+        observation?.let { add(buildObservationSection(it, warnings, turnNumber)) }
     }
 
     /** History section is a direct pass-through of [HistoryManager.forPrompt]. Screen compression is handled proactively by
@@ -78,6 +78,8 @@ internal class PromptBuilder(
             easyRole?.let { role ->
                 val body = if (kind == MessageKind.COMPACTION_SUMMARY) {
                     "$CHECKPOINT_PREFIX$content"
+                } else if (kind == MessageKind.SCREEN_OBSERVATION) {
+                    "[Previous screen observation]\n$content"
                 } else {
                     content
                 }

@@ -12,12 +12,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import org.json.JSONObject
 
-/** UIActionInvocation — executes a UIAction for SystemButtonTool and WaitTool. */
+/** UIActionInvocation — executes a UIAction for phone actions. */
 class UIActionInvocation(
     override val toolName: String,
     override val params: JSONObject,
     private val description: String,
-    private val uiAction: UIAction
+    private val uiAction: UIAction,
+    private val requiresScreenshot: Boolean = false,
 ) : ToolInvocation {
 
     companion object {
@@ -32,6 +33,9 @@ class UIActionInvocation(
             return ToolExecutionResult.Cancelled("Cancelled before execution")
         }
 
+        if (requiresScreenshot && context.currentSnapshot?.image == null) {
+            return ToolExecutionResult.Failure("No current screenshot. Use read_screen before entering text.")
+        }
         val result = context.platform.performAction(uiAction)
 
         return when (result) {

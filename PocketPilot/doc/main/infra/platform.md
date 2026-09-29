@@ -55,7 +55,6 @@ Each `UIAction` variant maps to **exactly one** Android API call. Zero strategy 
 | `ClickNodeAt` / `LongClickNodeAt` / `SetTextOnNodeAt` / `SetTextOnFocused` / `ScrollNodeAt` | `NodeActionPerformer` |
 | `TapAt` / `LongPressAt` / `Swipe` | `AccessibilityGestureInjector` |
 | `SystemButton` | ENTER via `NodeActionPerformer`, others via gesture |
-| `Wait` | `delay(durationMs)` |
 
 Gesture tap, long-press, and swipe feedback is emitted by `AccessibilityGestureInjector`. `OverlayTouchGate` makes overlays pass through while a gesture executes. Node actions remain available to the direct platform debug harness, while the model uses gesture tools and focused text entry.
 

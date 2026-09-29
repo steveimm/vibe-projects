@@ -22,6 +22,20 @@ class PromptBuilderTest {
     }
 
     @Test
+    fun `host screen is identified and historical screens are not current observations`() {
+        val observation = TurnObservation.capture(ScreenSnapshot(1, emptyList()), id.steveimm.pocketpilot.BuildConfig.APPLICATION_ID)
+        assertThat(observation.screenBlock).contains("your own interface")
+        val history = HistoryManager().apply {
+            addItem(ResponseItem.Message(MessageKind.SCREEN_OBSERVATION, "Old screen"))
+            addItem(ResponseItem.Message(MessageKind.USER_INTENT, "Explain this"))
+        }
+        val items = PromptBuilder(history).buildInputItems()
+        assertThat(items).hasSize(2)
+        assertThat(items[0].asEasyInputMessage().content().asTextInput()).startsWith("[Previous screen observation]")
+        assertThat(items[1].asEasyInputMessage().content().asTextInput()).isEqualTo("Explain this")
+    }
+
+    @Test
     fun `missing screenshot is explicit instead of suggesting blind actions`() {
         val observation = TurnObservation.capture(ScreenSnapshot(1, emptyList()))
         val text = PromptBuilder(HistoryManager()).buildObservationText(observation, emptyList())

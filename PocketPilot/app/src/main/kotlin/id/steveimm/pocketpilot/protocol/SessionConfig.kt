@@ -16,7 +16,7 @@ data class SessionConfig(
         val traceEnabled: Boolean = false,
         /** Trace run id (folder name) for correlating host/device artifacts */
         val traceRunId: String? = null,
-        /** Controls which perception modalities (a11y tree, screenshot, both) are active */
+        /** Screenshot resolution and compression quality */
         val perceptionConfig: PerceptionConfig = PerceptionConfig.DEFAULT,
         /** Model ID on the configured server. */
         val mainModel: String = "",

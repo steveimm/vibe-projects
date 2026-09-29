@@ -106,3 +106,31 @@ Independent Contacts-provider reads confirmed all four values and `account_name=
 Observed model limitation: after it had verified the reopened record, the model unnecessarily pressed Home three times before its native final answer. The contact task succeeded and terminated without intervention, but this run does not demonstrate optimal action efficiency or guarantee error-free model decisions.
 
 Final tested APK: signed, non-debuggable `id.steveimm.pocketpilot`, `arm64-v8a` only, existing signing certificate, 16 KB ZIP alignment verified, bundled Termux bridge identical to source. SHA-256: `49e7544bd0753cf2b638e75039f18f79384c4e4499ff414f7f23652044c5d21d`.
+
+## Conversation-first requests and explicit screen access
+
+A subsequent `hello` request exposed a context problem: the model received `Goal: hello` plus a screenshot of PocketPilot displaying its own Thinking indicator. It treated that indicator as another assistant's progress, called `wait(3000)`, and described the greeting as a delivered message. That baseline used two model turns and 14.5 seconds.
+
+Every new user message now starts unchanged with conversation history and no current screen observation. The same model chooses a direct answer or a tool. `read_screen` replaces the old wait tool and optionally delays capture for app loading. Phone actions and physical handoffs continue to receive fresh observations. Other tool interactions can return text without taking screenshots. Taps and text entry require an observed screen.
+
+The core prompt identifies the model as the assistant in this conversation. A PocketPilot screen observation explicitly identifies the host interface, and old observations are labeled as previous screens. Native reasoning remains in assistant history. There are no greeting keywords, intent regexes, task-specific app recipes, or separate intent-classifier calls.
+
+Live checks with the local `qwen3.8-27b` server and Android 15 emulator:
+
+| Request | Model turns | Result |
+| --- | --- | --- |
+| `hello` through the test entry point | 1 | Normal greeting, 0 tools, 0 screen captures, 3 seconds |
+| `hello` typed into the chat composer | 1 | Normal greeting, 0 tools, 0 screen captures, 3.2 seconds |
+| `안녕하세요` | 1 | Korean greeting, 0 tools, 0 screen captures |
+| Explain why the sky is blue | 1 | Direct explanation, 0 tools, 0 screen captures |
+| Summarize the previous answer in five words | 1 | Correct contextual summary, 0 tools, prior native reasoning retained |
+| Describe the current screen without interaction | 2 | One `read_screen`, accurate description of PocketPilot, no waiting for itself |
+| Open Android Settings | 2 | One `open_app`, screenshot only afterward, verified Settings open |
+| Thanks after opening Settings | 1 | Direct conversational reply, 0 tools, 0 screen captures |
+| Hi. Open Android Settings, please. | 4 | Opened Settings and returned to its main page; the greeting did not suppress the action request |
+| Turn off Dark theme | 5 | Theme disabled, independently verified by `cmd uimode night` |
+| Find Android version using Settings search | 6 | Read Android 15, matching `ro.build.version.release` |
+
+The search case first attempted text entry without focus. The tool rejected it, and the model recovered by tapping the field before typing. The theme case retained the previously observed model tendency to press Home after completing work. This change fixes forced automation and self-observation for conversation; it does not claim that every model-selected action is necessary.
+
+Validation: 978 release unit tests passed, release lint passed, device UI tests compiled, and replay compilation handled both a conversation-only trace and an explicit screen read. The signed ARM64-only release was installed and checked for the existing signing certificate, non-debuggable flag, 16 KB ZIP alignment, and matching bundled bridge source. Final APK SHA-256: `35a65e59ffd51e377f3050bddc71ead31549ffe7bd934b527ed56edcb77c8bc1`.

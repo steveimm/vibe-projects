@@ -27,7 +27,7 @@ internal class AgentTurnRunner(
                 private const val TAG = "AgentTurnRunner"
         }
         private data class PreTurnContext(
-                val snapshot: ScreenSnapshot,
+                val snapshot: ScreenSnapshot?,
                 val currentPackageName: String?,
                 val securityWarnings: List<String> = emptyList()
         )
@@ -61,13 +61,14 @@ internal class AgentTurnRunner(
 
                 val outcome =
                         try {
-                                val preTurnContext = capturePreTurnSnapshot(turnId, turnNumber)
+                                val preTurnContext = if (state.observeScreen) capturePreTurnSnapshot(turnId, turnNumber)
+                                        else PreTurnContext(null, null)
                                 val snapshot = preTurnContext.snapshot
                                 if (isTurnCancelled()) {
                                         TurnOutcome.Cancelled
                                 } else {
                                         val preparedTurn =
-                                                prepareTurn(turnNumber, nextState, snapshot)
+                                                if (snapshot != null) prepareTurn(turnNumber, nextState, snapshot) else PreparedTurn(nextState, emptyList())
                                         nextState = preparedTurn.nextState
 
                                         val planningResult =
@@ -80,6 +81,9 @@ internal class AgentTurnRunner(
                                                         warnings = preTurnContext.securityWarnings + preparedTurn.warnings
                                                 )
 
+                                        nextState = nextState.copy(observeScreen = planningResult.toolCalls.any {
+                                                it.requestsScreenObservation() && services.toolRegistry.contains(it.name)
+                                        })
                                         val executionResult =
                                                 executionPhaseRunner.executeActions(
                                                         turnId = turnId,
@@ -116,7 +120,8 @@ internal class AgentTurnRunner(
                 turnId: String,
                 turnNumber: Int
         ): PreTurnContext {
-                eventDispatcher.status("👀 Scanning screen...")
+                eventDispatcher.turnPhaseChanged(turnId, id.steveimm.pocketpilot.protocol.TurnPhase.PERCEPTION)
+                eventDispatcher.status("Reading screen")
                 val rawSnapshot = services.platform.captureScreen()
                 val currentPackage = services.platform.getCurrentPackageName()
 

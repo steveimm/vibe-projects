@@ -1,6 +1,6 @@
 # Agent loop
 
-PocketPilot runs one agent. Each turn captures the phone, sends the current observation and history to the configured Chat Completions server, then executes tool calls or finishes on native assistant content.
+PocketPilot runs one agent. Each new user message is sent unchanged with conversation history. The model can respond directly or select a tool. The runtime captures the phone after a screen-reading or phone-action request, then includes that fresh observation in the next model turn. Non-phone tools can return text without triggering a screenshot.
 
 ## Response contract
 
@@ -16,7 +16,7 @@ PocketPilot runs one agent. Each turn captures the phone, sends the current obse
 | Component | Responsibility |
 | --- | --- |
 | `Agent` | Pause, cancellation, retries, compaction, task loop |
-| `AgentTurnRunner` | Capture, app-access masking, planning and execution |
+| `AgentTurnRunner` | Conditional capture, app-access masking, planning and execution |
 | `TurnPlanningPhaseRunner` | Prompt/history, streamed events, native reasoning |
 | `Turn` | Response parsing and terminal-response validation |
 | `TurnExecutionPhaseRunner` | Tool routing, results, post-action observations |

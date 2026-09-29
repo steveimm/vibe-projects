@@ -114,7 +114,7 @@ private class ThrowingCapturePlatform : AndroidPlatform {
 }
 
 private class NoObservationTool : ToolSpec {
-    override val name: String = "test_fallback_tool"
+    override val name: String = "tap"
     override val description: String = "test tool returning Success with no observation"
     override val parameterSchema: JSONObject = JSONObject().apply {
         put("type", "object")

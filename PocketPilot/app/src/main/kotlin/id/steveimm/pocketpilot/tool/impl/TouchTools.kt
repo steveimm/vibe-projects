@@ -33,13 +33,13 @@ class TouchTool(override val name: String) : ToolSpec {
         override suspend fun execute(context: ToolExecutionContext): ToolExecutionResult {
             if (context.isCancelled()) return ToolExecutionResult.Cancelled()
             val image = context.currentSnapshot?.image
-                ?: return ToolExecutionResult.Failure("No current screenshot. Use wait to capture the screen before a gesture.")
+                ?: return ToolExecutionResult.Failure("No current screenshot. Use read_screen to capture the screen before a gesture.")
             val display = context.platform.getDisplayInfo()
             if (image.width <= 0 || image.height <= 0 || display.widthPixels <= 0 || display.heightPixels <= 0) {
-                return ToolExecutionResult.Failure("Screen dimensions are unavailable. Use wait to capture again.")
+                return ToolExecutionResult.Failure("Screen dimensions are unavailable. Use read_screen to capture again.")
             }
             if (abs(image.width.toDouble() / image.height - display.widthPixels.toDouble() / display.heightPixels) > 0.02) {
-                return ToolExecutionResult.Failure("Display orientation changed since the screenshot. Use wait before retrying.")
+                return ToolExecutionResult.Failure("Display orientation changed since the screenshot. Use read_screen before retrying.")
             }
             fun x(key: String) = (params.getInt(key) / 1000.0 * (display.widthPixels - 1)).roundToInt()
             fun y(key: String) = (params.getInt(key) / 1000.0 * (display.heightPixels - 1)).roundToInt()
@@ -60,5 +60,6 @@ class TypeTextTool : ToolSpec {
     override fun validate(params: JSONObject): ValidationResult = validateToolParameters(params, parameterSchema)
     override fun createInvocation(params: JSONObject): ToolInvocation = UIActionInvocation(
         name, params, "Enter text in focused field", UIAction.SetTextOnFocused(params.getString("text"), clear = true),
+        requiresScreenshot = true,
     )
 }
