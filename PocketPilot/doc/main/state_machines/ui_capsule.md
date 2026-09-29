@@ -27,14 +27,14 @@ there, and what the user sees.
 
 | State | Trigger | What user sees |
 |---|---|---|
-| `Hidden` | Initial / session ended / Done auto-hides / Error dismissed | No dot, no thought, no control bar; the input bar is still rendered with the idle prompt "What can I help you with?" so the main-app idle composer remains usable |
+| `Hidden` | Initial / Error dismissed | No dot, no thought, no control bar; the input bar is still rendered with the idle prompt "What can I help you with?" so the main-app idle composer remains usable |
 | `Running(thought)` | Task started or resumed | Blue pulsing dot + thought; `[Takeover]` `[Stop]`; input row "Add note" |
 | `TakeoverPending(lastThought)` | User tapped Takeover while Running | Amber dot + "Handing over…"; takeover button disabled, stop available |
 | `Takeover(lastThought)` | Agent confirmed pause | Amber dot + dimmed last thought; `[Resume]` `[Stop]` |
 | `WaitingForInput(question, callId)` | Agent asked a text question | Expanded body shows question; input row hint "Type your response…" |
 | `WaitingForAction(instruction, callId)` | Agent asked the user to do something on the phone | Expanded body shows instruction; `[Done]` button; input row hidden |
 | `WaitingForApproval(callId, …)` | Agent needs approval to operate an app | Status line asks `Allow PocketPilot to operate {AppName}?`; no expanded body; `[Always]` `[Session]` `[Reject]` |
-| `Done(message)` | Task completed (any non-ERROR outcome) | Teal dot + checkmark message; auto-hides after 3 s |
+| `Done(message)` | Task completed (any non-ERROR outcome) | Finished status, scrollable result, navigation and new-request input; persists until the next task |
 | `Error(message)` | Task ended in ERROR / `onError()` called | Red dot + warning; `[Close]` button stays until dismissed |
 
 ### Sidecar state
@@ -89,13 +89,12 @@ stateDiagram-v2
     WaitingForAction --> Error: onTaskCompleted(ERROR) / onError
     WaitingForApproval --> Error: onTaskCompleted(ERROR) / onError
 
-    Done --> Hidden: 3 s auto-hide
-    Done --> Running: onTaskStarted (cancels auto-hide)
+    Done --> Running: onTaskStarted
 
     Error --> Hidden: onDismissError
     Error --> Running: onTaskStarted
 
-    note right of Hidden: onSessionEnded from any state -> Hidden
+    note right of Done: session expiry preserves the last result
 ```
 
 ### Guard rules
@@ -107,11 +106,11 @@ allowed source state, the event is silently logged and ignored. This is enforced
 
 | Event | Allowed source states | Notes |
 |---|---|---|
-| `onTaskStarted` | Any | Universal; cancels auto-hide, clears `isStopPending` |
+| `onTaskStarted` | Any | Universal; clears `isStopPending` |
 | `onError` | Any | Universal |
 | `onAskUser` | Any | Universal; replaces mode |
 | `onApprovalRequired` | Any | Universal; replaces mode |
-| `onSessionEnded` | Any | Always returns to `Hidden` |
+| `onSessionEnded` | Any | Active task → stopped result; otherwise preserves mode |
 | `setTurnPhase` | `Running` only | Silently dropped otherwise |
 | `onTakeoverRequested` | `Running` only | |
 | `onTakeoverConfirmed` | `Running`, `TakeoverPending` | Pending is the normal path |
@@ -135,14 +134,13 @@ The spec has five parts:
 - `buttons` — control-bar button slots (`primary`, `secondary`, `stop`)
 - `input` — optional input-bar spec (`hint`, `submitLabel`, `clearDraft`)
 
-`NavSpec.from(context, platformMode, hasIsland, mode)` separately derives navigation
+`NavSpec.from(context, platformMode, hasBubble, mode)` separately derives navigation
 button visibility (minimize / open-app / open-watch). Nav visibility depends on
 context + platform **and** mode, but the mode-dependence is limited to a few
 narrow rules — that is why it lives in its own spec rather than inside
 `CapsuleRenderSpec`:
 
-- When `mode is Done`, the entire control bar (and its nav cluster) hides
-  regardless of context — `Done` is a "calm" state with only the auto-fade message.
+- Completed overlays retain Minimize and Open app. MainActivity renders the idle composer after completion.
 - `showMinimize` additionally hides whenever the user is being asked to act or
   decide (`WaitingForInput`, `WaitingForAction`, `WaitingForApproval`) or when
   the capsule is in `Error`, so the user cannot dismiss a prompt by minimising.
@@ -161,7 +159,7 @@ field so a stale draft doesn't leak into a Q&A response. Submitting routes to:
 
 | Mode | Routed callback |
 |---|---|
-| `Hidden` | `onSend` (start a new task) |
+| `Hidden` / `Done` | `onSend` (start a new task) |
 | `WaitingForInput` | `onUserResponse(callId, text)` |
 | anything else | `onSupplement(text)` (mid-task amendment) |
 
@@ -174,9 +172,7 @@ field so a stale draft doesn't leak into a Q&A response. Submitting routes to:
 - `onSessionEnded`
 - `onDismissError`
 
-Auto-hide is a coroutine that fires `setMode(Hidden)` 3 s after entering `Done`. It
-is cancelled by `onTaskStarted`, `onError`, and `onSessionEnded`. If the mode has
-already moved off `Done` when the timer fires, the transition is suppressed.
+There is no completion hide timer. Done and Error survive session expiry. An active session ending leaves a stopped result.
 
 ## Invariants
 

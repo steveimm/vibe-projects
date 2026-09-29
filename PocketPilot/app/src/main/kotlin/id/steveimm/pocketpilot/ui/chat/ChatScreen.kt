@@ -69,6 +69,7 @@ import id.steveimm.pocketpilot.ui.chat.model.ChatMessage
 import id.steveimm.pocketpilot.ui.chat.model.ContentBlock
 import id.steveimm.pocketpilot.ui.navigation.NavigationDrawerContent
 import id.steveimm.pocketpilot.ui.onboarding.PermissionRepairCard
+import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleContext
 import id.steveimm.pocketpilot.ui.settings.AlertTone
 import id.steveimm.pocketpilot.ui.settings.SettingsAlertCard
@@ -241,7 +242,7 @@ fun ChatScreen(
                         }
                         CompositionLocalProvider(LocalVoiceFeedback provides reportVoiceFeedback) {
                             SmartCapsuleSurface(
-                                mode = capsuleMode,
+                                mode = if (capsuleMode is CapsuleMode.Done) CapsuleMode.Hidden else capsuleMode,
                                 isStopPending = isStopPending,
                                 platformMode = capsulePlatformMode,
                                 context = CapsuleContext.MAIN_APP,

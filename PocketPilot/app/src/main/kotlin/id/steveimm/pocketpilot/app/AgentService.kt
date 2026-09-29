@@ -10,10 +10,11 @@ import android.view.Display
 import android.view.SurfaceView
 import android.view.accessibility.AccessibilityEvent
 import id.steveimm.pocketpilot.debug.ActionDebugReceiver
+import id.steveimm.pocketpilot.protocol.SessionState
 import id.steveimm.pocketpilot.protocol.Op
 import id.steveimm.pocketpilot.protocol.PlatformMode
 import id.steveimm.pocketpilot.session.AgentSession
-import id.steveimm.pocketpilot.ui.overlay.compose.IslandOverlayHost
+import id.steveimm.pocketpilot.ui.overlay.compose.BubbleOverlayHost
 import id.steveimm.pocketpilot.ui.overlay.compose.ServiceLifecycleOwner
 import id.steveimm.pocketpilot.ui.overlay.visualizer.ActionVisualizerManager
 import kotlinx.coroutines.CoroutineScope
@@ -179,6 +180,7 @@ class AgentService : AccessibilityService() {
                         appPackage = OUR_PACKAGE,
                         logTag = TAG,
                         onStop = { submitOp(Op.Shutdown) },
+                        onSend = ::sendOverlayInput,
                         onTakeover = { submitOp(Op.Takeover) },
                         onResume = { submitOp(Op.Resume) },
                         onSupplement = { text -> submitOp(Op.Supplement(text)) },
@@ -189,26 +191,16 @@ class AgentService : AccessibilityService() {
                         onApprovalResponse = { callId, decision, scope, packageName ->
                             submitOp(Op.Approve(callId, decision, scope, packageName))
                         },
-                        onOpenApp = {
-                            val intent =
-                                    Intent(this, MainActivity::class.java).apply {
-                                        flags =
-                                                Intent.FLAG_ACTIVITY_NEW_TASK or
-                                                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                                                        Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                    }
-                            startActivity(intent)
-                        },
+                        onOpenApp = ::openMainActivity,
                         onOpenViewer = { viewerBridge.openViewer() },
                         onFinishViewer = { viewerBridge.finishViewer() },
-                        statusIslandManager =
-                                IslandOverlayHost(
+                        bubbleManager =
+                                BubbleOverlayHost(
                                         service = this,
                                         lifecycleOwner = serviceLifecycleOwner,
                                         savedStateRegistryOwner = serviceLifecycleOwner,
-                                        onExpandCapsule = {
-                                            // Tap island → expand Smart Capsule overlay, hide island
-                                            overlayController?.onIslandTapped()
+                                        onToggleCapsule = {
+                                            overlayController?.onBubbleTapped()
                                         }
                                 )
                 )
@@ -297,6 +289,23 @@ class AgentService : AccessibilityService() {
     override fun onCreate() {
         super.onCreate()
         serviceLifecycleOwner.onCreate()
+    }
+
+    private var pendingOverlayInput: String? = null
+
+    internal fun consumePendingOverlayInput(): String? = pendingOverlayInput.also { pendingOverlayInput = null }
+
+    private fun sendOverlayInput(text: String) {
+        if (session == null || session?.state?.value == SessionState.Shutdown) {
+            pendingOverlayInput = text
+            openMainActivity()
+        } else submitOp(Op.UserInput(text))
+    }
+
+    private fun openMainActivity() {
+        startActivity(Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        })
     }
 
     private fun submitOp(op: Op) {

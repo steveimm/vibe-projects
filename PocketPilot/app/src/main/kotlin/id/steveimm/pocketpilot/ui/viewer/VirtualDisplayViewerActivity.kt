@@ -79,7 +79,7 @@ class VirtualDisplayViewerActivity : ComponentActivity() {
         surfaceView?.let { sv ->
             AgentService.instance?.notifyViewerVisible(sv)
         }
-        // Notify service: show capsule overlay, hide island, set SCREEN_VIEWING context
+        // Notify service: show controls with the bubble available, set SCREEN_VIEWING context
         AgentService.instance?.onViewerOpened()
         // Race-proof: if the agent is already idle when the viewer opens, the SharedFlow emit from onViewerOpened()→applyVisibility() may
         // land before the lifecycle collector subscribes (both happen this same tick).
@@ -93,7 +93,7 @@ class VirtualDisplayViewerActivity : ComponentActivity() {
         super.onStop()
         Log.d(TAG, "onStop")
         AgentService.instance?.notifyViewerHidden()
-        // Notify service: hide capsule overlay, show island, set BACKGROUND context
+        // Notify service: hide controls and keep the bubble, set BACKGROUND context
         AgentService.instance?.onViewerClosed()
         if (!isChangingConfigurations) {
             // Keep viewer transient; returning to app should land on chat task, not a stale viewer task.

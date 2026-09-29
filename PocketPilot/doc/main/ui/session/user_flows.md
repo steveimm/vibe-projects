@@ -50,7 +50,7 @@ User types goal in capsule input → taps Send
       │   ├─ Schedules 5-min idle timeout
       │
       ├─ UI: TaskCompleted → completion text appended to chat
-      │   ├─ Capsule → Done (3s) → Hidden
+      │   ├─ Capsule → persistent Done result; floating controls minimize to the bubble
       │   ├─ Recording service finalizes agent message to disk
       │   └─ VD completions: row also carries CompletionHandoff(appPackage, appLabel) → renders "Open <App>" CTA (see "VD completion handoff" below)
       │

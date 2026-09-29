@@ -21,7 +21,7 @@ class CapsuleApprovalTransitionTest {
     @Before
     fun setUp() {
         scope = TestScope()
-        holder = CapsuleStateHolder(scope)
+        holder = CapsuleStateHolder()
     }
 
     @Test
@@ -187,10 +187,10 @@ class CapsuleApprovalTransitionTest {
     }
 
     @Test
-    fun `onSessionEnded INTERRUPTED hides capsule`() {
+    fun `interrupted session retains a stopped result`() {
         holder.onTaskStarted("task1", "input")
         holder.onSessionEnded(SessionEndReason.INTERRUPTED)
-        assertThat(holder.mode.value).isEqualTo(CapsuleMode.Hidden)
+        assertThat(holder.mode.value).isEqualTo(CapsuleMode.Done("Stopped"))
     }
 
     @Test

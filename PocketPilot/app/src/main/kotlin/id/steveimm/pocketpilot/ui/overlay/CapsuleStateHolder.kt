@@ -11,20 +11,15 @@ import id.steveimm.pocketpilot.ui.overlay.model.CapsuleContext
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
 import id.steveimm.pocketpilot.ui.overlay.model.GlowState
 import id.steveimm.pocketpilot.ui.overlay.model.deriveGlowState
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
 /** CapsuleStateHolder — single source of truth for Smart Capsule state. */
-class CapsuleStateHolder(private val scope: CoroutineScope) {
+class CapsuleStateHolder {
 
     companion object {
         private const val TAG = "CapsuleStateHolder"
-        private const val AUTO_HIDE_DELAY_MS = 3000L
     }
 
     private val _mode = MutableStateFlow<CapsuleMode>(CapsuleMode.Hidden)
@@ -36,8 +31,8 @@ class CapsuleStateHolder(private val scope: CoroutineScope) {
     private val _platformMode = MutableStateFlow(PlatformMode.ACCESSIBILITY)
     val platformMode: StateFlow<PlatformMode> = _platformMode.asStateFlow()
 
-    private val _hasIsland = MutableStateFlow(true)
-    val hasIsland: StateFlow<Boolean> = _hasIsland.asStateFlow()
+    private val _hasBubble = MutableStateFlow(true)
+    val hasBubble: StateFlow<Boolean> = _hasBubble.asStateFlow()
 
     private val _turnPhase = MutableStateFlow<TurnPhase?>(null)
     val turnPhase: StateFlow<TurnPhase?> = _turnPhase.asStateFlow()
@@ -72,7 +67,6 @@ class CapsuleStateHolder(private val scope: CoroutineScope) {
                 is CapsuleMode.Hidden -> false
             }
 
-    private var autoHideJob: Job? = null
 
     fun setPlatformMode(mode: PlatformMode) { _platformMode.value = mode }
 
@@ -92,17 +86,15 @@ class CapsuleStateHolder(private val scope: CoroutineScope) {
 
     fun setContext(ctx: CapsuleContext) { _context.value = ctx }
 
-    fun setHasIsland(enabled: Boolean) { _hasIsland.value = enabled }
+    fun setHasBubble(enabled: Boolean) { _hasBubble.value = enabled }
 
     fun onTaskStarted(taskId: String, input: String) {
-        cancelAutoHide()
         _isStopPending.value = false
         _turnPhase.value = null
         setMode(CapsuleMode.Running(compactThought(input)))
     }
 
     fun onError(message: String) {
-        cancelAutoHide()
         _isStopPending.value = false
         setMode(CapsuleMode.Error(compactThought(message)))
     }
@@ -227,17 +219,15 @@ class CapsuleStateHolder(private val scope: CoroutineScope) {
             )
         }
         setMode(mode)
-        if (mode is CapsuleMode.Done) scheduleAutoHide()
     }
 
     fun onSessionEnded(reason: SessionEndReason) {
-        cancelAutoHide()
         _isStopPending.value = false
         when (reason) {
             SessionEndReason.USER_STOPPED,
             SessionEndReason.INTERRUPTED,
             SessionEndReason.IDLE_TIMEOUT -> {
-                setMode(CapsuleMode.Hidden)
+                if (hasActiveTask) setMode(CapsuleMode.Done("Stopped"))
             }
         }
     }
@@ -251,20 +241,5 @@ class CapsuleStateHolder(private val scope: CoroutineScope) {
     private fun setMode(new: CapsuleMode) {
         previousMode = _mode.value
         _mode.value = new
-    }
-
-    private fun scheduleAutoHide() {
-        cancelAutoHide()
-        autoHideJob = scope.launch {
-            delay(AUTO_HIDE_DELAY_MS)
-            if (_mode.value is CapsuleMode.Done) {
-                setMode(CapsuleMode.Hidden)
-            }
-        }
-    }
-
-    private fun cancelAutoHide() {
-        autoHideJob?.cancel()
-        autoHideJob = null
     }
 }

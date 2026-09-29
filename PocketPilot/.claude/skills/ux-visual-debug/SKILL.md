@@ -94,7 +94,7 @@ Source: `CapsuleRenderSpec.from()` + `SmartCapsuleLayoutBuilder.kt`
 | **Takeover** | amber static | lastThought (dimmed) | — | "Resume" | "Stop" | same as Running |
 | **WaitingForInput** | — | "Awaiting response" | question text | — | "Stop" | hint="Type your response..." btn="Send" |
 | **WaitingForAction** | — | "Action needed" | instruction text | "Done" | "Stop" | — (hidden) |
-| **Done** | teal static | "message" | — | — | — | — |
+| **Done** | teal static | "Finished" | scrollable result | — | — | new request |
 | **Error** | red static | "message" | — | — | "Close" | — |
 
 #### Content Descriptions (ADB selectors)
@@ -107,7 +107,8 @@ Source: `CapsuleRenderSpec.from()` + `SmartCapsuleLayoutBuilder.kt`
 | Nav: Minimize | "Minimize" | VD BACKGROUND context only |
 | Nav: Open App | "Open app" | Overlay/VD when not in MAIN_APP |
 | Nav: View Screen | "View screen" | VD BACKGROUND context only |
-| Status Island | "Agent status island" | VD mode compact pill |
+| Collapsed bubble | "Expand PocketPilot controls" | Draggable in A11y and VD modes |
+| Expanded bubble | "Minimize PocketPilot controls" | Same bubble remains above the controls |
 
 #### Navigation Button Visibility
 
@@ -131,7 +132,7 @@ Source: `CapsuleRenderSpec.from()` + `SmartCapsuleLayoutBuilder.kt`
 
 **WaitingForAction**: No dot. Status line shows "Action needed". Detail body shows instruction. "Done" button visible. Input bar is hidden (no text input needed).
 
-**Done**: Teal static dot. Status line shows completion message prefixed with checkmark. All buttons hidden. Input bar hidden. Auto-hides after ~3 seconds.
+**Done**: The persistent bubble remains. Tap it to show the Finished status, scrollable result, navigation, and new-request composer. Tap it again to minimize. Completion and session expiry do not hide the bubble.
 
 **Error**: Red static dot. Status line shows error message prefixed with warning. Only "Close" button visible. Does NOT auto-hide — stays until user taps Close.
 
@@ -150,7 +151,8 @@ grep -i "takeover\|stop\|thinking\|Add note" /tmp/dump.xml
 If overlay nodes are NOT visible in the dump:
 - Use `tap_xy` with coordinates calculated from layout (see SmartCapsuleLayoutBuilder.kt dp values).
 - Main App Compose UI is typically visible to uiautomator.
-- Status Island may also be invisible — use coordinates or `tap_contains_text` on truncated thought text.
+- If the bubble is missing from the UI dump, inspect its `PocketPilot bubble` WindowManager frame and tap the center.
+- Avoid `uiautomator dump` during agent runs or persistence checks: it can reconnect accessibility and reset service UI state. Use screencap and dumpsys instead.
 
 ### Recording Findings
 
@@ -158,7 +160,7 @@ Use this template per user flow tested:
 
 ```
 Flow ID:    [e.g., A1, B1, F2]
-Surface:    Main App | A11y Overlay | VD Island | VD Capsule
+Surface:    Main App | A11y Overlay | VD Bubble | VD Capsule
 Mode:       A11y | VD
 Result:     PASS | FAIL
 Evidence:   <screenshot path> <visible text path>
@@ -243,7 +245,7 @@ python3 .claude/skills/ux-visual-debug/scripts/adb_ux_runner.py \
 ### Reference Scenarios
 
 - `references/scenario_a11y_lifecycle.json` — Core A11y task lifecycle (start, takeover, resume, completion)
-- `references/scenario_vd_navigation.json` — VD island/capsule navigation
+- `references/scenario_vd_navigation.json` — VD bubble/capsule navigation
 - `references/scenario_main_and_capsule.json` — Main app + capsule smoke test
 - `references/scenario_agent_parallel_example.json` — Parallel agent linkage example
 - `references/scenario_template.json` — Blank template

@@ -113,11 +113,11 @@ When examining screenshots or visible text dumps, use this reference to determin
 
 #### Done
 
-- [ ] Teal dot, static
-- [ ] Status line shows completion message (e.g., "Task completed successfully")
-- [ ] No buttons visible (no Takeover, no Stop, no Close)
-- [ ] Input bar hidden
-- [ ] Should auto-hide after ~3 seconds (capsule disappears)
+- [ ] Floating bubble remains after completion and session expiry
+- [ ] Tapping it shows Finished, the full result, navigation, and a new-request composer
+- [ ] Tapping the bubble again minimizes the controls
+- [ ] No active-task edge glow remains
+- [ ] Draft survives minimizing and reopening
 
 #### Error
 
@@ -144,16 +144,16 @@ When user submits a supplement ("Add note") during Running/Takeover:
 
 ### 7.4 VD (Virtual Display) Mode Checks
 
-#### Status Island
+#### Floating bubble
 
-- [ ] Compact pill appears at top-center of real screen during active task
-- [ ] Shows truncated thought text (max ~24 chars) + status dot
-- [ ] Dot color matches current state (blue=Running, amber=Takeover, etc.)
-- [ ] contentDescription = "Agent status island" (for ADB selectors)
-- [ ] Tapping island expands full capsule overlay
-- [ ] Island hides when capsule is expanded
-- [ ] Island reappears after capsule minimize
-- [ ] Island disappears on Done → Hidden transition
+- [ ] Round bubble remains available outside MainActivity in both platform modes
+- [ ] Dragging moves it without toggling the controls
+- [ ] Release docks it to the nearest side within system-bar and cutout bounds
+- [ ] Position survives toggling and is restored after rotation or a service restart
+- [ ] Collapsed description: "Expand PocketPilot controls"
+- [ ] Expanded description: "Minimize PocketPilot controls"
+- [ ] Bubble remains visible above expanded controls
+- [ ] Bubble is absent from model screenshots and does not intercept agent gestures
 
 #### VD Navigation
 

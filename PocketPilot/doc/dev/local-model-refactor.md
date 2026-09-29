@@ -193,3 +193,22 @@ Screenshot suppression already covers the edge glow, capsule, island, and gestur
 The 80 ms pre-capture wait is an allowance for rendering the hidden overlays, not a guarantee under arbitrary device load. Screenshot completion itself uses Android's callback with a separate 5-second timeout. Android 14+ offers [`takeScreenshotOfWindow`](https://developer.android.com/reference/android/accessibilityservice/AccessibilityService#takeScreenshotOfWindow(int,java.util.concurrent.Executor,android.accessibilityservice.AccessibilityService.TakeScreenshotCallback)) to capture underneath accessibility overlays without hiding them. That captures a specified window and requires additional handling for other windows, such as keyboards and dialogs, and for coordinate offsets. This change retains full-display capture and does not claim to eliminate the fixed-delay limitation.
 
 Validation: 983 release unit tests passed, release lint passed, and device UI tests compiled. The signed ARM64 release was installed and passed the existing-signature, non-debuggable, alignment, and bundled-bridge checks. APK SHA-256: `6a8737f8b763369256a41c53d8f76a00e9705fbce68a2b012f6795030fa56b8e`.
+
+## Persistent draggable task bubble
+
+Replaced the static status island with a draggable circular bubble. It remains available outside MainActivity when idle, running, or finished. Tapping toggles the existing task controls, and the bubble stays above the expanded panel. Dragging uses absolute touch coordinates and Android's touch-slop threshold. Release docks to the nearest side. Side and height fraction are saved, with placement bounded by system bars and cutouts and recalculated after rotation.
+
+Removed completion auto-hide and its obsolete tests. Done retains the last result even when its session expires. Completion minimizes controls and removes the activity glow. Expanded results use scrollable Markdown and include navigation and a new-request composer. The main chat immediately returns to its idle composer. Draft state belongs to the overlay host and survives toggling. An expanded idle panel takes keyboard focus before typing, correcting a fast-input case where initial characters reached the app beneath it.
+
+Overlay input uses the active session or, when necessary, hands the user-entered text in memory to MainActivity's existing session startup. Bubble taps do not implicitly navigate to the app or virtual-display viewer. Both bubble and controls participate in screenshot suppression and gesture pass-through. Removed the old island components, hide timer, visibility normalization, and hidden-mode touchability observer, and refreshed their documentation and QA guidance.
+
+Emulator verification with the local model:
+
+- Opened Settings in two turns with one successful tool. The completed bubble remained beyond the former hide delay. Repeated taps expanded and minimized its result and controls.
+- Dragged from right to left without toggling. Portrait position `(21,1171)-(179,1329)` became `(153,472)-(311,630)` in landscape and returned to the original position in portrait. Original rotation settings were restored.
+- Submitted an arithmetic follow-up from the completed panel and received `15`.
+- After an app-process restart, typed `Reply with only BUBBLE_READY`, minimized and reopened the panel, and sent it. The saved request matched the complete draft and a newly started session returned `BUBBLE_READY` in one turn without tools.
+- Placed the bubble over Settings search at physical point `(100,665)`. The model read the screen and tapped normalized `[93,277]`. Settings search opened underneath the bubble, independently verified by the foreground SearchActivity. Both calls succeeded, and all three model screenshots excluded the bubble and controls.
+- Restarted the app again and verified that bubble bounds `(21,590)-(179,748)` were restored exactly.
+
+Validation: all 979 release unit tests passed, release lint passed, and device UI tests compiled. The signed ARM64 release installed on the emulator and passed the existing-signature, non-debuggable, alignment, and bundled-bridge checks. Installed APK SHA-256: `9b5f3d52e58d7045464f966f601462e0507f8b17eadc9a400db556cf2731af79`.

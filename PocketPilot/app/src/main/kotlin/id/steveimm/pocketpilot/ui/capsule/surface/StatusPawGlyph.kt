@@ -10,7 +10,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import id.steveimm.pocketpilot.R
 
-// D1 §6.2: paw glyph replaces the generic status dot on capsule + island.
+// D1 §6.2: paw glyph replaces the generic status dot on capsule + bubble.
 // Tinted by semantic status color.
 @Composable
 fun StatusPawGlyph(

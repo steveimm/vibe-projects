@@ -128,10 +128,10 @@ data class CapsuleRenderSpec(
 
                 is CapsuleMode.Done -> CapsuleRenderSpec(
                     dot = DotSpec(GlowState.Success, pulsing = false),
-                    thought = ThoughtSpec(mode.message),
-                    expandedBody = null,
+                    thought = ThoughtSpec("Finished"),
+                    expandedBody = mode.message,
                     buttons = ButtonsSpec(primary = null, stop = null),
-                    input = null,
+                    input = InputSpec("What can I help you with?", "Send"),
                 )
 
                 is CapsuleMode.Error -> CapsuleRenderSpec(
@@ -171,15 +171,15 @@ data class NavSpec(
         fun from(
             context: CapsuleContext,
             platformMode: PlatformMode,
-            hasIsland: Boolean,
+            hasBubble: Boolean,
             mode: CapsuleMode? = null,
         ): NavSpec {
-            // Done mode hides the entire control bar, so its nav cluster must also hide.
-            val controlBarHidden = mode is CapsuleMode.Done
+            // Completed overlays retain navigation while the main chat owns its final answer.
+            val controlBarHidden = context == CapsuleContext.MAIN_APP && mode is CapsuleMode.Done
 
             return NavSpec(
                 showMinimize = !controlBarHidden
-                    && hasIsland
+                    && hasBubble
                     && context != CapsuleContext.MAIN_APP
                     && mode !is CapsuleMode.WaitingForInput
                     && mode !is CapsuleMode.WaitingForAction
@@ -187,7 +187,7 @@ data class NavSpec(
                     && mode !is CapsuleMode.Error,
                 showApp = !controlBarHidden
                     && context != CapsuleContext.MAIN_APP
-                    && platformMode != PlatformMode.ACCESSIBILITY,
+                    && (platformMode != PlatformMode.ACCESSIBILITY || mode is CapsuleMode.Done),
                 showWatch = !controlBarHidden
                     && platformMode != PlatformMode.ACCESSIBILITY
                     && context != CapsuleContext.SCREEN_VIEWING,

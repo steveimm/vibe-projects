@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -76,13 +77,15 @@ internal fun CapsuleInputBar(
     platformMode: PlatformMode,
     context: CapsuleContext,
     pendingInputText: String,
+    inputDraft: MutableState<String>? = null,
     onPendingInputConsumed: () -> Unit,
     autoFocusInput: Boolean,
     onInputFocusChanged: (Boolean) -> Unit,
     onSubmit: (String) -> Unit,
     voice: VoiceMicDeps? = null,
 ) {
-    var inputText by remember { mutableStateOf("") }
+    val draftState: MutableState<String> = inputDraft ?: remember { mutableStateOf("") }
+    var inputText by draftState
 
     // Restore preserved input after a session bootstrap failure. Seeds once per
     // non-empty pendingInputText value, then tells the VM to clear it.

@@ -2,7 +2,7 @@ package id.steveimm.pocketpilot.ui.overlay.model
 
 import id.steveimm.pocketpilot.protocol.TurnPhase
 
-/** GlowState — semantic status for capsule status dot, edge glow, and status island. */
+/** GlowState — semantic status for capsule status dot, edge glow, and bubble. */
 enum class GlowState {
     Active,
     Executing,

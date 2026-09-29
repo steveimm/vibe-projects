@@ -20,7 +20,7 @@ class CapsuleStateHolderTest {
     @Before
     fun setUp() {
         scope = TestScope()
-        holder = CapsuleStateHolder(scope)
+        holder = CapsuleStateHolder()
     }
 
     @Test
@@ -249,32 +249,32 @@ class CapsuleStateHolderTest {
     }
 
     @Test
-    fun `onSessionEnded USER_STOPPED sets Hidden`() {
+    fun `stopping the session keeps a stopped result`() {
         holder.onTaskStarted("task1", "input")
         holder.onSessionEnded(SessionEndReason.USER_STOPPED)
-        assertThat(holder.mode.value).isEqualTo(CapsuleMode.Hidden)
+        assertThat(holder.mode.value).isEqualTo(CapsuleMode.Done("Stopped"))
     }
 
     @Test
-    fun `onSessionEnded IDLE_TIMEOUT sets Hidden even after completed task`() {
+    fun `idle session expiry preserves the completed result`() {
         holder.onTaskStarted("task1", "input")
         holder.onTaskCompleted(TaskOutcome.FINISHED, "Summary")
         holder.onSessionEnded(SessionEndReason.IDLE_TIMEOUT)
-        assertThat(holder.mode.value).isEqualTo(CapsuleMode.Hidden)
+        assertThat(holder.mode.value).isEqualTo(CapsuleMode.Done("Summary"))
     }
 
     @Test
-    fun `auto-hide transitions Done to Hidden after 3 seconds`() {
+    fun `completed result remains available after the old hide delay`() {
         holder.onTaskStarted("task1", "input")
         holder.onTaskCompleted(TaskOutcome.FINISHED)
         assertThat(holder.mode.value).isInstanceOf(CapsuleMode.Done::class.java)
 
         scope.advanceTimeBy(3001)
-        assertThat(holder.mode.value).isEqualTo(CapsuleMode.Hidden)
+        assertThat(holder.mode.value).isEqualTo(CapsuleMode.Done("Task completed"))
     }
 
     @Test
-    fun `auto-hide cancelled by new task`() {
+    fun `new task replaces the completed result`() {
         holder.onTaskStarted("task1", "input")
         holder.onTaskCompleted(TaskOutcome.FINISHED)
         holder.onTaskStarted("task2", "new task")

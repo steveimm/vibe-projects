@@ -1,9 +1,7 @@
 package id.steveimm.pocketpilot.qa
 
 import id.steveimm.pocketpilot.protocol.PlatformMode
-import id.steveimm.pocketpilot.protocol.TaskOutcome
 import id.steveimm.pocketpilot.ui.capsule.NavAction
-import id.steveimm.pocketpilot.ui.overlay.CapsuleStateHolder
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleContext
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
 import androidx.compose.ui.test.assertCountEquals
@@ -15,13 +13,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -32,39 +23,6 @@ import org.junit.runner.RunWith
 class CapsuleLifecycleTest {
 
     @get:Rule val compose = createComposeRule()
-
-    // K11 — exercises the real auto-hide path in CapsuleStateHolder. Uses real time (runBlocking + real delay) so the holder's delay(3000)
-    // actually fires. If production drops scheduleAutoHide or changes the timing, this test fails.
-    @Test fun done_state_auto_dismisses_to_hidden_via_real_holder() = runBlocking {
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-        try {
-            val holder = CapsuleStateHolder(scope)
-            withContext(Dispatchers.Main) {
-                holder.onTaskStarted("task-1", "start")
-                holder.onTaskCompleted(TaskOutcome.FINISHED, "Task complete")
-            }
-            assertEquals(
-                CapsuleMode.Done("Task complete"),
-                holder.mode.value,
-            )
-
-            // Well before the 3s mark — should still be Done.
-            delay(1500L)
-            assertTrue(
-                "Should still be Done at 1.5s, got ${holder.mode.value}",
-                holder.mode.value is CapsuleMode.Done,
-            )
-
-            // Past the 3s mark — should have auto-hidden.
-            delay(1800L)
-            assertEquals(
-                CapsuleMode.Hidden,
-                holder.mode.value,
-            )
-        } finally {
-            scope.cancel()
-        }
-    }
 
     // K12
     @Test fun error_dismiss_button_fires_callback() {
@@ -112,7 +70,7 @@ class CapsuleLifecycleTest {
                 mode = CapsuleMode.Running(thought = "Working"),
                 context = CapsuleContext.BACKGROUND,
                 platformMode = PlatformMode.VIRTUAL_DISPLAY,
-                hasIsland = true,
+                hasBubble = true,
                 onNavigate = { fired += it },
             )
         }

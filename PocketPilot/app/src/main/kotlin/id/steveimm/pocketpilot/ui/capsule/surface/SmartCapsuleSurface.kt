@@ -14,6 +14,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import id.steveimm.pocketpilot.ui.chat.components.ChatMarkdown
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,13 +83,14 @@ fun SmartCapsuleSurface(
     onDismissError: () -> Unit,
     onNavigate: (NavAction) -> Unit,
     modifier: Modifier = Modifier,
-    hasIsland: Boolean = true,
+    hasBubble: Boolean = true,
     previousMode: CapsuleMode? = null,
     transientThought: String? = null,
     onStatusClick: (() -> Unit)? = null,
     onInputFocusChanged: (Boolean) -> Unit = {},
     onInputSubmitted: () -> Unit = {},
     autoFocusInput: Boolean = false,
+    inputDraft: MutableState<String>? = null,
     pendingInputText: String = "",
     onPendingInputConsumed: () -> Unit = {},
     startupError: String? = null,
@@ -97,8 +103,8 @@ fun SmartCapsuleSurface(
         if (transientThought.isNullOrBlank()) baseSpec
         else baseSpec.copy(thought = CapsuleRenderSpec.ThoughtSpec(transientThought))
     }
-    val navSpec = remember(context, platformMode, mode, hasIsland) {
-        NavSpec.from(context, platformMode, hasIsland = hasIsland, mode = mode)
+    val navSpec = remember(context, platformMode, mode, hasBubble) {
+        NavSpec.from(context, platformMode, hasBubble = hasBubble, mode = mode)
     }
     val isTaskActive = mode !is CapsuleMode.Hidden
     val shape = MaterialTheme.shapes.large
@@ -126,7 +132,7 @@ fun SmartCapsuleSurface(
         ) {
             if (isTaskActive) {
                 CapsuleStatusLine(spec = renderSpec, elapsedLabel = elapsedLabel, onClick = onStatusClick)
-                if (mode !is CapsuleMode.Done) {
+                if (mode !is CapsuleMode.Done || context != CapsuleContext.MAIN_APP) {
                     if (renderSpec.expandedBody != null) {
                         CapsuleDivider()
                         CapsuleDetailBody(text = renderSpec.expandedBody)
@@ -148,7 +154,7 @@ fun SmartCapsuleSurface(
             }
 
             renderSpec.input?.let { input ->
-                if (isTaskActive && mode !is CapsuleMode.Done) {
+                if (isTaskActive) {
                     CapsuleDivider()
                 }
                 if (startupError != null) {
@@ -163,13 +169,14 @@ fun SmartCapsuleSurface(
                     mode = mode,
                     platformMode = platformMode,
                     context = context,
+                    inputDraft = inputDraft,
                     pendingInputText = pendingInputText,
                     onPendingInputConsumed = onPendingInputConsumed,
                     autoFocusInput = autoFocusInput,
                     onInputFocusChanged = onInputFocusChanged,
                     onSubmit = { text ->
                         when (mode) {
-                            is CapsuleMode.Hidden -> onSend(text)
+                            is CapsuleMode.Hidden, is CapsuleMode.Done -> onSend(text)
                             is CapsuleMode.WaitingForInput -> onUserResponse(mode.callId, text)
                             is CapsuleMode.Takeover -> onSupplementAndResume(text)
                             else -> onSupplement(text)
@@ -194,13 +201,11 @@ private fun CapsuleDivider() {
 
 @Composable
 private fun CapsuleDetailBody(text: String) {
-    Text(
+    ChatMarkdown(
         text = text,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 2.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp).verticalScroll(rememberScrollState()).padding(horizontal = 2.dp),
     )
 }
 

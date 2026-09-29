@@ -9,11 +9,11 @@
 
 ## Architecture
 
-- **CapsuleStateHolder** — single source of truth. Holds `CapsuleMode`, `CapsuleContext`, `PlatformMode`, `hasIsland`, `turnPhase`, `isAgentMidTurn`, `isStopPending` as `StateFlow`s.
-- **CapsuleOverlayHost** — Compose overlay via `OverlayComposeHost`. Reads mode, context, platformMode, and hasIsland from `CapsuleStateHolder`. Owns only host-specific state (focusability, touchability, interactionLocked, inputFocused). Dynamic touchability (only `Hidden` sets `FLAG_NOT_TOUCHABLE`). Debounces button callbacks (300ms). Touch gate for agent gesture injection.
+- **CapsuleStateHolder** — single source of truth. Holds `CapsuleMode`, `CapsuleContext`, `PlatformMode`, `hasBubble`, `turnPhase`, `isAgentMidTurn`, `isStopPending` as `StateFlow`s.
+- **CapsuleOverlayHost** — Compose overlay via `OverlayComposeHost`. Reads mode, context, platformMode, and hasBubble from `CapsuleStateHolder`. Owns only host-specific state (focusability, touchability, interactionLocked, inputFocused). Temporarily disables touchability during gesture injection. Debounces button callbacks (300ms). Touch gate for agent gesture injection.
 - **SmartCapsuleSurface** — single Compose entry point used by both the overlay host (`CapsuleOverlayHost`) and `ChatScreen`'s `Scaffold.bottomBar`. Slim orchestrator: derives `CapsuleRenderSpec` + `NavSpec`, lays out the four slots (status line, optional detail body, control bar, optional input bar), and routes submit intent. Receives `previousMode` from `CapsuleStateHolder` for input-clearing. Outer `Surface` paints `surfaceContainerLow` (PaperInset) — one tone darker than the page `surface` — so the capsule reads as a single dock pill in every mode (idle EmptyState, Running, WaitingForInput, …) regardless of which inner slots are present. Gesture-nav inset is applied by the **host** (`ChatScreen.bottomBar` Column / `CapsuleOverlayHost`'s capsule Box), not internally, so the pill chrome floats above the nav handle instead of touching it.
 - **CapsuleControlBar** — control-bar composable: action-button cluster (mode-driven Takeover / Resume / Done / Always / Session / Reject / Stop / Close) on the left, nav-button cluster (Minimize / OpenApp / OpenViewer, gated by `NavSpec`) on the right.
-- **CapsuleInputBar** — text-field + send composable. Owns the draft state and the `pendingInputText` / `clearDraft` / `inputEnabled` lifecycle. Exposes a single `onSubmit(text)` callback; routing (Hidden → onSend / WaitingForInput → onUserResponse / else → onSupplement) lives in the orchestrator. Optional `voice: VoiceMicDeps?` parameter wires the mic `leadingIcon` (see [voice.md](voice.md)); null means voice path is unavailable to this caller and the mic icon is hidden.
+- **CapsuleInputBar** — text-field + send composable. Owns the draft state and the `pendingInputText` / `clearDraft` / `inputEnabled` lifecycle. Exposes a single `onSubmit(text)` callback; routing (Hidden/Done → onSend / WaitingForInput → onUserResponse / else → onSupplement) lives in the orchestrator. Optional `voice: VoiceMicDeps?` parameter wires the mic `leadingIcon` (see [voice.md](voice.md)); null means voice path is unavailable to this caller and the mic icon is hidden.
 - **CapsuleBinding** — value type bridging the agent runtime and a UI host. Wraps the three StateFlows (`mode`, `platformMode`, `isStopPending`) and the two callbacks (`onStopRequested`, `onApprovalResolved`) the chat surface needs from `CapsuleStateHolder`. `InertCapsuleBinding` is the unbound-runtime fallback so `ChatScreen` can render its idle state without reaching for `AgentService.instance`. Activities (e.g. `MainActivity`) build the live binding from the service.
 
 ## CapsuleMode
@@ -48,7 +48,7 @@ sealed interface CapsuleMode {
 | **WaitingForInput** | Hidden | "Awaiting response" + body | [Stop] only | Input + "Send" |
 | **WaitingForAction** | Hidden | "Action needed" + body | [Done] | Hidden |
 | **WaitingForApproval** | Amber | "Allow PocketPilot to operate {AppName}?" | [Always] [Session] [Reject] | Hidden |
-| **Done** | Teal | "message" | Hidden | Hidden |
+| **Done** | Teal | Finished and scrollable result | Navigation | New request |
 | **Error** | Red | "message" | [Close] | Hidden |
 | **Hidden** | Hidden | — | Hidden | Input + "Send" |
 
@@ -88,11 +88,11 @@ sealed interface CapsuleMode {
 | `onUserResponseSent(callId)` | `WaitingForInput`/`WaitingForAction` + callId match | → `Running("Processing response...")` |
 | `onApprovalResolved(callId)` | `WaitingForApproval` + callId match | → `Running("Processing...")` |
 | `onTaskCompleted(reason, message?)` | Not `Hidden`/`Done`/`Error` | → `Done` or `Error` |
-| `onSessionEnded(reason)` | Any | → `Done`/`Hidden`/`Error` per reason |
+| `onSessionEnded(reason)` | Any | Active → stopped result; terminal states persist |
 | `onError(message)` | Any | → `Error(message)` |
 | `onDismissError()` | Must be `Error` | → `Hidden` |
 
-Auto-hide: `Done` → `Hidden` after 3000ms.
+Completed results persist until the next task, including after session expiry.
 
 ## Thought Pipeline
 
@@ -117,7 +117,7 @@ The capsule shows phase status from `TurnPhaseChanged`: "Reading screen", "Think
 | `onSend` | `Op.UserInput(text)` |
 | `onOpenApp` | Opens main activity |
 | `onDismissError` | `CapsuleStateHolder.onDismissError()` |
-| `onMinimize` | Hides capsule, shows island |
+| `onMinimize` | Hides controls, keeps bubble visible |
 | `onOpenViewer` | Launches VD viewer |
 
 ## Integration Flows

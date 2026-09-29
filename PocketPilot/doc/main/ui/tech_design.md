@@ -71,12 +71,12 @@ ui/
 │   ├── CapsuleStateHolder.kt    # Single source of truth (StateFlows)
 │   ├── compose/                 # WindowManager-hosted Compose overlays
 │   │   ├── CapsuleOverlayHost.kt    # System overlay: capsule
-│   │   ├── IslandOverlayHost.kt     # System overlay: compact island
+│   │   ├── BubbleOverlayHost.kt     # System overlay: draggable bubble
 │   │   ├── GlowOverlayHost.kt       # System overlay: edge glow (Canvas)
 │   │   ├── VisualizerOverlayHost.kt # System overlay: click/swipe feedback
 │   │   ├── ActionVisualizerCompose.kt
 │   │   ├── EdgeGlowCompose.kt
-│   │   ├── StatusIslandCompose.kt
+│   │   ├── OverlayBubbleCompose.kt
 │   │   ├── OverlayComposeHost.kt    # Generic ComposeView → WindowManager wrapper
 │   │   └── ServiceLifecycleOwner.kt # LifecycleOwner for AccessibilityService
 │   ├── visualizer/
@@ -218,7 +218,7 @@ fun ChatScreen(
 AgentService.session.events
     └──► ServiceOverlayController (mode-aware)
             ├── ACCESSIBILITY: EdgeGlow + SmartCapsule + ActionVisualizer
-            └── VIRTUAL_DISPLAY: StatusIsland or SmartCapsule (context-dependent)
+            └── VIRTUAL_DISPLAY: OverlayBubble or SmartCapsule (context-dependent)
     └──► ChatViewModel (message list)
             └──► ChatEventReducer
                   └──► ChatScreen recomposition
@@ -229,8 +229,8 @@ AgentService.session.events
 > See: `ui/viewer/VirtualDisplayViewerActivity.kt`
 
 Full-screen `SurfaceView` for live VD preview:
-- `onStart`: `notifyViewerVisible()` → show capsule overlay, hide island, set `SCREEN_VIEWING` context
-- `onStop`: `notifyViewerHidden()` → hide capsule, show island, `finish()`
+- `onStart`: `notifyViewerVisible()` → show controls with the bubble available, set `SCREEN_VIEWING` context
+- `onStop`: `notifyViewerHidden()` → hide controls, keep bubble, `finish()`
 - Touch events delegate to `AgentService`
 - Pure container — all UI controls via Smart Capsule overlay
 

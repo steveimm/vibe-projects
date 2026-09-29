@@ -1,23 +1,23 @@
 {
-  "name": "vd-island-capsule-navigation",
+  "name": "vd-bubble-capsule-navigation",
   "package": "id.steveimm.pocketpilot",
   "launch_activity": "",
   "steps": [
     {
-      "name": "Wait for Status Island to appear",
+      "name": "Wait for bubble to appear",
       "action": "wait_for_desc",
-      "desc": "Agent status island",
+      "desc": "Expand PocketPilot controls",
       "timeout_ms": 30000,
       "interval_ms": 1500
     },
     {
-      "name": "Capture island state",
+      "name": "Capture bubble state",
       "action": "screenshot"
     },
     {
-      "name": "Tap Status Island to expand capsule",
+      "name": "Tap bubble to expand capsule",
       "action": "tap_desc",
-      "desc": "Agent status island",
+      "desc": "Expand PocketPilot controls",
       "retries": 3,
       "retry_interval_ms": 1500
     },
@@ -46,9 +46,9 @@
       "retry_interval_ms": 1000
     },
     {
-      "name": "Wait for island to reappear",
+      "name": "Wait for bubble to reappear",
       "action": "wait_for_desc",
-      "desc": "Agent status island",
+      "desc": "Expand PocketPilot controls",
       "timeout_ms": 8000,
       "interval_ms": 500
     },
@@ -59,13 +59,13 @@
       "continue_on_fail": true
     },
     {
-      "name": "Capture island-returned state",
+      "name": "Capture bubble-returned state",
       "action": "screenshot"
     },
     {
-      "name": "Tap Island again to re-expand",
+      "name": "Tap bubble again to re-expand",
       "action": "tap_desc",
-      "desc": "Agent status island",
+      "desc": "Expand PocketPilot controls",
       "retries": 2,
       "retry_interval_ms": 1000
     },

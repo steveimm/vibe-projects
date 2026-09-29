@@ -16,7 +16,7 @@ fun TestCapsule(
     isStopPending: Boolean = false,
     platformMode: PlatformMode = PlatformMode.ACCESSIBILITY,
     context: CapsuleContext = CapsuleContext.MAIN_APP,
-    hasIsland: Boolean = true,
+    hasBubble: Boolean = true,
     previousMode: CapsuleMode? = null,
     onSend: (String) -> Unit = {},
     onSupplement: (String) -> Unit = {},
@@ -48,7 +48,7 @@ fun TestCapsule(
             onApprovalResponse = onApprovalResponse,
             onDismissError = onDismissError,
             onNavigate = onNavigate,
-            hasIsland = hasIsland,
+            hasBubble = hasBubble,
             previousMode = previousMode,
         )
     }

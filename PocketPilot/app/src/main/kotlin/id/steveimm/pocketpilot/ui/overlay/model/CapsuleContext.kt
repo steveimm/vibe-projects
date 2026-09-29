@@ -8,6 +8,6 @@ enum class CapsuleContext {
     /** User is viewing the agent's screen (A11y overlay or VD viewer). Capsule is a system overlay. */
     SCREEN_VIEWING,
 
-    /** VD mode, user on their own screen. Status island visible, capsule hidden. */
+    /** VD mode, user on their own screen. Bubble visible; controls follow expansion preference. */
     BACKGROUND
 }

@@ -123,25 +123,7 @@ class OverlayLocationPolicyTest {
     }
 
     @Test
-    fun `island tap opens app when no active task and non-terminal mode`() {
-        val result = shouldOpenAppWhenIslandTapped(
-            hasActiveTask = false,
-            mode = CapsuleMode.Hidden,
-        )
-        assertThat(result).isTrue()
-    }
-
-    @Test
-    fun `island tap does not open app when done terminal mode`() {
-        val result = shouldOpenAppWhenIslandTapped(
-            hasActiveTask = false,
-            mode = CapsuleMode.Done("Done"),
-        )
-        assertThat(result).isFalse()
-    }
-
-    @Test
-    fun `derive visibility enforces mutual exclusion`() {
+    fun `bubble remains visible alongside expanded controls`() {
         val cases = listOf(
             deriveOverlayVisibility(
                 platformMode = PlatformMode.VIRTUAL_DISPLAY,
@@ -155,19 +137,19 @@ class OverlayLocationPolicyTest {
                 location = OverlayUserLocation.OTHER_APP,
                 mode = CapsuleMode.Running("thinking"),
                 hasActiveTask = true,
-                showPreference = ShowPreference.ISLAND,
+                showPreference = ShowPreference.BUBBLE,
             ),
             deriveOverlayVisibility(
                 platformMode = PlatformMode.ACCESSIBILITY,
                 location = OverlayUserLocation.OTHER_APP,
                 mode = CapsuleMode.Running("thinking"),
                 hasActiveTask = true,
-                showPreference = ShowPreference.ISLAND,
+                showPreference = ShowPreference.BUBBLE,
             ),
         )
 
         cases.forEach { decision ->
-            assertThat(decision.showCapsule && decision.showIsland).isFalse()
+            assertThat(decision.showBubble).isTrue()
         }
     }
 
@@ -189,10 +171,10 @@ class OverlayLocationPolicyTest {
         )
 
         assertThat(a11y.showCapsule).isFalse()
-        assertThat(a11y.showIsland).isFalse()
+        assertThat(a11y.showBubble).isFalse()
         assertThat(a11y.showGlow).isFalse()
         assertThat(vd.showCapsule).isFalse()
-        assertThat(vd.showIsland).isFalse()
+        assertThat(vd.showBubble).isFalse()
         assertThat(vd.showGlow).isFalse()
     }
 
@@ -241,21 +223,21 @@ class OverlayLocationPolicyTest {
     }
 
     @Test
-    fun `derive visibility allows island in accessibility mode when preference is island`() {
+    fun `derive visibility allows a minimized bubble in accessibility mode`() {
         val decision = deriveOverlayVisibility(
             platformMode = PlatformMode.ACCESSIBILITY,
             location = OverlayUserLocation.OTHER_APP,
             mode = CapsuleMode.Running("thinking"),
             hasActiveTask = true,
-            showPreference = ShowPreference.ISLAND,
+            showPreference = ShowPreference.BUBBLE,
         )
 
-        assertThat(decision.showIsland).isTrue()
+        assertThat(decision.showBubble).isTrue()
         assertThat(decision.showCapsule).isFalse()
     }
 
     @Test
-    fun `derive visibility forces capsule in interactive accessibility modes even when preference is island`() {
+    fun `accessibility prompts can be minimized after opening`() {
         val modes = listOf(
             CapsuleMode.WaitingForInput(question = "q", callId = "1"),
             CapsuleMode.WaitingForAction(instruction = "do", callId = "1"),
@@ -267,16 +249,15 @@ class OverlayLocationPolicyTest {
                 location = OverlayUserLocation.OTHER_APP,
                 mode = mode,
                 hasActiveTask = mode !is CapsuleMode.Error,
-                showPreference = ShowPreference.ISLAND,
+                showPreference = ShowPreference.BUBBLE,
             )
-            assertThat(decision.normalizedShowPreference).isEqualTo(ShowPreference.CAPSULE)
-            assertThat(decision.showCapsule).isTrue()
-            assertThat(decision.showIsland).isFalse()
+            assertThat(decision.showCapsule).isFalse()
+            assertThat(decision.showBubble).isTrue()
         }
     }
 
     @Test
-    fun `derive visibility forces capsule in interactive vd modes even when preference is island`() {
+    fun `virtual display prompts can be minimized after opening`() {
         val modes = listOf(
             CapsuleMode.WaitingForInput(question = "q", callId = "1"),
             CapsuleMode.WaitingForAction(instruction = "do", callId = "1"),
@@ -288,11 +269,10 @@ class OverlayLocationPolicyTest {
                 location = OverlayUserLocation.OTHER_APP,
                 mode = mode,
                 hasActiveTask = mode !is CapsuleMode.Error,
-                showPreference = ShowPreference.ISLAND,
+                showPreference = ShowPreference.BUBBLE,
             )
-            assertThat(decision.normalizedShowPreference).isEqualTo(ShowPreference.CAPSULE)
-            assertThat(decision.showCapsule).isTrue()
-            assertThat(decision.showIsland).isFalse()
+            assertThat(decision.showCapsule).isFalse()
+            assertThat(decision.showBubble).isTrue()
         }
     }
 
@@ -303,7 +283,7 @@ class OverlayLocationPolicyTest {
             location = OverlayUserLocation.VD_VIEWER,
             mode = CapsuleMode.Running("thinking"),
             hasActiveTask = true,
-            showPreference = ShowPreference.ISLAND,
+            showPreference = ShowPreference.BUBBLE,
         )
 
         assertThat(decision.showGlow).isTrue()
@@ -316,7 +296,7 @@ class OverlayLocationPolicyTest {
             location = OverlayUserLocation.OTHER_APP,
             mode = CapsuleMode.Done("done"),
             hasActiveTask = false,
-            showPreference = ShowPreference.ISLAND,
+            showPreference = ShowPreference.BUBBLE,
         )
 
         assertThat(decision.showGlow).isFalse()
@@ -329,14 +309,14 @@ class OverlayLocationPolicyTest {
             location = OverlayUserLocation.OTHER_APP,
             mode = CapsuleMode.Running("thinking"),
             hasActiveTask = true,
-            showPreference = ShowPreference.ISLAND,
+            showPreference = ShowPreference.BUBBLE,
         )
 
         assertThat(decision.showGlow).isFalse()
     }
 
     @Test
-    fun `derive visibility keeps glow for terminal a11y modes`() {
+    fun `completed overlays keep the bubble without an active control glow`() {
         val doneDecision = deriveOverlayVisibility(
             platformMode = PlatformMode.ACCESSIBILITY,
             location = OverlayUserLocation.OTHER_APP,
@@ -352,8 +332,10 @@ class OverlayLocationPolicyTest {
             showPreference = ShowPreference.CAPSULE,
         )
 
-        assertThat(doneDecision.showGlow).isTrue()
-        assertThat(errorDecision.showGlow).isTrue()
+        assertThat(doneDecision.showGlow).isFalse()
+        assertThat(doneDecision.showBubble).isTrue()
+        assertThat(errorDecision.showGlow).isFalse()
+        assertThat(errorDecision.showBubble).isTrue()
     }
 
     @Test
@@ -390,28 +372,6 @@ class OverlayLocationPolicyTest {
         )
         assertThat(locked).isTrue()
         assertThat(unlocked).isFalse()
-    }
-
-    @Test
-    fun `capsule overlay is not touchable when hidden`() {
-        assertThat(shouldCapsuleOverlayBeTouchable(CapsuleMode.Hidden)).isFalse()
-    }
-
-    @Test
-    fun `capsule overlay is touchable in all non-hidden modes`() {
-        val modes = listOf(
-            CapsuleMode.Running("thinking"),
-            CapsuleMode.TakeoverPending("paused"),
-            CapsuleMode.Takeover("paused"),
-            CapsuleMode.WaitingForInput(question = "q", callId = "1"),
-            CapsuleMode.WaitingForAction(instruction = "do", callId = "1"),
-            CapsuleMode.Done("done"),
-            CapsuleMode.Error("error"),
-        )
-        modes.forEach { mode ->
-            assertThat(shouldCapsuleOverlayBeTouchable(mode))
-                .isTrue()
-        }
     }
 
     @Test

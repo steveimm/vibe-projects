@@ -11,7 +11,7 @@ class NavSpecTest {
         val spec = NavSpec.from(
             context = CapsuleContext.MAIN_APP,
             platformMode = PlatformMode.VIRTUAL_DISPLAY,
-            hasIsland = true,
+            hasBubble = true,
             mode = CapsuleMode.Hidden,
         )
 
@@ -25,7 +25,7 @@ class NavSpecTest {
         val spec = NavSpec.from(
             context = CapsuleContext.SCREEN_VIEWING,
             platformMode = PlatformMode.VIRTUAL_DISPLAY,
-            hasIsland = true,
+            hasBubble = true,
             mode = CapsuleMode.WaitingForInput(question = "q", callId = "c1"),
         )
 
@@ -39,7 +39,7 @@ class NavSpecTest {
         val spec = NavSpec.from(
             context = CapsuleContext.SCREEN_VIEWING,
             platformMode = PlatformMode.VIRTUAL_DISPLAY,
-            hasIsland = true,
+            hasBubble = true,
             mode = CapsuleMode.WaitingForAction(instruction = "do it", callId = "c1"),
         )
 
@@ -51,7 +51,7 @@ class NavSpecTest {
         val spec = NavSpec.from(
             context = CapsuleContext.BACKGROUND,
             platformMode = PlatformMode.VIRTUAL_DISPLAY,
-            hasIsland = true,
+            hasBubble = true,
             mode = CapsuleMode.Error("error"),
         )
 
@@ -61,7 +61,7 @@ class NavSpecTest {
     }
 
     @Test
-    fun `done mode hides all nav buttons`() {
+    fun `completed overlays retain minimize and open app navigation`() {
         val contexts = listOf(
             CapsuleContext.MAIN_APP,
             CapsuleContext.SCREEN_VIEWING,
@@ -71,12 +71,12 @@ class NavSpecTest {
             val spec = NavSpec.from(
                 context = ctx,
                 platformMode = PlatformMode.VIRTUAL_DISPLAY,
-                hasIsland = true,
+                hasBubble = true,
                 mode = CapsuleMode.Done("completed"),
             )
-            assertThat(spec.showMinimize).isFalse()
-            assertThat(spec.showApp).isFalse()
-            assertThat(spec.showWatch).isFalse()
+            assertThat(spec.showMinimize).isEqualTo(ctx != CapsuleContext.MAIN_APP)
+            assertThat(spec.showApp).isEqualTo(ctx != CapsuleContext.MAIN_APP)
+            assertThat(spec.showWatch).isEqualTo(ctx == CapsuleContext.BACKGROUND)
         }
     }
 
@@ -85,7 +85,7 @@ class NavSpecTest {
         val spec = NavSpec.from(
             context = CapsuleContext.SCREEN_VIEWING,
             platformMode = PlatformMode.ACCESSIBILITY,
-            hasIsland = true,
+            hasBubble = true,
             mode = CapsuleMode.Running("thinking"),
         )
 
@@ -99,7 +99,7 @@ class NavSpecTest {
         val spec = NavSpec.from(
             context = CapsuleContext.SCREEN_VIEWING,
             platformMode = PlatformMode.ACCESSIBILITY,
-            hasIsland = true,
+            hasBubble = true,
             mode = CapsuleMode.WaitingForInput(question = "q", callId = "c1"),
         )
 

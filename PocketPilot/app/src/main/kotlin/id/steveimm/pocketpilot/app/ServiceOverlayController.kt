@@ -16,7 +16,7 @@ import id.steveimm.pocketpilot.protocol.TurnPhase
 import id.steveimm.pocketpilot.ui.overlay.CapsuleStateHolder
 import id.steveimm.pocketpilot.ui.overlay.compose.CapsuleOverlayHost
 import id.steveimm.pocketpilot.ui.overlay.compose.GlowOverlayHost
-import id.steveimm.pocketpilot.ui.overlay.compose.IslandOverlayHost
+import id.steveimm.pocketpilot.ui.overlay.compose.BubbleOverlayHost
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
 import id.steveimm.pocketpilot.platform.OverlayTouchGate
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +31,7 @@ class ServiceOverlayController(
     private val appPackage: String,
     private val logTag: String,
     private val onStop: () -> Unit,
+    private val onSend: (String) -> Unit,
     private val onTakeover: () -> Unit,
     private val onResume: () -> Unit,
     private val onSupplement: (String) -> Unit,
@@ -40,17 +41,23 @@ class ServiceOverlayController(
     private val onOpenApp: () -> Unit,
     private val onOpenViewer: (() -> Unit)? = null,
     private val onFinishViewer: (() -> Unit)? = null,
-    private val statusIslandManager: IslandOverlayHost? = null
+    private val bubbleManager: BubbleOverlayHost? = null
 ) {
 
-    val stateHolder = CapsuleStateHolder(scope)
+    val stateHolder = CapsuleStateHolder()
 
     /** Package manager for resolving app labels. */
     private val packageManager = context.packageManager
 
     /** Touch gate for gesture injection pass-through. */
     val overlayTouchGate: OverlayTouchGate
-        get() = capsuleManager.touchGate
+        get() = object : OverlayTouchGate {
+            override fun beginGesturePassThrough(): AutoCloseable {
+                val capsule = capsuleManager.touchGate.beginGesturePassThrough()
+                val bubble = bubbleManager?.beginGesturePassThrough()
+                return AutoCloseable { bubble?.close(); capsule.close() }
+            }
+        }
 
     private val edgeGlowManager = GlowOverlayHost(
         service = context,
@@ -65,6 +72,7 @@ class ServiceOverlayController(
         lifecycleOwner = lifecycleOwner,
         savedStateRegistryOwner = savedStateRegistryOwner,
     ).apply {
+        this.onSend = this@ServiceOverlayController.onSend
         this.onStop = {
             if (stateHolder.onStopRequested()) {
                 this@ServiceOverlayController.onStop()
@@ -93,7 +101,7 @@ class ServiceOverlayController(
         this.onDismissError = { dismissError() }
         // Navigation callbacks
         this.onMinimize = {
-            showPreference = ShowPreference.ISLAND
+            showPreference = ShowPreference.BUBBLE
             applyVisibility()
         }
         this.onOpenViewer = { this@ServiceOverlayController.onOpenViewer?.invoke() }
@@ -105,8 +113,8 @@ class ServiceOverlayController(
     /** Lifecycle guard for stale accessibility events while MainActivity is visible. */
     private var isMainAppResumed = false
 
-    /** User preference: capsule or island while overlays are visible (A11y/VD). */
-    private var showPreference = ShowPreference.ISLAND
+    /** Whether the persistent bubble also displays the task controls. */
+    private var showPreference = ShowPreference.BUBBLE
     private var compactOverlaysEnabled = false
 
     fun setCompactOverlaysEnabled(enabled: Boolean) {
@@ -115,9 +123,9 @@ class ServiceOverlayController(
     }
 
     init {
-        statusIslandManager?.startObserving(stateHolder, scope)
+        bubbleManager?.startObserving(stateHolder)
 
-        // Observe mode for terminal transitions (Done→Hidden auto-hide) that affect visibility
+        // Terminal states preserve the last result in the overlay.
         scope.launch {
             stateHolder.mode.collect { mode ->
                 if (mode is CapsuleMode.Hidden || mode is CapsuleMode.Done || mode is CapsuleMode.Error) {
@@ -150,27 +158,29 @@ class ServiceOverlayController(
             "applyVisibility: platformMode=$platformMode, location=$userLocation, " +
                 "mode=${mode::class.simpleName}, hasActiveTask=${stateHolder.hasActiveTask}, " +
                 "showPreference=$showPreference => showCapsule=${decision.showCapsule}, " +
-                "showIsland=${decision.showIsland}, showGlow=${decision.showGlow}, " +
-                "normalizedShowPreference=${decision.normalizedShowPreference}"
+                "showBubble=${decision.showBubble}, showGlow=${decision.showGlow}"
         )
         val lockInteraction = !compactOverlaysEnabled && shouldLockUserInteraction(
             platformMode = platformMode,
             location = userLocation,
             mode = mode,
         )
-        showPreference = decision.normalizedShowPreference
         capsuleManager.setInteractionLocked(lockInteraction)
 
         if (decision.showCapsule) {
-            if (!capsuleManager.isShowing()) capsuleManager.show()
+            if (!capsuleManager.isShowing()) {
+                capsuleManager.show()
+                bubbleManager?.hide()
+            }
         } else {
             capsuleManager.hide()
         }
 
-        if (decision.showIsland) {
-            if (statusIslandManager?.isShowing() != true) statusIslandManager?.show()
+        bubbleManager?.setExpanded(decision.showCapsule)
+        if (decision.showBubble) {
+            if (bubbleManager?.isShowing() != true) bubbleManager?.show()
         } else {
-            statusIslandManager?.hide()
+            bubbleManager?.hide()
         }
 
         if (decision.showGlow && !compactOverlaysEnabled) {
@@ -195,27 +205,9 @@ class ServiceOverlayController(
         }
     }
 
-    fun onIslandTapped() {
-        val mode = stateHolder.mode.value
-        if (shouldOpenAppWhenIslandTapped(stateHolder.hasActiveTask, mode)) {
-            openMainAppAndHideOverlays()
-            return
-        }
-        when (platformMode) {
-            PlatformMode.ACCESSIBILITY -> {
-                showPreference = ShowPreference.CAPSULE
-                applyVisibility()
-            }
-            PlatformMode.VIRTUAL_DISPLAY -> {
-                if (userLocation == OverlayUserLocation.VD_VIEWER) {
-                    showPreference = ShowPreference.CAPSULE
-                    applyVisibility()
-                } else {
-                    // Open VD viewer — onViewerOpened() handles capsule + island swap
-                    onOpenViewer?.invoke() ?: openMainAppAndHideOverlays()
-                }
-            }
-        }
+    fun onBubbleTapped() {
+        showPreference = if (showPreference == ShowPreference.CAPSULE) ShowPreference.BUBBLE else ShowPreference.CAPSULE
+        applyVisibility()
     }
 
     fun onViewerOpened() {
@@ -229,7 +221,7 @@ class ServiceOverlayController(
         if (userLocation == OverlayUserLocation.VD_VIEWER) {
             userLocation = OverlayUserLocation.OTHER_APP
         }
-        showPreference = ShowPreference.ISLAND
+        showPreference = ShowPreference.BUBBLE
         updateContext()
         applyVisibility()
     }
@@ -244,19 +236,20 @@ class ServiceOverlayController(
 
     /** Dismiss the current error state. Callable from both overlay and main-app paths. */
     fun dismissError() {
+        showPreference = ShowPreference.BUBBLE
         stateHolder.onDismissError()
     }
 
     fun hideAll() {
         capsuleManager.hide()
         edgeGlowManager.hideImmediately()
-        statusIslandManager?.hide()
+        bubbleManager?.hide()
     }
 
     fun dispose() {
         edgeGlowManager.dispose()
         capsuleManager.dispose()
-        statusIslandManager?.dispose()
+        bubbleManager?.dispose()
     }
 
     fun handleWindowStateChanged(packageName: String?, className: String?, displayId: Int?) {
@@ -287,7 +280,7 @@ class ServiceOverlayController(
 
     fun onTaskStarted(taskId: String, input: String) {
         stateHolder.onTaskStarted(taskId, input)
-        showPreference = ShowPreference.CAPSULE
+        showPreference = ShowPreference.BUBBLE
         applyVisibility()
     }
 
@@ -303,12 +296,14 @@ class ServiceOverlayController(
     }
 
     fun onTaskCompleted(outcome: TaskOutcome, message: String?) {
+        showPreference = ShowPreference.BUBBLE
         stateHolder.onTaskCompleted(outcome, message)
         refreshGlowState()
         // applyVisibility triggered by mode observer (Done/Error)
     }
 
     fun onSessionCompleted(reason: SessionEndReason) {
+        showPreference = ShowPreference.BUBBLE
         stateHolder.onSessionEnded(reason)
         refreshGlowState()
         applyVisibility()
@@ -347,7 +342,7 @@ class ServiceOverlayController(
 
     fun suppressForScreenshot(): AutoCloseable {
         val tokens = listOfNotNull(capsuleManager.suppressForScreenshot(), edgeGlowManager.suppressForScreenshot(),
-            statusIslandManager?.suppressForScreenshot())
+            bubbleManager?.suppressForScreenshot())
         return AutoCloseable { tokens.asReversed().forEach { it.close() } }
     }
 
@@ -414,7 +409,7 @@ class ServiceOverlayController(
     private fun updateContext() {
         val ctx = resolveCapsuleContext(platformMode, userLocation)
         stateHolder.setContext(ctx)
-        stateHolder.setHasIsland(statusIslandManager != null)
+        stateHolder.setHasBubble(bubbleManager != null)
     }
 
     private fun refreshGlowState() {

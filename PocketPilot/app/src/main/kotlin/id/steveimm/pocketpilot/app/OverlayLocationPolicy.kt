@@ -13,14 +13,13 @@ internal enum class OverlayUserLocation {
 
 internal enum class ShowPreference {
     CAPSULE,
-    ISLAND
+    BUBBLE
 }
 
 internal data class OverlayVisibilityDecision(
     val showCapsule: Boolean,
-    val showIsland: Boolean,
+    val showBubble: Boolean,
     val showGlow: Boolean,
-    val normalizedShowPreference: ShowPreference,
 )
 
 internal fun isActivityWindowClass(className: String?): Boolean {
@@ -74,11 +73,6 @@ internal fun resolveCapsuleContext(
         }
     }
 
-internal fun shouldOpenAppWhenIslandTapped(
-    hasActiveTask: Boolean,
-    mode: CapsuleMode,
-): Boolean = !hasActiveTask && mode !is CapsuleMode.Done && mode !is CapsuleMode.Error
-
 /** Compute the new userLocation when MainActivity.onStop fires. */
 internal fun resolveLocationOnMainAppHidden(
     current: OverlayUserLocation,
@@ -107,61 +101,18 @@ internal fun deriveOverlayVisibility(
     hasActiveTask: Boolean,
     showPreference: ShowPreference,
 ): OverlayVisibilityDecision {
-    val isActive = hasActiveTask || mode is CapsuleMode.Done || mode is CapsuleMode.Error
-    val normalizedShowPreference = when {
-        location == OverlayUserLocation.MAIN_APP || !isActive -> showPreference
-        mode is CapsuleMode.WaitingForInput ||
-            mode is CapsuleMode.WaitingForAction ||
-            mode is CapsuleMode.WaitingForApproval ||
-            mode is CapsuleMode.Error -> ShowPreference.CAPSULE
-        else -> showPreference
-    }
-
-    return when (platformMode) {
-        PlatformMode.ACCESSIBILITY -> {
-            val isOverlayContext = location != OverlayUserLocation.MAIN_APP && isActive
-            val showCapsule = isOverlayContext && normalizedShowPreference == ShowPreference.CAPSULE
-            OverlayVisibilityDecision(
-                showCapsule = showCapsule,
-                showIsland = isOverlayContext && normalizedShowPreference == ShowPreference.ISLAND,
-                showGlow = location != OverlayUserLocation.MAIN_APP && isActive,
-                normalizedShowPreference = normalizedShowPreference,
-            )
-        }
-        PlatformMode.VIRTUAL_DISPLAY -> {
-            val needsUserAttention = mode is CapsuleMode.WaitingForApproval ||
-                mode is CapsuleMode.WaitingForInput ||
-                mode is CapsuleMode.WaitingForAction ||
-                mode is CapsuleMode.Error
-
-            if (!isActive) {
-                OverlayVisibilityDecision(
-                    showCapsule = false,
-                    showIsland = false,
-                    showGlow = false,
-                    normalizedShowPreference = normalizedShowPreference,
-                )
-            } else if (location == OverlayUserLocation.MAIN_APP && !needsUserAttention) {
-                // In VD mode, main app UI handles normal interaction — hide overlay
-                OverlayVisibilityDecision(
-                    showCapsule = false,
-                    showIsland = false,
-                    showGlow = false,
-                    normalizedShowPreference = normalizedShowPreference,
-                )
-            } else {
-                // Show overlay in VD_VIEWER, OTHER_APP, or MAIN_APP when user attention needed. For needsUserAttention modes, always force
-                // capsule regardless of preference — in MAIN_APP the default preference is ISLAND, which won't show without this.
-                val forceCapsule = needsUserAttention
-                OverlayVisibilityDecision(
-                    showCapsule = forceCapsule || normalizedShowPreference == ShowPreference.CAPSULE,
-                    showIsland = !forceCapsule && normalizedShowPreference == ShowPreference.ISLAND,
-                    showGlow = (location == OverlayUserLocation.VD_VIEWER || needsUserAttention) && hasActiveTask,
-                    normalizedShowPreference = normalizedShowPreference,
-                )
-            }
-        }
-    }
+    val outsideMain = location != OverlayUserLocation.MAIN_APP
+    val needsAttention = mode is CapsuleMode.WaitingForInput || mode is CapsuleMode.WaitingForAction ||
+        mode is CapsuleMode.WaitingForApproval || mode is CapsuleMode.Error
+    val attentionInMain = platformMode == PlatformMode.VIRTUAL_DISPLAY && !outsideMain && needsAttention
+    return OverlayVisibilityDecision(
+        showCapsule = outsideMain && showPreference == ShowPreference.CAPSULE || attentionInMain,
+        showBubble = outsideMain,
+        showGlow = hasActiveTask && when (platformMode) {
+            PlatformMode.ACCESSIBILITY -> outsideMain
+            PlatformMode.VIRTUAL_DISPLAY -> location == OverlayUserLocation.VD_VIEWER || attentionInMain
+        },
+    )
 }
 
 /** Whether user touch interaction with the underlying screen should be blocked. */
@@ -181,7 +132,3 @@ internal fun shouldLockUserInteraction(
         PlatformMode.VIRTUAL_DISPLAY -> location == OverlayUserLocation.VD_VIEWER
     }
 }
-
-/** Whether the capsule overlay window should be touchable (i.e. NOT have FLAG_NOT_TOUCHABLE). */
-internal fun shouldCapsuleOverlayBeTouchable(mode: CapsuleMode): Boolean =
-    mode !is CapsuleMode.Hidden

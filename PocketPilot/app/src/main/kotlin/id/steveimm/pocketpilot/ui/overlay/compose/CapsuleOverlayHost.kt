@@ -35,10 +35,10 @@ import id.steveimm.pocketpilot.ui.capsule.surface.SmartCapsuleSurface
 import id.steveimm.pocketpilot.ui.capsule.surface.VoiceMicDeps
 import id.steveimm.pocketpilot.ui.capsule.surface.smartCapsuleHostPadding
 import id.steveimm.pocketpilot.ui.capsule.voice.AndroidRecognizerFactory
-import id.steveimm.pocketpilot.app.shouldCapsuleOverlayBeTouchable
 import id.steveimm.pocketpilot.platform.OverlayTouchGate
 import id.steveimm.pocketpilot.ui.overlay.CapsuleStateHolder
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
+import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -80,12 +80,12 @@ class CapsuleOverlayHost(
         tag = TAG,
     )
 
+    private val inputDraft = mutableStateOf("")
     private val transientThought = MutableStateFlow<String?>(null)
     private val inputFocused = MutableStateFlow(false)
     private val interactionLocked = MutableStateFlow(false)
 
     private var focusJob: Job? = null
-    private var touchabilityJob: Job? = null
     private var transientThoughtJob: Job? = null
     private var lastButtonClickTime = 0L
     private var isFocusable = false
@@ -104,7 +104,7 @@ class CapsuleOverlayHost(
                 passThroughDepth = (passThroughDepth - 1).coerceAtLeast(0)
                 Log.d(TAG, "endGesturePassThrough: depth=$passThroughDepth")
                 if (passThroughDepth == 0) {
-                    applyBaselineTouchability(stateHolder.mode.value)
+                    applyNotTouchableFlag(false)
                 }
             }
         }
@@ -121,7 +121,7 @@ class CapsuleOverlayHost(
             val stopPending by stateHolder.isStopPending.collectAsState(initial = false)
             val ctx by stateHolder.context.collectAsState()
             val platform by stateHolder.platformMode.collectAsState()
-            val islandEnabled by stateHolder.hasIsland.collectAsState()
+            val bubbleEnabled by stateHolder.hasBubble.collectAsState()
             val flashThought by transientThought.collectAsState(initial = null)
             val lockTouches by interactionLocked.collectAsState(initial = false)
 
@@ -153,6 +153,7 @@ class CapsuleOverlayHost(
                 ) {
                     SmartCapsuleSurface(
                         mode = mode,
+                        inputDraft = inputDraft,
                         previousMode = stateHolder.previousMode,
                         isStopPending = stopPending,
                         platformMode = platform,
@@ -190,7 +191,7 @@ class CapsuleOverlayHost(
                                 }
                             }
                         },
-                        hasIsland = islandEnabled,
+                        hasBubble = bubbleEnabled,
                         onStatusClick = if (platform != PlatformMode.ACCESSIBILITY) {
                             { debounced { onOpenApp?.invoke() } }
                         } else {
@@ -242,13 +243,11 @@ class CapsuleOverlayHost(
             }
         }
         startFocusObserver()
-        startTouchabilityObserver()
         Log.i(TAG, "Capsule overlay shown")
     }
 
     fun hide() {
         stopFocusObserver()
-        stopTouchabilityObserver()
         inputFocused.value = false
         setOverlayFocusable(false)
         composeHost.hide()
@@ -300,6 +299,7 @@ class CapsuleOverlayHost(
             combine(stateHolder.mode, inputFocused) { mode, focused ->
                 when (mode) {
                     is CapsuleMode.WaitingForInput -> true
+                    is CapsuleMode.Done, is CapsuleMode.Hidden -> true
                     is CapsuleMode.Takeover -> focused
                     else -> false
                 }
@@ -342,34 +342,13 @@ class CapsuleOverlayHost(
                 WindowManager.LayoutParams.TYPE_PHONE
             },
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = if (locked) Gravity.TOP or Gravity.START
             else Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         }
-
-    private fun startTouchabilityObserver() {
-        touchabilityJob?.cancel()
-        touchabilityJob = scope.launch {
-            stateHolder.mode.collect { mode ->
-                if (passThroughDepth == 0) {
-                    applyBaselineTouchability(mode)
-                }
-            }
-        }
-    }
-
-    private fun stopTouchabilityObserver() {
-        touchabilityJob?.cancel()
-        touchabilityJob = null
-        passThroughDepth = 0
-    }
-
-    private fun applyBaselineTouchability(mode: CapsuleMode) {
-        val touchable = shouldCapsuleOverlayBeTouchable(mode)
-        applyNotTouchableFlag(forceNotTouchable = !touchable)
-    }
 
     private fun applyNotTouchableFlag(forceNotTouchable: Boolean) {
         if (!composeHost.isShowing()) return
