@@ -82,9 +82,8 @@ class AccessibilityPlatform(
 
         // 2. Screenshot capture (when config requires it OR trace is enabled for debugging)
         val shouldCaptureScreenshot = pc.capturesScreenshot || traceRecorder.enabled
-        val windowId = a11yResult.windowId
         val screenshotCapture =
-                screenshotCapturer.captureIfEnabled(windowId, enabled = shouldCaptureScreenshot)
+                screenshotCapturer.captureIfEnabled(enabled = shouldCaptureScreenshot)
 
         // 3. Only include screenshot in the snapshot if the perception config wants it
         val image = if (pc.capturesScreenshot) screenshotCapture?.image else null
@@ -118,7 +117,6 @@ class AccessibilityPlatform(
 
     private data class A11yCaptureResult(
             val elements: List<PerceptionElement>,
-            val windowId: Int?,
             val keyboardVisible: Boolean,
             val rawTreeArtifactPath: String?,
             val sanitizedTreeArtifactPath: String?,
@@ -146,8 +144,6 @@ class AccessibilityPlatform(
         val capturedAt = System.currentTimeMillis()
         val roots = windowRoots.roots
         val keyboardVisible = windowRoots.keyboardVisible
-        // Use the topmost window (last in ascending-layer-sorted list) for screenshot targeting
-        val windowId = roots.lastOrNull()?.windowId
 
         if (roots.isEmpty()) {
             val quality = CaptureQuality(
@@ -161,7 +157,6 @@ class AccessibilityPlatform(
             val qualityPath = storeCaptureQualityArtifact(quality)
             return A11yCaptureResult(
                     elements = emptyList(),
-                    windowId = null,
                     keyboardVisible = keyboardVisible,
                     rawTreeArtifactPath = null,
                     sanitizedTreeArtifactPath = null,
@@ -213,7 +208,6 @@ class AccessibilityPlatform(
 
             return A11yCaptureResult(
                     elements = snapshot.elements,
-                    windowId = windowId,
                     keyboardVisible = keyboardVisible,
                     rawTreeArtifactPath = rawTreeArtifactPath,
                     sanitizedTreeArtifactPath = sanitizedTreeArtifactPath,

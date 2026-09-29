@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.os.Build
 import android.util.Log
 import android.view.Display
-import androidx.annotation.RequiresApi
 import id.steveimm.pocketpilot.model.ScreenImage
 import id.steveimm.pocketpilot.model.ScreenImageSource
 import id.steveimm.pocketpilot.perception.screenshotJpegQuality
@@ -32,25 +31,13 @@ class AccessibilityScreenshotCapturer(
 
     data class ScreenshotCapture(val image: ScreenImage, val tracePath: String?)
 
-    suspend fun captureIfEnabled(windowId: Int?, enabled: Boolean): ScreenshotCapture? {
+    suspend fun captureIfEnabled(enabled: Boolean): ScreenshotCapture? {
         if (!enabled || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             return null
         }
 
-        val result = takeScreenshotResult(windowId) ?: return null
+        val result = takeDisplayScreenshot() ?: return null
         return compressScreenshot(result)
-    }
-
-    private suspend fun takeScreenshotResult(
-            windowId: Int?
-    ): AccessibilityService.ScreenshotResult? {
-        val windowResult =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    windowId?.let { takeWindowScreenshot(it) }
-                } else {
-                    null
-                }
-        return windowResult ?: takeDisplayScreenshot()
     }
 
     private suspend fun takeDisplayScreenshot(): AccessibilityService.ScreenshotResult? {
@@ -66,46 +53,13 @@ class AccessibilityScreenshotCapturer(
                             override fun onSuccess(
                                     screenshot: AccessibilityService.ScreenshotResult
                             ) {
-                                // No isActive check: late resume on a cancelled continuation is silently discarded by coroutines 1.7.3+.
-                                cont.resume(screenshot)
+                                cont.resume(screenshot) { _, value, _ -> value.hardwareBuffer.close() }
                             }
 
                             override fun onFailure(errorCode: Int) {
                                 Log.w(
                                         TAG,
                                         "takeScreenshot failed: ${formatScreenshotError(errorCode)}"
-                                )
-                                cont.resume(null)
-                            }
-                        }
-                )
-            }
-        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-    private suspend fun takeWindowScreenshot(
-            windowId: Int
-    ): AccessibilityService.ScreenshotResult? {
-        return withContext(Dispatchers.Main) {
-            boundedCallback(
-                timeoutMs = SCREENSHOT_TIMEOUT_MS,
-                label = "takeScreenshotOfWindow($windowId)"
-            ) { cont ->
-                service.takeScreenshotOfWindow(
-                        windowId,
-                        service.mainExecutor,
-                        object : AccessibilityService.TakeScreenshotCallback {
-                            override fun onSuccess(
-                                    screenshot: AccessibilityService.ScreenshotResult
-                            ) {
-                                cont.resume(screenshot)
-                            }
-
-                            override fun onFailure(errorCode: Int) {
-                                Log.w(
-                                        TAG,
-                                        "takeScreenshotOfWindow failed: ${formatScreenshotError(errorCode)}"
                                 )
                                 cont.resume(null)
                             }
