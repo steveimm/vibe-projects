@@ -26,3 +26,5 @@ PocketPilot runs one agent. Each new user message is sent unchanged with convers
 App-access policy is enforced by `ToolRouter` and `PolicyEngine`. Screens from blocked apps are masked before model input. The optional Termux bridge is advertised only when available.
 
 See [runtime state machine](../state_machines/agent_run_loop.md) and [tool roster](../infra/tools.md).
+
+Ordinary tool errors return to the model for correction or another approach. Six turns with tool errors exhaust a per-request budget that successful observations cannot reset. The next turn advertises no tools, executes no calls, and requests a final explanation of verified progress and remaining work. Model/network failures still use their separate retry policy.

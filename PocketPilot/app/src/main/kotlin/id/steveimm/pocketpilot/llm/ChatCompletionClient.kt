@@ -10,6 +10,7 @@ import com.openai.core.http.HttpRequest
 import com.openai.client.okhttp.OkHttpClient
 import com.openai.models.ChatModel
 import com.openai.models.chat.completions.ChatCompletionCreateParams
+import com.openai.models.chat.completions.ChatCompletionToolChoiceOption
 import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.ResponseInputItem
 import kotlinx.coroutines.Dispatchers
@@ -286,8 +287,11 @@ class ChatCompletionClient(
         val builder = ChatCompletionCreateParams.builder()
             .model(ChatModel.of(model))
             .messages(messages)
-            .tools(chatTools)
-            .parallelToolCalls(false)
+        if (chatTools.isNotEmpty()) {
+            builder.tools(chatTools).parallelToolCalls(false)
+        } else {
+            builder.toolChoice(ChatCompletionToolChoiceOption.ofAuto(ChatCompletionToolChoiceOption.Auto.NONE))
+        }
 
         maxOutputTokens?.let { builder.maxCompletionTokens(it) }
 

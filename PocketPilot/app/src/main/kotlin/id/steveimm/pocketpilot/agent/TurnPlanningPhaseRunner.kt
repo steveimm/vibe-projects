@@ -1,6 +1,7 @@
 package id.steveimm.pocketpilot.agent
 
 import android.util.Log
+import id.steveimm.pocketpilot.agent.definition.TOOL_RECOVERY_FINAL_PROMPT
 import id.steveimm.pocketpilot.agent.cognition.prompt.PromptBuilder
 import id.steveimm.pocketpilot.agent.cognition.prompt.TurnObservation
 import id.steveimm.pocketpilot.history.Compactor
@@ -33,7 +34,8 @@ internal class TurnPlanningPhaseRunner(
                 turnNumber: Int,
                 snapshot: ScreenSnapshot?,
                 currentPackageName: String?,
-                warnings: List<String>
+                warnings: List<String>,
+                finalResponseReason: String? = null,
         ): TurnResult {
                 eventDispatcher.turnPhaseChanged(turnId, TurnPhase.PLANNING)
                 eventDispatcher.status("🧠 Thinking...")
@@ -44,7 +46,7 @@ internal class TurnPlanningPhaseRunner(
                         Turn(
                                 toolRegistry = services.toolRegistry,
                                 llmClient = model.llmClient,
-                                allowedToolNames = config.allowedToolNames,
+                                allowedToolNames = if (finalResponseReason != null) emptySet() else config.allowedToolNames,
                                 compactor = compactor,
                                 historyManager =
                                         if (compactor != null) services.historyManager else null,
@@ -53,7 +55,7 @@ internal class TurnPlanningPhaseRunner(
                 val systemPrompt =
                         requireNotNull(config.systemPrompt) {
                                 "System prompt must be provided by AgentDefinition."
-                        }
+                        } + (finalResponseReason?.let { "\n\n$it\n$TOOL_RECOVERY_FINAL_PROMPT" } ?: "")
 
                 // Canonical observation — computed once, consumed by prompt and history.
                 val observation = snapshot?.let { TurnObservation.capture(it, currentPackageName) }
@@ -62,10 +64,13 @@ internal class TurnPlanningPhaseRunner(
                         PromptBuilder(
                                 historyManager = services.historyManager,
                         )
+                val runtimeWarnings = warnings + listOfNotNull(finalResponseReason?.let {
+                        "$it No more tool calls can be executed for this request."
+                })
                 val inputItems =
                         promptBuilder.buildInputItems(
                                 observation = observation,
-                                warnings = warnings,
+                                warnings = runtimeWarnings,
                                 turnNumber = turnNumber,
                         )
 
@@ -99,7 +104,7 @@ internal class TurnPlanningPhaseRunner(
                                         )
                                         promptBuilder.buildInputItems(
                                                 observation = observation,
-                                                warnings = warnings,
+                                                warnings = runtimeWarnings,
                                                 turnNumber = turnNumber,
                                         )
                                 }

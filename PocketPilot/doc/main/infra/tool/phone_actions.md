@@ -5,9 +5,9 @@ Each new user message starts with conversation context. The model can answer dir
 | Tool | Parameters | Behavior |
 | --- | --- | --- |
 | `open_app` | `app_name` | Resolve an installed app and launch it |
-| `tap` | `x`, `y` | Dispatch one gesture tap |
-| `long_press` | `x`, `y`, optional `duration_ms` | Hold for 1000 ms by default |
-| `swipe` | `start_x`, `start_y`, `end_x`, `end_y`, optional `duration_ms` | Swipe for 400 ms by default |
+| `tap` | `point: [x,y]` | Dispatch one gesture tap |
+| `long_press` | `point: [x,y]`, optional `duration_ms` | Hold for 1000 ms by default |
+| `swipe` | `start: [x,y]`, `end: [x,y]`, optional `duration_ms` | Swipe for 400 ms by default |
 | `type_text` | `text` | Replace the focused field's contents; empty text clears it |
 | `system_button` | `button`: `back`, `home`, `enter`, `recents` | Press a system key |
 | `read_screen` | optional `delay_ms` | Read the current screen, optionally waiting for loading first |
@@ -22,3 +22,7 @@ Taps and text entry require a current screenshot. The caller must tap a field be
 App-access policy and cancellation apply to every action. `back` and `home` remain available to leave blocked apps. The optional `termux_shell` tool keeps its separate bridge contract.
 
 Owners: `TouchTools.kt`, `ToolParameters.kt`, `ToolRouter.kt`, `Turn.kt`, and `TurnExecutionPhaseRunner.kt`.
+
+Each point must contain exactly two integers. Validation returns all issues together and includes a canonical example for gesture calls. Invalid arguments never become executable coordinates through coercion or guessing.
+
+Tool errors return to the model as tool results. After six turns with tool errors in one request, the model gets one final response with tools disabled to explain verified progress and the blocker. Successful reads do not reset that budget. Transport failures and user cancellation keep their separate handling.

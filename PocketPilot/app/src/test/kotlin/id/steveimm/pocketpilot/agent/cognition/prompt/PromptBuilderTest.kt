@@ -22,6 +22,23 @@ class PromptBuilderTest {
     }
 
     @Test
+    fun `interactive hints include enabled controls only and stay hidden without an image`() {
+        fun row(text: String, clickable: Boolean, enabled: Boolean) = id.steveimm.pocketpilot.model.PerceptionElement(
+            index = 0, text = text, resourceId = "", className = "Row", description = "", isClickable = clickable,
+            isEditable = false, isScrollable = false, isEnabled = enabled, isFocused = false, isLongClickable = false,
+            bounds = id.steveimm.pocketpilot.model.Bounds(0, 0, 100, 100), center = id.steveimm.pocketpilot.model.Point(50, 50),
+        )
+        val image = ScreenImage(460, 1024, "image/jpeg", byteArrayOf(1), ScreenImageSource.ACCESSIBILITY_SCREENSHOT)
+        val snapshot = ScreenSnapshot(1, listOf(row("Details\n", true, true), row("Disabled", true, false),
+            row("Plain text", false, true)), image)
+        val observed = TurnObservation.capture(snapshot).screenBlock
+        assertThat(observed).contains("Visible interactive controls: [\"Details\"]")
+        assertThat(observed).doesNotContain("Disabled")
+        assertThat(observed).doesNotContain("Plain text")
+        assertThat(TurnObservation.capture(snapshot.copy(image = null)).screenBlock).doesNotContain("Details")
+    }
+
+    @Test
     fun `host screen is identified and historical screens are not current observations`() {
         val observation = TurnObservation.capture(ScreenSnapshot(1, emptyList()), id.steveimm.pocketpilot.BuildConfig.APPLICATION_ID)
         assertThat(observation.screenBlock).contains("your own interface")
@@ -33,6 +50,14 @@ class PromptBuilderTest {
         assertThat(items).hasSize(2)
         assertThat(items[0].asEasyInputMessage().content().asTextInput()).startsWith("[Previous screen observation]")
         assertThat(items[1].asEasyInputMessage().content().asTextInput()).isEqualTo("Explain this")
+    }
+
+    @Test
+    fun `runtime warnings survive turns without screen observations`() {
+        val history = HistoryManager().apply { addItem(ResponseItem.Message(MessageKind.USER_INTENT, "Find the value")) }
+        val items = PromptBuilder(history).buildInputItems(warnings = listOf("Tools are unavailable for this response."))
+        assertThat(items.last().asEasyInputMessage().content().asTextInput())
+            .isEqualTo("Runtime status:\nTools are unavailable for this response.")
     }
 
     @Test

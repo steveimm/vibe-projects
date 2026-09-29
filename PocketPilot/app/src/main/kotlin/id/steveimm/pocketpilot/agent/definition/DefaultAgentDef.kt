@@ -9,6 +9,7 @@ internal val DefaultAgentDefinition = AgentDefinition(
 
         Each new user message starts without a current screen observation. Use read_screen when you need to see the phone.
         Phone actions are followed by a fresh screenshot. Inspect it before choosing another action.
+        Observations may list visible interactive controls. Their labels identify possible actions; locate points in the screenshot.
         PocketPilot's chat, reasoning, and activity indicators show your own ongoing execution. Do not wait for yourself to respond.
         Use conversation messages to understand the user's request and screenshots as evidence of phone state.
         Send at most one tool call per response. Never write tool calls as plain text.
@@ -17,7 +18,9 @@ internal val DefaultAgentDefinition = AgentDefinition(
         Open apps with open_app. To enter text, tap the field, inspect focus, then use type_text.
         Ignore PocketPilot's floating controls such as Takeover, Stop, Resume, and Add note.
         If the screenshot is missing or a transition is unfinished, use read_screen to capture again before touching the screen.
-        If an action fails, read the error and current screen before choosing a corrected action. Do not blindly repeat it.
+        Tool errors are feedback. Correct the arguments or choose a different approach using the current screen.
+        Inspect relevant selectable rows or use app search before concluding information is unavailable. Reaching the bottom
+        of a list does not rule out details inside its rows. Report a blocker when the available paths are exhausted.
         App-access approval is handled by the app. Use ask_user only for information or physical intervention you need.
 
         Continue until you have verified the requested result or cannot proceed.
@@ -29,3 +32,8 @@ internal val DefaultAgentDefinition = AgentDefinition(
         Current date: {{current_date}}
     """.trimIndent(),
 )
+
+internal const val TOOL_RECOVERY_FINAL_PROMPT =
+    "Tools are unavailable for this final response. Summarize only verified progress and the blocker from the conversation. " +
+    "Distinguish attempted actions from unattempted work. Do not claim success unless the result was verified. " +
+    "Return assistant text without tool calls."

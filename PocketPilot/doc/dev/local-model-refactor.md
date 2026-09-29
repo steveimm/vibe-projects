@@ -134,3 +134,26 @@ Live checks with the local `qwen3.8-27b` server and Android 15 emulator:
 The search case first attempted text entry without focus. The tool rejected it, and the model recovered by tapping the field before typing. The theme case retained the previously observed model tendency to press Home after completing work. This change fixes forced automation and self-observation for conversation; it does not claim that every model-selected action is necessary.
 
 Validation: 978 release unit tests passed, release lint passed, device UI tests compiled, and replay compilation handled both a conversation-only trace and an explicit screen read. The signed ARM64-only release was installed and checked for the existing signing certificate, non-debuggable flag, 16 KB ZIP alignment, and matching bundled bridge source. Final APK SHA-256: `35a65e59ffd51e377f3050bddc71ead31549ffe7bd934b527ed56edcb77c8bc1`.
+
+## Coordinate arguments and tool-error recovery
+
+The serial-number failure combined malformed gesture arguments, early termination after two tool failures, and a model assumption that reaching the bottom of About meant the serial number was unavailable. The model also tried missing terminal apps. An unrelated name-similarity fallback suggested Calendar for Terminal.
+
+Gestures now use one coordinate pair per point: `tap(point=[x,y])`, `long_press(point=[x,y])`, and `swipe(start=[x,y], end=[x,y])`. Coordinates remain integers from 0 to 1000 over the full screenshot. Validation reports all argument errors together, includes a canonical example, and confirms that no action executed. It does not guess malformed coordinates. Missing-app suggestions now require an actual name relationship.
+
+Tool errors return to the model for correction independently of transport retries. Six failing turns per user request trigger a final explanation with tools disabled, explicit `tool_choice=none`, and a current runtime notice. Successful reads do not reset that budget. Unexpected final-turn tool calls are not dispatched. A first experiment without explicit tool choice and the late notice bounded actions but still promised another attempt, so that version was rejected.
+
+Screenshot observations now include bounded, sanitized labels of visible enabled interactive controls. The model still locates gesture coordinates from the image. These hints distinguish selectable rows from static details. General instructions ask the model to inspect relevant details or app search before declaring information unavailable. No device-specific serial-number path is embedded in the harness.
+
+Live verification with `qwen3.8-27b` on the Android 15 emulator:
+
+| Request | Turns / calls | Independently checked result |
+| --- | --- | --- |
+| Original serial-number request, repeated on the final APK | 5 / 4, no failures | `EMULATOR37X1X11X0`, matching `getprop ro.serialno` |
+| Try two missing apps, then open Settings | 6 / 5, two expected failures | Recovered and opened Settings |
+| Try seven missing apps in order | 7 / 6, six expected failures | Reported the six checked names and explicitly left the seventh unchecked |
+| Create, save, reopen, and verify a device-only contact | 16 / 15, no failures | Name, phone, email, and company persisted in the Contacts provider |
+
+The contact was `PocketPilot Schema QA`, `+1 202-555-0149`, `schema.qa@example.com`, company `Recovery Test`. Its account fields were null, confirming device-only storage. No call, message, or email was sent. A pair-schema-only serial test still missed the selectable Model row, which motivated the general interactive-control hints rather than claiming schema changes alone solved navigation.
+
+Validation: 985 release unit tests, release lint, and device UI test compilation passed. Replay compilation passed for navigation and exhausted-recovery traces. The installed signed ARM64-only release passed signing, non-debuggable, alignment, and bundled-bridge checks. APK SHA-256: `b8568c71604247678cd66393d1c35a214c3cf51f56509e406e4d3ea1da9c8b7c`.

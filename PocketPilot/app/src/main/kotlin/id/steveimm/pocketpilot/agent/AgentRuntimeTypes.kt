@@ -14,6 +14,7 @@ sealed class AgentStopReason {
 sealed class TurnOutcome {
     data object Continue : TurnOutcome()
     data class Complete(val message: String) : TurnOutcome()
+    data class ToolFailed(val message: String) : TurnOutcome()
     data class Error(val message: String, val recoverable: Boolean) : TurnOutcome()
     data object Cancelled : TurnOutcome()
 }
@@ -52,10 +53,7 @@ internal fun decideTurnOutcome(
     if (execution.terminatedEarly) {
         return when (val last = execution.lastTerminalResult) {
             is ToolCallResult.Cancelled -> TurnOutcome.Cancelled
-            is ToolCallResult.Error -> TurnOutcome.Error(
-                message = last.error,
-                recoverable = true
-            )
+            is ToolCallResult.Error -> TurnOutcome.ToolFailed(last.error)
             else -> TurnOutcome.Error(
                 message = "Tool execution aborted before completion",
                 recoverable = true

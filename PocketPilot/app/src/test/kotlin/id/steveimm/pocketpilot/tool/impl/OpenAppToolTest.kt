@@ -8,6 +8,22 @@ import org.junit.Test
 class OpenAppToolTest {
 
     @Test
+    fun `missing app does not suggest unrelated labels with overlapping letters`() = kotlinx.coroutines.test.runTest {
+        val platform = id.steveimm.pocketpilot.test.FakeAndroidPlatform(
+            installedApps = listOf(id.steveimm.pocketpilot.platform.AppInfo("calendar", "Calendar")),
+        )
+        val context = object : id.steveimm.pocketpilot.tool.ToolExecutionContext {
+            override val platform = platform
+            override val currentSnapshot: id.steveimm.pocketpilot.model.ScreenSnapshot? = null
+            override fun isCancelled() = false
+        }
+        val result = OpenAppTool().createInvocation(JSONObject().put("app_name", "Terminal")).execute(context)
+            as id.steveimm.pocketpilot.tool.ToolExecutionResult.Failure
+        assertThat(result.error).contains("No similar apps found")
+        assertThat(result.error).doesNotContain("Calendar")
+    }
+
+    @Test
     fun `open_app requires app_name`() {
         val tool = OpenAppTool()
         val params = JSONObject()

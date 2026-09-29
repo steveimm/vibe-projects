@@ -54,14 +54,15 @@ internal class AgentTurnRunner(
         suspend fun executeTurn(
                 turnId: String,
                 turnNumber: Int,
-                state: TurnRunnerState
+                state: TurnRunnerState,
+                finalResponseReason: String? = null,
         ): TurnExecutionResult {
                 trace.turnStarted(turnId, turnNumber)
                 var nextState = state
 
                 val outcome =
                         try {
-                                val preTurnContext = if (state.observeScreen) capturePreTurnSnapshot(turnId, turnNumber)
+                                val preTurnContext = if (state.observeScreen && finalResponseReason == null) capturePreTurnSnapshot(turnId, turnNumber)
                                         else PreTurnContext(null, null)
                                 val snapshot = preTurnContext.snapshot
                                 if (isTurnCancelled()) {
@@ -78,9 +79,13 @@ internal class AgentTurnRunner(
                                                         snapshot = snapshot,
                                                         currentPackageName =
                                                                 preTurnContext.currentPackageName,
-                                                        warnings = preTurnContext.securityWarnings + preparedTurn.warnings
+                                                        warnings = preTurnContext.securityWarnings + preparedTurn.warnings,
+                                                        finalResponseReason = finalResponseReason,
                                                 )
 
+                                        check(finalResponseReason == null || planningResult.isComplete) {
+                                                "The model did not return a final answer after the tool recovery limit."
+                                        }
                                         nextState = nextState.copy(observeScreen = planningResult.toolCalls.any {
                                                 it.requestsScreenObservation() && services.toolRegistry.contains(it.name)
                                         })

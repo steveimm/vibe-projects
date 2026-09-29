@@ -76,6 +76,52 @@ class AgentRunLoopTest {
     }
 
     @Test
+    fun `two tool failures still let the model recover and answer`() = runTest {
+        val history = HistoryManager()
+        val classifier = AppClassifier(mapOf("com.example.fake" to id.steveimm.pocketpilot.protocol.AppTier.NORMAL))
+        val missing = ProgrammableLLMClient(listOf(
+            LLMBehavior.ToolCall("open_app", """{"app_name":"MissingAppOne"}"""),
+            LLMBehavior.ToolCall("open_app", """{"app_name":"MissingAppTwo"}"""),
+            LLMBehavior.TextOnly("Cannot proceed."),
+        ))
+        assertThat(newAgent(missing, historyManager = history, appClassifier = classifier).run())
+            .isEqualTo(AgentStopReason.Finished("Cannot proceed."))
+        assertThat(missing.callCount).isEqualTo(3)
+        assertThat(missing.toolLists.last()).isNotEmpty()
+        assertThat(history.getAll().filterIsInstance<id.steveimm.pocketpilot.history.ResponseItem.FunctionCallOutput>()).hasSize(2)
+    }
+
+    @Test
+    fun `tool recovery budget gives one final answer turn even across successful reads`() = runTest {
+        val script = buildList {
+            repeat(Agent.MAX_TOOL_FAILURE_TURNS) {
+                add(LLMBehavior.ToolCall("unavailable"))
+                if (it < Agent.MAX_TOOL_FAILURE_TURNS - 1) add(LLMBehavior.Continue)
+            }
+            add(LLMBehavior.TextOnly("The requested action is unavailable. No changes were made."))
+        }
+        val llm = ProgrammableLLMClient(script)
+        assertThat(newAgent(llm).run()).isInstanceOf(AgentStopReason.Finished::class.java)
+        assertThat(llm.toolLists.last()).isEmpty()
+        assertThat(llm.prompts.last()).contains("Tool recovery limit reached")
+        assertThat(llm.requests.last().any { it.isFunctionCallOutput() }).isTrue()
+        assertThat(llm.requests.last().last().asEasyInputMessage().content().asTextInput()).contains("No more tool calls")
+    }
+
+    @Test
+    fun `tools remain disabled if model calls a tool on the final recovery turn`() = runTest {
+        val history = HistoryManager()
+        val script = List(Agent.MAX_TOOL_FAILURE_TURNS) { LLMBehavior.ToolCall("unavailable") } + LLMBehavior.Continue
+        val llm = ProgrammableLLMClient(script)
+        val result = newAgent(llm, historyManager = history).run()
+        assertThat(result).isInstanceOf(AgentStopReason.Error::class.java)
+        assertThat((result as AgentStopReason.Error).message).contains("final answer")
+        assertThat(llm.toolLists.last()).isEmpty()
+        assertThat(history.getAll().filterIsInstance<id.steveimm.pocketpilot.history.ResponseItem.FunctionCall>())
+            .hasSize(Agent.MAX_TOOL_FAILURE_TURNS)
+    }
+
+    @Test
     fun `Continue outcome loops until evalTurnBudget reached`() = runTest {
         // evalTurnBudget = 2: two Continue turns run, then the loop stops with Error before turn 3.
         val llm = ProgrammableLLMClient(
@@ -364,12 +410,13 @@ class AgentRunLoopTest {
         evalTurnBudget: Int? = null,
         compactor: id.steveimm.pocketpilot.history.Compactor? = null,
         historyManager: HistoryManager = HistoryManager(),
+        appClassifier: AppClassifier = AppClassifier(emptyMap()),
     ): Agent {
         val toolRegistry = ToolRegistry().apply {
             register(ReadScreenTool())
             register(id.steveimm.pocketpilot.tool.impl.OpenAppTool())
         }
-        val policyEngine = PolicyEngine(appClassifier = AppClassifier(emptyMap()))
+        val policyEngine = PolicyEngine(appClassifier = appClassifier)
         val sessionConfig = SessionConfig(
             actionDelayMs = 0,
             llm = SessionLlmConfig(baseUrl = "http://localhost:8000/v1")
@@ -382,7 +429,7 @@ class AgentRunLoopTest {
             toolRouter = ToolRouter(toolRegistry, policyEngine),
             historyManager = historyManager,
             policyEngine = policyEngine,
-            appClassifier = AppClassifier(emptyMap()),
+            appClassifier = appClassifier,
             platform = platform,
             config = sessionConfig,
             llmClient = llm,
@@ -414,6 +461,7 @@ private sealed class LLMBehavior {
 
     /** Native final answer ends the loop. */
     data class TextOnly(val text: String) : LLMBehavior()
+    data class ToolCall(val name: String, val arguments: String = "{}") : LLMBehavior()
 
 
     /** Throws on streaming — classified by [TurnErrorClassifier]. */
@@ -427,6 +475,8 @@ private class ProgrammableLLMClient(
     var callCount: Int = 0
         private set
     val requests = mutableListOf<List<ResponseInputItem>>()
+    val toolLists = mutableListOf<List<String>>()
+    val prompts = mutableListOf<String>()
 
     override suspend fun chatWithTools(
         systemPrompt: String,
@@ -447,6 +497,8 @@ private class ProgrammableLLMClient(
         model: String
     ): Flow<LLMStreamEvent> = flow {
         requests += inputItems
+        toolLists += tools.map { it.name() }
+        prompts += systemPrompt
         val index = callCount
         callCount += 1
         val behavior = script.getOrNull(index)
@@ -457,6 +509,10 @@ private class ProgrammableLLMClient(
             is LLMBehavior.TextOnly -> {
                 emit(LLMStreamEvent.TextDelta(behavior.text))
                 emit(LLMStreamEvent.Completed())
+            }
+            is LLMBehavior.ToolCall -> {
+                emit(LLMStreamEvent.ToolCallDone(LLMToolCall("call-${java.util.UUID.randomUUID()}", behavior.name, behavior.arguments)))
+                emit(LLMStreamEvent.Completed("tool_calls"))
             }
             is LLMBehavior.Throw -> throw behavior.error
         }
@@ -499,6 +555,10 @@ private class GatedLLMClient : LLMClient() {
             is LLMBehavior.TextOnly -> {
                 emit(LLMStreamEvent.TextDelta(behavior.text))
                 emit(LLMStreamEvent.Completed())
+            }
+            is LLMBehavior.ToolCall -> {
+                emit(LLMStreamEvent.ToolCallDone(LLMToolCall("call-${java.util.UUID.randomUUID()}", behavior.name, behavior.arguments)))
+                emit(LLMStreamEvent.Completed("tool_calls"))
             }
             is LLMBehavior.Throw -> throw behavior.error
         }

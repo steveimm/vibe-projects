@@ -26,6 +26,7 @@ production turn cap.
 |---|---|---|
 | `Continue` | none | Loop runs another turn |
 | `Complete` | `message: String` | Stops with `Finished(message)` |
+| `ToolFailed` | `message: String` | Continue with the error in tool history; count toward the tool-recovery budget |
 | `Error` | `message: String, recoverable: Boolean` | Stops or retries based on flag |
 | `Cancelled` | none | Stops with `UserRequested` |
 
@@ -52,6 +53,7 @@ Tracked locally per run:
 | `Running` | terminal `Error` | compactor returned `Failed` 3 consecutive times | `consecutiveCompactionFailures >= 3` |
 | `Running` | terminal `Error` | `config.evalTurnBudget != null && turnCount >= evalTurnBudget` | eval-only safety net |
 | `Running` (turn) | `Continue` | `TurnOutcome.Continue` from `executeTurn` | resets `recoverableRetryCount`, delays `uiSettleDelayMs` |
+| `Running` (turn) | tool recovery | `TurnOutcome.ToolFailed` | count errors across the request; after six failed turns disable tools for one final response |
 | `Running` (turn) | terminal `Finished` | `TurnOutcome.Complete` | — |
 | `Running` (turn) | terminal `Error` | `TurnOutcome.Error(recoverable=false)` | — |
 | `Running` (turn) | retry | `TurnOutcome.Error(recoverable=true)` AND `recoverableRetryCount < MAX_RECOVERABLE_RETRIES (=1)` | increments retry count, delays `uiSettleDelayMs` |
@@ -99,6 +101,10 @@ stateDiagram-v2
     CheckEvalBudget --> ExecuteTurn
     ExecuteTurn --> Continue: TurnOutcome.Continue
     Continue --> LoopStart: delay(uiSettleDelayMs)
+    ExecuteTurn --> LoopStart: ToolFailed below budget
+    ExecuteTurn --> FinalResponse: tool failure budget reached
+    FinalResponse --> Finished: text-only answer
+    FinalResponse --> Error_NonRecoverable: invalid final response
     ExecuteTurn --> Finished: Complete
     ExecuteTurn --> Error_NonRecoverable: Error(recoverable=false)
     ExecuteTurn --> RetryDecision: Error(recoverable=true)
@@ -119,13 +125,14 @@ Maps `(TurnResult, ExecutionPhaseResult)` to `TurnOutcome`. Key rules:
 
 1. If `execution.terminatedEarly`:
    - last result `Cancelled` → `TurnOutcome.Cancelled`
-   - last result `Error` → `TurnOutcome.Error(recoverable=true)`
+   - last result `Error` → `TurnOutcome.ToolFailed`; model receives the tool error
    - else → `TurnOutcome.Error("Tool execution aborted before completion", recoverable=true)`
 2. Else a validated native final response emits `Complete(content)`; tool turns emit `Continue`.
 
 ## Invariants
 
-- `MAX_RECOVERABLE_RETRIES = 1` — at most one consecutive recoverable-error retry; `Continue` resets the counter.
+- `MAX_RECOVERABLE_RETRIES = 1` applies to recoverable model/network errors. Successful model responses reset it, including turns with tool failures.
+- `MAX_TOOL_FAILURE_TURNS = 6` applies across the whole request. After six failed tool turns, one model response with tools disabled can explain the blocker. No further tool execution is permitted.
 - `MAX_CONSECUTIVE_COMPACTION_FAILURES = 3` — three consecutive `Failed` outcomes trip the circuit breaker; any non-failed outcome (`Compacted`, `Skipped`, `Stale`, `NothingToCompact`) resets the counter.
 - `turnCount` is incremented after the compaction step and the eval-budget guard, so the eval safety net catches the (N+1)-th attempt rather than letting it start.
 - Pause is cooperative — pause check happens once per loop iteration, immediately before stop check.
@@ -149,7 +156,7 @@ The loop itself is fully transient; what makes it onto disk is what the turn wri
 - Exceptions inside `executeTurn` are caught by `AgentTurnRunner`:
   - `CancellationException` is rethrown.
   - All other exceptions go through `TurnErrorClassifier.classify(...)` → `TurnOutcome.Error(message, recoverable)`.
-- Recoverable error retry: at most 1 retry per "streak"; `Continue` resets the counter.
+- Recoverable model/network errors get at most one retry per streak; a successful model response resets that counter. Tool failures use the separate cumulative budget.
 - Context-window-exceeded errors from the provider are handled inside `Turn.runStreaming` via one `Compactor.forceCompactNow` + retry; a second occurrence propagates as a `TurnStreamEvent.Error` and goes through `TurnErrorClassifier`.
 
 ## Open questions / smells

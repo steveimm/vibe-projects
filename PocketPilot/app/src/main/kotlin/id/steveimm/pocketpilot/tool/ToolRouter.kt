@@ -71,7 +71,9 @@ class ToolRouter(
             val schemaValidation = validateToolParameters(params, tool.parameterSchema)
             val validation = if (schemaValidation is ValidationResult.Invalid) schemaValidation else tool.validate(params)
             if (validation is ValidationResult.Invalid) {
-                val errorMsg = "Validation failed: ${validation.errors.joinToString(", ")}"
+                val example = tool.parameterSchema.optJSONArray("examples")?.optJSONObject(0)
+                val errorMsg = "Validation failed: ${validation.errors.joinToString("; ")}. No action was executed." +
+                    (example?.let { " Example arguments for $toolName: $it" } ?: "")
                 val errorState = ToolCallState.Error(resolvedCallId, toolName, params, errorMsg)
                 updateState(errorState, onStateChange)
 

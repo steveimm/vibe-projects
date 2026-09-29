@@ -28,6 +28,7 @@ class Agent(
     companion object {
         private const val TAG = "Agent"
         private const val MAX_RECOVERABLE_RETRIES = 1
+        internal const val MAX_TOOL_FAILURE_TURNS = 6
         private const val MAX_CONSECUTIVE_COMPACTION_FAILURES = 3
     }
 
@@ -66,6 +67,8 @@ class Agent(
         var turnRunnerState = TurnRunnerState()
         var recoverableRetryCount = 0
         var consecutiveCompactionFailures = 0
+        var toolFailureTurns = 0
+        var finalResponseReason: String? = null
         try {
         while (shouldContinue()) {
             if (pauseState.value) {
@@ -124,11 +127,20 @@ class Agent(
             Log.d(TAG, "=== TURN $turnCount START ===")
             eventDispatcher.turnStarted(turnId, turnCount)
 
-            val turnExecution = turnRunner.executeTurn(turnId, turnCount, turnRunnerState)
+            val turnExecution = turnRunner.executeTurn(turnId, turnCount, turnRunnerState, finalResponseReason)
             turnRunnerState = turnExecution.nextState
             when (val result = turnExecution.outcome) {
                 is TurnOutcome.Continue -> {
                     recoverableRetryCount = 0
+                    delay(config.uiSettleDelayMs)
+                }
+                is TurnOutcome.ToolFailed -> {
+                    recoverableRetryCount = 0
+                    toolFailureTurns++
+                    if (toolFailureTurns >= MAX_TOOL_FAILURE_TURNS) {
+                        finalResponseReason = "Tool recovery limit reached: $toolFailureTurns turns with tool errors in this request."
+                        eventDispatcher.status("Summarizing the blocker")
+                    }
                     delay(config.uiSettleDelayMs)
                 }
                 is TurnOutcome.Complete -> {

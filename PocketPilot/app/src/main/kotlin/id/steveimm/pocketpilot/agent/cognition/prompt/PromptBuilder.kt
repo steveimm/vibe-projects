@@ -24,7 +24,11 @@ internal class PromptBuilder(
         turnNumber: Int = 0,
     ): List<ResponseInputItem> = buildList {
         addAll(buildHistorySection())
-        observation?.let { add(buildObservationSection(it, warnings, turnNumber)) }
+        if (observation != null) {
+            add(buildObservationSection(observation, warnings, turnNumber))
+        } else if (warnings.isNotEmpty()) {
+            add(textUserMessage("Runtime status:\n${warnings.joinToString("\n")}"))
+        }
     }
 
     /** History section is a direct pass-through of [HistoryManager.forPrompt]. Screen compression is handled proactively by

@@ -5,6 +5,7 @@ import id.steveimm.pocketpilot.tool.*
 import id.steveimm.pocketpilot.tool.handlers.UIActionInvocation
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import org.json.JSONArray
 import org.json.JSONObject
 
 /** One gesture per call, using the same normalized coordinates at every image/display resolution. */
@@ -12,16 +13,24 @@ class TouchTool(override val name: String) : ToolSpec {
     init { require(name in setOf("tap", "long_press", "swipe")) }
 
     override val description: String = when (name) {
-        "tap" -> "Tap a visible target in the latest screenshot. x and y use 0–1000: top-left (0,0), bottom-right (1000,1000)."
-        "long_press" -> "Hold a visible target. x and y use 0–1000 across the latest screenshot. Default hold is 1000 ms."
-        else -> "Swipe from start to end. All coordinates use 0–1000 across the latest screenshot. Swipe upward to scroll down."
+        "tap" -> "Tap a visible target. point is [x, y] with two integers from 0 to 1000 over the full screenshot."
+        "long_press" -> "Hold a visible target. point is [x, y] with integers from 0 to 1000. Default hold is 1000 ms."
+        else -> "Swipe from start [x, y] to end [x, y]. Use integers from 0 to 1000 over the full screenshot. " +
+            "Swipe upward to scroll down. Default duration is 400 ms."
     }
 
     override val parameterSchema = parameterObject(buildMap {
-        val axes = if (name == "swipe") listOf("start_x", "start_y", "end_x", "end_y") else listOf("x", "y")
-        axes.forEach { put(it, integerParameter("Position from 0 to 1000 across the screenshot", 0, 1000)) }
+        val points = if (name == "swipe") listOf("start", "end") else listOf("point")
+        points.forEach {
+            put(it, JSONObject().put("type", "array").put("description", "[x, y]: top-left [0,0], bottom-right [1000,1000]")
+                .put("items", integerParameter("Coordinate", 0, 1000)).put("minItems", 2).put("maxItems", 2))
+        }
         if (name != "tap") put("duration_ms", integerParameter("Gesture duration in milliseconds", 100, 3000))
-    }, if (name == "swipe") listOf("start_x", "start_y", "end_x", "end_y") else listOf("x", "y"))
+    }, if (name == "swipe") listOf("start", "end") else listOf("point")).apply {
+        val example = if (name == "swipe") JSONObject("""{"start":[500,800],"end":[500,300]}""")
+            else JSONObject("""{"point":[500,500]}""")
+        put("examples", JSONArray().put(example))
+    }
 
     override fun validate(params: JSONObject): ValidationResult = validateToolParameters(params, parameterSchema)
 
@@ -41,12 +50,12 @@ class TouchTool(override val name: String) : ToolSpec {
             if (abs(image.width.toDouble() / image.height - display.widthPixels.toDouble() / display.heightPixels) > 0.02) {
                 return ToolExecutionResult.Failure("Display orientation changed since the screenshot. Use read_screen before retrying.")
             }
-            fun x(key: String) = (params.getInt(key) / 1000.0 * (display.widthPixels - 1)).roundToInt()
-            fun y(key: String) = (params.getInt(key) / 1000.0 * (display.heightPixels - 1)).roundToInt()
+            fun x(key: String) = (params.getJSONArray(key).getInt(0) / 1000.0 * (display.widthPixels - 1)).roundToInt()
+            fun y(key: String) = (params.getJSONArray(key).getInt(1) / 1000.0 * (display.heightPixels - 1)).roundToInt()
             val action = when (name) {
-                "tap" -> UIAction.TapAt(x("x"), y("y"))
-                "long_press" -> UIAction.LongPressAt(x("x"), y("y"), params.optLong("duration_ms", 1000))
-                else -> UIAction.Swipe(x("start_x"), y("start_y"), x("end_x"), y("end_y"), params.optLong("duration_ms", 400))
+                "tap" -> UIAction.TapAt(x("point"), y("point"))
+                "long_press" -> UIAction.LongPressAt(x("point"), y("point"), params.optLong("duration_ms", 1000))
+                else -> UIAction.Swipe(x("start"), y("start"), x("end"), y("end"), params.optLong("duration_ms", 400))
             }
             return UIActionInvocation(name, params, getDescription(), action).execute(context)
         }

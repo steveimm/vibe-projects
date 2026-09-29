@@ -5,13 +5,13 @@ Read `trace.jsonl` chronologically. A `tool_call` event identifies the tool and 
 Examples:
 
 ```json
-{"x":500,"y":750}
+{"point":[500,750]}
 ```
 
 This `tap` call maps to approximately `(540,1799)` on a 1080×2400 display, regardless of the JPEG's resized dimensions.
 
 ```json
-{"start_x":500,"start_y":800,"end_x":500,"end_y":300,"duration_ms":400}
+{"start":[500,800],"end":[500,300],"duration_ms":400}
 ```
 
 This `swipe` moves the finger upward. Convert each axis to physical pixels before reproducing it with ADB.

@@ -284,8 +284,8 @@ function renderActionMarkers({ overlay, actions, transform }) {
     if (!args || typeof args !== "object") return;
 
     if (name === "tap" || name === "long_press") {
-      const point = [Number(args.x), Number(args.y)];
-      if (!point) return;
+      if (!Array.isArray(args.point) || args.point.length !== 2) return;
+      const point = args.point;
       const [x, y] = point;
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
       const marker = document.createElement("div");
@@ -298,8 +298,8 @@ function renderActionMarkers({ overlay, actions, transform }) {
     }
 
     if (name === "swipe") {
-      const swipe = [args.start_x, args.start_y, args.end_x, args.end_y].map(Number);
-      if (!swipe) return;
+      if (!Array.isArray(args.start) || args.start.length !== 2 || !Array.isArray(args.end) || args.end.length !== 2) return;
+      const swipe = [...args.start, ...args.end];
       const [x1, y1, x2, y2] = swipe;
       if (![x1, y1, x2, y2].every(Number.isFinite)) return;
 

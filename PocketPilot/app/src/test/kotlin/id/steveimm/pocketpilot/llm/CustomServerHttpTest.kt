@@ -45,7 +45,11 @@ class CustomServerHttpTest {
                 val chat = server.takeRequest(5, TimeUnit.SECONDS)!!
                 assertThat(chat.path).isEqualTo("/v1/chat/completions")
                 assertThat(chat.getHeader("Authorization")).isNull()
-                assertThat(JSONObject(chat.body.readUtf8()).getString("model")).isEqualTo("local-model")
+                val payload = JSONObject(chat.body.readUtf8())
+                assertThat(payload.getString("model")).isEqualTo("local-model")
+                assertThat(payload.has("tools")).isFalse()
+                assertThat(payload.has("parallel_tool_calls")).isFalse()
+                assertThat(payload.getString("tool_choice")).isEqualTo("none")
             } finally {
                 factory.cleanupAll()
             }

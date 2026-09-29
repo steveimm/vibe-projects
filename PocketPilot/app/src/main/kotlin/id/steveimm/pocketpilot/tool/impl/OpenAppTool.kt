@@ -194,7 +194,6 @@ private class OpenAppInvocation(
         limit: Int = SUGGESTION_LIMIT
     ): List<String> {
         val term = searchTerm.lowercase()
-        val termChars = term.toSet()
 
         data class ScoredApp(val label: String, val score: Int)
 
@@ -207,9 +206,6 @@ private class OpenAppInvocation(
                 label.contains(term) || term.contains(label) -> 3
                 // Package name contains term
                 app.packageName.lowercase().contains(term) -> 2
-                // Character overlap > 50%
-                termChars.isNotEmpty() &&
-                    termChars.intersect(label.toSet()).size > termChars.size / 2 -> 1
                 else -> 0
             }
             if (score > 0) ScoredApp(app.label, score) else null
