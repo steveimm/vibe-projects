@@ -45,7 +45,6 @@ class ModelDiscoveryTest {
         assertThat(e.modelId).isEqualTo("anthropic/claude-opus-4.7")
         assertThat(e.displayName).isEqualTo("Anthropic Claude Opus 4.7")
         assertThat(e.contextWindow).isEqualTo(200000)
-        assertThat(e.supportsVision).isTrue()
         assertThat(entries.single().created).isEqualTo(1700000000L)
     }
 
@@ -68,7 +67,6 @@ class ModelDiscoveryTest {
         val e = entries.single()
         assertThat(e.displayName).isEqualTo("AutoGLM Phone 9B")
         assertThat(e.contextWindow).isEqualTo(131072)
-        assertThat(e.supportsVision).isFalse()
         assertThat(e.modelId).isEqualTo("zai-org/autoglm-phone-9b-multilingual")
     }
 
@@ -86,7 +84,6 @@ class ModelDiscoveryTest {
         assertThat(e.modelId).isEqualTo("gpt-4o-mini")
         assertThat(e.displayName).isEqualTo("gpt-4o-mini")
         assertThat(e.contextWindow).isEqualTo(128_000)
-        assertThat(e.supportsVision).isFalse()
     }
 
     @Test
@@ -184,20 +181,6 @@ class ModelDiscoveryTest {
             .associate { it.modelId to it.displayName }
         assertThat(entries["vendor/a"]).isEqualTo("HelloWorld")
         assertThat(entries["vendor/b"]?.length).isEqualTo(80)
-    }
-
-    @Test
-    fun `supportsVision defaults false, true only when modality declares image`() {
-        val body = """
-            {"data":[
-              {"id":"a/plain"},
-              {"id":"a/with-image","architecture":{"input_modalities":["text","image"]}}
-            ]}
-        """.trimIndent()
-        val map = ModelDiscovery.parse(body)
-            .associate { it.modelId to it.supportsVision }
-        assertThat(map["a/plain"]).isFalse()
-        assertThat(map["a/with-image"]).isTrue()
     }
 
     @Test

@@ -9,6 +9,7 @@ import id.steveimm.pocketpilot.tool.ToolExecutionResult
 import id.steveimm.pocketpilot.tool.ToolInvocation
 import id.steveimm.pocketpilot.tool.ToolSpec
 import id.steveimm.pocketpilot.tool.ValidationResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
@@ -121,27 +122,7 @@ private class OpenAppInvocation(
         val apps = context.platform.getInstalledApps()
         val searchTerm = appName.lowercase().trim()
 
-        // Strategy 1: Exact label match
-        var match = apps.find { it.label.equals(appName, ignoreCase = true) }
-
-        // Strategy 2: Label contains search term
-        if (match == null) {
-            match = apps.find { it.label.contains(appName, ignoreCase = true) }
-        }
-
-        // Strategy 3: Well-known alias → package
-        if (match == null) {
-            val aliasPackage = AppAliases.PACKAGE_MAP[searchTerm]
-            if (aliasPackage != null) {
-                match = apps.find { it.packageName == aliasPackage }
-            }
-        }
-
-        // Strategy 4: Input looks like a package name (e.g. "com.google.android.gm")
-        if (match == null && looksLikePackageName(searchTerm)) {
-            match = apps.find { it.packageName.equals(searchTerm, ignoreCase = true) }
-                ?: apps.find { it.packageName.contains(searchTerm, ignoreCase = true) }
-        }
+        val match = resolveInstalledApp(apps, appName)
 
         if (match == null) {
             val suggestions = findSimilarApps(searchTerm, apps)
@@ -183,6 +164,8 @@ private class OpenAppInvocation(
 
                 val snapshot = try {
                     context.platform.captureScreen()
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to capture screen after app launch", e)
                     null
@@ -202,11 +185,6 @@ private class OpenAppInvocation(
             )
             else -> ToolExecutionResult.Failure("Unexpected result: $result")
         }
-    }
-
-    /** Check if input looks like a package name (e.g. "com.google.android.gm"). */
-    private fun looksLikePackageName(input: String): Boolean {
-        return input.contains('.') && input.split('.').size >= 2
     }
 
     /** Find similar app names for error suggestions. */
@@ -242,4 +220,14 @@ private class OpenAppInvocation(
             .take(limit)
             .map { it.label }
     }
+}
+
+internal fun resolveInstalledApp(apps: List<id.steveimm.pocketpilot.platform.AppInfo>, name: String): id.steveimm.pocketpilot.platform.AppInfo? {
+    val query = name.trim()
+    if (query.isEmpty()) return null
+    return apps.find { it.label.equals(query, ignoreCase = true) }
+        ?: apps.find { it.packageName.equals(query, ignoreCase = true) }
+        ?: apps.find { it.packageName == AppAliases.PACKAGE_MAP[query.lowercase()] }
+        ?: apps.find { it.label.contains(query, ignoreCase = true) }
+        ?: apps.find { '.' in query && it.packageName.contains(query, ignoreCase = true) }
 }

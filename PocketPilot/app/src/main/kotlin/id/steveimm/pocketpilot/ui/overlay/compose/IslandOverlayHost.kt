@@ -40,6 +40,8 @@ class IslandOverlayHost(
 
     private var stateHolder: CapsuleStateHolder? = null
 
+    fun suppressForScreenshot(): AutoCloseable = composeHost.suppressForScreenshot()
+
     fun show() {
         if (composeHost.isShowing()) return
         composeHost.show(createLayoutParams()) {

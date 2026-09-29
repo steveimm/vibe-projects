@@ -234,7 +234,6 @@ class SessionCheckpointReloadAndListenersTest {
         sessionId = sessionId,
         config = ConversationConfigSnapshot(
             mainModel = "test-model",
-            perceptionMode = "accessibility_only",
             platformMode = PlatformMode.ACCESSIBILITY.name
         ),
         historyItems = historyItems,

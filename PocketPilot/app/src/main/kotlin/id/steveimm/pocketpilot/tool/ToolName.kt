@@ -9,16 +9,15 @@ sealed class ToolName(
     val isScreenChanging: Boolean
         get() =
             when (this) {
-                MobileAction, OpenApp, SystemButton -> true
+                Tap, LongPress, Swipe, TypeText, OpenApp, SystemButton -> true
                 Wait, AskUser, TermuxShell -> false
                 is Unknown -> true
             }
 
-    data object MobileAction : ToolName(
-        raw = "mobile_action",
-        canonical = "mobile_action",
-        displayName = "Mobile action"
-    )
+    data object Tap : ToolName("tap", "tap", "Tap")
+    data object LongPress : ToolName("long_press", "long_press", "Long press")
+    data object Swipe : ToolName("swipe", "swipe", "Swipe")
+    data object TypeText : ToolName("type_text", "type_text", "Type text")
     data object OpenApp : ToolName(
         raw = "open_app",
         canonical = "open_app",
@@ -53,103 +52,16 @@ sealed class ToolName(
     companion object {
         fun from(raw: String): ToolName {
             return when (normalizeName(raw)) {
-                MobileAction.canonical -> MobileAction
+                Tap.canonical -> Tap
+                LongPress.canonical -> LongPress
+                Swipe.canonical -> Swipe
+                TypeText.canonical -> TypeText
                 OpenApp.canonical -> OpenApp
                 Wait.canonical -> Wait
                 SystemButton.canonical -> SystemButton
                 AskUser.canonical -> AskUser
                 TermuxShell.canonical -> TermuxShell
                 else -> Unknown(raw)
-            }
-        }
-    }
-}
-
-/** Known action names for mobile_action and standalone action tools. */
-sealed class MobileActionName(
-    val raw: String,
-    val canonical: String,
-    val displayName: String
-) {
-    data object Click : MobileActionName(
-        raw = "click",
-        canonical = "click",
-        displayName = "Click"
-    )
-    data object LongPress : MobileActionName(
-        raw = "long_press",
-        canonical = "long_press",
-        displayName = "Long press"
-    )
-    data object Type : MobileActionName(
-        raw = "type",
-        canonical = "type",
-        displayName = "Type"
-    )
-    data object Scroll : MobileActionName(
-        raw = "scroll",
-        canonical = "scroll",
-        displayName = "Scroll"
-    )
-    data object Swipe : MobileActionName(
-        raw = "swipe",
-        canonical = "swipe",
-        displayName = "Swipe"
-    )
-    data object Back : MobileActionName(
-        raw = "back",
-        canonical = "back",
-        displayName = "Back"
-    )
-    data object Home : MobileActionName(
-        raw = "home",
-        canonical = "home",
-        displayName = "Home"
-    )
-    data object Wait : MobileActionName(
-        raw = "wait",
-        canonical = "wait",
-        displayName = "Wait"
-    )
-    data object SystemButton : MobileActionName(
-        raw = "system_button",
-        canonical = "system_button",
-        displayName = "System button"
-    )
-    data class Unknown(private val name: String) : MobileActionName(
-        raw = name,
-        canonical = normalizeName(name),
-        displayName = formatDisplayName(name)
-    )
-
-    companion object {
-        fun from(raw: String): MobileActionName {
-            return when (normalizeName(raw)) {
-                Click.canonical -> Click
-                LongPress.canonical -> LongPress
-                Type.canonical -> Type
-                Scroll.canonical -> Scroll
-                Swipe.canonical -> Swipe
-                Back.canonical -> Back
-                Home.canonical -> Home
-                Wait.canonical -> Wait
-                SystemButton.canonical -> SystemButton
-                else -> Unknown(raw)
-            }
-        }
-
-        fun fromOrNull(raw: String): MobileActionName? {
-            return when (normalizeName(raw)) {
-                Click.canonical -> Click
-                LongPress.canonical -> LongPress
-                Type.canonical -> Type
-                Scroll.canonical -> Scroll
-                Swipe.canonical -> Swipe
-                Back.canonical -> Back
-                Home.canonical -> Home
-                Wait.canonical -> Wait
-                SystemButton.canonical -> SystemButton
-                else -> null
             }
         }
     }

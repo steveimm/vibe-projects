@@ -110,6 +110,8 @@ class CapsuleOverlayHost(
         }
     }
 
+    fun suppressForScreenshot(): AutoCloseable = composeHost.suppressForScreenshot()
+
     fun isShowing(): Boolean = composeHost.isShowing()
 
     fun show() {

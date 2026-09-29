@@ -89,8 +89,6 @@ class SettingsTermuxRowTest {
                 }
                 CompositionLocalProvider(LocalContext provides recording) {
                     AgentBehaviorSettingsPage(
-                        perceptionMode = "accessibility_only",
-                        onPerceptionModeChange = {},
                         platformMode = id.steveimm.pocketpilot.protocol.PlatformMode.ACCESSIBILITY,
                         effectivePlatformMode = null,
                         onPlatformModeChange = {},

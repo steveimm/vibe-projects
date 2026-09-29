@@ -23,8 +23,6 @@ import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
 @Composable
 internal fun AgentBehaviorSettingsPage(
-    perceptionMode: String,
-    onPerceptionModeChange: (String) -> Unit,
     platformMode: PlatformMode,
     effectivePlatformMode: PlatformMode?,
     onPlatformModeChange: (PlatformMode) -> Unit,
@@ -47,10 +45,6 @@ internal fun AgentBehaviorSettingsPage(
                 onApprovalModeChange = onApprovalModeChange,
                 onNavigateToAppAccess = onNavigateToAppAccess,
             )
-            Spacer(modifier = Modifier.height(20.dp))
-            SettingsSection(title = "Perception") {
-                PerceptionModeSelector(selectedMode = perceptionMode, onModeChange = onPerceptionModeChange)
-            }
             Spacer(modifier = Modifier.height(20.dp))
             DisplaySection(
                 persistedMode = platformMode,

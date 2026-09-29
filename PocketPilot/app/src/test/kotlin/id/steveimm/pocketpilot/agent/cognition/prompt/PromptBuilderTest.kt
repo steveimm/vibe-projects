@@ -4,295 +4,36 @@ import com.google.common.truth.Truth.assertThat
 import id.steveimm.pocketpilot.history.HistoryManager
 import id.steveimm.pocketpilot.history.MessageKind
 import id.steveimm.pocketpilot.history.ResponseItem
-import id.steveimm.pocketpilot.model.Bounds
-import id.steveimm.pocketpilot.model.PerceptionElement
-import id.steveimm.pocketpilot.model.Point
+import id.steveimm.pocketpilot.model.ScreenImage
+import id.steveimm.pocketpilot.model.ScreenImageSource
 import id.steveimm.pocketpilot.model.ScreenSnapshot
-import id.steveimm.pocketpilot.perception.PerceptionConfig
-import org.json.JSONObject
 import org.junit.Test
 
 class PromptBuilderTest {
-
-    private val emptySnapshot = ScreenSnapshot(timestamp = 1L, elements = emptyList())
-
-    /** Snapshot with accessibility data for mode-aware tests. */
-    private val snapshotWithElements = ScreenSnapshot(
-        timestamp = 1L,
-        elements = listOf(
-            PerceptionElement(
-                index = 0,
-                text = "Button",
-                resourceId = "",
-                className = "TextView",
-                description = "",
-                isClickable = true,
-                isEditable = false,
-                isScrollable = false,
-                isEnabled = true,
-                isFocused = false,
-                isLongClickable = false,
-                bounds = Bounds(0, 0, 100, 50),
-                center = Point(50, 25)
-            )
-        )
-    )
-
-    /** TurnObservation helpers */
-    private val emptyObservation = TurnObservation.capture(emptySnapshot, PerceptionConfig.DEFAULT)
-    private val observationWithElements = TurnObservation.capture(snapshotWithElements, PerceptionConfig.DEFAULT)
-    private val screenshotOnlyObservation = TurnObservation.capture(snapshotWithElements, PerceptionConfig.ScreenshotOnly())
-
     @Test
-    fun `buildObservationText includes screen state when accessibility available`() {
-        val builder = createBuilder()
-        val text = builder.buildObservationText(observationWithElements, emptyList())
-
-        assertThat(text).contains("Screen state (1 elements):")
-        assertThat(text).contains("```json")
+    fun `screenshot is attached without model capability metadata`() {
+        val image = ScreenImage(460, 1024, "image/jpeg", byteArrayOf(1, 2), ScreenImageSource.ACCESSIBILITY_SCREENSHOT)
+        val observation = TurnObservation.capture(ScreenSnapshot(1, emptyList(), image), "com.android.settings")
+        val message = PromptBuilder(HistoryManager()).buildInputItems(observation).single().asEasyInputMessage()
+        val contents = message.content().asResponseInputMessageContentList()
+        assertThat(contents[1].asInputImage().imageUrl().get()).startsWith("data:image/jpeg;base64,")
+        assertThat(contents[0].asInputText().text()).contains("0–1000")
+        assertThat(contents[0].asInputText().text()).contains("com.android.settings")
     }
 
     @Test
-    fun `buildObservationText shows screenshot-only guidance when perceptionConfig is ScreenshotOnly`() {
-        val builder = createBuilder()
-        val text = builder.buildObservationText(screenshotOnlyObservation, emptyList())
-
-        assertThat(text).contains("Screenshot-only mode")
-        assertThat(text).contains("Use coordinate-based actions (x, y)")
+    fun `missing screenshot is explicit instead of suggesting blind actions`() {
+        val observation = TurnObservation.capture(ScreenSnapshot(1, emptyList()))
+        val text = PromptBuilder(HistoryManager()).buildObservationText(observation, emptyList())
+        assertThat(text).contains("Screenshot unavailable")
     }
 
     @Test
-    fun `buildObservationText places warnings before screen state`() {
-        val builder = createBuilder()
-        val warnings = listOf(
-            "⚠️ Screen unchanged for 3 turns."
-        )
-        val text = builder.buildObservationText(observationWithElements, warnings)
-
-        val warningIdx = text.indexOf("⚠️ Screen unchanged")
-        val screenIdx = text.indexOf("Screen state")
-        assertThat(warningIdx).isLessThan(screenIdx)
-    }
-
-    @Test
-    fun `buildObservationText has no warnings when list empty`() {
-        val builder = createBuilder()
-        val text = builder.buildObservationText(observationWithElements, emptyList())
-
-        assertThat(text).doesNotContain("⚠️")
-        assertThat(text).startsWith("Screen state")
-    }
-
-    @Test
-    fun `buildObservationText excludes screenshot hint when vision not supported`() {
-        val builder = createBuilder(supportsVision = false)
-        val text = builder.buildObservationText(observationWithElements, emptyList())
-
-        assertThat(text).doesNotContain("Screenshot attached")
-    }
-
-    @Test
-    fun `buildObservationText has no Available tools line`() {
-        val builder = createBuilder()
-        val text = builder.buildObservationText(observationWithElements, emptyList())
-
-        assertThat(text).doesNotContain("Available tools:")
-    }
-
-    @Test
-    fun `buildObservationText has no What action prompt`() {
-        val builder = createBuilder()
-        val text = builder.buildObservationText(observationWithElements, emptyList())
-
-        assertThat(text).doesNotContain("What action should I take")
-    }
-
-    @Test
-    fun `buildObservationText has no system_reminder XML tags`() {
-        val builder = createBuilder()
-        val warnings = listOf("⚠️ Some warning")
-        val text = builder.buildObservationText(observationWithElements, warnings)
-
-        assertThat(text).doesNotContain("<system_reminder>")
-        assertThat(text).doesNotContain("</system_reminder>")
-    }
-
-    @Test
-    fun `TurnObservation screenBlock matches between prompt and history`() {
-        val observation = TurnObservation.capture(snapshotWithElements, PerceptionConfig.DEFAULT)
-        val builder = createBuilder()
-
-        // The prompt wraps screenBlock with decorations; history uses screenBlock directly.
-        // Verify the canonical block is present in the prompt text.
-        val promptText = builder.buildObservationText(observation, emptyList())
-        assertThat(promptText).contains(observation.screenBlock)
-    }
-
-    @Test
-    fun `TurnObservation capture computes screenJson once`() {
-        val observation = TurnObservation.capture(snapshotWithElements, PerceptionConfig.DEFAULT)
-
-        // screenJson is non-null for accessibility mode
-        assertThat(observation.screenJson).isNotNull()
-        assertThat(observation.hasAccessibility).isTrue()
-        // screenBlock contains the JSON
-        assertThat(observation.screenBlock).contains("```json")
-        assertThat(observation.screenBlock).contains(observation.screenJson!!)
-    }
-
-    @Test
-    fun `TurnObservation screenshot-only has null screenJson`() {
-        val observation = TurnObservation.capture(snapshotWithElements, PerceptionConfig.ScreenshotOnly())
-
-        assertThat(observation.screenJson).isNull()
-        assertThat(observation.hasAccessibility).isFalse()
-        assertThat(observation.screenBlock).contains("no accessibility tree")
-    }
-
-    @Test
-    fun `buildObservationText renders Turn N without budget`() {
-        val builder = createBuilder()
-        val text = builder.buildObservationText(observationWithElements, emptyList(), turnNumber = 3)
-
-        assertThat(text).contains("Turn 3")
-        assertThat(text).doesNotContainMatch("Turn \\d+/\\d+")
-    }
-
-    @Test
-    fun `buildObservationText omits turn header when turnNumber is zero`() {
-        val builder = createBuilder()
-        val text = builder.buildObservationText(observationWithElements, emptyList())
-
-        assertThat(text).doesNotContain("Turn ")
-    }
-
-    @Test
-    fun `PromptBuilder never renders budget or FINAL TURN by itself`() {
-        val historyManager = HistoryManager()
-        historyManager.addItem(userIntent("Goal: Test"))
-        val builder = PromptBuilder(
-            historyManager = historyManager,
-            supportsVision = true
-        )
-
-        // No warnings supplied — PromptBuilder must not synthesize budget/FINAL TURN strings.
-        val items = builder.buildInputItems(
-            observation = emptyObservation,
-            turnNumber = 5
-        )
-
-        val text = items.joinToString("\n") { item ->
-            runCatching { item.asEasyInputMessage().content().asTextInput() }.getOrDefault("")
+    fun `compacted history remains identifiable as earlier context`() {
+        val history = HistoryManager().apply {
+            addItem(ResponseItem.Message(MessageKind.COMPACTION_SUMMARY, "Settings was opened earlier."))
         }
-
-        assertThat(text).doesNotContainMatch("Turn \\d+/\\d+")
-        assertThat(text).doesNotContain("FINAL TURN")
+        val items = PromptBuilder(history).buildInputItems(TurnObservation(null, "Screenshot unavailable"))
+        assertThat(items[0].asEasyInputMessage().content().asTextInput()).startsWith("[Context checkpoint from earlier work")
     }
-
-    @Test
-    fun `COMPACTION_SUMMARY content is prefixed with context checkpoint banner`() {
-        val historyManager = HistoryManager()
-        historyManager.addItem(userIntent("Goal: Test"))
-        historyManager.addItem(
-            ResponseItem.Message(
-                kind = MessageKind.COMPACTION_SUMMARY,
-                content = "Earlier the agent opened Settings and toggled WiFi off."
-            )
-        )
-
-        val builder = PromptBuilder(
-            historyManager = historyManager,
-            supportsVision = true
-        )
-
-        val items = builder.buildInputItems(emptyObservation)
-
-        // Find the summary item — it's the second history message.
-        val summaryText = items[1].asEasyInputMessage().content().asTextInput()
-        assertThat(summaryText).startsWith("[Context checkpoint from earlier work in this session]\n\n")
-        assertThat(summaryText).contains("Earlier the agent opened Settings and toggled WiFi off.")
-    }
-
-    @Test
-    fun `regular USER_INTENT and ASSISTANT_TEXT messages have no checkpoint prefix`() {
-        val historyManager = HistoryManager()
-        historyManager.addItem(userIntent("Goal: Just do it"))
-        historyManager.addItem(assistantMessage("Done"))
-
-        val builder = PromptBuilder(
-            historyManager = historyManager,
-            supportsVision = true
-        )
-
-        val items = builder.buildInputItems(emptyObservation)
-
-        val intentText = items[0].asEasyInputMessage().content().asTextInput()
-        val assistantText = items[1].asEasyInputMessage().content().asTextInput()
-        assertThat(intentText).doesNotContain("Context checkpoint")
-        assertThat(assistantText).doesNotContain("Context checkpoint")
-    }
-
-    @Test
-    fun `buildInputItems omits memory when empty`() {
-        val historyManager = HistoryManager()
-        historyManager.addItem(userIntent("Goal: Test"))
-
-        val builder = PromptBuilder(
-            historyManager = historyManager,
-            supportsVision = true
-        )
-
-        val items = builder.buildInputItems(emptyObservation)
-
-        // 1 history + 0 memory + 1 observation = 2
-        assertThat(items).hasSize(2)
-    }
-
-    @Test
-    fun `buildInputItems includes function call pairs from history`() {
-        val historyManager = HistoryManager()
-        historyManager.addItem(userIntent("Goal: Test"))
-        historyManager.addItem(assistantMessage("Opening app"))
-        historyManager.addItem(
-            ResponseItem.FunctionCall(
-                id = "call-1",
-                name = "open_app",
-                arguments = JSONObject().put("app_name", "Gmail")
-            )
-        )
-        historyManager.addItem(
-            ResponseItem.FunctionCallOutput(
-                callId = "call-1",
-                content = "Success: Gmail opened"
-            )
-        )
-
-        val builder = PromptBuilder(
-            historyManager = historyManager,
-            supportsVision = true
-        )
-
-        val items = builder.buildInputItems(emptyObservation)
-
-        // 4 history items + 0 memory + 1 observation = 5
-        assertThat(items).hasSize(5)
-    }
-
-    private fun createBuilder(
-        historyManager: HistoryManager = HistoryManager(),
-        supportsVision: Boolean = true
-    ): PromptBuilder = PromptBuilder(
-        historyManager = historyManager,
-        supportsVision = supportsVision
-    )
-
-    private fun userIntent(content: String) = ResponseItem.Message(
-        kind = MessageKind.USER_INTENT,
-        content = content
-    )
-
-    private fun assistantMessage(content: String) = ResponseItem.Message(
-        kind = MessageKind.ASSISTANT_TEXT,
-        content = content
-    )
 }

@@ -30,6 +30,8 @@ Wait for UI updates to settle when transitions, animations, or async loading are
                     "duration_ms",
                     JSONObject().apply {
                         put("type", "integer")
+                        put("minimum", 0)
+                        put("maximum", MAX_WAIT_MS)
                         put("description", "Wait duration in milliseconds (default 1000, max 30000)")
                     }
                 )

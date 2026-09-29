@@ -110,7 +110,7 @@ class CustomServerHttpTest {
                     history.addItem(ResponseItem.FunctionCall("call1", "open_app", JSONObject("""{"app_name":"Settings"}""")))
                     history.addItem(ResponseItem.FunctionCallOutput("call1", "Settings opened"))
                     val items = PromptBuilder(history).buildInputItems(
-                        TurnObservation(null, 0, false, false, null, "Current screen: Settings"),
+                        TurnObservation(null, "Current screen: Settings"),
                     )
                     assertThat(LlmInputItemsTraceSerializer.toJson(items)[0].jsonObject[field]?.jsonPrimitive?.content)
                         .isEqualTo("Inspect before tapping.")

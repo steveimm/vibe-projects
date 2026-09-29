@@ -94,7 +94,7 @@ Primary files:
 - Workspace cwd defaults to `~/pocketpilot/workspace/`. Bridge-side cwd validation rejects paths
   outside that workspace. To share files with other Android apps, copy them to `/sdcard/Download/`.
 - `termux_shell` is non-screen-changing and auto-allowed, but it must not control
-  Android UI or bypass app-tier restrictions. UI work still belongs to `mobile_action`,
+  Android UI or bypass app-tier restrictions. UI work still belongs to `tap`, `swipe`, `type_text`,
   `system_button`, `open_app`, and related UI tools.
 - Selected calls execute in model order.
 

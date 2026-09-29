@@ -35,7 +35,7 @@ class AgentMessageBufferTest {
         buffer.recordAction(
             ContentBlockRecord.Action(
                 id = "a1",
-                toolName = "mobile_action",
+                toolName = "tap",
                 description = "Click",
                 state = "executing",
                 resultSummary = null
@@ -47,7 +47,7 @@ class AgentMessageBufferTest {
             ContentBlockRecord.Text("text"),
             ContentBlockRecord.Action(
                 id = "a1",
-                toolName = "mobile_action",
+                toolName = "tap",
                 description = "Click",
                 state = "executing",
                 resultSummary = null

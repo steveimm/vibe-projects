@@ -120,7 +120,7 @@ class NodeActionPerformer(
             withRoot { root ->
                 val node = AccessibilityNodeFinder.findFocusedEditableNode(root)
                         ?: return@withRoot ActionResult.Failure(
-                                "No focused editable element found. Specify element_index to focus a field first."
+                                "No focused editable field. Tap the field, then call type_text."
                         )
                 try {
                     setTextOnNode(node, text, clear)

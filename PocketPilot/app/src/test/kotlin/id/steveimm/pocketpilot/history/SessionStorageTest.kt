@@ -100,7 +100,6 @@ class SessionStorageTest {
                 config =
                     ConversationConfigSnapshot(
                         mainModel = "m1",
-                        perceptionMode = "accessibility_only",
                         platformMode = "ACCESSIBILITY"
                     ),
                 historyItems = listOf(PersistedHistoryItem.Message(kind = "USER_INTENT", content = "hi")),

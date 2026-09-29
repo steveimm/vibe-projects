@@ -66,7 +66,7 @@ class TurnPlanningPhaseRunnerTest {
             toolCalls = listOf(
                 LLMToolCall(
                     callId = "call-1",
-                    name = "mobile_action",
+                    name = "tap",
                     arguments = JSONObject()
                         .put("action_type", "click")
                         .toString()

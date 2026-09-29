@@ -8,7 +8,6 @@ data class MainActivityIntentPayload(
     val serverBaseUrl: String? = null,
     val serverModelId: String? = null,
     val serverApiKey: String? = null,
-    val perceptionMode: String? = null,
     val platformMode: PlatformMode? = null,
     val approvalMode: ApprovalMode? = null,
     val goalText: String? = null,
@@ -24,7 +23,6 @@ data class MainActivityIntentPayload(
             serverBaseUrl = intent.getStringExtra(MainActivity.EXTRA_SERVER_BASE_URL),
             serverModelId = intent.getStringExtra(MainActivity.EXTRA_SERVER_MODEL_ID),
             serverApiKey = intent.getStringExtra(MainActivity.EXTRA_SERVER_API_KEY),
-            perceptionMode = normalizePerceptionMode(intent.getStringExtra(MainActivity.EXTRA_PERCEPTION_MODE)),
             platformMode = enumValue<PlatformMode>(intent.getStringExtra(MainActivity.EXTRA_PLATFORM_MODE)),
             approvalMode = enumValue<ApprovalMode>(intent.getStringExtra(MainActivity.EXTRA_APPROVAL_MODE)),
             goalText = intent.getStringExtra(MainActivity.EXTRA_GOAL)?.takeIf { it.isNotBlank() },
@@ -39,11 +37,5 @@ data class MainActivityIntentPayload(
 
         private fun Intent.optionalBoolean(key: String): Boolean? = if (hasExtra(key)) getBooleanExtra(key, false) else null
         private inline fun <reified T : Enum<T>> enumValue(raw: String?): T? = enumValues<T>().firstOrNull { it.name == raw?.uppercase() }
-        private fun normalizePerceptionMode(raw: String?): String? = when (raw?.trim()?.lowercase()) {
-            "accessibility_only", "accessibility-only", "accessibility", "a11y_only", "a11y-only", "a11y" -> "accessibility_only"
-            "hybrid" -> "hybrid"
-            "screenshot_only", "screenshot-only", "screenshot" -> "screenshot_only"
-            else -> null
-        }
     }
 }

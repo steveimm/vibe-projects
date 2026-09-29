@@ -176,16 +176,11 @@ Per-task configuration overrides in `eval/config/default.yaml`:
 ```yaml
 bridge:
   task_overrides:
-    BrowserDraw: { perception_mode: hybrid }
-    ExpenseAddMultipleFromGallery: { perception_mode: hybrid }
+    ExpenseAddMultipleFromGallery: { max_turns: 60 }
 ```
 
 Semantics: prefix matching on task name (longest prefix wins). Any `BridgeConfig`
-field can be overridden: `perception_mode`, `max_turns`, `excluded_tools`, etc.
-
-By default eval excludes `remember_experience` and clears the app's persistent
-memory directory before each task launch (`clear_memory_before_task: true`), so
-cross-task long-term memory cannot leak into results.
+field can be overridden: `max_turns`, `excluded_tools`, etc.
 
 See `resolve_task_bridge_config()` in `runner_execution.py`.
 

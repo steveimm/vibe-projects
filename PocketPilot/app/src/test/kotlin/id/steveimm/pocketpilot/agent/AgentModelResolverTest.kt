@@ -39,7 +39,6 @@ class AgentModelResolverTest {
                 val resolved = resolver.resolve("test-model")
 
                 assertThat(resolved.modelId).isEqualTo("provider-model-id")
-                assertThat(resolved.supportsVision).isTrue()
                 assertThat(resolved.llmClient).isNotSameInstanceAs(sessionClient)
         }
 
@@ -64,7 +63,6 @@ class AgentModelResolverTest {
 
                 assertThat(resolved.llmClient).isSameInstanceAs(sessionClient)
                 assertThat(resolved.modelId).isEqualTo("legacy-local-model")
-                assertThat(resolved.supportsVision).isFalse()
         }
 
         @Test
@@ -89,7 +87,6 @@ class AgentModelResolverTest {
 
                 assertThat(resolved.llmClient).isSameInstanceAs(sessionClient)
                 assertThat(resolved.modelId).isEqualTo("known-model")
-                assertThat(resolved.supportsVision).isFalse()
         }
 
         private fun fakeStore(): ServerCredentialStore {

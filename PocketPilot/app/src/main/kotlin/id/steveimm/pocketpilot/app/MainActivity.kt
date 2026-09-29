@@ -69,7 +69,6 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_SERVER_API_KEY = "server_api_key"
         const val EXTRA_GOAL = "goal"
         const val EXTRA_FRESH_SESSION = "fresh_session"
-        const val EXTRA_PERCEPTION_MODE = "perception_mode"
         const val EXTRA_DEBUG_MODE = "debug_mode"
         const val EXTRA_TRACE_ENABLED = "trace_enabled"
         const val EXTRA_TRACE_RUN_ID = "trace_run_id"
@@ -620,13 +619,6 @@ class MainActivity : ComponentActivity() {
                         traceEnabled = pendingTraceEnabled ?: settingsState.traceEnabled,
                         traceRunId = pendingTraceRunId,
                         llm = SessionLlmConfig(baseUrl = settingsState.serverBaseUrl),
-                        perceptionConfig =
-                                when (settingsState.perceptionMode) {
-                                    "screenshot_only" ->
-                                            PerceptionConfig.ScreenshotOnly()
-                                    "hybrid" -> PerceptionConfig.Hybrid()
-                                    else -> PerceptionConfig.AccessibilityOnly
-                                },
                         platformMode = settingsState.platformMode,
                         excludedTools = pendingExcludedTools,
                         evalTurnBudget = pendingEvalTurnBudget

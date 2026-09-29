@@ -38,7 +38,7 @@ object TraceRecorderFactory {
                         model = config.mainModel,
                         mainModel = config.mainModel,
                         debugMode = config.debugMode,
-                        screenshotInput = config.perceptionConfig.capturesScreenshot
+                        screenshotInput = true
                     )
             )
         )

@@ -72,7 +72,6 @@ internal class SessionCheckpointCoordinator(
 
 internal fun SessionConfig.toConfigSnapshot() = ConversationConfigSnapshot(
     mainModel = mainModel,
-    perceptionMode = perceptionConfig.toModeString(),
     platformMode = platformMode.name,
     serverBaseUrl = llm.baseUrl,
     actionDelayMs = actionDelayMs,
@@ -83,19 +82,8 @@ internal fun SessionConfig.toConfigSnapshot() = ConversationConfigSnapshot(
     excludedTools = excludedTools.toList()
 )
 
-private fun PerceptionConfig.toModeString(): String = when (this) {
-    is PerceptionConfig.AccessibilityOnly -> "accessibility_only"
-    is PerceptionConfig.ScreenshotOnly -> "screenshot_only"
-    is PerceptionConfig.Hybrid -> "hybrid"
-}
-
 internal fun ConversationConfigSnapshot.toSessionConfig(): SessionConfig = SessionConfig(
     mainModel = mainModel,
-    perceptionConfig = when (perceptionMode) {
-        "screenshot_only" -> PerceptionConfig.ScreenshotOnly()
-        "hybrid" -> PerceptionConfig.Hybrid()
-        else -> PerceptionConfig.AccessibilityOnly
-    },
     platformMode = try { PlatformMode.valueOf(platformMode) } catch (_: Exception) {
         Log.w(SNAPSHOT_TAG, "Unknown PlatformMode in snapshot: $platformMode"); PlatformMode.ACCESSIBILITY
     },

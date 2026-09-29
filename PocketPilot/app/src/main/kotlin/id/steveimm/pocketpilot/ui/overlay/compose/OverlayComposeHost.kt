@@ -22,6 +22,7 @@ class OverlayComposeHost(
 ) {
     private var composeView: ComposeView? = null
     private var params: WindowManager.LayoutParams? = null
+    private var screenshotDepth = 0
 
     fun isShowing(): Boolean = composeView != null
 
@@ -32,6 +33,7 @@ class OverlayComposeHost(
         if (composeView != null) return
         try {
             val view = ComposeView(context).apply {
+                alpha = if (screenshotDepth > 0) 0f else 1f
                 setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
                 setViewTreeLifecycleOwner(lifecycleOwner)
                 setViewTreeSavedStateRegistryOwner(savedStateRegistryOwner)
@@ -46,6 +48,19 @@ class OverlayComposeHost(
             params = layoutParams
         } catch (e: Exception) {
             Log.e(tag, "Failed to show Compose overlay", e)
+        }
+    }
+
+    fun suppressForScreenshot(): AutoCloseable {
+        screenshotDepth++
+        composeView?.alpha = 0f
+        var closed = false
+        return AutoCloseable {
+            if (!closed) {
+                closed = true
+                screenshotDepth--
+                composeView?.alpha = if (screenshotDepth > 0) 0f else 1f
+            }
         }
     }
 

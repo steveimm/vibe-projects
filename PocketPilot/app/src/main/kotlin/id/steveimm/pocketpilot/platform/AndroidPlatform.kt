@@ -31,14 +31,6 @@ interface AndroidPlatform {
     /** Get display metrics. */
     fun getDisplayInfo(): DisplayInfo
 
-    // Platform Capabilities
-
-    /** Whether tap-to-focus fallback is safe for text input. */
-    fun allowTapToFocus(): Boolean = true
-
-    /** Show visual feedback for a verified native scroll action. */
-    fun showScrollVisualization(x: Int, y: Int, direction: String) {}
-
     // App Management (P0)
 
     /** Get list of installed launchable apps. */

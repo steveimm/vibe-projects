@@ -109,7 +109,6 @@ private fun HomeUnderTest(
         val contextForSettings = LocalContext.current
         SettingsHomePage(
             settings = remember { AppSettingsState(AppSettingsStore(contextForSettings)) },
-            perceptionMode = "accessibility_only",
             isAccessibilityEnabled = false,
             isOverlayEnabled = false,
             debugMode = false,

@@ -109,19 +109,19 @@ class ToolRouterTest {
 
     @Test
     fun `open app approval uses destination package as approval subject`() = runTest {
-        val registry = ToolRegistry().apply { register(TestToolSpec(name = "open_app")) }
+        val registry = ToolRegistry().apply { register(id.steveimm.pocketpilot.tool.impl.OpenAppTool()) }
         val router = ToolRouter(registry, PolicyEngine(ApprovalMode.SMART, defaultClassifier()))
         val context = SimpleToolRouterContext(
             FakeAndroidPlatform(
                 currentPackageName = "com.example.fake",
-                installedApps = listOf(AppInfo("com.android.chrome", "Chrome")),
+                installedApps = listOf(AppInfo("com.google.android.contacts", "Contacts")),
             )
         )
         var approvalPackageName: String? = null
 
         val result = router.execute(
             toolName = "open_app",
-            params = JSONObject().put("app_name", "Chrome"),
+            params = JSONObject().put("app_name", "Contacts"),
             context = context,
             packageName = "com.example.fake",
             onApprovalRequired = { details ->
@@ -131,7 +131,7 @@ class ToolRouterTest {
         )
 
         assertThat(result).isInstanceOf(ToolCallResult.Success::class.java)
-        assertThat(approvalPackageName).isEqualTo("com.android.chrome")
+        assertThat(approvalPackageName).isEqualTo("com.google.android.contacts")
     }
 
     @Test

@@ -11,7 +11,8 @@ import id.steveimm.pocketpilot.tool.PolicyEngine
 import id.steveimm.pocketpilot.tool.ToolName
 import id.steveimm.pocketpilot.tool.ToolRegistry
 import id.steveimm.pocketpilot.tool.ToolRouter
-import id.steveimm.pocketpilot.tool.impl.MobileActionTool
+import id.steveimm.pocketpilot.tool.impl.TouchTool
+import id.steveimm.pocketpilot.tool.impl.TypeTextTool
 import id.steveimm.pocketpilot.tool.impl.OpenAppTool
 import id.steveimm.pocketpilot.tool.impl.SystemButtonTool
 import id.steveimm.pocketpilot.tool.impl.TermuxShellTool
@@ -64,7 +65,8 @@ internal object SessionToolingBootstrapper {
         allowedToolNames: Set<String>,
         context: Context?
     ) {
-        if (ToolName.MobileAction.raw in allowedToolNames) register(MobileActionTool())
+        listOf("tap", "long_press", "swipe").filter { it in allowedToolNames }.forEach { register(TouchTool(it)) }
+        if (ToolName.TypeText.raw in allowedToolNames) register(TypeTextTool())
         if (ToolName.SystemButton.raw in allowedToolNames) register(SystemButtonTool())
         if (ToolName.Wait.raw in allowedToolNames) register(WaitTool())
         if (ToolName.OpenApp.raw in allowedToolNames) register(OpenAppTool())

@@ -15,7 +15,7 @@ internal val WORKSPACE_SHELL_PROMPT_SECTION =
     To share with other apps, cp to /sdcard/Download/.
 
     ### When to use UI tools vs shell
-    - UI tools (mobile_action, etc.): phone app interactions, screen navigation
+    - Phone tools (tap, swipe, type_text, etc.): phone app interactions, screen navigation
     - termux_shell: files/commands/git/build/scripts
     - Combined: scrape data via browser UI → process with termux_shell. Email attachment → analyze with python.
 

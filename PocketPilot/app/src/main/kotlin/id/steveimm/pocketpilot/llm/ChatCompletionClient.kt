@@ -287,6 +287,7 @@ class ChatCompletionClient(
             .model(ChatModel.of(model))
             .messages(messages)
             .tools(chatTools)
+            .parallelToolCalls(false)
 
         maxOutputTokens?.let { builder.maxCompletionTokens(it) }
 

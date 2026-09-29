@@ -271,7 +271,7 @@ class TestLoadBaseConfig:
                 "bridge:\n"
                 "  task_overrides:\n"
                 "    BrowserDraw:\n"
-                "      perception_mode: hybrid\n"
+                "      approval_mode: AUTO_APPROVE\n"
             ),
             encoding="utf-8",
         )
@@ -292,7 +292,7 @@ class TestLoadBaseConfig:
         assert cfg["runner"]["perform_bridge_setup"] is True
         assert cfg["android_world"]["adb_path"] == "~/android-sdk/platform-tools/adb"
         assert cfg["bridge"]["task_overrides"]["BrowserDraw"] == {
-            "perception_mode": "hybrid",
+            "approval_mode": "AUTO_APPROVE",
             "max_turns": 60,
         }
 

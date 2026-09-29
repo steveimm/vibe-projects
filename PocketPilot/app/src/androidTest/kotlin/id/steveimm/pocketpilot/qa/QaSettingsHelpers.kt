@@ -20,8 +20,6 @@ internal fun TestSettingsSheet(
     PocketPilotTheme {
         SettingsSheet(
             settings = remember { AppSettingsState(AppSettingsStore(context)) },
-            perceptionMode = "accessibility_only",
-            onPerceptionModeChange = {},
             debugMode = false,
             onDebugModeChange = {},
             traceEnabled = false,

@@ -20,7 +20,7 @@ class PolicyEngineTest {
             mode = ApprovalMode.AUTO_APPROVE,
             tiers = mapOf("com.chase.sig.android" to AppTier.BLOCKED)
         )
-        val decision = engine.check("mobile_action", clickParams(), "com.chase.sig.android")
+        val decision = engine.check("tap", clickParams(), "com.chase.sig.android")
         assertThat(decision).isInstanceOf(PolicyDecision.Deny::class.java)
     }
 
@@ -29,7 +29,7 @@ class PolicyEngineTest {
         val engine = engineWith(
             tiers = mapOf("com.bank" to AppTier.BLOCKED)
         )
-        val decision = engine.check("mobile_action", clickParams(), "com.bank")
+        val decision = engine.check("tap", clickParams(), "com.bank")
         assertThat(decision).isInstanceOf(PolicyDecision.Deny::class.java)
     }
 
@@ -54,12 +54,12 @@ class PolicyEngineTest {
     }
 
     @Test
-    fun `mobile_action back denied on blocked app - only system_button is escape`() {
+    fun `tap back denied on blocked app - only system_button is escape`() {
         val engine = engineWith(
             tiers = mapOf("com.bank" to AppTier.BLOCKED)
         )
         val backParams = JSONObject().put("action", "back")
-        val decision = engine.check("mobile_action", backParams, "com.bank")
+        val decision = engine.check("tap", backParams, "com.bank")
         assertThat(decision).isInstanceOf(PolicyDecision.Deny::class.java)
     }
 
@@ -76,14 +76,14 @@ class PolicyEngineTest {
     @Test
     fun `unknown app asks user in smart mode`() {
         val engine = engineWith()
-        val decision = engine.check("mobile_action", clickParams(), "com.unknown.app")
+        val decision = engine.check("tap", clickParams(), "com.unknown.app")
         assertThat(decision).isInstanceOf(PolicyDecision.AskUser::class.java)
     }
 
     @Test
     fun `unknown app allowed in auto_approve mode`() {
         val engine = engineWith(mode = ApprovalMode.AUTO_APPROVE)
-        val decision = engine.check("mobile_action", clickParams(), "com.unknown.app")
+        val decision = engine.check("tap", clickParams(), "com.unknown.app")
         assertThat(decision).isEqualTo(PolicyDecision.Allow)
     }
 
@@ -92,7 +92,7 @@ class PolicyEngineTest {
         val engine = engineWith(
             tiers = mapOf("com.android.settings" to AppTier.NORMAL)
         )
-        val decision = engine.check("mobile_action", clickParams(), "com.android.settings")
+        val decision = engine.check("tap", clickParams(), "com.android.settings")
         assertThat(decision).isEqualTo(PolicyDecision.Allow)
     }
 
@@ -101,7 +101,7 @@ class PolicyEngineTest {
         val engine = engineWith()
         engine.allowPackageForSession("com.unknown.app")
 
-        val decision = engine.check("mobile_action", clickParams(), "com.unknown.app")
+        val decision = engine.check("tap", clickParams(), "com.unknown.app")
 
         assertThat(decision).isEqualTo(PolicyDecision.Allow)
     }
@@ -137,7 +137,7 @@ class PolicyEngineTest {
     @Test
     fun `null package treated as cautious`() {
         val engine = engineWith()
-        val decision = engine.check("mobile_action", clickParams(), null)
+        val decision = engine.check("tap", clickParams(), null)
         assertThat(decision).isInstanceOf(PolicyDecision.AskUser::class.java)
     }
 
@@ -214,7 +214,7 @@ class PolicyEngineTest {
         val engine = engineWith()
         engine.allowPackageForSession("com.unknown.app")
 
-        val decision = engine.check("mobile_action", clickParams(), "com.unknown.app")
+        val decision = engine.check("tap", clickParams(), "com.unknown.app")
 
         assertThat(decision).isEqualTo(PolicyDecision.Allow)
     }
@@ -224,7 +224,7 @@ class PolicyEngineTest {
         val engine = engineWith(mode = ApprovalMode.ALWAYS_ASK)
         engine.allowPackageForSession("com.unknown.app")
 
-        val decision = engine.check("mobile_action", clickParams(), "com.unknown.app")
+        val decision = engine.check("tap", clickParams(), "com.unknown.app")
 
         assertThat(decision).isInstanceOf(PolicyDecision.AskUser::class.java)
     }
@@ -266,7 +266,7 @@ class PolicyEngineTest {
         assertThat(classifier.classify("com.bank")).isEqualTo(AppTier.BLOCKED)
         val engine = PolicyEngine(ApprovalMode.SMART, classifier)
 
-        val decision = engine.check("mobile_action", clickParams(), "com.bank")
+        val decision = engine.check("tap", clickParams(), "com.bank")
 
         assertThat(decision).isInstanceOf(PolicyDecision.Deny::class.java)
     }

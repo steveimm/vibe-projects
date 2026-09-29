@@ -13,6 +13,7 @@ import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.trace.TraceRecorder
 import java.io.File
 import kotlin.coroutines.resume
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -21,7 +22,8 @@ import kotlinx.coroutines.withContext
 class AccessibilityScreenshotCapturer(
         private val service: AccessibilityService,
         private val config: SessionConfig,
-        private val traceRecorder: TraceRecorder
+        private val traceRecorder: TraceRecorder,
+        private val overlayGate: OverlayTouchGate? = null,
 ) {
     companion object {
         private const val TAG = "A11yScreenshotCapturer"
@@ -31,12 +33,17 @@ class AccessibilityScreenshotCapturer(
 
     data class ScreenshotCapture(val image: ScreenImage, val tracePath: String?)
 
-    suspend fun captureIfEnabled(enabled: Boolean): ScreenshotCapture? {
-        if (!enabled || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+    suspend fun capture(): ScreenshotCapture? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             return null
         }
 
-        val result = takeDisplayScreenshot() ?: return null
+        val result = withContext(Dispatchers.Main) {
+            overlayGate?.beginScreenshotCapture().use {
+                if (overlayGate != null) delay(80)
+                takeDisplayScreenshot()
+            }
+        } ?: return null
         return compressScreenshot(result)
     }
 

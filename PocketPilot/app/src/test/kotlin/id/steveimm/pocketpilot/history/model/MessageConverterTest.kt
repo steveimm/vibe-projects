@@ -36,7 +36,7 @@ class MessageConverterTest {
                 ContentBlock.Action(
                     ActionCardData(
                         id = "act1",
-                        toolName = "mobile_action",
+                        toolName = "tap",
                         description = "click button",
                         state = ActionState.Success,
                         resultSummary = "done"
@@ -51,7 +51,7 @@ class MessageConverterTest {
         assertThat(record.isComplete).isTrue()
         assertThat(record.contentBlocks).hasSize(3)
         val actionRecord = record.contentBlocks[1] as ContentBlockRecord.Action
-        assertThat(actionRecord.toolName).isEqualTo("mobile_action")
+        assertThat(actionRecord.toolName).isEqualTo("tap")
         assertThat(actionRecord.state).isEqualTo("success")
         assertThat(actionRecord.resultSummary).isEqualTo("done")
 
@@ -97,7 +97,7 @@ class MessageConverterTest {
                 contentBlocks = listOf(
                     ContentBlockRecord.Action(
                         id = "a",
-                        toolName = "mobile_action",
+                        toolName = "tap",
                         description = "d",
                         state = stateStr,
                         resultSummary = null

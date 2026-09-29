@@ -20,7 +20,6 @@ interface AndroidPlatform {
     fun hasRequiredPermissions(): Boolean
     fun getCurrentPackageName(): String?
     fun getDisplayInfo(): DisplayInfo
-    fun allowTapToFocus(): Boolean = true
 }
 ```
 
@@ -58,12 +57,7 @@ Each `UIAction` variant maps to **exactly one** Android API call. Zero strategy 
 | `SystemButton` | ENTER via `NodeActionPerformer`, others via gesture |
 | `Wait` | `delay(durationMs)` |
 
-Visualizer feedback: node click/long-click trigger `showClick()` before executing. Verified native
-scroll actions trigger a canonical `showScrollAsSwipe()` trail from `ScrollExecutor` after
-post-action change detection confirms `ACTION_SCROLL_*` succeeded, with direction mapped to the
-matching finger movement (`down` content scroll draws an upward trail). Gesture
-tap/long-press/swipe feedback is emitted by `AccessibilityGestureInjector`, which also uses
-`OverlayTouchGate` to make overlays pass through during `dispatchGesture()`.
+Gesture tap, long-press, and swipe feedback is emitted by `AccessibilityGestureInjector`. `OverlayTouchGate` makes overlays pass through while a gesture executes. Node actions remain available to the direct platform debug harness, while the model uses gesture tools and focused text entry.
 
 ### OverlayTouchGate
 

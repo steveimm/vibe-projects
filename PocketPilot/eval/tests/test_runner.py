@@ -30,7 +30,6 @@ def _bridge_config() -> BridgeConfig:
         package_name="id.steveimm.pocketpilot",
         activity="id.steveimm.pocketpilot/.app.MainActivity",
         server_base_url="http://localhost:8000/v1",
-        perception_mode="accessibility_only",
         platform_mode="accessibility",
         main_model="minimax-m2.5",
         max_turns=30,
@@ -245,7 +244,7 @@ class RunnerConfigLoadingTest(unittest.TestCase):
                 "  server_base_url: http://localhost:8000/v1\n"
                 "  package_name: id.steveimm.pocketpilot\n"
                 "  activity: id.steveimm.pocketpilot/.app.MainActivity\n"
-                "  perception_mode: accessibility_only\n"
+                "  approval_mode: SMART\n"
                 "  platform_mode: accessibility\n"
                 "  main_model: minimax-m2.5\n"
                 "  max_turns: 30\n"
@@ -257,7 +256,7 @@ class RunnerConfigLoadingTest(unittest.TestCase):
                 "  poll_interval_seconds: 1\n"
                 "  task_overrides:\n"
                 "    BrowserDraw:\n"
-                "      perception_mode: hybrid\n"
+                "      approval_mode: AUTO_APPROVE\n"
             ),
             encoding="utf-8",
         )
@@ -340,7 +339,7 @@ class RunnerConfigLoadingTest(unittest.TestCase):
                     "    BrowserDraw:\n"
                     "      max_turns: 60\n"
                     "    BrowserMaze:\n"
-                    "      perception_mode: hybrid\n"
+                    "      approval_mode: AUTO_APPROVE\n"
                 ),
             )
             config = load_config(root, self._args_for(config_path))
@@ -350,11 +349,11 @@ class RunnerConfigLoadingTest(unittest.TestCase):
         self.assertEqual(config.bridge.main_model, "gpt-5.4")
         self.assertEqual(
             config.task_overrides["BrowserDraw"],
-            {"perception_mode": "hybrid", "max_turns": 60},
+            {"approval_mode": "AUTO_APPROVE", "max_turns": 60},
         )
         self.assertEqual(
             config.task_overrides["BrowserMaze"],
-            {"perception_mode": "hybrid"},
+            {"approval_mode": "AUTO_APPROVE"},
         )
 
 

@@ -48,23 +48,3 @@ internal fun unregisterDebugExecReceiverIfNeeded(service: AgentService, receiver
 }
 
 internal const val ACTION_DEBUG_EXEC = "id.steveimm.pocketpilot.ACTION_DEBUG_EXEC"
-
-internal fun registerDebugMobileActionReceiverIfNeeded(service: AgentService, receiver: BroadcastReceiver) {
-    if (!BuildConfig.DEBUG) return
-    val filter = IntentFilter(id.steveimm.pocketpilot.debug.MobileActionDebugReceiver.ACTION)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        service.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
-    } else {
-        @Suppress("UnspecifiedRegisterReceiverFlag")
-        service.registerReceiver(receiver, filter)
-    }
-}
-
-internal fun unregisterDebugMobileActionReceiverIfNeeded(service: AgentService, receiver: BroadcastReceiver) {
-    if (!BuildConfig.DEBUG) return
-    try {
-        service.unregisterReceiver(receiver)
-    } catch (e: IllegalArgumentException) {
-        Log.w("AgentService", "mobileActionDebugReceiver was not registered: ${e.message}")
-    }
-}

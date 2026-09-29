@@ -66,7 +66,7 @@ class OnboardingDemoController(
                 val config = SessionConfig(
                     approvalMode = ApprovalMode.AUTO_APPROVE,
                     llm = SessionLlmConfig(baseUrl = settingsState.serverBaseUrl),
-                    perceptionConfig = PerceptionConfig.AccessibilityOnly,
+                    perceptionConfig = PerceptionConfig(),
                     platformMode = PlatformMode.ACCESSIBILITY,
                     mainModel = settingsState.serverModelId
                 )

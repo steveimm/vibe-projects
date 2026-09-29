@@ -345,6 +345,12 @@ class ServiceOverlayController(
         applyVisibility()
     }
 
+    fun suppressForScreenshot(): AutoCloseable {
+        val tokens = listOfNotNull(capsuleManager.suppressForScreenshot(), edgeGlowManager.suppressForScreenshot(),
+            statusIslandManager?.suppressForScreenshot())
+        return AutoCloseable { tokens.asReversed().forEach { it.close() } }
+    }
+
     fun onApprovalRequired(details: ApprovalDetails) {
         val appLabel = resolveAppLabel(details.packageName)
 

@@ -59,13 +59,12 @@ internal class TurnPlanningPhaseRunner(
                 // Canonical observation — computed once, consumed by prompt and history.
                 val observation = TurnObservation.capture(
                         snapshot = snapshot,
-                        perceptionConfig = services.config.perceptionConfig
+                        currentPackageName = currentPackageName
                 )
 
                 val promptBuilder =
                         PromptBuilder(
                                 historyManager = services.historyManager,
-                                supportsVision = model.supportsVision
                         )
                 val inputItems =
                         promptBuilder.buildInputItems(

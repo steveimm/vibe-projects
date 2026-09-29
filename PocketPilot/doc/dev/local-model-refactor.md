@@ -67,3 +67,21 @@ The Settings search component has no package label visible to PocketPilot. The o
 After an accessibility-service reconnect while MainActivity was open, a new overlay controller could retain its default `MAIN_APP` location. Its hidden callback returned early because it had not seen the earlier visible callback. The hidden callback now updates location even in that reconnect state. The emulator reproduced this during QA setup, and the corrected build displayed the approval capsule over Settings search.
 
 With the request to enable Dark theme, the local model opened Settings, searched, tapped the result, changed the setting, waited, and returned a native final answer. The run finished in 7 turns with 6 successful calls and no tool failures. Android's independent `cmd uimode night` check reported `yes`.
+
+## Explicit phone actions and unobstructed observations
+
+Replaced the overloaded action selector with `tap`, `long_press`, `swipe`, and `type_text`. Gestures use integer coordinates from 0 to 1000 over the whole screenshot, mapped to physical display pixels. Text entry replaces the focused field after a separate tap. Missing screenshots, orientation changes, invalid JSON, unknown fields, wrong types, unavailable tools, and out-of-range values produce explicit feedback before any action. Multiple tool calls are rejected together with a result for every call ID. Requests set `parallel_tool_calls=false`.
+
+Removed semantic target resolvers, action retry/fallback executors, transcript-only and hybrid modes, unused vision-capability inference, obsolete debug tooling, and associated tests and documentation. The configured server always receives the current screenshot. Native reasoning remains in subsequent assistant history. App approval and launch share the same installed-app resolution, so an alias cannot approve a different package from the one launched. Cancellation now propagates while router tracking and screenshot resources are released.
+
+Full-display capture initially included PocketPilot's controls, hiding the bottom rows. A scrolling test entered System instead of the obscured About page and kept searching beneath the overlay. That run was stopped and is not counted as a pass. Capture now temporarily suppresses the capsule, island, glow, and gesture markers, restoring them before image compression. The model receives an unobstructed display while user controls remain available between captures. Missing or cancelled captures also release suppression.
+
+Validation on the Android 15 ARM64 emulator with `qwen3.8-27b`:
+
+- Natural-language Settings launch: 2 turns, 1 successful call, no failures.
+- Enable Dark theme using Settings search: 7 turns, 6 successful calls, no failures, independently verified with Android UI-mode state.
+- Scroll through Settings, open About emulated device, read Android version: 7 turns, 6 successful calls, no failures, 42 seconds. The model reported Android 15, matching `ro.build.version.release`.
+- The final About run's screenshots visibly exclude PocketPilot overlays; an ADB capture during execution confirms the controls are restored on the user's screen.
+- 974 release unit tests passed, release lint passed, device UI tests compiled, and the signed ARM64 release installed. Python suites passed 120 tests plus 22 Termux bridge tests. The ADB helper checks passed 19 cases. Replay JavaScript syntax and repository whitespace checks passed.
+
+The remaining acceptance check is a saved contact with multiple values, followed by reopening and verification.

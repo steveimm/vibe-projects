@@ -15,7 +15,6 @@ data class AppSettings(
     val serverBaseUrl: String = "",
     val serverModelId: String = "",
     val debugMode: Boolean = AppSettingsStore.DEFAULT_DEBUG_MODE,
-    val perceptionMode: String = AppSettingsStore.DEFAULT_PERCEPTION_MODE,
     val platformMode: PlatformMode = AppSettingsStore.DEFAULT_PLATFORM_MODE,
     val traceEnabled: Boolean = AppSettingsStore.DEFAULT_TRACE_ENABLED,
     val termuxShellEnabled: Boolean = AppSettingsStore.DEFAULT_TERMUX_SHELL_ENABLED,
@@ -29,8 +28,6 @@ class AppSettingsStore(context: Context) {
         private const val KEY_SERVER_MODEL_ID = "server_model_id"
 
         private const val KEY_DEBUG_MODE = "debug_mode"
-        private const val KEY_SCREENSHOT_INPUT = "screenshot_input"
-        private const val KEY_PERCEPTION_MODE = "perception_mode"
         private const val KEY_PLATFORM_MODE = "platform_mode"
         private const val KEY_USER_APP_OVERRIDES = "user_app_overrides"
         private const val KEY_TRACE_ENABLED = "trace_enabled"
@@ -39,7 +36,6 @@ class AppSettingsStore(context: Context) {
         private const val KEY_COMPACT_OVERLAYS = "compact_overlays"
 
         const val DEFAULT_DEBUG_MODE = false
-        const val DEFAULT_PERCEPTION_MODE = "accessibility_only"
         val DEFAULT_PLATFORM_MODE = PlatformMode.ACCESSIBILITY
         const val DEFAULT_TRACE_ENABLED = false
         const val DEFAULT_TERMUX_SHELL_ENABLED = true
@@ -62,8 +58,6 @@ class AppSettingsStore(context: Context) {
             serverBaseUrl = id.steveimm.pocketpilot.llm.ServerBaseUrlValidator.validate(url).getOrDefault(""),
             serverModelId = modelId,
             debugMode = prefs.getBoolean(KEY_DEBUG_MODE, DEFAULT_DEBUG_MODE),
-            perceptionMode = prefs.getString(KEY_PERCEPTION_MODE, null)
-                ?: if (prefs.getBoolean(KEY_SCREENSHOT_INPUT, false)) "hybrid" else DEFAULT_PERCEPTION_MODE,
             platformMode = readEnum(KEY_PLATFORM_MODE, DEFAULT_PLATFORM_MODE),
             traceEnabled = prefs.getBoolean(KEY_TRACE_ENABLED, DEFAULT_TRACE_ENABLED),
             termuxShellEnabled = loadTermuxShellEnabled(),
@@ -105,9 +99,6 @@ class AppSettingsStore(context: Context) {
         prefs.edit().putBoolean(KEY_TRACE_ENABLED, value).apply()
     }
 
-    fun savePerceptionMode(value: String) {
-        prefs.edit().putString(KEY_PERCEPTION_MODE, value).apply()
-    }
 
     fun savePlatformMode(value: PlatformMode) {
         prefs.edit().putString(KEY_PLATFORM_MODE, value.name).apply()

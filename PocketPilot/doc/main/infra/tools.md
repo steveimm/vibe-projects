@@ -5,7 +5,7 @@
 | Tool | Purpose |
 |---|---|
 | `open_app` | Open an installed app by name. |
-| `mobile_action` | Touch, typing, scrolling, and swipe actions. |
+| `tap`, `long_press`, `swipe`, `type_text` | One gesture or text entry per call. |
 | `system_button` | Back, Home, Enter, and Recents. |
 | `wait` | Wait for screen updates. |
 | `ask_user` | Ask for missing information or physical intervention. |
@@ -18,3 +18,5 @@
 There is no delegation, restricted app-process shell, planning tool, memory-writing tool, skill loader, or browser-scripting runtime. Browser tasks use the same phone UI tools as other apps.
 
 See [Termux](../app/termux_shell.md), [agent loop](../agent/loop.md), and [session lifecycle](session.md).
+
+See [phone action schemas](tool/phone_actions.md) for coordinates, validation, and serial execution.

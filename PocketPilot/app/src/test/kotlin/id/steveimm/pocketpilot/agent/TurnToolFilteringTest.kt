@@ -46,7 +46,7 @@ class TurnToolFilteringTest {
                 )
         val registry =
                 ToolRegistry().apply {
-                    register(TestTurnTool("mobile_action"))
+                    register(TestTurnTool("tap"))
                     register(TestTurnTool("open_app"))
                     register(TestTurnTool("open_app"))
                     register(TestTurnTool("wait"))
@@ -72,7 +72,7 @@ class TurnToolFilteringTest {
     }
 
     @Test
-    fun `run drops tool calls outside allowlist`() = runTest {
+    fun `unavailable tools return explicit validation feedback`() = runTest {
         val llm =
                 CapturingTurnLLMClient(
                         response =
@@ -82,7 +82,7 @@ class TurnToolFilteringTest {
                                                 listOf(
                                                         LLMToolCall(
                                                                 callId = "call-1",
-                                                                name = "mobile_action",
+                                                                name = "tap",
                                                                 arguments = "{}"
                                                         )
                                                 ),
@@ -91,7 +91,7 @@ class TurnToolFilteringTest {
                 )
         val registry =
                 ToolRegistry().apply {
-                    register(TestTurnTool("mobile_action"))
+                    register(TestTurnTool("tap"))
                     register(TestTurnTool("open_app"))
                 }
 
@@ -109,7 +109,8 @@ class TurnToolFilteringTest {
                         inputItems = minimalInputItems
                 )
 
-        assertThat(result.toolCalls).isEmpty()
+        assertThat(result.toolCalls.single().validationError).contains("Unavailable tool")
+        assertThat(result.isComplete).isFalse()
     }
 
     @Test
@@ -123,14 +124,14 @@ class TurnToolFilteringTest {
                                                 listOf(
                                                         LLMToolCall(
                                                                 callId = "",
-                                                                name = "mobile_action",
+                                                                name = "tap",
                                                                 arguments = "{}"
                                                         )
                                                 ),
                                         responseId = "resp"
                                 )
                 )
-        val registry = ToolRegistry().apply { register(TestTurnTool("mobile_action")) }
+        val registry = ToolRegistry().apply { register(TestTurnTool("tap")) }
         val turn = Turn(toolRegistry = registry, llmClient = llm)
 
         val result =
@@ -156,7 +157,7 @@ class TurnToolFilteringTest {
                                         responseId = "resp"
                                 )
                 )
-        val registry = ToolRegistry().apply { register(TestTurnTool("mobile_action")) }
+        val registry = ToolRegistry().apply { register(TestTurnTool("tap")) }
         val turn = Turn(toolRegistry = registry, llmClient = llm)
 
         val result =
@@ -169,6 +170,16 @@ class TurnToolFilteringTest {
         assertThat(result.toolCalls).isEmpty()
         assertThat(result.isComplete).isTrue()
         assertThat(result.content).isEqualTo("Done. Task finished.")
+    }
+
+    @Test
+    fun `malformed arguments become explicit feedback without an executable fallback`() = runTest {
+        for (args in listOf("{", "[]", "{x:1}", "null", "{\"x\":1} trailing")) {
+            val llm = CapturingTurnLLMClient(ResponsesResult(null, listOf(LLMToolCall("id", "tap", args)), "r"))
+            val result = Turn(ToolRegistry(), llm).run("test", minimalInputItems, "local")
+            assertThat(result.toolCalls.single().validationError).contains("valid JSON object")
+            assertThat(result.isComplete).isFalse()
+        }
     }
 
     @Test
@@ -200,7 +211,7 @@ class TurnToolFilteringTest {
     }
 
     @Test
-    fun `runStreaming suppresses disallowed tool events`() = runTest {
+    fun `streaming retains unavailable calls for error feedback`() = runTest {
         val llm =
                 CapturingTurnLLMClient(
                         response =
@@ -214,7 +225,7 @@ class TurnToolFilteringTest {
                                         LLMStreamEvent.ToolCallDone(
                                                 LLMToolCall(
                                                         callId = "call-1",
-                                                        name = "mobile_action",
+                                                        name = "tap",
                                                         arguments = "{}"
                                                 )
                                         ),
@@ -223,7 +234,7 @@ class TurnToolFilteringTest {
                 )
         val registry =
                 ToolRegistry().apply {
-                    register(TestTurnTool("mobile_action"))
+                    register(TestTurnTool("tap"))
                     register(TestTurnTool("open_app"))
                 }
         val turn =
@@ -241,9 +252,9 @@ class TurnToolFilteringTest {
                         )
                         .toList()
 
-        assertThat(events.filterIsInstance<TurnStreamEvent.ToolCallReceived>()).isEmpty()
+        assertThat(events.filterIsInstance<TurnStreamEvent.ToolCallReceived>()).hasSize(1)
         val complete = events.filterIsInstance<TurnStreamEvent.Complete>().single()
-        assertThat(complete.result.toolCalls).isEmpty()
+        assertThat(complete.result.toolCalls.single().validationError).contains("Unavailable tool")
     }
 }
 

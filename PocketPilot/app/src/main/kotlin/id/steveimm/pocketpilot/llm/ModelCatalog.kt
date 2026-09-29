@@ -9,7 +9,6 @@ data class ModelEntry(
     @SerialName("display_name") val displayName: String = name,
     @SerialName("model_id") val modelId: String = name,
     @SerialName("context_window") val contextWindow: Int = DEFAULT_CONTEXT_WINDOW,
-    @SerialName("supports_vision") val supportsVision: Boolean = true,
     val created: Long = 0L,
 ) {
     companion object {

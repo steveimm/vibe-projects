@@ -12,32 +12,11 @@ RUN_ID="$(date +"%Y%m%d_%H%M%S")"
 DEBUG_DIR="$PROJECT_ROOT/debug-output/run_${RUN_ID}"
 
 # Parse arguments
-FORCED_PERCEPTION_MODE=""
 FORCED_MAIN_MODEL=""
 FORCED_PLATFORM_MODE=""
 GOAL=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --accessibility-only|--a11y-only)
-            FORCED_PERCEPTION_MODE="accessibility_only"
-            shift
-            ;;
-        --screenshot-only)
-            FORCED_PERCEPTION_MODE="screenshot_only"
-            shift
-            ;;
-        --hybrid)
-            FORCED_PERCEPTION_MODE="hybrid"
-            shift
-            ;;
-        --perception|-p)
-            if [[ $# -lt 2 ]]; then
-                echo "Missing value for --perception. Use accessibility_only|screenshot_only|hybrid"
-                exit 1
-            fi
-            FORCED_PERCEPTION_MODE="$2"
-            shift 2
-            ;;
         --model|--main-model)
             if [[ $# -lt 2 ]]; then
                 echo "Missing value for --main-model"
@@ -49,6 +28,10 @@ while [[ $# -gt 0 ]]; do
         --virtual-display|--vd)
             FORCED_PLATFORM_MODE="virtual_display"
             shift
+            ;;
+        --*)
+            echo "Unknown option: $1" >&2
+            exit 1
             ;;
         *)
             GOAL="$1"
@@ -87,25 +70,6 @@ normalize_bool() {
     esac
 }
 
-normalize_perception_mode() {
-    local raw="${1:-}"
-    raw=$(echo "$raw" | tr '[:upper:]' '[:lower:]')
-    case "$raw" in
-        accessibility_only|accessibility-only|accessibility|a11y_only|a11y-only|a11y|"")
-            echo "accessibility_only"
-            ;;
-        screenshot_only|screenshot-only|screenshot)
-            echo "screenshot_only"
-            ;;
-        hybrid)
-            echo "hybrid"
-            ;;
-        *)
-            echo "accessibility_only"
-            ;;
-    esac
-}
-
 # Create debug output directory
 mkdir -p "$DEBUG_DIR"
 log "Debug output: $DEBUG_DIR"
@@ -121,13 +85,6 @@ EFFECTIVE_MAIN_MODEL="${FORCED_MAIN_MODEL:-${POCKETPILOT_MODEL_ID:-}}"
 if [[ -z "${DEBUG_MODE+x}" ]]; then
     DEBUG_MODE=true
 fi
-
-# Determine perception mode
-if [[ -n "$FORCED_PERCEPTION_MODE" ]]; then
-    PERCEPTION_MODE="$FORCED_PERCEPTION_MODE"
-fi
-PERCEPTION_MODE="${PERCEPTION_MODE:-accessibility_only}"
-PERCEPTION_MODE=$(normalize_perception_mode "$PERCEPTION_MODE")
 
 # Determine platform mode
 if [[ -n "$FORCED_PLATFORM_MODE" ]]; then
@@ -153,7 +110,6 @@ case "$(echo "$APPROVAL_MODE" | tr '[:lower:]' '[:upper:]')" in
 esac
 
 log "Using main model: $EFFECTIVE_MAIN_MODEL"
-log "Using perception mode: $PERCEPTION_MODE"
 log "Using platform mode: $PLATFORM_MODE"
 log "Using approval mode: $APPROVAL_MODE"
 
@@ -258,10 +214,9 @@ adb shell dumpsys package "$PACKAGE" > "$DEBUG_DIR/package_dumpsys.txt" 2>/dev/n
 # Build debug intent extras for the configured model server
 SAFE_GOAL=$(escape_shell_arg "$GOAL")
 SAFE_RUN_ID=$(escape_shell_arg "$RUN_ID")
-SAFE_PERCEPTION_MODE=$(escape_shell_arg "$PERCEPTION_MODE")
 SAFE_PLATFORM_MODE=$(escape_shell_arg "$PLATFORM_MODE")
 
-INTENT_EXTRAS="--es goal '$SAFE_GOAL' --es perception_mode '$SAFE_PERCEPTION_MODE' --es platform_mode '$SAFE_PLATFORM_MODE' --ez auto_start true --ez fresh_session true --ez debug_mode $DEBUG_MODE --ez trace_enabled true --es trace_run_id '$SAFE_RUN_ID'"
+INTENT_EXTRAS="--es goal '$SAFE_GOAL' --es platform_mode '$SAFE_PLATFORM_MODE' --ez auto_start true --ez fresh_session true --ez debug_mode $DEBUG_MODE --ez trace_enabled true --es trace_run_id '$SAFE_RUN_ID'"
 SAFE_APPROVAL_MODE=$(escape_shell_arg "$APPROVAL_MODE")
 INTENT_EXTRAS="$INTENT_EXTRAS --es approval_mode '$SAFE_APPROVAL_MODE'"
 

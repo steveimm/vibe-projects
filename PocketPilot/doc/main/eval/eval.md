@@ -62,7 +62,7 @@ Key fields: `suite_family`, `output_root`, `task_random_seed`,
 Per-task agent settings passed to `NativeAgentBridge`.
 
 Key fields: `package_name`, `activity`, `server_base_url`,
-`perception_mode`, `platform_mode`, `main_model`,
+`platform_mode`, `main_model`,
 `max_turns`, `auto_start`, `fresh_session`, `max_wait_seconds`,
 `excluded_tools`, `api_key`.
 
@@ -97,12 +97,9 @@ android_world:
 bridge:
   server_base_url: http://10.0.2.2:8000/v1
   main_model: qwen3.5
-  perception_mode: accessibility_only
   max_turns: 30
   # ...
   task_overrides:
-    BrowserDraw: { perception_mode: hybrid }
-    ExpenseAddMultipleFromGallery: { perception_mode: hybrid }
 ```
 
 Any non-default `--config` file is loaded as a deep override on top of
@@ -113,7 +110,7 @@ fields.
 
 Per-task config overrides under `bridge.task_overrides`.  Resolved by
 **longest-prefix match** on the task name.  Any `BridgeConfig` field can
-be overridden (`perception_mode`, `max_turns`, `excluded_tools`, etc.).
+be overridden (`max_turns`, `excluded_tools`, etc.).
 
 Default eval configuration excludes `ask_user` so unattended runs cannot pause for a human response.
 

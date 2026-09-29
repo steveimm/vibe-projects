@@ -49,7 +49,6 @@ sealed interface PersistedHistoryItem {
 @Serializable
 data class ConversationConfigSnapshot(
     val mainModel: String,
-    val perceptionMode: String,
     val platformMode: String,
     val serverBaseUrl: String = "",
     val actionDelayMs: Long = 2000,

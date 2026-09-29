@@ -27,6 +27,8 @@ class ActionVisualizerManager(
             if (!value) overlayHost.hide()
         }
 
+    fun suppressForScreenshot(): AutoCloseable = overlayHost.suppressForScreenshot()
+
     fun showClick(x: Float, y: Float, longPress: Boolean = false) {
         if (!shouldRender()) return
         overlayHost.showClick(x = x, y = y, longPress = longPress)
@@ -46,25 +48,6 @@ class ActionVisualizerManager(
             endX = endX,
             endY = endY,
             durationMs = durationMs,
-            scroll = false,
-        )
-    }
-
-    fun showScrollAsSwipe(
-        startX: Float,
-        startY: Float,
-        endX: Float,
-        endY: Float,
-        durationMs: Long,
-    ) {
-        if (!shouldRender()) return
-        overlayHost.showSwipe(
-            startX = startX,
-            startY = startY,
-            endX = endX,
-            endY = endY,
-            durationMs = durationMs,
-            scroll = true,
         )
     }
 

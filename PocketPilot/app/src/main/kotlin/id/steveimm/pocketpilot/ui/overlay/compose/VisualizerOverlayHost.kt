@@ -49,6 +49,8 @@ class VisualizerOverlayHost(
     private var screenHeight = 0
     private var disposed = false
 
+    fun suppressForScreenshot(): AutoCloseable = composeHost.suppressForScreenshot()
+
     fun showClick(x: Float, y: Float, longPress: Boolean) {
         if (disposed) return
         ensureOverlay()
@@ -69,7 +71,6 @@ class VisualizerOverlayHost(
         endX: Float,
         endY: Float,
         durationMs: Long,
-        scroll: Boolean,
     ) {
         if (disposed) return
         ensureOverlay()
@@ -81,7 +82,6 @@ class VisualizerOverlayHost(
             startY = clampY(startY),
             endX = clampX(endX),
             endY = clampY(endY),
-            scroll = scroll,
         )
         addItem(item)
     }

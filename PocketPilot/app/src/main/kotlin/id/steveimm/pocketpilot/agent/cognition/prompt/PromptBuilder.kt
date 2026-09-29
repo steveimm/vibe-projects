@@ -14,8 +14,7 @@ import com.openai.models.responses.ResponseInputText
 
 /** Builds the complete input items list for one LLM turn. */
 internal class PromptBuilder(
-    private val historyManager: HistoryManager,
-    private val supportsVision: Boolean = true
+    private val historyManager: HistoryManager
 ) {
 
     /** Assemble all input items for one LLM call. */
@@ -40,7 +39,7 @@ internal class PromptBuilder(
         turnNumber: Int
     ): ResponseInputItem {
         val text = buildObservationText(observation, warnings, turnNumber)
-        return if (observation.image != null && supportsVision) {
+        return if (observation.image != null) {
             imageUserMessage(text, observation.image)
         } else {
             textUserMessage(text)
@@ -65,19 +64,7 @@ internal class PromptBuilder(
             }
             if (warnings.isNotEmpty()) appendLine()
 
-            // Screen state — canonical block shared with history.
             append(observation.screenBlock)
-            if (!observation.hasAccessibility) {
-                appendLine()
-                append("Use coordinate-based actions (x, y) or analyze the screenshot visually.")
-            }
-
-            // Screenshot section
-            if (observation.image != null && supportsVision) {
-                if (observation.hasAccessibility) appendLine()
-                appendLine()
-                append("Screenshot attached (analyze visually if needed).")
-            }
         }.trim()
     }
 

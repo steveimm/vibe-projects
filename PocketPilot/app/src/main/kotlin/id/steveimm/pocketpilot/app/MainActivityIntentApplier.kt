@@ -45,10 +45,6 @@ internal suspend fun applyIntentPayloadToSettings(
         settingsState.updateServer(url, model)
         log("Model server configured from debug intent")
     }
-    payload.perceptionMode?.let { mode ->
-        settingsState.updatePerceptionMode(mode)
-        log("Perception mode set from intent: $mode")
-    }
     payload.platformMode?.let {
         settingsState.updatePlatformMode(it)
         log("Platform mode set from intent: $it")

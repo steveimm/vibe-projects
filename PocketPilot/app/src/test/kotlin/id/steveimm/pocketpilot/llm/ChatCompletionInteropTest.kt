@@ -210,7 +210,7 @@ class ChatCompletionInteropTest {
             ResponseInputItem.ofFunctionCall(
                 ResponseFunctionToolCall.builder()
                     .callId("call-42")
-                    .name("mobile_action")
+                    .name("tap")
                     .arguments("{\"action\":\"click\",\"element_index\":3}")
                     .build()
             ),
@@ -232,7 +232,7 @@ class ChatCompletionInteropTest {
         assertThat(toolCalls).hasSize(1)
         val fn = toolCalls[0].asFunction()
         assertThat(fn.id()).isEqualTo("call-42")
-        assertThat(fn.function().name()).isEqualTo("mobile_action")
+        assertThat(fn.function().name()).isEqualTo("tap")
         assertThat(fn.function().arguments())
             .isEqualTo("{\"action\":\"click\",\"element_index\":3}")
 

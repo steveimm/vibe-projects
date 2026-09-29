@@ -18,7 +18,6 @@ class AppSettingsState(private val store: AppSettingsStore) {
     val serverModelId get() = current.serverModelId
 
     val debugMode get() = current.debugMode
-    val perceptionMode get() = current.perceptionMode
     val platformMode get() = current.platformMode
     val traceEnabled get() = current.traceEnabled
     val approvalMode get() = current.approvalMode
@@ -42,10 +41,6 @@ class AppSettingsState(private val store: AppSettingsStore) {
         store.saveTraceEnabled(value)
     }
 
-    fun updatePerceptionMode(value: String) {
-        current = current.copy(perceptionMode = value)
-        store.savePerceptionMode(value)
-    }
 
     fun updatePlatformMode(value: PlatformMode) {
         current = current.copy(platformMode = value)

@@ -105,7 +105,7 @@ class TurnExecutionPhaseRunnerTest {
     }
 
     @Test
-    fun `execution aborts remaining tools after first failure`() = runTest {
+    fun `multiple calls are rejected before any action executes`() = runTest {
         val platform = FakePlatform()
         val first = StubTool(name = "first_tool", result = ToolExecutionResult.Failure("boom"))
         val second = StubTool(name = "second_tool", result = ToolExecutionResult.Success(output = "ok"))
@@ -123,8 +123,12 @@ class TurnExecutionPhaseRunnerTest {
 
         assertThat(result.terminatedEarly).isTrue()
         assertThat(result.lastTerminalResult).isInstanceOf(ToolCallResult.Error::class.java)
-        assertThat(first.executionCount).isEqualTo(1)
+        assertThat(first.executionCount).isEqualTo(0)
         assertThat(second.executionCount).isEqualTo(0)
+        val outputs = harness.services.historyManager.getAll().filterIsInstance<ResponseItem.FunctionCallOutput>()
+        assertThat(outputs.map { it.callId }).containsExactly("call-1", "call-2")
+        assertThat(outputs.all { it.content.contains("only one tool call") }).isTrue()
+
     }
 
     @Test

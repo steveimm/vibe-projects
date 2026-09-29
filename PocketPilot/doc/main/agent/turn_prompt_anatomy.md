@@ -1,12 +1,12 @@
 # Model request assembly
 
-`SessionAgentRunner` starts with `DefaultAgentDefinition.systemPrompt`, substitutes device/date placeholders, and adds workspace-command guidance only when Termux is available.
+`SessionAgentRunner` starts with `DefaultAgentDefinition.systemPrompt`, substitutes the current date, and adds workspace-command guidance only when Termux is available.
 
 `TurnPlanningPhaseRunner` captures one current observation and invokes `PromptBuilder`. The request contains:
 
 1. The system prompt.
 2. Retained conversation history, including native assistant reasoning and tool call/result pairs.
-3. The current screen observation and any factual capture or loop warnings.
+3. The current screenshot observation and any factual capture or loop warnings.
 4. The currently available tool schemas in the Chat Completions `tools` field.
 
 There are no injected app skills, separate todo lists, scratchpad keys, or persistent-memory recalls. The model's exposed reasoning stays in its original assistant-message field rather than being inserted as user text.

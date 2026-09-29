@@ -52,6 +52,8 @@ class GlowOverlayHost(
     private var pendingHideJob: Job? = null
     private var pendingRemoveJob: Job? = null
 
+    fun suppressForScreenshot(): AutoCloseable = composeHost.suppressForScreenshot()
+
     fun isShowing(): Boolean = composeHost.isShowing() && isVisible.value
 
     fun show(state: GlowState = GlowState.Active) {

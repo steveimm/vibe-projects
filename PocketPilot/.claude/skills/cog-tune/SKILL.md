@@ -170,7 +170,7 @@ Configure POCKETPILOT_SERVER_URL and POCKETPILOT_MODEL_ID for the reachable mode
 - Eval runner: `eval/aw_bridge/runner.py`
 - Eval remote config: `eval/config/remote.yaml`
 - Remote eval: see `/autotune` skill Step 3
-- Eval bridge config: `eval/aw_bridge/native_agent_bridge.py` (perception_mode, platform_mode, excluded_tools, model selection)
+- Eval bridge config: `eval/aw_bridge/native_agent_bridge.py` (platform_mode, excluded_tools, model selection)
 - Eval completion monitor: `eval/aw_bridge/completion_monitor.py`
 - Eval preflight / snapshot policy: `eval/aw_bridge/runner_preflight.py`
 - Eval per-task lifecycle: `eval/aw_bridge/runner_execution.py`

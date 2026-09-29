@@ -85,7 +85,7 @@ class SessionRecordingServiceTest {
         service.appendTextDelta("doing it")
         service.recordAction(
             actionId = "act-1",
-            toolName = "mobile_action",
+            toolName = "tap",
             description = "Click",
             state = "executing"
         )
@@ -101,7 +101,7 @@ class SessionRecordingServiceTest {
             id.steveimm.pocketpilot.history.model.ContentBlockRecord.Text("doing it"),
             id.steveimm.pocketpilot.history.model.ContentBlockRecord.Action(
                 id = "act-1",
-                toolName = "mobile_action",
+                toolName = "tap",
                 description = "Click",
                 state = "success",
                 resultSummary = "ok"
@@ -283,7 +283,6 @@ class SessionRecordingServiceTest {
 
         val testConfig = ConversationConfigSnapshot(
             mainModel = "test",
-            perceptionMode = "accessibility_only",
             platformMode = "ACCESSIBILITY"
         )
 

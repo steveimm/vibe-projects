@@ -1,8 +1,6 @@
 package id.steveimm.pocketpilot.session
 
 import android.content.Context
-import android.content.res.Resources
-import android.os.Build
 import android.util.Log
 import id.steveimm.pocketpilot.agent.Agent
 import id.steveimm.pocketpilot.agent.AgentEventDispatcher
@@ -131,14 +129,9 @@ internal class SessionAgentRunner(
     }
 
     private fun resolvePromptTemplates(prompt: String): String {
-        val dm = try { Resources.getSystem().displayMetrics } catch (_: Exception) { null }
         val today = LocalDate.now()
         val dayOfWeek = today.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.ENGLISH)
         return prompt
-            .replace("{{device_model}}", Build.MODEL ?: "unknown")
-            .replace("{{device_manufacturer}}", Build.MANUFACTURER ?: "unknown")
-            .replace("{{screen_width}}", (dm?.widthPixels ?: 0).toString())
-            .replace("{{screen_height}}", (dm?.heightPixels ?: 0).toString())
             .replace("{{current_date}}", "$today, $dayOfWeek")
     }
 

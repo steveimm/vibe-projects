@@ -193,7 +193,7 @@ class Turn(
                             emit(TurnStreamEvent.TextDelta(event.delta))
                         }
                         is LLMStreamEvent.ToolCallDone -> {
-                            val llmToolCall = event.toolCall
+                            val llmToolCall = event.toolCall.let { if (it.callId.isBlank()) it.copy(callId = "call_${UUID.randomUUID()}") else it }
                             toolCalls.add(llmToolCall)
 
                             Log.d(
@@ -201,15 +201,7 @@ class Turn(
                                     "Received tool call: ${llmToolCall.name} with id ${llmToolCall.callId}"
                             )
 
-                            val toolCallRequest = convertToToolCallRequest(llmToolCall)
-                            if (allowedToolNames?.contains(toolCallRequest.name) != false) {
-                                emit(TurnStreamEvent.ToolCallReceived(toolCallRequest))
-                            } else {
-                                Log.w(
-                                        TAG,
-                                        "Suppressing disallowed streaming tool event: ${toolCallRequest.name}"
-                                )
-                            }
+                            emit(TurnStreamEvent.ToolCallReceived(convertToToolCallRequest(llmToolCall)))
                         }
                         is LLMStreamEvent.Completed -> {
                             finishReason = event.finishReason
@@ -234,23 +226,20 @@ class Turn(
     }
 
     private fun convertToToolCallRequest(llmToolCall: LLMToolCall): ToolCallRequest {
-        val argsJson =
-                try {
-                    JSONObject(llmToolCall.arguments)
-                } catch (e: Exception) {
-                    Log.w(
-                            TAG,
-                            "Failed to parse tool arguments as JSON: ${llmToolCall.arguments}",
-                            e
-                    )
-                    JSONObject()
-                }
-
-        return ToolCallRequest(
-                id = llmToolCall.callId,
-                name = llmToolCall.name,
-                arguments = argsJson
-        )
+        val id = llmToolCall.callId.ifBlank { "call_${UUID.randomUUID()}" }
+        var error: String? = null
+        val args = try {
+            val element = kotlinx.serialization.json.Json.parseToJsonElement(llmToolCall.arguments)
+            require(element is kotlinx.serialization.json.JsonObject)
+            JSONObject(llmToolCall.arguments)
+        } catch (_: Exception) {
+            error = "Arguments for ${llmToolCall.name} must be a valid JSON object. No action was executed."
+            JSONObject()
+        }
+        if (allowedToolNames?.contains(llmToolCall.name) == false) {
+            error = "Unavailable tool: ${llmToolCall.name}. Available tools: ${allowedToolNames.joinToString()}. No action was executed."
+        }
+        return ToolCallRequest(id, llmToolCall.name, args, error)
     }
 
     private fun prepareRequest(
@@ -271,11 +260,7 @@ class Turn(
         finishReason: String?,
     ): TurnResult {
         require(finishReason in setOf("stop", "tool_calls")) { "Model response did not finish normally: $finishReason" }
-        val calls = llmToolCalls.map { call ->
-            convertToToolCallRequest(call).let { parsed ->
-                if (parsed.id.isBlank()) parsed.copy(id = "call_${UUID.randomUUID()}") else parsed
-            }
-        }.filter { allowedToolNames?.contains(it.name) != false }
+        val calls = llmToolCalls.map(::convertToToolCallRequest)
         val finalResponse = llmToolCalls.isEmpty() && finishReason == "stop" && !textContent.isNullOrBlank()
         require(llmToolCalls.isNotEmpty() || finalResponse) { "Model returned no tool call or final answer" }
         return TurnResult(textContent, calls, finalResponse, reasoning)
@@ -297,4 +282,4 @@ data class TurnResult(
         val reasoning: ModelReasoning? = null,
 )
 
-data class ToolCallRequest(val id: String, val name: String, val arguments: JSONObject)
+data class ToolCallRequest(val id: String, val name: String, val arguments: JSONObject, val validationError: String? = null)

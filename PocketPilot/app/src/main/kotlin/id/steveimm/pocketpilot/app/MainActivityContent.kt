@@ -131,8 +131,6 @@ internal fun MainActivityContent(
             ) {
                 SettingsSheet(
                     settings = settingsState,
-                    perceptionMode = settingsState.perceptionMode,
-                    onPerceptionModeChange = settingsState::updatePerceptionMode,
                     debugMode = settingsState.debugMode,
                     onDebugModeChange = settingsState::updateDebugMode,
                     traceEnabled = settingsState.traceEnabled,

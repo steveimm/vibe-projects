@@ -165,7 +165,7 @@ Use `action-test.sh` to isolate action execution outside the full agent loop:
 ./scripts/action-test.sh tap --x 540 --y 1200 --shizuku --display-id 0
 ```
 
-This is useful when `mobile_action` reports success but UI does not change.
+This is useful when a gesture tool reports success but UI does not change.
 
 ### 3.2 Direct MobileActionTool Debug (Tool Pipeline)
 

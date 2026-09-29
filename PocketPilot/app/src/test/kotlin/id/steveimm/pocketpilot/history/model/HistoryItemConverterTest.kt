@@ -19,7 +19,7 @@ class HistoryItemConverterTest {
                 ),
                 ResponseItem.FunctionCall(
                     id = "call_1",
-                    name = "mobile_action",
+                    name = "tap",
                     arguments = JSONObject("""{"action":"click","element_index":3}""")
                 ),
                 ResponseItem.FunctionCallOutput(
@@ -37,7 +37,7 @@ class HistoryItemConverterTest {
         assertThat(restored[0]).isEqualTo(items[0])
         val call = restored[1] as ResponseItem.FunctionCall
         assertThat(call.id).isEqualTo("call_1")
-        assertThat(call.name).isEqualTo("mobile_action")
+        assertThat(call.name).isEqualTo("tap")
         assertThat(call.arguments.toString())
             .isEqualTo(JSONObject("""{"action":"click","element_index":3}""").toString())
         assertThat(restored[2]).isEqualTo(items[2])

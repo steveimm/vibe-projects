@@ -283,22 +283,22 @@ function renderActionMarkers({ overlay, actions, transform }) {
   actions.forEach(({ name, args }) => {
     if (!args || typeof args !== "object") return;
 
-    if (isTapAction(name, args)) {
-      const point = extractTapPoint(args);
+    if (name === "tap" || name === "long_press") {
+      const point = [Number(args.x), Number(args.y)];
       if (!point) return;
       const [x, y] = point;
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
       const marker = document.createElement("div");
       marker.className = "action-marker action-tap";
-      marker.style.left = `${x * transform.scale}px`;
-      marker.style.top = `${y * transform.scale}px`;
+      marker.style.left = `${x * transform.actionScaleX}px`;
+      marker.style.top = `${y * transform.actionScaleY}px`;
       marker.title = `Tap (${x}, ${y})`;
       overlay.appendChild(marker);
       return;
     }
 
-    if (isSwipeAction(name, args)) {
-      const swipe = extractSwipePoints(args);
+    if (name === "swipe") {
+      const swipe = [args.start_x, args.start_y, args.end_x, args.end_y].map(Number);
       if (!swipe) return;
       const [x1, y1, x2, y2] = swipe;
       if (![x1, y1, x2, y2].every(Number.isFinite)) return;
@@ -306,14 +306,14 @@ function renderActionMarkers({ overlay, actions, transform }) {
       const marker = document.createElement("div");
       marker.className = "action-marker action-swipe";
 
-      const dx = (x2 - x1) * transform.scale;
-      const dy = (y2 - y1) * transform.scale;
+      const dx = (x2 - x1) * transform.actionScaleX;
+      const dy = (y2 - y1) * transform.actionScaleY;
       const length = Math.sqrt(dx * dx + dy * dy);
       const angle = Math.atan2(dy, dx) * 180 / Math.PI;
 
       marker.style.width = `${length}px`;
-      marker.style.left = `${x1 * transform.scale}px`;
-      marker.style.top = `${y1 * transform.scale}px`;
+      marker.style.left = `${x1 * transform.actionScaleX}px`;
+      marker.style.top = `${y1 * transform.actionScaleY}px`;
       marker.style.transform = `rotate(${angle}deg)`;
       marker.title = `Swipe (${x1},${y1}) -> (${x2},${y2})`;
 
@@ -322,7 +322,7 @@ function renderActionMarkers({ overlay, actions, transform }) {
   });
 }
 
-function buildCoordinateTransform({ img, nodes = [], actions = [] }) {
+function buildCoordinateTransform({ img, nodes = [] }) {
   const naturalWidth = img.naturalWidth || img.clientWidth || 1;
   const naturalHeight = img.naturalHeight || img.clientHeight || 1;
   const displayWidth = img.clientWidth || naturalWidth;
@@ -340,15 +340,6 @@ function buildCoordinateTransform({ img, nodes = [], actions = [] }) {
     maxY = Math.max(maxY, bottom);
   });
 
-  actions.forEach(({ args }) => {
-    if (!args || typeof args !== "object") return;
-    const points = collectActionPoints(args);
-    points.forEach(([x, y]) => {
-      maxX = Math.max(maxX, x);
-      maxY = Math.max(maxY, y);
-    });
-  });
-
   if (maxX <= 0) maxX = naturalWidth;
   if (maxY <= 0) maxY = naturalHeight;
 
@@ -360,69 +351,10 @@ function buildCoordinateTransform({ img, nodes = [], actions = [] }) {
 
   return {
     scale: Number.isFinite(scale) && scale > 0 ? scale : 1,
+    actionScaleX: displayWidth / 1000,
+    actionScaleY: displayHeight / 1000,
   };
 }
-
-function collectActionPoints(args) {
-  const points = [];
-  const pushPoint = (x, y) => {
-    const nx = Number(x);
-    const ny = Number(y);
-    if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
-    if (nx < 0 || ny < 0) return;
-    points.push([nx, ny]);
-  };
-
-  if (Array.isArray(args.coordinate) && args.coordinate.length === 2) {
-    pushPoint(args.coordinate[0], args.coordinate[1]);
-  }
-  if (Array.isArray(args.end_coordinate) && args.end_coordinate.length === 2) {
-    pushPoint(args.end_coordinate[0], args.end_coordinate[1]);
-  }
-  if (Object.prototype.hasOwnProperty.call(args, "x") && Object.prototype.hasOwnProperty.call(args, "y")) {
-    pushPoint(args.x, args.y);
-  }
-
-  return points;
-}
-
-function isTapAction(name, args) {
-  const action = String(args.action || "").toLowerCase();
-  if (name === "input" && action === "tap") return true;
-  if (name === "mobile_action" && (action === "click" || action === "long_press")) return true;
-  return false;
-}
-
-function isSwipeAction(name, args) {
-  const action = String(args.action || "").toLowerCase();
-  if (name === "input" && action === "swipe") return true;
-  if (name === "mobile_action" && action === "swipe") return true;
-  return false;
-}
-
-function extractTapPoint(args) {
-  if (Array.isArray(args.coordinate) && args.coordinate.length === 2) {
-    return [Number(args.coordinate[0]), Number(args.coordinate[1])];
-  }
-  if (Object.prototype.hasOwnProperty.call(args, "x") && Object.prototype.hasOwnProperty.call(args, "y")) {
-    return [Number(args.x), Number(args.y)];
-  }
-  return null;
-}
-
-function extractSwipePoints(args) {
-  if (Array.isArray(args.coordinate) && args.coordinate.length === 2 &&
-      Array.isArray(args.end_coordinate) && args.end_coordinate.length === 2) {
-    return [
-      Number(args.coordinate[0]),
-      Number(args.coordinate[1]),
-      Number(args.end_coordinate[0]),
-      Number(args.end_coordinate[1]),
-    ];
-  }
-  return null;
-}
-
 
 // Persistent state for Mind panel
 const mindState = {

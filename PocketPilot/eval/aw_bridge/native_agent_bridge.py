@@ -22,7 +22,6 @@ class BridgeConfig:
     package_name: str
     activity: str
     server_base_url: str
-    perception_mode: str
     platform_mode: str
     main_model: str
     max_turns: int
@@ -195,9 +194,6 @@ class NativeAgentBridge:
             "--es",
             "server_base_url",
             self._server_url_for_device(),
-            "--es",
-            "perception_mode",
-            self._config.perception_mode,
             "--es",
             "platform_mode",
             self._config.platform_mode,

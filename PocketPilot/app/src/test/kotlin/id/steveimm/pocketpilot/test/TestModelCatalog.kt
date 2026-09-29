@@ -13,7 +13,6 @@ fun testModelCatalog(source: String): ModelCatalog {
             displayName = value.optString("display_name", name),
             modelId = value.optString("model_id", name),
             contextWindow = value.optInt("context_window", ModelEntry.DEFAULT_CONTEXT_WINDOW),
-            supportsVision = value.optBoolean("supports_vision", true),
         )
     }.toList())
 }

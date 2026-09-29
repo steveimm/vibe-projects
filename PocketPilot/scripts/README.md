@@ -11,12 +11,7 @@ After code changes:
     ./scripts/setup.sh                               # Build, install, setup permissions
 
 Run agent:
-    ./scripts/debug-run.sh "goal"                    # Run with OpenAI (default)
-
-Perception mode:
-    ./scripts/debug-run.sh --accessibility-only "goal"
-    ./scripts/debug-run.sh --screenshot-only "goal"
-    ./scripts/debug-run.sh --hybrid "goal"
+    ./scripts/debug-run.sh "goal"                    # Run with the configured local server
 
 Eval:
     ./scripts/prepare_parallel_baselines.sh
@@ -51,27 +46,16 @@ Environment variables:
 Run the agent with full debug output: screenshots at each turn, trace artifacts, and comprehensive logs. Pressing Ctrl+C will gracefully stop the agent.
 
 ```bash
-# OpenAI backend (default)
+# Configured local model server
 ./scripts/debug-run.sh "Open Settings"
 ./scripts/debug-run.sh "Open Chrome"
 
-# Local LLM backend
-
-# Perception mode
-./scripts/debug-run.sh --accessibility-only "Open Chrome"  # A11y only
-./scripts/debug-run.sh --screenshot-only "Open Chrome"     # Screenshot only
-./scripts/debug-run.sh --hybrid "Open Chrome"              # A11y + screenshot
 ```
 
 Options:
-- `--accessibility-only`, `--a11y-only`: Force accessibility-only perception
-- `--screenshot-only`: Force screenshot-only perception
-- `--hybrid`: Force hybrid perception
-- `--perception <mode>`: Set perception mode explicitly (`accessibility_only`, `screenshot_only`, `hybrid`)
 - `--main-model <name>`: Override main model ID on the configured server
 
 Environment variables:
-- `PERCEPTION_MODE`: `accessibility_only` (default), `screenshot_only`, or `hybrid`
 - `MAIN_MODEL`: same as the flag above
 - `DEBUG_MAX_TURNS`: Max turn-start events to capture (default: 80)
 
@@ -185,7 +169,7 @@ If it fails, enable manually:
 
 ## Device selection
 
-The setup, debug-run, action-test, and mobile-action-test scripts share `lib/common.sh`. Set `ANDROID_SERIAL` to target a specific device. An unavailable requested device is an error. Without an explicit serial, the scripts select one physical device, or one emulator when no physical device is connected. Ambiguous selections fail before any device action.
+The setup, debug-run, and action-test scripts share `lib/common.sh`. Set `ANDROID_SERIAL` to target a specific device. An unavailable requested device is an error. Without an explicit serial, the scripts select one physical device, or one emulator when no physical device is connected. Ambiguous selections fail before any device action.
 
 Run the device-selection checks without a connected phone:
 

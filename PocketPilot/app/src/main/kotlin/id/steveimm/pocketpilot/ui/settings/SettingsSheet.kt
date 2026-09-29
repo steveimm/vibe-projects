@@ -44,8 +44,6 @@ enum class SettingsPage {
 @Composable
 fun SettingsSheet(
     settings: AppSettingsState,
-    perceptionMode: String,
-    onPerceptionModeChange: (String) -> Unit,
     debugMode: Boolean,
     onDebugModeChange: (Boolean) -> Unit,
     traceEnabled: Boolean,
@@ -112,7 +110,6 @@ fun SettingsSheet(
                 when (page) {
                     SettingsPage.HOME -> SettingsHomePage(
                         settings = settings,
-                        perceptionMode = perceptionMode,
                         isAccessibilityEnabled = isAccessibilityEnabled,
                         isOverlayEnabled = isOverlayEnabled,
                         debugMode = debugMode,
@@ -129,8 +126,6 @@ fun SettingsSheet(
                         onClose = onDismiss,
                     )
                     SettingsPage.AGENT_BEHAVIOR -> AgentBehaviorSettingsPage(
-                        perceptionMode = perceptionMode,
-                        onPerceptionModeChange = onPerceptionModeChange,
                         platformMode = platformMode,
                         effectivePlatformMode = effectivePlatformMode,
                         onPlatformModeChange = onPlatformModeChange,

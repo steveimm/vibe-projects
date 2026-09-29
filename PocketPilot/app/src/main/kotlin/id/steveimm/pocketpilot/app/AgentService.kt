@@ -101,8 +101,20 @@ class AgentService : AccessibilityService() {
 
     internal fun getActionVisualizer(): ActionVisualizerManager? = actionVisualizer
 
-    internal fun getOverlayTouchGate(): id.steveimm.pocketpilot.platform.OverlayTouchGate? =
-            overlayController?.overlayTouchGate
+    internal fun getOverlayTouchGate(): id.steveimm.pocketpilot.platform.OverlayTouchGate? {
+        val controller = overlayController ?: return null
+        return object : id.steveimm.pocketpilot.platform.OverlayTouchGate {
+            override fun beginGesturePassThrough(): AutoCloseable = controller.overlayTouchGate.beginGesturePassThrough()
+            override fun beginScreenshotCapture(): AutoCloseable {
+                val controls = controller.suppressForScreenshot()
+                val gestures = actionVisualizer?.suppressForScreenshot()
+                return AutoCloseable {
+                    gestures?.close()
+                    controls.close()
+                }
+            }
+        }
+    }
 
     internal fun dismissError() {
         overlayController?.dismissError()
@@ -137,7 +149,6 @@ class AgentService : AccessibilityService() {
             }
 
     private val debugExecReceiver = ActionDebugReceiver()
-    private val debugMobileActionReceiver = id.steveimm.pocketpilot.debug.MobileActionDebugReceiver()
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -214,7 +225,6 @@ class AgentService : AccessibilityService() {
 
         registerDebugStopReceiverIfNeeded(this, stopReceiver)
         registerDebugExecReceiverIfNeeded(this, debugExecReceiver)
-        registerDebugMobileActionReceiverIfNeeded(this, debugMobileActionReceiver)
     }
 
     fun setCompactOverlaysEnabled(enabled: Boolean) {
@@ -279,7 +289,6 @@ class AgentService : AccessibilityService() {
         actionVisualizer = null
         unregisterDebugStopReceiverIfNeeded(this, stopReceiver)
         unregisterDebugExecReceiverIfNeeded(this, debugExecReceiver)
-        unregisterDebugMobileActionReceiverIfNeeded(this, debugMobileActionReceiver)
         serviceLifecycleOwner.onDestroy()
         super.onDestroy()
         serviceScope.cancel()

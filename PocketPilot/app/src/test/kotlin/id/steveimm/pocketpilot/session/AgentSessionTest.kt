@@ -393,7 +393,6 @@ class AgentSessionTest {
                         sessionId = "old-session",
                         config = ConversationConfigSnapshot(
                                 mainModel = "gpt-5.2",
-                                perceptionMode = "DEFAULT",
                                 platformMode = "DEFAULT",
                         ),
                         historyItems = emptyList(),

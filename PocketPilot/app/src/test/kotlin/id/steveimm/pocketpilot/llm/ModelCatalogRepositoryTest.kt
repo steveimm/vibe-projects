@@ -25,12 +25,11 @@ class ModelCatalogRepositoryTest {
         val cache = cache()
         val repository = ModelCatalogRepository(cache, discover = { _, key ->
             assertThat(key).isEmpty()
-            listOf(ModelEntry("small-model", contextWindow = 4096, supportsVision = false))
+            listOf(ModelEntry("small-model", contextWindow = 4096))
         })
         repository.refresh("http://server-a:8000/v1")
         val a = repository.forServer("http://server-a:8000/v1", "small-model")
         assertThat(a.resolve("small-model").contextWindow).isEqualTo(4096)
-        assertThat(a.resolve("small-model").supportsVision).isFalse()
         val b = repository.forServer("http://server-b:8000/v1", "manual-b")
         assertThat(b.names()).containsExactly("manual-b")
         assertThat(ModelCatalogRepository(cache()).forServer("http://server-a:8000/v1", "small-model").names())

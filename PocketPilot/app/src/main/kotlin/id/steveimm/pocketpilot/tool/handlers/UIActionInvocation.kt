@@ -8,6 +8,7 @@ import id.steveimm.pocketpilot.tool.ToolExecutionContext
 import id.steveimm.pocketpilot.tool.ToolExecutionResult
 import id.steveimm.pocketpilot.tool.ToolInvocation
 import id.steveimm.pocketpilot.tool.ToolObservation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import org.json.JSONObject
 
@@ -50,6 +51,8 @@ class UIActionInvocation(
             delay(UI_SETTLE_DELAY_MS)
             val snapshot = context.platform.captureScreen()
             buildObservation(snapshot, context.platform, context.appClassifier)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "Failed to capture post-action observation: ${e.message}")
             null

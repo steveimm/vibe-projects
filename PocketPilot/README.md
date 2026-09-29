@@ -50,12 +50,12 @@ PocketPilot is an open-source **agent harness for Android**. Give it a natural-l
 > Most open-source phone-use agents today either need a **computer tethered over ADB** to drive a phone, or run inside a **cloud virtual phone** that doesn't have *your* accounts logged in. PocketPilot runs **on your actual phone**, against your actual apps — Gmail, Slack, your shopping app, your group chats — with your real sessions. No laptop. No cloud sandbox. No re-logging-in.
 
 - 🧠 **A full on-device agent harness, in the making.** Built in Kotlin, native to Android. ReAct loop, no external orchestrator. The pieces:
-  - 🔩 **Primitive toolset** — `mobile_action` (tap, type, swipe/scroll), `open_app` + `system_button` for navigation.
+  - 🔩 **Primitive toolset** — `tap`, `long_press`, `swipe`, `type_text`, `open_app` + `system_button` for navigation.
 - 🛠️ **Advanced agent-first tools.** Programmatic escapes from tap-and-swipe:
   - 🐧 **`termux_shell`** — full Linux toolchain on the device: `python` / `git` / `curl` / `jq`, plus anything you `pkg install`. Needs [Termux](https://github.com/termux/termux-app).
 - 🪟 **Virtual display platform.** Hybrid background sessions via Shizuku — the agent operates a parallel Android display so the foreground stays yours.
 - 🔌 **Local model server.** Supply the server URL and model ID. Discover models from `/models` or enter an ID manually. Requests have no cloud default or fallback.
-- 👁️ **Pluggable perception.** Accessibility tree by default; optional point-in-time screenshots in screenshot/hybrid modes.
+- 👁️ **Visual phone control.** A fresh screenshot accompanies each model turn, with normalized touch coordinates. Use a local model that accepts images.
 - 🔍 **Inspectable traces.** Every session writes LLM calls, tool calls, and perception snapshots to on-device storage; pull with `adb` for inspection.
 - 🔁 **Eval-driven agent-harness autotune loop.** Run an AndroidWorld task suite (`eval/`) against the agent; an autotune harness analyzes failures, proposes prompt and tool fixes, and re-runs.
 
@@ -108,7 +108,7 @@ PocketPilot gets noticeably more capable when you opt in to two optional integra
 High-level layers:
 
 - **Agent loop** — Screen observation, native reasoning, tool execution, and conversation history
-- **Tools** — UI primitives (`mobile_action`, `open_app`, `system_button`); user handoff and completion; optional `termux_shell` workspace commands
+- **Tools** — UI primitives (`tap`, `long_press`, `swipe`, `type_text`, `open_app`, `system_button`); user handoff and native final answers; optional `termux_shell` workspace commands
 - **Platforms** — `AccessibilityPlatform` for normal use, `VirtualDisplayPlatform` (Shizuku) for hybrid background sessions
 - **LLM** — Chat Completions client for the configured server, optional model discovery, and bounded retries
 

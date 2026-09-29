@@ -35,7 +35,6 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun SettingsHomePage(
     settings: AppSettingsState,
-    perceptionMode: String,
     isAccessibilityEnabled: Boolean,
     isOverlayEnabled: Boolean,
     debugMode: Boolean,
@@ -64,7 +63,7 @@ internal fun SettingsHomePage(
             )
             SettingsNavigationRow(
                 title = "Agent Behavior",
-                subtitle = agentBehaviorSubtitle(perceptionMode, platformMode, effectivePlatformMode, approvalMode),
+                subtitle = agentBehaviorSubtitle( platformMode, effectivePlatformMode, approvalMode),
                 onClick = { onNavigate(SettingsPage.AGENT_BEHAVIOR) }
             )
 
@@ -103,7 +102,6 @@ internal fun SettingsHomePage(
 }
 
 private fun agentBehaviorSubtitle(
-    perceptionMode: String,
     platformMode: PlatformMode,
     effectivePlatformMode: PlatformMode?,
     approvalMode: ApprovalMode,
@@ -112,11 +110,6 @@ private fun agentBehaviorSubtitle(
         ApprovalMode.SMART -> "Per-App"
         ApprovalMode.AUTO_APPROVE -> "Auto-Approve"
         ApprovalMode.ALWAYS_ASK -> "Always Ask"
-    }
-    val perceptionChip = when (perceptionMode) {
-        "hybrid" -> "Transcript + Image"
-        "screenshot_only" -> "Image"
-        else -> "Transcript"
     }
     val displayChip = when (platformMode) {
         PlatformMode.ACCESSIBILITY -> when (effectivePlatformMode) {
@@ -128,7 +121,7 @@ private fun agentBehaviorSubtitle(
             else -> " · Virtual Display"
         }
     }
-    return "$approvalChip · $perceptionChip$displayChip"
+    return "$approvalChip · Screenshots$displayChip"
 }
 
 private fun permissionsSubtitle(

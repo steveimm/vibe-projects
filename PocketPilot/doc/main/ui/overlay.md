@@ -124,7 +124,7 @@ Visual feedback for agent touch actions. Canvas-based with automatic item lifeti
 | **Swipe trail** | 4dp line + dots, gesture duration + 400ms, light blue/indigo at 50% |
 | **Scroll trail** | Same trail renderer as swipe, using secondary color and canonical scroll-direction geometry |
 
-API: `showClick(x, y, longPress)`, `showSwipe(...)`, `showScrollAsSwipe(...)`.
+API: `showClick(x, y, longPress)`, `showSwipe(...)`.
 
 Call sites:
 - `AccessibilityPlatform` shows node click/long-click feedback, native a11y scroll trails, and `AccessibilityGestureInjector` shows tap/long-press/swipe feedback.

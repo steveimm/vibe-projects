@@ -30,7 +30,6 @@ bridge:
   package_name: id.steveimm.pocketpilot
   activity: id.steveimm.pocketpilot/.app.MainActivity
   server_base_url: ""
-  perception_mode: accessibility_only
   platform_mode: accessibility
   # shizuku_apk_path: eval/tools/shizuku.apk  # required if auto-installing Shizuku for virtual_display
   main_model: ""  # Supply POCKETPILOT_MODEL_ID or set the server model ID here.
@@ -44,19 +43,14 @@ bridge:
   poll_interval_seconds: 1
 
   task_overrides:
-    BrowserDraw: { perception_mode: hybrid }
-    BrowserMaze: { perception_mode: hybrid }
-    ExpenseAddMultipleFromGallery: { perception_mode: hybrid, max_turns: 60 }
+    ExpenseAddMultipleFromGallery: { max_turns: 60 }
     ExpenseDeleteDuplicates2: { max_turns: 60 }
-    MarkorTranscribeReceipt: { perception_mode: hybrid }
-    MarkorTranscribeVideo: { perception_mode: hybrid }
-    RecipeAddMultipleRecipesFromImage: { perception_mode: hybrid, max_turns: 60 }
+    RecipeAddMultipleRecipesFromImage: { max_turns: 60 }
     RecipeAddMultipleRecipesFromMarkor: { max_turns: 50 }
     RecipeDeleteDuplicateRecipes3: { max_turns: 80 }
     RecipeDeleteDuplicateRecipes2: { max_turns: 60 }
-    RetroPlaylistDuration: { max_turns: 80, perception_mode: hybrid }
-    OsmAndMarker: { perception_mode: hybrid }
-    OsmAndTrack: { perception_mode: hybrid, max_turns: 80 }
+    RetroPlaylistDuration: { max_turns: 80 }
+    OsmAndTrack: { max_turns: 80 }
     SportsTrackerActivitiesCountForWeek: { max_turns: 100 }
     SportsTrackerLongestDistanceActivity: { max_turns: 60 }
     SportsTrackerTotalDistanceForCategoryOverInterval: { max_turns: 50 }

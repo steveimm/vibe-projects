@@ -92,7 +92,6 @@ object ModelDiscovery {
 
         val contextWindow = readContextWindow(obj) ?: DEFAULT_CONTEXT_WINDOW
 
-        val supportsVision = readSupportsVision(obj)
 
         val created = obj.longOrNull("created") ?: 0L
 
@@ -101,7 +100,6 @@ object ModelDiscovery {
             displayName = displayName,
             modelId = modelId,
             contextWindow = contextWindow,
-            supportsVision = supportsVision,
             created = created,
         )
     }
@@ -119,19 +117,6 @@ object ModelDiscovery {
         obj.intOrNullSafe("context_size")?.let { return it }
         (obj["top_provider"] as? JsonObject)?.intOrNullSafe("context_length")?.let { return it }
         return null
-    }
-
-    private fun readSupportsVision(obj: JsonObject): Boolean {
-        // Optional modality metadata describes text and image inputs.
-        val architectureModalities = (obj["architecture"] as? JsonObject)
-            ?.get("input_modalities") as? JsonArray
-        if (architectureModalities?.containsString("image") == true) return true
-
-        // Novita-ish: input_modalities at top level.
-        val topModalities = obj["input_modalities"] as? JsonArray
-        if (topModalities?.containsString("image") == true) return true
-
-        return false
     }
 
     private fun declaresUnsupportedTools(obj: JsonObject): Boolean {

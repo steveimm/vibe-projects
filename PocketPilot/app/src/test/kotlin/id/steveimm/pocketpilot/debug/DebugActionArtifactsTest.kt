@@ -80,7 +80,7 @@ class DebugActionArtifactsTest {
     fun `finish preserves each runner's result schema and writes the completion marker`() {
         val results = listOf(
             JSONObject("""{"version":1,"layer":"platform","action":"tap","action_accepted":{"status":"success"}}"""),
-            JSONObject("""{"version":1,"tool":"mobile_action","phase":"execute","result":{"status":"success"}}"""),
+            JSONObject("""{"version":1,"tool":"tap","phase":"execute","result":{"status":"success"}}"""),
         )
         results.forEachIndexed { index, result ->
             val directory = temporaryFolder.newFolder("run-$index")

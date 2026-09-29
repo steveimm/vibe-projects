@@ -307,31 +307,25 @@ class VirtualDisplayPlatform(
         return try {
             arbiter.withRunningLease {
             val timestamp = System.currentTimeMillis()
-            val pc = sessionConfig.perceptionConfig
 
-            // 1. Capture a11y tree with trace artifacts (when tracing enabled)
             val a11yResult =
-                    if (pc.capturesAccessibility)
+                    if (traceRecorder.enabled)
                             captureCoordinator.captureA11yTreeWithArtifacts()
                     else
                             VirtualDisplayCaptureCoordinator.A11yCaptureResult(
                                     emptyList(), null, null
                             )
 
-            // 2. Screenshot capture (when config requires it OR trace is enabled)
-            val shouldCaptureScreenshot = pc.capturesScreenshot || traceRecorder.enabled
             val imageCapture =
-                    if (shouldCaptureScreenshot) captureCoordinator.captureScreenshot() else null
+                    captureCoordinator.captureScreenshot()
 
-            // 3. Only include screenshot in the snapshot if the perception config wants it
-            val image = if (pc.capturesScreenshot) imageCapture?.image else null
+            val image = imageCapture?.image
 
             Log.d(
                     TAG,
                     "Captured screen: ${a11yResult.elements.size} elements, screenshot=${image != null}"
             )
 
-            // 4. Build debug info
             val debug =
                     if (traceRecorder.enabled) {
                         ScreenSnapshotDebug(
@@ -360,7 +354,6 @@ class VirtualDisplayPlatform(
         }
     }
 
-    override fun allowTapToFocus(): Boolean = false
 
     override suspend fun performAction(action: UIAction): ActionResult {
         return try {

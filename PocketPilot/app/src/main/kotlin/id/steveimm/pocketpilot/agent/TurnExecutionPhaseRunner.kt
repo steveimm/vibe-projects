@@ -50,7 +50,10 @@ internal class TurnExecutionPhaseRunner(
 
                 var terminatedEarly = false
                 var lastTerminalResult: ToolCallResult? = null
-                for (toolCall in toolCallsToExecute) {
+                val calls = if (toolCallsToExecute.size > 1) {
+                        toolCallsToExecute.map { it.copy(validationError = "Send only one tool call per response. No actions were executed. Choose the next action from the current screenshot.") }
+                } else toolCallsToExecute
+                for (toolCall in calls) {
                         val result = executeSingleToolCall(
                                 turnId = turnId,
                                 turnNumber = turnNumber,
@@ -62,7 +65,7 @@ internal class TurnExecutionPhaseRunner(
                         if (result.toolResult !is ToolCallResult.Success) {
                                 Log.w(TAG, "Action ${toolCall.name} did not succeed; aborting remaining actions in this turn")
                                 terminatedEarly = true
-                                break
+                                if (calls.size == 1) break
                         }
                 }
                 return ExecutionPhaseResult(
@@ -100,7 +103,9 @@ internal class TurnExecutionPhaseRunner(
                 )
 
                 val toolResult =
-                        services.toolRouter.execute(
+                        if (toolCall.validationError != null) {
+                                ToolCallResult.Error(toolCall.id, toolCall.validationError)
+                        } else services.toolRouter.execute(
                                 toolName = toolCall.name,
                                 params = toolCall.arguments,
                                 context =
@@ -113,7 +118,7 @@ internal class TurnExecutionPhaseRunner(
                                 onApprovalRequired = { details -> emitApprovalRequired(details) }
                         )
 
-                val observationCapture = resolveObservation(toolCall, toolResult)
+                val observationCapture = resolveObservation(toolResult)
                 val observation = observationCapture.observation
                 val observedSnapshot = observationCapture.snapshot
                 val snapshotForNextTool = observedSnapshot ?: currentSnapshot
@@ -180,7 +185,6 @@ internal class TurnExecutionPhaseRunner(
         }
 
         private suspend fun resolveObservation(
-                toolCall: ToolCallRequest,
                 toolResult: ToolCallResult
         ): ObservationCapture {
                 if (toolResult is ToolCallResult.Success && toolResult.observation != null) {
@@ -193,8 +197,11 @@ internal class TurnExecutionPhaseRunner(
                         }
                 }
 
-                return runCatching { captureObservationWithSnapshot() }
-                        .getOrElse { e ->
+                return try {
+                        captureObservationWithSnapshot()
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                        throw e
+                } catch (e: Exception) {
                                 Log.w(TAG, "Post-action screen capture failed; falling back to text-only observation", e)
                                 ObservationCapture(
                                         observation = ToolObservation.TextOutput(formatToolResult(toolResult)),

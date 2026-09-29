@@ -12,7 +12,6 @@ def _bridge_config() -> BridgeConfig:
         package_name="id.steveimm.pocketpilot",
         activity="id.steveimm.pocketpilot/.app.MainActivity",
         server_base_url="http://localhost:8000/v1",
-        perception_mode="accessibility_only",
         platform_mode="accessibility",
         main_model="minimax-m2.5",
         max_turns=30,

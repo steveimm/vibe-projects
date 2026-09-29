@@ -14,7 +14,7 @@ class SessionCheckpointConfigSnapshotTest {
         val config = SessionConfig(
             mainModel = "local/model", llm = SessionLlmConfig("http://server-a:8000/v1"),
             actionDelayMs = 123, approvalMode = ApprovalMode.AUTO_APPROVE,
-            perceptionConfig = PerceptionConfig.Hybrid(), platformMode = PlatformMode.VIRTUAL_DISPLAY,
+            perceptionConfig = PerceptionConfig(), platformMode = PlatformMode.VIRTUAL_DISPLAY,
             debugMode = true, traceEnabled = true, traceRunId = "run", excludedTools = setOf("ask_user"),
         )
         val restored = config.toConfigSnapshot().toSessionConfig()

@@ -8,7 +8,6 @@ import id.steveimm.pocketpilot.llm.ModelCatalog
 internal data class AgentModelResolution(
         val llmClient: LLMClient,
         val modelId: String,
-        val supportsVision: Boolean
 )
 
 /** Resolves model runtime details for an agent execution. */
@@ -38,7 +37,6 @@ internal class AgentModelResolver(
                                 return AgentModelResolution(
                                         llmClient = catalogClient,
                                         modelId = entry.modelId,
-                                        supportsVision = entry.supportsVision
                                 )
                         }
                 }
@@ -50,7 +48,6 @@ internal class AgentModelResolver(
                 return AgentModelResolution(
                         llmClient = sessionLlmClient,
                         modelId = modelName,
-                        supportsVision = false
                 )
         }
 }

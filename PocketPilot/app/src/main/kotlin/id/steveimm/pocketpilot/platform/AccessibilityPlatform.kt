@@ -49,7 +49,7 @@ class AccessibilityPlatform(
 
     private val gestureInjector = AccessibilityGestureInjector(service, visualizer, overlayTouchGate)
 
-    private val screenshotCapturer = AccessibilityScreenshotCapturer(service, config, traceRecorder)
+    private val screenshotCapturer = AccessibilityScreenshotCapturer(service, config, traceRecorder, overlayTouchGate)
     private val outOfBoundsActionTargetCount = AtomicInteger(0)
 
     override suspend fun captureScreen(): ScreenSnapshot {
@@ -74,21 +74,15 @@ class AccessibilityPlatform(
             )
         }
 
-        val pc = config.perceptionConfig
         val timestamp = System.currentTimeMillis()
 
-        // 1. Always capture accessibility tree (for change detection, node finding, trace)
         val a11yResult = captureAccessibilityTree()
 
-        // 2. Screenshot capture (when config requires it OR trace is enabled for debugging)
-        val shouldCaptureScreenshot = pc.capturesScreenshot || traceRecorder.enabled
         val screenshotCapture =
-                screenshotCapturer.captureIfEnabled(enabled = shouldCaptureScreenshot)
+                screenshotCapturer.capture()
 
-        // 3. Only include screenshot in the snapshot if the perception config wants it
-        val image = if (pc.capturesScreenshot) screenshotCapture?.image else null
+        val image = screenshotCapture?.image
 
-        // 4. Build debug info
         val debug =
                 if (traceRecorder.enabled) {
                     ScreenSnapshotDebug(
@@ -103,7 +97,7 @@ class AccessibilityPlatform(
         val elements = a11yResult.elements
         Log.d(
                 TAG,
-                "Captured screen [${pc::class.simpleName}]: ${elements.size} elements, screenshot=${image != null}"
+                "Captured screen: ${elements.size} elements, screenshot=${image != null}"
         )
 
         return ScreenSnapshot(
@@ -422,25 +416,6 @@ class AccessibilityPlatform(
                 widthPixels = realMetrics.widthPixels,
                 heightPixels = realMetrics.heightPixels,
                 density = density
-        )
-    }
-
-    override fun showScrollVisualization(x: Int, y: Int, direction: String) {
-        val visualizer = visualizer ?: return
-        val trail =
-                ScrollVisualizationGeometry.compute(
-                        x = x,
-                        y = y,
-                        direction = direction,
-                        display = getDisplayInfo()
-                )
-                        ?: return
-        visualizer.showScrollAsSwipe(
-                startX = trail.startX,
-                startY = trail.startY,
-                endX = trail.endX,
-                endY = trail.endY,
-                durationMs = trail.durationMs
         )
     }
 

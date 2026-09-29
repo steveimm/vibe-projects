@@ -12,7 +12,6 @@ import androidx.compose.material.icons.rounded.SwipeVertical
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.UnfoldMore
 import androidx.compose.ui.graphics.vector.ImageVector
-import id.steveimm.pocketpilot.tool.MobileActionName
 import id.steveimm.pocketpilot.tool.ToolName
 
 data class ToolDisplay(
@@ -25,13 +24,10 @@ fun formatToolName(toolName: String): String = resolveToolDisplay(toolName).name
 fun getToolIcon(toolName: String): ImageVector = resolveToolDisplay(toolName).icon
 
 private fun resolveToolDisplay(toolName: String): ToolDisplay {
-    val action = MobileActionName.fromOrNull(toolName)
-    if (action != null) {
-        return ToolDisplay(action.displayName, iconForAction(action))
-    }
-
     return when (val tool = ToolName.from(toolName)) {
-        ToolName.MobileAction -> ToolDisplay(tool.displayName, Icons.Rounded.TouchApp)
+        ToolName.Tap, ToolName.LongPress -> ToolDisplay(tool.displayName, Icons.Rounded.TouchApp)
+        ToolName.Swipe -> ToolDisplay(tool.displayName, Icons.Rounded.SwipeVertical)
+        ToolName.TypeText -> ToolDisplay(tool.displayName, Icons.Rounded.Keyboard)
         ToolName.OpenApp -> ToolDisplay(tool.displayName, Icons.Rounded.Apps)
         ToolName.Wait -> ToolDisplay(tool.displayName, Icons.Rounded.HourglassEmpty)
         ToolName.SystemButton -> ToolDisplay(tool.displayName, Icons.Rounded.TouchApp)
@@ -39,17 +35,4 @@ private fun resolveToolDisplay(toolName: String): ToolDisplay {
         ToolName.TermuxShell -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
         is ToolName.Unknown -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
     }
-}
-
-private fun iconForAction(action: MobileActionName): ImageVector = when (action) {
-    MobileActionName.Click -> Icons.Rounded.TouchApp
-    MobileActionName.LongPress -> Icons.Rounded.TouchApp
-    MobileActionName.Type -> Icons.Rounded.Keyboard
-    MobileActionName.Scroll -> Icons.Rounded.UnfoldMore
-    MobileActionName.Swipe -> Icons.Rounded.SwipeVertical
-    MobileActionName.Back -> Icons.AutoMirrored.Rounded.ArrowBack
-    MobileActionName.Home -> Icons.Rounded.Home
-    MobileActionName.Wait -> Icons.Rounded.HourglassEmpty
-    MobileActionName.SystemButton -> Icons.Rounded.TouchApp
-    is MobileActionName.Unknown -> Icons.Rounded.Build
 }
