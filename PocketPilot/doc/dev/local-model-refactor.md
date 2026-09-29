@@ -84,4 +84,25 @@ Validation on the Android 15 ARM64 emulator with `qwen3.8-27b`:
 - The final About run's screenshots visibly exclude PocketPilot overlays; an ADB capture during execution confirms the controls are restored on the user's screen.
 - 974 release unit tests passed, release lint passed, device UI tests compiled, and the signed ARM64 release installed. Python suites passed 120 tests plus 22 Termux bridge tests. The ADB helper checks passed 19 cases. Replay JavaScript syntax and repository whitespace checks passed.
 
-The remaining acceptance check is a saved contact with multiple values, followed by reopening and verification.
+The complex contact acceptance check is recorded below.
+
+## Complex contact acceptance check
+
+The first contact run created and reopened `PocketPilot QA Contact` with all four requested values, but then used `ask_user` to ask permission to finish. The action-loop prompt said “exactly one tool call per response,” conflicting with the native no-tool completion path. It now says “at most one,” and explicitly requires final assistant text without tool calls. The help tool also excludes completion announcements and offers of more work.
+
+The corrected release was tested with a fresh request to create a new device-only contact, save it, leave the editor, reopen it, and verify:
+
+| Field | Verified value |
+| --- | --- |
+| Name | PocketPilot QA Verified |
+| Phone | +1 202-555-0148 |
+| Email | pocketpilot.verified@example.com |
+| Company | Local Model QA |
+
+The model completed in 18 turns and 120 seconds with 17 successful calls, zero tool failures, and no `ask_user` call. The trace shows field entry, scrolling, saving, returning to the list, and reopening the correct contact. It ended with native assistant content and no tool calls. Reasoning from prior turns remained in subsequent requests.
+
+Independent Contacts-provider reads confirmed all four values and `account_name=NULL`, `account_type=NULL`, `deleted=0`. Restarting Contacts and reopening the saved record confirmed persistence. The emulator retains the two clearly marked fictional test contacts. No call, message, or email was sent.
+
+Observed model limitation: after it had verified the reopened record, the model unnecessarily pressed Home three times before its native final answer. The contact task succeeded and terminated without intervention, but this run does not demonstrate optimal action efficiency or guarantee error-free model decisions.
+
+Final tested APK: signed, non-debuggable `id.steveimm.pocketpilot`, `arm64-v8a` only, existing signing certificate, 16 KB ZIP alignment verified, bundled Termux bridge identical to source. SHA-256: `49e7544bd0753cf2b638e75039f18f79384c4e4499ff414f7f23652044c5d21d`.

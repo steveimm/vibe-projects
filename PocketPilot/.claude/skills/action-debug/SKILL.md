@@ -8,7 +8,7 @@ description: Debug phone action failures by comparing model gesture calls, acces
 Use this when the chosen target appears correct but the phone does not perform the expected action. Use `/cog-tune` for model decisions and prompt/history problems.
 
 1. Read the run's `trace.jsonl`, the failing `tool_call_args` and `tool_result` artifacts, and the preceding screenshot. Correlate by call ID and turn number.
-2. Check the current [phone action contract](../../../doc/main/infra/tool/phone_actions.md). The model calls `tap`, `long_press`, `swipe`, or `type_text` directly. It sends one call per response, and gestures use normalized coordinates from 0 to 1000.
+2. Check the current [phone action contract](../../../doc/main/infra/tool/phone_actions.md). The model calls `tap`, `long_press`, `swipe`, or `type_text` directly. It sends at most one call per response, with no calls in its final answer, and gestures use normalized coordinates from 0 to 1000.
 3. Convert gesture coordinates to display pixels with `round(value / 1000 * (dimension - 1))`. Use `adb shell wm size` for the real display. Do not pass normalized values directly to `adb input` or the platform debug harness.
 4. Stop the active model task before manual reproduction. Restore the same screen, then compare ADB input with accessibility gesture injection. Verify actual before/after screens rather than relying on action acceptance alone.
 5. Fix the responsible layer and rerun the original model task. Record the request, model call, physical coordinates, observed result, and limitation.

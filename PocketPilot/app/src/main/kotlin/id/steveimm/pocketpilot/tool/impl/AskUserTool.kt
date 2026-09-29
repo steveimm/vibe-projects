@@ -30,7 +30,8 @@ Ask the user for help. Two types:
 - question: text answer.
 - action: physical intervention (CAPTCHA, biometric, login).
 
-Use only when truly blocked by missing info or required physical action. The system handles per-app approval automatically — do not duplicate it.
+Use only when blocked by missing information or required physical action. App-access approval is handled automatically.
+Do not use this to announce completion or offer more work. Finish with a final assistant answer without tool calls.
 """.trimIndent()
 
     override val parameterSchema: JSONObject = JSONObject().apply {

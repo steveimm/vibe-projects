@@ -1,6 +1,6 @@
 # Phone actions
 
-The model receives a screenshot and calls one tool per response. There is no action selector or semantic target selector.
+The model receives a screenshot and uses at most one tool call per response, or native assistant text alone to finish. There is no action selector or semantic target selector.
 
 | Tool | Parameters | Behavior |
 | --- | --- | --- |
