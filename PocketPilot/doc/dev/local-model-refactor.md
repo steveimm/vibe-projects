@@ -59,3 +59,11 @@ Trace summaries use stable `finished`, `error`, and `user_stopped` labels in the
 Validation: 1,116 release unit tests passed, release lint passed, device UI tests compiled, and the signed ARM64 release installed on the API 35 emulator. With `qwen3.8-27b`, an explicit `open_app` Settings request completed in 3 turns with 2 successful calls and a final answer. The screen showed Android Settings. Opening the absent `ZyphraTestApp927` completed in 2 turns with 1 failed call and a final explanation of the missing app, recorded as `finished`, not success.
 
 The first natural-language Settings run still chose `mobile_action(action=open_app)` and then incorrectly concluded app opening was unavailable. This remains evidence for the next action-schema simplification, not a successful task result.
+
+## Approval and overlay corrections found during gesture testing
+
+The Settings search component has no package label visible to PocketPilot. The old approval handler treated that metadata lookup failure as a user denial. Approval now displays the package name when its label is unavailable. This keeps the access decision with the user.
+
+After an accessibility-service reconnect while MainActivity was open, a new overlay controller could retain its default `MAIN_APP` location. Its hidden callback returned early because it had not seen the earlier visible callback. The hidden callback now updates location even in that reconnect state. The emulator reproduced this during QA setup, and the corrected build displayed the approval capsule over Settings search.
+
+With the request to enable Dark theme, the local model opened Settings, searched, tapped the result, changed the setting, waited, and returned a native final answer. The run finished in 7 turns with 6 successful calls and no tool failures. Android's independent `cmd uimode night` check reported `yes`.

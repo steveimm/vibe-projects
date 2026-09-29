@@ -102,7 +102,7 @@ class ServiceOverlayController(
     private var platformMode: PlatformMode = PlatformMode.ACCESSIBILITY
     private var userLocation = OverlayUserLocation.MAIN_APP
 
-    /** Sticky lifecycle flag set by MainActivity.onResume / onPause. */
+    /** Lifecycle guard for stale accessibility events while MainActivity is visible. */
     private var isMainAppResumed = false
 
     /** User preference: capsule or island while overlays are visible (A11y/VD). */
@@ -276,7 +276,6 @@ class ServiceOverlayController(
     /** MainActivity onStop callback. Releases the sticky MAIN_APP guard and, only if userLocation is still claiming MAIN_APP,
      * force-flips it to OTHER_APP since MainActivity is no longer on screen. */
     fun onMainAppHidden() {
-        if (!isMainAppResumed) return
         isMainAppResumed = false
         val next = resolveLocationOnMainAppHidden(userLocation)
         if (next != userLocation) {
@@ -347,16 +346,7 @@ class ServiceOverlayController(
     }
 
     fun onApprovalRequired(details: ApprovalDetails) {
-        val appLabel = resolveAppLabel(details.packageName) ?: run {
-            Log.w(logTag, "Approval package label unavailable: ${details.packageName}")
-            onApprovalResponse(
-                details.callId,
-                ApprovalDecision.DENIED,
-                ApprovalScope.SESSION,
-                details.packageName,
-            )
-            return
-        }
+        val appLabel = resolveAppLabel(details.packageName)
 
         Log.d(logTag, "onApprovalRequired: tool=${details.toolName}, app=$appLabel (${details.packageName}), callId=${details.callId}")
         stateHolder.onApprovalRequired(
@@ -370,14 +360,14 @@ class ServiceOverlayController(
         applyVisibility()
     }
 
-    private fun resolveAppLabel(packageName: String): String? =
+    private fun resolveAppLabel(packageName: String): String =
         try {
             packageManager.getApplicationLabel(
                 @Suppress("DEPRECATION")
                 packageManager.getApplicationInfo(packageName, 0)
-            ).toString().takeIf { it.isNotBlank() }
+            ).toString().ifBlank { packageName }
         } catch (_: PackageManager.NameNotFoundException) {
-            null
+            packageName
         }
 
     private fun handleWindowStateChangedInternal(
