@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Test
 
 /** Gap-filling transitions for [ChatEventReducer] not covered by [ChatEventReducerTest]: supplement-as-user-turn,
- * executed-without-proposal, non-success outcomes, error-without-open-agent, and turn-started buffer reset. */
+ * executed-without-proposal, non-success outcomes, error-without-open-agent, and separate text across model turns. */
 class ChatSupplementAndActionTransitionTest {
 
     private val sessionId = SessionId("s1")
@@ -28,14 +28,10 @@ class ChatSupplementAndActionTransitionTest {
     private class Fixture {
         val uiState = MutableStateFlow(ChatUiState())
         val messages = mutableStateListOf<ChatMessage>()
-        val buffer = StringBuilder()
-        var currentAgentId: String? = null
         val reducer = ChatEventReducer(
             uiState = uiState,
             messages = messages,
-            streamingBuffer = buffer,
             stateLock = Any(),
-            setCurrentAgentMessageId = { currentAgentId = it }
         )
     }
 
@@ -57,7 +53,6 @@ class ChatSupplementAndActionTransitionTest {
         assertThat(freshAgent.state).isEqualTo(AgentMessageState.Thinking)
         assertThat(freshAgent.contentBlocks).isEmpty()
         assertThat(freshAgent.id).isEqualTo("supplement-200")
-        assertThat(f.currentAgentId).isEqualTo("supplement-200")
     }
 
     @Test
@@ -75,8 +70,6 @@ class ChatSupplementAndActionTransitionTest {
     fun `executed without proposal synthesises action card in executed state`() {
         val f = Fixture()
         f.reducer.handle(TaskStarted(sessionId, 100L, taskId = "task-1", input = "go"))
-        // Seed the streaming buffer so the empty-buffer assertion below actually
-        // verifies the no-match clear path in ChatEventReducer (`streamingBuffer.clear()`).
         f.reducer.handle(MessageDelta(sessionId, 105L, turnId = "t1", delta = "stale text"))
 
         f.reducer.handle(
@@ -95,9 +88,7 @@ class ChatSupplementAndActionTransitionTest {
         assertThat(action.data.id).isEqualTo("a-orphan")
         assertThat(action.data.state).isEqualTo(ActionState.Success)
         assertThat(action.data.resultSummary).isEqualTo("clicked")
-        // The no-match branch in ChatEventReducer.handleActionExecuted clears the
-        // streaming buffer that the seeded MessageDelta populated above.
-        assertThat(f.buffer.toString()).isEmpty()
+        assertThat(agent.contentBlocks.filterIsInstance<ContentBlock.Text>().single().text).isEqualTo("stale text")
     }
 
     @Test
@@ -162,7 +153,7 @@ class ChatSupplementAndActionTransitionTest {
     }
 
     @Test
-    fun `turn started clears streaming buffer so next delta starts fresh`() {
+    fun `text from different turns stays separate`() {
         val f = Fixture()
         f.reducer.handle(TaskStarted(sessionId, 100L, taskId = "task-1", input = "go"))
         f.reducer.handle(MessageDelta(sessionId, 101L, turnId = "t1", delta = "first"))
@@ -170,10 +161,9 @@ class ChatSupplementAndActionTransitionTest {
         f.reducer.handle(TurnStarted(sessionId, 200L, turnId = "t2", turnNumber = 2))
         f.reducer.handle(MessageDelta(sessionId, 201L, turnId = "t2", delta = "second"))
 
-        // Buffer was cleared between turns, so the trailing text block reflects only "second".
         val agent = f.messages.last() as ChatMessage.Agent
         val texts = agent.contentBlocks.filterIsInstance<ContentBlock.Text>()
-        assertThat(texts.last().text).isEqualTo("second")
+        assertThat(texts.map { it.text }).containsExactly("first", "second").inOrder()
     }
 
     @Test

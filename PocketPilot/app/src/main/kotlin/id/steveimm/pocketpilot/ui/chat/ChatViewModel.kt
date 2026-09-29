@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import id.steveimm.pocketpilot.app.AgentService
 import id.steveimm.pocketpilot.history.SessionHistoryManager
 import id.steveimm.pocketpilot.history.model.MessageConverter
+import id.steveimm.pocketpilot.history.model.withFinalAnswer
 import id.steveimm.pocketpilot.history.model.MessageRecord
 import id.steveimm.pocketpilot.history.model.SessionInfo
 import id.steveimm.pocketpilot.protocol.*
@@ -78,20 +79,8 @@ private fun applyCompletionToBlocks(
     if (isError) {
         return blocks + ContentBlock.Text("⚠️ ${completionSummary(rawResult)}")
     }
-    val realAnswer = rawResult?.trim()?.takeIf { it.isNotBlank() }
-    val lastTextIndex = blocks.indexOfLast {
-        it is ContentBlock.Text && it.text.isNotBlank()
-    }
-    if (lastTextIndex >= 0) {
-        val existing = (blocks[lastTextIndex] as ContentBlock.Text).text
-        return blocks.mapIndexed { i, b ->
-            if (i == lastTextIndex) ContentBlock.FinalText(existing) else b
-        }
-    }
-    if (realAnswer != null) {
-        return blocks + ContentBlock.FinalText(realAnswer)
-    }
-    return blocks
+    val answer = rawResult?.takeIf { it.isNotBlank() } ?: return blocks
+    return MessageConverter.fromContentRecords(MessageConverter.toContentRecords(blocks).withFinalAnswer(answer))
 }
 
 internal fun updateActionBlockForExecution(
@@ -182,10 +171,7 @@ class ChatViewModel(
     val messages: List<ChatMessage>
         get() = _messages
 
-    // Streaming accumulator
-    private val streamingBuffer = StringBuilder()
     private val chatStateLock = Any()
-    private var currentAgentMessageId: String? = null
 
     // Active event collection job
     private var eventCollectionJob: kotlinx.coroutines.Job? = null
@@ -194,18 +180,14 @@ class ChatViewModel(
             ChatEventReducer(
                     uiState = _uiState,
                     messages = _messages,
-                    streamingBuffer = streamingBuffer,
                     stateLock = chatStateLock,
-                    setCurrentAgentMessageId = { currentAgentMessageId = it }
             )
     private val sessionHistoryController =
             ChatSessionHistoryController(
                     scope = viewModelScope,
                     sessionHistoryManager = sessionHistoryManager,
                     messages = _messages,
-                    streamingBuffer = streamingBuffer,
                     stateLock = chatStateLock,
-                    setCurrentAgentMessageId = { currentAgentMessageId = it },
                     uiState = _uiState,
             )
     val sessions: StateFlow<List<SessionInfo>> = sessionHistoryController.sessions
@@ -242,8 +224,6 @@ class ChatViewModel(
         val restoredMessages = MessageConverter.fromRecords(records)
         synchronized(chatStateLock) {
             _messages.clear()
-            streamingBuffer.clear()
-            currentAgentMessageId = null
             _messages.addAll(restoredMessages)
             _uiState.update { it.copy(showEmptyState = _messages.isEmpty()) }
         }

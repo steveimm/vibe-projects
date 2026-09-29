@@ -157,3 +157,22 @@ Live verification with `qwen3.8-27b` on the Android 15 emulator:
 The contact was `PocketPilot Schema QA`, `+1 202-555-0149`, `schema.qa@example.com`, company `Recovery Test`. Its account fields were null, confirming device-only storage. No call, message, or email was sent. A pair-schema-only serial test still missed the selectable Model row, which motivated the general interactive-control hints rather than claiming schema changes alone solved navigation.
 
 Validation: 985 release unit tests, release lint, and device UI test compilation passed. Replay compilation passed for navigation and exhausted-recovery traces. The installed signed ARM64-only release passed signing, non-debuggable, alignment, and bundled-bridge checks. APK SHA-256: `b8568c71604247678cd66393d1c35a214c3cf51f56509e406e4d3ea1da9c8b7c`.
+
+## Chat rendering and interleaved reasoning
+
+Existing greeting, serial-number, and contact sessions exposed separate presentation defects. A late reasoning chunk such as `.\n` or `\n` split an answer into multiple text blocks and added another reasoning disclosure. The contact trace contained fragments such as `The create`, a newline-only reasoning block, and ` contact form is open...`. Live completion promoted only the last text fragment instead of the full returned answer. Saved completion retained the full answer but could also retain its duplicated prefix. Final answers used plain `Text`, exposing Markdown delimiters and leading blank lines.
+
+Live chat and recording now share stream-merging and completion logic. Text and reasoning retain model-turn IDs, merge independently within action boundaries, and survive a UI rebind without losing the accumulated prefix. Completion uses the canonical answer and preserves prior tool narration. Removed the separate UI string buffer and unused current-message callback. Error and stopped partial responses remain partial.
+
+History now loads its recorded blocks directly. Removed caption compatibility and plain-text final-answer migration. Existing malformed records are not repaired, per the requested scope. Newly recorded sessions retain explicit stream boundaries.
+
+Completed assistant text and reasoning render as selectable Markdown, with compact heading styles and leading blank lines removed only for presentation. Active streaming remains plain text with its cursor, then formats when the block finishes. The renderer parses asynchronously and has an explicit no-op image transformer. Only the renderer, Markdown parser, and immutable collections dependencies were added, with no image-fetching module or existing dependency upgrades. The generated license inventory was refreshed by Gradle.
+
+Verification on the signed ARM64 release:
+
+- Reopened the existing contact session and verified Markdown field labels and numbered items. The old stream fragments provided the reproduction evidence, but no migration of those records is included.
+- Asked the local model for a heading, bold status, inline code, and a three-item numbered list. It completed in one turn, 3.95 seconds, with zero tools and no screenshots. The rendered answer contained all requested formatting.
+- Expanded the native reasoning separately and reloaded the formatted answer from history. The saved answer and reasoning matched their trace artifacts byte for byte. The inspected older sessions' stored message blocks were unchanged.
+- 983 release unit tests passed, including interleaved chunks, rebind during streaming, canonical completion, and stopped/error boundaries. Release lint passed and device UI tests compiled. Compatibility-only tests were removed.
+
+The installed APK passed the existing-signature, ARM64-only, non-debuggable, 16 KB alignment, and bundled-bridge checks. SHA-256: `5a2b96da8f8cdb4e38af4e202b1065eefb5556669ad218340b77d9acdeb43bcf`.

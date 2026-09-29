@@ -39,7 +39,7 @@ internal class AgentServiceEventHandler(
                 overlay?.onTaskStarted(event.taskId, event.input)
             }
             is MessageDelta -> {
-                recordingService?.appendTextDelta(event.delta)
+                recordingService?.appendTextDelta(event.turnId, event.delta)
             }
             is ReasoningDelta -> recordingService?.appendReasoningDelta(event.turnId, event.delta)
             is TurnPhaseChanged -> {

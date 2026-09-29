@@ -41,9 +41,9 @@ sealed interface ContentBlockRecord {
     /** Text content from the LLM response. */
     @Serializable
     @SerialName("text")
-    data class Text(val text: String) : ContentBlockRecord
+    data class Text(val text: String, val turnId: String? = null) : ContentBlockRecord
 
-    /** Concluding answer (per Turn.kt:205-209 stop criteria) — promoted from [Text] by the chat reducer when the row sealed. */
+    /** Canonical closing answer from task completion. */
     @Serializable
     @SerialName("final_text")
     data class FinalText(val text: String) : ContentBlockRecord
@@ -51,12 +51,7 @@ sealed interface ContentBlockRecord {
     /** Reasoning received from the model server. */
     @Serializable
     @SerialName("reasoning")
-    data class Reasoning(val text: String) : ContentBlockRecord
-
-    /** Read older captions as ordinary text; new sessions never write this type. */
-    @Serializable
-    @SerialName("thought")
-    data class LegacyStepCaption(val text: String) : ContentBlockRecord
+    data class Reasoning(val text: String, val turnId: String? = null) : ContentBlockRecord
 
     /** An action card (tool execution). */
     @Serializable
@@ -67,6 +62,7 @@ sealed interface ContentBlockRecord {
         val description: String,
         /** Action state: "proposed", "executing", "success", "failed", "skipped" */
         val state: String,
-        val resultSummary: String? = null
+        val resultSummary: String? = null,
+        val expandedContent: String? = null,
     ) : ContentBlockRecord
 }

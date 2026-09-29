@@ -29,15 +29,12 @@ class ChatSessionHistoryControllerTest {
         manager: SessionHistoryManager?,
         messages: androidx.compose.runtime.snapshots.SnapshotStateList<ChatMessage> = mutableStateListOf(),
         uiState: MutableStateFlow<ChatUiState> = MutableStateFlow(ChatUiState()),
-        agentMessageIds: MutableList<String?> = mutableListOf(),
     ): ChatSessionHistoryController {
         return ChatSessionHistoryController(
             scope = scope,
             sessionHistoryManager = manager,
             messages = messages,
-            streamingBuffer = StringBuilder("pending"),
             stateLock = Any(),
-            setCurrentAgentMessageId = { agentMessageIds.add(it) },
             uiState = uiState,
         )
     }
@@ -85,19 +82,16 @@ class ChatSessionHistoryControllerTest {
             ChatMessage.User(id = "u1", text = "old", timestamp = 0L)
         )
         val uiState = MutableStateFlow(ChatUiState(showEmptyState = false))
-        val agentIds = mutableListOf<String?>()
         val controller = buildController(
             manager,
             messages = messages,
             uiState = uiState,
-            agentMessageIds = agentIds,
         )
 
         controller.startNewSession()
 
         assertThat(messages).isEmpty()
         assertThat(uiState.value.showEmptyState).isTrue()
-        assertThat(agentIds).containsExactly(null)
         verify(exactly = 0) { manager.startNewSession(any(), any()) }
     }
 

@@ -3,13 +3,13 @@ package id.steveimm.pocketpilot.ui.chat.model
 /** ContentBlock - A unit of content in an agent message. */
 sealed interface ContentBlock {
     /** Streaming text from the LLM mid-turn (narrative, may be interrupted). */
-    data class Text(val text: String) : ContentBlock
+    data class Text(val text: String, val turnId: String? = null) : ContentBlock
 
     /** The row's concluding answer. Promoted from [Text] by the reducer. */
     data class FinalText(val text: String) : ContentBlock
 
     /** Reasoning received from the model server. Chunks are merged within each turn. */
-    data class Reasoning(val text: String) : ContentBlock
+    data class Reasoning(val text: String, val turnId: String? = null) : ContentBlock
 
     /** An action card (tool execution). */
     data class Action(val data: ActionCardData) : ContentBlock

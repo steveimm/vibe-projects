@@ -18,19 +18,19 @@ class AgentMessageBufferTest {
         val buffer = AgentMessageBuffer()
         buffer.start("msg-1", timestamp = 100L)
 
-        buffer.appendText("hello")
+        buffer.appendText("t1", "hello")
 
         val snapshot = buffer.buildPartialSnapshot()
         assertThat(snapshot).isNotNull()
         assertThat(snapshot?.id).isEqualTo("msg-1")
-        assertThat(snapshot?.blocks).containsExactly(ContentBlockRecord.Text("hello"))
+        assertThat(snapshot?.blocks).containsExactly(ContentBlockRecord.Text("hello", "t1"))
     }
 
     @Test
     fun `recordAction finalizes text before action`() {
         val buffer = AgentMessageBuffer()
         buffer.start("msg-2", timestamp = 200L)
-        buffer.appendText("text")
+        buffer.appendText("t1", "text")
 
         buffer.recordAction(
             ContentBlockRecord.Action(
@@ -44,7 +44,7 @@ class AgentMessageBufferTest {
 
         val snapshot = buffer.finalizeSnapshot()
         assertThat(snapshot?.blocks).containsExactly(
-            ContentBlockRecord.Text("text"),
+            ContentBlockRecord.Text("text", "t1"),
             ContentBlockRecord.Action(
                 id = "a1",
                 toolName = "tap",
@@ -89,7 +89,7 @@ class AgentMessageBufferTest {
         // draining, the snapshot would contain Text("Done") + FinalText("Done"). uxfb-3 codex final review HIGH.
         val buffer = AgentMessageBuffer()
         buffer.start("msg", timestamp = 1L)
-        buffer.appendText("Hello, here is the answer.")
+        buffer.appendText("t1", "Hello, here is the answer.")
         buffer.recordFinalAnswer("Hello, here is the answer.")
 
         val snapshot = buffer.finalizeSnapshot()
@@ -103,7 +103,7 @@ class AgentMessageBufferTest {
         // The final event may arrive after earlier streamed prose.
         val buffer = AgentMessageBuffer()
         buffer.start("msg", timestamp = 1L)
-        buffer.appendText("Trying to open the app...")
+        buffer.appendText("t1", "Trying to open the app...")
         buffer.recordFinalAnswer("Done — opened Settings.")
 
         val snapshot = buffer.finalizeSnapshot()

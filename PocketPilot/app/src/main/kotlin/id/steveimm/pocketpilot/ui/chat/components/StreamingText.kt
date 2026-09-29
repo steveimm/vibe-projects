@@ -33,10 +33,9 @@ fun StreamingText(
     textColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
     if (!isStreaming) {
-        Text(
+        ChatMarkdown(
             text = text,
             modifier = modifier,
-            style = MaterialTheme.typography.bodyLarge,
             color = textColor
         )
         return
@@ -49,7 +48,7 @@ fun StreamingText(
 
     val annotated = remember(text) {
         buildAnnotatedString {
-            append(text)
+            append(text.trimStart('\n', '\r'))
             appendInlineContent(CURSOR_ID, "|")
         }
     }

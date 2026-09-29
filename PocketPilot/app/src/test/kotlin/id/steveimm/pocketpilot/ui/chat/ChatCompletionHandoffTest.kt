@@ -21,14 +21,10 @@ class ChatCompletionHandoffTest {
     private class Fixture {
         val uiState = MutableStateFlow(ChatUiState())
         val messages = mutableStateListOf<ChatMessage>()
-        val buffer = StringBuilder()
-        var currentAgentId: String? = null
         val reducer = ChatEventReducer(
             uiState = uiState,
             messages = messages,
-            streamingBuffer = buffer,
             stateLock = Any(),
-            setCurrentAgentMessageId = { currentAgentId = it }
         )
     }
 

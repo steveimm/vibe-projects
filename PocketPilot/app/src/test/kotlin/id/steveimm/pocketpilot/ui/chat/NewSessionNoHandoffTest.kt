@@ -128,16 +128,13 @@ class NewSessionNoHandoffTest {
         val uiState = MutableStateFlow(
             id.steveimm.pocketpilot.ui.chat.model.ChatUiState(showEmptyState = false)
         )
-        val agentIds = mutableListOf<String?>()
         val controller = ChatSessionHistoryController(
             scope = kotlinx.coroutines.test.TestScope(
                 kotlinx.coroutines.test.UnconfinedTestDispatcher()
             ),
             sessionHistoryManager = null,
             messages = messages,
-            streamingBuffer = StringBuilder("stale"),
             stateLock = Any(),
-            setCurrentAgentMessageId = { agentIds.add(it) },
             uiState = uiState,
         )
 
@@ -150,6 +147,5 @@ class NewSessionNoHandoffTest {
             messages.filterIsInstance<ChatMessage.Agent>().any { it.handoff != null }
         ).isFalse()
         // Current agent message id was reset.
-        assertThat(agentIds).containsExactly(null)
     }
 }

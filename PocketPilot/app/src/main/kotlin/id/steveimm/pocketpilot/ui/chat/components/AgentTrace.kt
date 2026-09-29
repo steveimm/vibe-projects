@@ -38,15 +38,16 @@ import id.steveimm.pocketpilot.ui.theme.pocketPilot
 @Composable
 internal fun ExpandedTrace(blocks: List<ContentBlock>, state: AgentMessageState) {
     val spacing = MaterialTheme.pocketPilot.spacing
-    val lastTextIndex = blocks.indexOfLast { it is ContentBlock.Text }
     Column(verticalArrangement = Arrangement.spacedBy(spacing.md), modifier = Modifier.fillMaxWidth()) {
         blocks.forEachIndexed { index, block ->
             when (block) {
-                is ContentBlock.Reasoning -> ReasoningBlock(block.text)
+                is ContentBlock.Reasoning -> ReasoningBlock(
+                    block.text, state == AgentMessageState.Streaming && index == blocks.lastIndex,
+                )
                 is ContentBlock.Action -> ActionRow(block.data)
                 is ContentBlock.Text -> StreamingText(
                     text = block.text,
-                    isStreaming = state == AgentMessageState.Streaming && index == lastTextIndex,
+                    isStreaming = state == AgentMessageState.Streaming && index == blocks.lastIndex,
                     textColor = MaterialTheme.colorScheme.onSurface,
                 )
                 is ContentBlock.FinalText -> Unit
@@ -56,13 +57,16 @@ internal fun ExpandedTrace(blocks: List<ContentBlock>, state: AgentMessageState)
 }
 
 @Composable
-private fun ReasoningBlock(text: String) {
+private fun ReasoningBlock(text: String, isStreaming: Boolean) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Column {
         TextButton(onClick = { expanded = !expanded }) {
             Text(if (expanded) "Hide model reasoning" else "Show model reasoning")
         }
-        if (expanded) SelectionContainer { Text(text, style = MaterialTheme.typography.bodyMedium) }
+        if (expanded) SelectionContainer {
+            if (isStreaming) Text(text.trimStart('\n', '\r'), style = MaterialTheme.typography.bodyMedium)
+            else ChatMarkdown(text, style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }
 

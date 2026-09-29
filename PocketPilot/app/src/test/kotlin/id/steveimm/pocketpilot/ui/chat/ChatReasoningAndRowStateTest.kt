@@ -28,14 +28,10 @@ class ChatReasoningAndRowStateTest {
     private class Fixture {
         val uiState = MutableStateFlow(ChatUiState())
         val messages = mutableStateListOf<ChatMessage>()
-        val buffer = StringBuilder()
-        var currentAgentId: String? = null
         val reducer = ChatEventReducer(
             uiState = uiState,
             messages = messages,
-            streamingBuffer = buffer,
             stateLock = Any(),
-            setCurrentAgentMessageId = { currentAgentId = it }
         )
     }
 
@@ -49,12 +45,12 @@ class ChatReasoningAndRowStateTest {
         f.reducer.handle(ReasoningDelta(sessionId, 113L, turnId = "t2", delta = "New turn."))
         val blocks = (f.messages.last() as ChatMessage.Agent).contentBlocks
         assertThat(blocks).containsExactly(
-            ContentBlock.Reasoning("First inspect."), ContentBlock.Text("Done."), ContentBlock.Reasoning("New turn."),
+            ContentBlock.Reasoning("First inspect.", "t1"), ContentBlock.Text("Done.", "t1"), ContentBlock.Reasoning("New turn.", "t2"),
         ).inOrder()
     }
 
     @Test
-    fun `thought update appends a Thought block`() {
+    fun `reasoning update appends a reasoning block`() {
         val f = Fixture()
         f.reducer.handle(TaskStarted(sessionId, 100L, taskId = "task-1", input = "go"))
 
@@ -66,7 +62,7 @@ class ChatReasoningAndRowStateTest {
     }
 
     @Test
-    fun `multiple thought updates produce multiple Thought blocks in order`() {
+    fun `reasoning from different turns produces separate blocks`() {
         val f = Fixture()
         f.reducer.handle(TaskStarted(sessionId, 100L, taskId = "task-1", input = "go"))
 
@@ -98,18 +94,17 @@ class ChatReasoningAndRowStateTest {
     }
 
     @Test
-    fun `text after thought lands in a new Text block, not appended`() {
+    fun `interleaved reasoning does not split the answer`() {
         val f = Fixture()
         f.reducer.handle(TaskStarted(sessionId, 100L, taskId = "task-1", input = "go"))
-        f.reducer.handle(MessageDelta(sessionId, 105L, turnId = "t1", delta = "first"))
-        f.reducer.handle(ReasoningDelta(sessionId, 110L, turnId = "t110", delta = "rethinking"))
-        f.reducer.handle(MessageDelta(sessionId, 115L, turnId = "t1", delta = "second"))
+        f.reducer.handle(MessageDelta(sessionId, 105L, turnId = "t1", delta = "Hello"))
+        f.reducer.handle(ReasoningDelta(sessionId, 110L, turnId = "t1", delta = "A greeting."))
+        f.reducer.handle(MessageDelta(sessionId, 115L, turnId = "t1", delta = ", world."))
 
         val agent = f.messages.last() as ChatMessage.Agent
-        assertThat(agent.contentBlocks).hasSize(3)
-        assertThat((agent.contentBlocks[0] as ContentBlock.Text).text).isEqualTo("first")
-        assertThat(agent.contentBlocks[1]).isInstanceOf(ContentBlock.Reasoning::class.java)
-        assertThat((agent.contentBlocks[2] as ContentBlock.Text).text).isEqualTo("second")
+        assertThat(agent.contentBlocks).containsExactly(
+            ContentBlock.Reasoning("A greeting.", "t1"), ContentBlock.Text("Hello, world.", "t1"),
+        ).inOrder()
     }
 
     @Test
@@ -177,7 +172,7 @@ class ChatReasoningAndRowStateTest {
     }
 
     @Test
-    fun `thought after action executed appends a new Thought block, not into action`() {
+    fun `reasoning after an action creates a separate block`() {
         val f = Fixture()
         f.reducer.handle(TaskStarted(sessionId, 100L, taskId = "task-1", input = "go"))
         f.reducer.handle(

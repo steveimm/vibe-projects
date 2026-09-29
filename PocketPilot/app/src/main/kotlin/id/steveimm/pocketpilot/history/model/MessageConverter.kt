@@ -22,20 +22,7 @@ object MessageConverter {
             is ChatMessage.Agent -> MessageRecord.Agent(
                 id = message.id,
                 timestamp = message.timestamp,
-                contentBlocks = message.contentBlocks.map { block ->
-                    when (block) {
-                        is ContentBlock.Text -> ContentBlockRecord.Text(block.text)
-                        is ContentBlock.FinalText -> ContentBlockRecord.FinalText(block.text)
-                        is ContentBlock.Reasoning -> ContentBlockRecord.Reasoning(block.text)
-                        is ContentBlock.Action -> ContentBlockRecord.Action(
-                            id = block.data.id,
-                            toolName = block.data.toolName,
-                            description = block.data.description,
-                            state = block.data.state.name.lowercase(),
-                            resultSummary = block.data.resultSummary
-                        )
-                    }
-                },
+                contentBlocks = toContentRecords(message.contentBlocks),
                 isComplete = message.state == AgentMessageState.Complete,
                 completedTimestamp = message.completedTimestamp,
                 rowState = message.rowState.name.lowercase()
@@ -52,33 +39,50 @@ object MessageConverter {
                 text = record.text
             )
             is MessageRecord.Agent -> {
-                val rawBlocks = record.contentBlocks.map { block ->
-                    when (block) {
-                        is ContentBlockRecord.Text -> ContentBlock.Text(block.text)
-                        is ContentBlockRecord.FinalText -> ContentBlock.FinalText(block.text)
-                        is ContentBlockRecord.Reasoning -> ContentBlock.Reasoning(block.text)
-                        is ContentBlockRecord.LegacyStepCaption -> ContentBlock.Text(block.text)
-                        is ContentBlockRecord.Action -> ContentBlock.Action(
-                            ActionCardData(
-                                id = block.id,
-                                toolName = formatToolName(block.toolName),
-                                description = block.description,
-                                state = parseActionState(block.state),
-                                resultSummary = block.resultSummary
-                            )
-                        )
-                    }
-                }
                 ChatMessage.Agent(
                     id = record.id,
                     timestamp = record.timestamp,
-                    contentBlocks = migrateLegacyFinalText(rawBlocks, record.isComplete),
+                    contentBlocks = fromContentRecords(record.contentBlocks),
                     state = if (record.isComplete) AgentMessageState.Complete else AgentMessageState.Streaming,
                     rowState = parseRowState(record.rowState, record.isComplete),
                     userPrompt = userPrompt,
                     completedTimestamp = record.completedTimestamp
                 )
             }
+        }
+    }
+
+    fun toContentRecords(blocks: List<ContentBlock>): List<ContentBlockRecord> = blocks.map { block ->
+        when (block) {
+            is ContentBlock.Text -> ContentBlockRecord.Text(block.text, block.turnId)
+            is ContentBlock.FinalText -> ContentBlockRecord.FinalText(block.text)
+            is ContentBlock.Reasoning -> ContentBlockRecord.Reasoning(block.text, block.turnId)
+            is ContentBlock.Action -> ContentBlockRecord.Action(
+                id = block.data.id,
+                toolName = block.data.toolName,
+                description = block.data.description,
+                state = block.data.state.name.lowercase(),
+                resultSummary = block.data.resultSummary,
+                expandedContent = block.data.expandedContent,
+            )
+        }
+    }
+
+    fun fromContentRecords(blocks: List<ContentBlockRecord>): List<ContentBlock> = blocks.map { block ->
+        when (block) {
+            is ContentBlockRecord.Text -> ContentBlock.Text(block.text, block.turnId)
+            is ContentBlockRecord.FinalText -> ContentBlock.FinalText(block.text)
+            is ContentBlockRecord.Reasoning -> ContentBlock.Reasoning(block.text, block.turnId)
+            is ContentBlockRecord.Action -> ContentBlock.Action(
+                ActionCardData(
+                    id = block.id,
+                    toolName = formatToolName(block.toolName),
+                    description = block.description,
+                    state = parseActionState(block.state),
+                    resultSummary = block.resultSummary,
+                    expandedContent = block.expandedContent,
+                )
+            )
         }
     }
 
@@ -115,23 +119,6 @@ object MessageConverter {
             "error" -> RowState.Error
             null -> if (isComplete) RowState.Complete else RowState.Live
             else -> if (isComplete) RowState.Complete else RowState.Live
-        }
-    }
-
-    /** Pre-uxfb-3 history persisted every closing answer as ContentBlockRecord.Text. */
-    private fun migrateLegacyFinalText(
-        blocks: List<ContentBlock>,
-        isComplete: Boolean
-    ): List<ContentBlock> {
-        if (!isComplete) return blocks
-        if (blocks.any { it is ContentBlock.FinalText }) return blocks
-        val lastTextIndex = blocks.indexOfLast {
-            it is ContentBlock.Text && it.text.isNotBlank()
-        }
-        if (lastTextIndex < 0) return blocks
-        val text = (blocks[lastTextIndex] as ContentBlock.Text).text
-        return blocks.mapIndexed { i, b ->
-            if (i == lastTextIndex) ContentBlock.FinalText(text) else b
         }
     }
 }

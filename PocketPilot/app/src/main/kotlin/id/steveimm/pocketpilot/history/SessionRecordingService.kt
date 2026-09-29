@@ -144,13 +144,13 @@ class SessionRecordingService(
     }
 
     /** Append text delta to current agent message. */
-    fun appendTextDelta(delta: String) {
+    fun appendTextDelta(turnId: String, delta: String) {
         synchronized(stateLock) {
             if (!agentMessageBuffer.hasActiveMessage()) {
                 Log.w(TAG, "No active agent message for text delta")
                 return
             }
-            agentMessageBuffer.appendText(delta)
+            agentMessageBuffer.appendText(turnId, delta)
         }
         // Don't save on every delta - wait for action or completion
     }

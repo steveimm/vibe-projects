@@ -161,6 +161,7 @@ dependencies {
     // Material 3
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
+    implementation("com.mikepenz:multiplatform-markdown-renderer-m3:0.33.0")
 
     // Lucide icons
     implementation("com.composables:icons-lucide-cmp:2.2.1")

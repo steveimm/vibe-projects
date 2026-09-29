@@ -18,9 +18,7 @@ class ChatSessionHistoryController(
     private val scope: CoroutineScope,
     private val sessionHistoryManager: SessionHistoryManager?,
     private val messages: SnapshotStateList<ChatMessage>,
-    private val streamingBuffer: StringBuilder,
     private val stateLock: Any,
-    private val setCurrentAgentMessageId: (String?) -> Unit,
     private val uiState: MutableStateFlow<ChatUiState>,
 ) {
     companion object {
@@ -33,8 +31,6 @@ class ChatSessionHistoryController(
     fun clearConversation() {
         synchronized(stateLock) {
             messages.clear()
-            streamingBuffer.clear()
-            setCurrentAgentMessageId(null)
             uiState.update { it.copy(showEmptyState = true) }
         }
     }
@@ -55,8 +51,6 @@ class ChatSessionHistoryController(
                     val restoredMessages = MessageConverter.fromRecords(data.session.messages)
                     synchronized(stateLock) {
                         messages.clear()
-                        streamingBuffer.clear()
-                        setCurrentAgentMessageId(null)
                         messages.addAll(restoredMessages)
                         uiState.update { it.copy(showEmptyState = messages.isEmpty()) }
                     }

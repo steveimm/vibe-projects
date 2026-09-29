@@ -57,7 +57,7 @@ class SessionRecordingServiceTest {
 
         service.recordUserMessage(id = "u1", timestamp = 100L, text = "short summary")
         service.startAgentMessage(id = "a1", timestamp = 120L)
-        service.appendTextDelta("done")
+        service.appendTextDelta("t1", "done")
         service.completeAgentMessage()
         service.recordTaskOutcome(TaskOutcome.FINISHED)
         service.completeSession()
@@ -82,7 +82,7 @@ class SessionRecordingServiceTest {
         val fileName = requireNotNull(service.getCurrentFileName())
 
         service.startAgentMessage(id = "a1", timestamp = 100L)
-        service.appendTextDelta("doing it")
+        service.appendTextDelta("t1", "doing it")
         service.recordAction(
             actionId = "act-1",
             toolName = "tap",
@@ -98,7 +98,7 @@ class SessionRecordingServiceTest {
         val agent = record.messages.filterIsInstance<MessageRecord.Agent>().single()
         assertThat(agent.isComplete).isFalse()
         assertThat(agent.contentBlocks).containsAtLeast(
-            id.steveimm.pocketpilot.history.model.ContentBlockRecord.Text("doing it"),
+            id.steveimm.pocketpilot.history.model.ContentBlockRecord.Text("doing it", "t1"),
             id.steveimm.pocketpilot.history.model.ContentBlockRecord.Action(
                 id = "act-1",
                 toolName = "tap",
@@ -121,7 +121,7 @@ class SessionRecordingServiceTest {
 
         service.recordUserMessage(id = "u1", timestamp = 100L, text = "hello")
         service.startAgentMessage(id = "a1", timestamp = 120L)
-        service.appendTextDelta("final output")
+        service.appendTextDelta("t1", "final output")
         service.completeSession()
 
         advanceTimeBy(600L)
@@ -132,7 +132,7 @@ class SessionRecordingServiceTest {
         assertThat(agentMessages).hasSize(1)
         assertThat(agentMessages.single().isComplete).isTrue()
         assertThat(agentMessages.single().contentBlocks)
-            .contains(id.steveimm.pocketpilot.history.model.ContentBlockRecord.Text("final output"))
+            .contains(id.steveimm.pocketpilot.history.model.ContentBlockRecord.Text("final output", "t1"))
     }
 
     @Test
@@ -188,7 +188,7 @@ class SessionRecordingServiceTest {
 
         // Start an agent message with content
         service.startAgentMessage(id = "a1", timestamp = 100L)
-        service.appendTextDelta("agent response")
+        service.appendTextDelta("t1", "agent response")
 
         // Recording a user message should finalize the agent message AND preserve it
         service.recordUserMessage(id = "u1", timestamp = 200L, text = "follow up")
@@ -201,7 +201,7 @@ class SessionRecordingServiceTest {
         val userMessages = record.messages.filterIsInstance<MessageRecord.User>()
         assertThat(agentMessages).hasSize(1)
         assertThat(agentMessages.single().contentBlocks)
-            .contains(id.steveimm.pocketpilot.history.model.ContentBlockRecord.Text("agent response"))
+            .contains(id.steveimm.pocketpilot.history.model.ContentBlockRecord.Text("agent response", "t1"))
         assertThat(userMessages).hasSize(1)
         assertThat(userMessages.single().text).isEqualTo("follow up")
     }

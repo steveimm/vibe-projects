@@ -1,6 +1,9 @@
 package id.steveimm.pocketpilot.ui.chat
 
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import id.steveimm.pocketpilot.history.model.MessageConverter
+import id.steveimm.pocketpilot.history.model.appendTextDelta
+import id.steveimm.pocketpilot.history.model.appendReasoningDelta
 import id.steveimm.pocketpilot.protocol.ActionExecuted
 import id.steveimm.pocketpilot.protocol.ActionOutcome
 import id.steveimm.pocketpilot.protocol.ActionProposed
@@ -12,7 +15,6 @@ import id.steveimm.pocketpilot.protocol.TaskCompleted
 import id.steveimm.pocketpilot.protocol.TaskStarted
 import id.steveimm.pocketpilot.protocol.ReasoningDelta
 import id.steveimm.pocketpilot.protocol.TurnPhaseChanged
-import id.steveimm.pocketpilot.protocol.TurnStarted
 import id.steveimm.pocketpilot.ui.chat.model.ActionCardData
 import id.steveimm.pocketpilot.ui.chat.model.ActionState
 import id.steveimm.pocketpilot.ui.chat.model.AgentMessageState
@@ -28,21 +30,12 @@ import kotlinx.coroutines.flow.update
 internal class ChatEventReducer(
     private val uiState: MutableStateFlow<ChatUiState>,
     private val messages: SnapshotStateList<ChatMessage>,
-    private val streamingBuffer: StringBuilder,
     private val stateLock: Any,
-    private val setCurrentAgentMessageId: (String?) -> Unit
 ) {
-    private var reasoningTurnId: String? = null
-
-    companion object {
-        private const val TAG = "ChatViewModel"
-    }
-
     fun handle(event: AgentEvent) {
         synchronized(stateLock) {
             when (event) {
                 is TaskStarted -> handleTaskStarted(event)
-                is TurnStarted -> handleTurnStarted(event)
                 is TurnPhaseChanged -> Unit
                 is MessageDelta -> handleMessageDelta(event)
                 is ReasoningDelta -> handleReasoningDelta(event)
@@ -61,44 +54,20 @@ internal class ChatEventReducer(
         insertUserTurn(event.input, event.timestamp, agentId = event.taskId)
     }
 
-    private fun handleTurnStarted(event: TurnStarted) {
-        android.util.Log.d(TAG, "TurnStarted: turn=${event.turnNumber}, clearing buffer")
-        streamingBuffer.clear()
-    }
-
     private fun handleMessageDelta(event: MessageDelta) {
-        android.util.Log.d(TAG, "MessageDelta received: turnId=${event.turnId}, delta=${event.delta.take(30)}...")
-        streamingBuffer.append(event.delta)
-
+        if (event.delta.isEmpty()) return
         updateLastAgentMessage { msg ->
-            val updatedBlocks = updateOrAppendTextBlock(msg.contentBlocks, streamingBuffer.toString())
-            msg.copy(contentBlocks = updatedBlocks, state = AgentMessageState.Streaming)
-        }
-    }
-
-    private fun updateOrAppendTextBlock(blocks: List<ContentBlock>, text: String): List<ContentBlock> {
-        if (blocks.isEmpty()) return listOf(ContentBlock.Text(text))
-        val lastBlock = blocks.last()
-        return if (lastBlock is ContentBlock.Text) {
-            blocks.dropLast(1) + ContentBlock.Text(text)
-        } else {
-            blocks + ContentBlock.Text(text)
+            val blocks = MessageConverter.toContentRecords(msg.contentBlocks).appendTextDelta(event.turnId, event.delta)
+            msg.copy(contentBlocks = MessageConverter.fromContentRecords(blocks), state = AgentMessageState.Streaming)
         }
     }
 
     private fun handleReasoningDelta(event: ReasoningDelta) {
         if (event.delta.isEmpty()) return
         updateLastAgentMessage { msg ->
-            val last = msg.contentBlocks.lastOrNull()
-            val blocks = if (last is ContentBlock.Reasoning && reasoningTurnId == event.turnId) {
-                msg.contentBlocks.dropLast(1) + last.copy(text = last.text + event.delta)
-            } else {
-                msg.contentBlocks + ContentBlock.Reasoning(event.delta)
-            }
-            reasoningTurnId = event.turnId
-            msg.copy(contentBlocks = blocks, state = AgentMessageState.Streaming)
+            val blocks = MessageConverter.toContentRecords(msg.contentBlocks).appendReasoningDelta(event.turnId, event.delta)
+            msg.copy(contentBlocks = MessageConverter.fromContentRecords(blocks), state = AgentMessageState.Streaming)
         }
-        streamingBuffer.clear()
     }
 
     private fun handleActionProposed(event: ActionProposed) {
@@ -111,7 +80,6 @@ internal class ChatEventReducer(
                 resultSummary = null
             )
 
-        streamingBuffer.clear()
         updateLastAgentMessage { msg ->
             msg.copy(contentBlocks = msg.contentBlocks + ContentBlock.Action(newAction))
         }
@@ -136,7 +104,6 @@ internal class ChatEventReducer(
                 if (found) {
                     updatedExisting
                 } else {
-                    streamingBuffer.clear()
                     val newAction =
                         ActionCardData(
                             id = event.actionId,
@@ -161,8 +128,6 @@ internal class ChatEventReducer(
             isError = isError,
             handoff = event.handoff,
         )
-        streamingBuffer.clear()
-        setCurrentAgentMessageId(null)
     }
 
     private fun handleError(event: SessionError) {
@@ -220,8 +185,6 @@ internal class ChatEventReducer(
 
         // 3. New agent message for subsequent actions
         val id = agentId ?: "supplement-$timestamp"
-        streamingBuffer.clear()
-        setCurrentAgentMessageId(id)
         messages.add(
             ChatMessage.Agent(
                 id = id,

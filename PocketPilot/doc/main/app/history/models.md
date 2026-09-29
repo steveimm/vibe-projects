@@ -39,14 +39,20 @@ sealed interface MessageRecord {
 
 @Serializable
 sealed interface ContentBlockRecord {
-    data class Text(val text: String) : ContentBlockRecord
-    data class FinalText(val text: String) : ContentBlockRecord       // promoted from Text when the row seals
-    data class Reasoning(val text: String) : ContentBlockRecord        // Native server reasoning
-    data class Action(id, toolName, description, state, resultSummary?) : ContentBlockRecord
+    data class Text(val text: String, val turnId: String? = null) : ContentBlockRecord
+    data class FinalText(val text: String) : ContentBlockRecord
+    data class Reasoning(val text: String, val turnId: String? = null) : ContentBlockRecord
+    data class Action(id, toolName, description, state, resultSummary?, expandedContent?) : ContentBlockRecord
 }
 ```
 
 Action `state` values: `"proposed"`, `"executing"`, `"success"`, `"failed"`, `"skipped"`.
+
+Live chat and recording share stream accumulation in `MessageContent.kt`. Answer and reasoning chunks merge independently by model turn, even when a server interleaves them. Tool actions separate trace segments. A nonblank completion replaces the current answer stream with canonical `FinalText`, preserving earlier narration and reasoning. Stopped and failed partial answers are not promoted to a final answer.
+
+History loads the recorded blocks directly. There is no migration of old captions, fragmented streams, or plain-text final answers.
+
+Completed assistant text and expanded reasoning use the Compose Markdown renderer. Parsing runs on `Dispatchers.Default`, text remains selectable, and streaming text retains its cursor until completion. The image transformer is explicitly disabled and no image-loading module is included. Rendering a model response does not fetch its embedded images. Raw HTML is not hosted in a WebView.
 
 ## ScreenStateRecord
 

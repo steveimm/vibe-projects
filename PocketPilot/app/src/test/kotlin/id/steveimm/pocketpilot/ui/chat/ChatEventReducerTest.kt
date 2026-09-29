@@ -28,14 +28,10 @@ class ChatEventReducerTest {
     private class Fixture {
         val uiState = MutableStateFlow(ChatUiState())
         val messages = mutableStateListOf<ChatMessage>()
-        val buffer = StringBuilder()
-        var currentAgentId: String? = null
         val reducer = ChatEventReducer(
             uiState = uiState,
             messages = messages,
-            streamingBuffer = buffer,
             stateLock = Any(),
-            setCurrentAgentMessageId = { currentAgentId = it }
         )
     }
 
@@ -54,7 +50,6 @@ class ChatEventReducerTest {
         assertThat(agent.id).isEqualTo("task-1")
         assertThat(agent.state).isEqualTo(AgentMessageState.Thinking)
         assertThat(agent.contentBlocks).isEmpty()
-        assertThat(f.currentAgentId).isEqualTo("task-1")
     }
 
     @Test
@@ -113,7 +108,7 @@ class ChatEventReducerTest {
     }
 
     @Test
-    fun `task completion marks agent message complete and clears current id`() {
+    fun `task completion replaces partial text with the canonical answer`() {
         val f = Fixture()
         f.reducer.handle(TaskStarted(sessionId, 100L, taskId = "task-1", input = "start"))
         f.reducer.handle(MessageDelta(sessionId, 101L, turnId = "t1", delta = "progress"))
@@ -130,12 +125,9 @@ class ChatEventReducerTest {
 
         val agent = f.messages.last() as ChatMessage.Agent
         assertThat(agent.state).isEqualTo(AgentMessageState.Complete)
-        // The streaming "progress" Text gets promoted in place to FinalText with
-        // the rawResult from TaskCompleted.
         val finalTexts = agent.contentBlocks.filterIsInstance<ContentBlock.FinalText>()
         assertThat(finalTexts).hasSize(1)
-        assertThat(finalTexts.last().text).isEqualTo("progress")
-        assertThat(f.currentAgentId).isNull()
+        assertThat(finalTexts.single().text).isEqualTo("All done")
     }
 
     @Test
