@@ -136,36 +136,5 @@ class AgentEventDispatcher(
         ))
     }
 
-    suspend fun subAgentStarted(agentName: String, query: String) {
-        Log.d(TAG, "SubAgentStarted: $agentName")
-        eventEmitter(SubAgentStarted(
-            sessionId = sessionId,
-            timestamp = now(),
-            agentName = agentName,
-            query = query
-        ))
-    }
-
-    suspend fun subAgentActivity(agentName: String, activity: String) {
-        Log.d(TAG, "SubAgentActivity: $agentName - $activity")
-        eventEmitter(SubAgentActivity(
-            sessionId = sessionId,
-            timestamp = now(),
-            agentName = agentName,
-            activity = activity
-        ))
-    }
-
-    suspend fun subAgentCompleted(agentName: String, success: Boolean, message: String) {
-        Log.d(TAG, "SubAgentCompleted: $agentName success=$success")
-        eventEmitter(SubAgentCompleted(
-            sessionId = sessionId,
-            timestamp = now(),
-            agentName = agentName,
-            success = success,
-            message = message
-        ))
-    }
-
     private fun now(): Long = System.currentTimeMillis()
 }

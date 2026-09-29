@@ -191,5 +191,4 @@ Planning-state mutation events (`TodosUpdated`, `ScratchpadUpdated`) were remove
 
 - [Loop Execution](loop.md) - how planning state is injected
 - [Turn Prompt Anatomy](turn_prompt_anatomy.md) - exact prompt/input composition
-- [Multi-Agent](multiagent.md) - scratchpad for cross-agent data
 - [Tools](../infra/tools.md) - tool implementations

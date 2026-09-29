@@ -1,11 +1,9 @@
 package id.steveimm.pocketpilot.session
 
+import id.steveimm.pocketpilot.agent.definition.DefaultAgentDefinition
 import android.content.Context
 import android.util.Log
 import id.steveimm.pocketpilot.agent.cognition.skills.AgentSkillManager
-import id.steveimm.pocketpilot.agent.definition.AgentRoleDef
-import id.steveimm.pocketpilot.agent.definition.ResolvedAgentRole
-import id.steveimm.pocketpilot.agent.definition.DefaultRoleDef
 import id.steveimm.pocketpilot.protocol.ApprovalMode
 import id.steveimm.pocketpilot.termux.TermuxBridgeManager
 import id.steveimm.pocketpilot.termux.TermuxCapabilitySnapshot
@@ -41,8 +39,6 @@ internal object SessionToolingBootstrapper {
         approvalMode: ApprovalMode,
         appClassifier: AppClassifier,
         agentSkillManager: AgentSkillManager? = null,
-        agentRoleDef: AgentRoleDef = DefaultRoleDef,
-        delegatableRoleDefs: List<AgentRoleDef> = emptyList(),
         termuxSnapshot: TermuxCapabilitySnapshot = TermuxCapabilitySnapshot.Unavailable,
         excludedTools: Set<String> = emptySet(),
         context: Context? = null
@@ -52,12 +48,9 @@ internal object SessionToolingBootstrapper {
             appClassifier = appClassifier
         )
         val sessionState = AgentSessionState()
-        val allowedToolNames = resolveAllowedToolNames(
-            agentRoleDef = agentRoleDef,
-            delegatableRoleDefs = delegatableRoleDefs,
-            termuxSnapshot = termuxSnapshot,
-            excludedTools = excludedTools
-        )
+        val allowedToolNames = DefaultAgentDefinition.resolve(
+            termuxSnapshot, excludedTools.map { ToolName.from(it) }.toSet(),
+        ).allowedToolNames
         val toolRegistry = ToolRegistry().apply {
             registerBuiltInTools(
                 sessionState = sessionState,
@@ -85,22 +78,6 @@ internal object SessionToolingBootstrapper {
                 toolRegistry = toolRegistry,
                 toolRouter = toolRouter
         )
-    }
-
-    private fun resolveAllowedToolNames(
-        agentRoleDef: AgentRoleDef,
-        delegatableRoleDefs: List<AgentRoleDef>,
-        termuxSnapshot: TermuxCapabilitySnapshot,
-        excludedTools: Set<String>
-    ): Set<String> {
-        val excludedToolNames = excludedTools.map { ToolName.from(it) }.toSet()
-        val resolvedRoles: List<ResolvedAgentRole> =
-            (listOf(agentRoleDef) + delegatableRoleDefs)
-                .map { it.resolve(termuxSnapshot, excludedToolNames) }
-
-        return resolvedRoles
-            .flatMap { role -> role.allowedTools.map { tool -> tool.raw } }
-            .toSet()
     }
 
     private fun ToolRegistry.registerBuiltInTools(

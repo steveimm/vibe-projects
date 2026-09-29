@@ -323,8 +323,7 @@ and returns a `CompressionResult`; it never drops content.
 
 → See: `history/Compactor.kt`
 
-`Compactor` is **one instance per `Agent`** (subagents construct their own bound
-to the child model and `LLMClient`). Defaults:
+`Compactor` belongs to the session agent and uses its configured model and client. Defaults:
 
 | Constant | Value | Rationale |
 |---|---|---|

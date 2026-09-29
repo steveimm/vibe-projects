@@ -30,7 +30,6 @@ def _bridge_config() -> BridgeConfig:
         package_name="id.steveimm.pocketpilot",
         activity="id.steveimm.pocketpilot/.app.MainActivity",
         server_base_url="http://localhost:8000/v1",
-        agent_mode="basic",
         perception_mode="accessibility_only",
         platform_mode="accessibility",
         main_model="minimax-m2.5",
@@ -249,7 +248,6 @@ class RunnerConfigLoadingTest(unittest.TestCase):
                 "  server_base_url: http://localhost:8000/v1\n"
                 "  package_name: id.steveimm.pocketpilot\n"
                 "  activity: id.steveimm.pocketpilot/.app.MainActivity\n"
-                "  agent_mode: basic\n"
                 "  perception_mode: accessibility_only\n"
                 "  platform_mode: accessibility\n"
                 "  main_model: minimax-m2.5\n"

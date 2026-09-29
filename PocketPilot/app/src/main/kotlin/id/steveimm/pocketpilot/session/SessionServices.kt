@@ -3,7 +3,6 @@ package id.steveimm.pocketpilot.session
 import android.content.Context
 import android.util.Log
 import id.steveimm.pocketpilot.app.AppSettingsStore
-import id.steveimm.pocketpilot.agent.definition.AgentDefRegistry
 import id.steveimm.pocketpilot.agent.definition.defaultToolsExcludedByPref
 import id.steveimm.pocketpilot.agent.cognition.prompt.AppSkillRepository
 import id.steveimm.pocketpilot.agent.cognition.prompt.AssetAppSkillRepository
@@ -132,8 +131,6 @@ class SessionServices internal constructor(
                 approvalMode = effectiveConfig.approvalMode,
                 appClassifier = appClassifier,
                 agentSkillManager = agentSkillManager,
-                agentRoleDef = AgentDefRegistry.main,
-                delegatableRoleDefs = AgentDefRegistry.delegatableRoles(),
                 termuxSnapshot = termuxSnapshot,
                 excludedTools = effectiveConfig.excludedTools,
                 context = context.applicationContext
@@ -283,53 +280,6 @@ class SessionServices internal constructor(
                 put("truncated_chars", metadata.truncatedChars)
             }
         }
-    }
-
-    /** Create a copy with optionally replaced services. */
-    internal fun copy(
-            toolRegistry: ToolRegistry = this.toolRegistry,
-            toolRouter: ToolRouter = this.toolRouter,
-            historyManager: HistoryManager = this.historyManager,
-            sessionState: AgentSessionState = this.sessionState,
-            policyEngine: PolicyEngine = this.policyEngine,
-            appClassifier: AppClassifier = this.appClassifier,
-            platform: AndroidPlatform = this.platform,
-            config: SessionConfig = this.config,
-            llmClient: LLMClient = this.llmClient,
-            modelCatalog: ModelCatalog = this.modelCatalog,
-            llmClientFactory: LLMClientFactory = this.llmClientFactory,
-            traceRecorder: TraceRecorder = this.traceRecorder,
-            recordingService: SessionRecordingService = this.recordingService,
-            browserSessionManager: BrowserSessionManager? = this.browserSessionManager,
-            termuxSnapshot: TermuxCapabilitySnapshot = this.termuxSnapshot,
-            appSkillRepository: AppSkillRepository = this.appSkillRepository,
-            agentSkillManager: AgentSkillManager = this.agentSkillManager,
-            userResponseChannel: UserResponseChannel = this.userResponseChannel,
-            memoryStore: MemoryStore = this.memoryStore,
-            memoryRecaller: MemoryRecaller = this.memoryRecaller
-    ): SessionServices {
-        return SessionServices(
-                toolRegistry = toolRegistry,
-                toolRouter = toolRouter,
-                historyManager = historyManager,
-                sessionState = sessionState,
-                policyEngine = policyEngine,
-                appClassifier = appClassifier,
-                platform = platform,
-                config = config,
-                llmClient = llmClient,
-                modelCatalog = modelCatalog,
-                llmClientFactory = llmClientFactory,
-                traceRecorder = traceRecorder,
-                recordingService = recordingService,
-                browserSessionManager = browserSessionManager,
-                termuxSnapshot = termuxSnapshot,
-                appSkillRepository = appSkillRepository,
-                agentSkillManager = agentSkillManager,
-                userResponseChannel = userResponseChannel,
-                memoryStore = memoryStore,
-                memoryRecaller = memoryRecaller
-        )
     }
 
     /** Cleanup all services. Aggregates per-step failures rather than aborting, so callers can surface partial teardown errors. */

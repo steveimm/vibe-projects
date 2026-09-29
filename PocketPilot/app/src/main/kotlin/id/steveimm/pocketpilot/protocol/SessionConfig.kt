@@ -18,8 +18,7 @@ data class SessionConfig(
         val traceRunId: String? = null,
         /** Controls which perception modalities (a11y tree, screenshot, both) are active */
         val perceptionConfig: PerceptionConfig = PerceptionConfig.DEFAULT,
-        /** Primary model ID on the configured server for the main agent. Subagents inherit this model — there is no separate subagent
-         * model. */
+        /** Model ID on the configured server. */
         val mainModel: String = "",
         /** Platform mode: real screen (accessibility) or virtual display (Shizuku) */
         val platformMode: PlatformMode = PlatformMode.ACCESSIBILITY,

@@ -307,7 +307,6 @@ Before trace flush, `Agent.kt` checks for failed tasks where the LLM never volun
 ## Related Docs
 
 - [Overview](overview.md) - Architecture context
-- [Multi-Agent](multiagent.md) - Delegation during loop
 - [Planning State](planning.md) - State persistence across turns
 - [Turn Prompt Anatomy](turn_prompt_anatomy.md) - Exact prompt composition
 - [Memory & History Compaction](memory.md) - HistoryManager + Compactor mechanics

@@ -1,6 +1,5 @@
 package id.steveimm.pocketpilot.agent.definition
 
-import id.steveimm.pocketpilot.agent.AgentExecutionRole
 
 internal val WORKSPACE_SHELL_PROMPT_SECTION =
     """
@@ -28,12 +27,3 @@ internal val WORKSPACE_SHELL_PROMPT_SECTION =
     - Do not use termux_shell to control Android UI or bypass app restrictions.
     - Input and output files go in ~/pocketpilot/workspace/.
     """.trimIndent()
-
-private const val MAIN_WORKSPACE_SHELL_DIRECTIVE =
-    "For workspace commands (termux_shell), execute directly instead of delegating."
-
-internal fun workspaceShellPromptSectionFor(role: AgentExecutionRole): String {
-    if (role != AgentExecutionRole.MAIN) return WORKSPACE_SHELL_PROMPT_SECTION
-
-    return WORKSPACE_SHELL_PROMPT_SECTION + "\n\n" + MAIN_WORKSPACE_SHELL_DIRECTIVE
-}

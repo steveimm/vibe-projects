@@ -1,20 +1,13 @@
 package id.steveimm.pocketpilot.agent.definition
 
-import id.steveimm.pocketpilot.agent.AgentExecutionRole
 import id.steveimm.pocketpilot.tool.ToolName
 
-/** Tools that DefaultRoleDef declares statically but should be gated out of the LLM allowlist when their corresponding user pref is
+/** Tools that DefaultAgentDefinition declares statically but should be gated out of the LLM allowlist when their corresponding user pref is
  * OFF. */
 internal fun defaultToolsExcludedByPref(browserScriptEnabled: Boolean): Set<String> =
     if (browserScriptEnabled) emptySet() else setOf(ToolName.BrowserScript.raw)
 
-internal val DefaultRoleDef = AgentRoleDef(
-    name = "default",
-    executionRole = AgentExecutionRole.MAIN,
-    delegatable = true,
-    description = "Default Android automation agent — full UI + shell toolset. " +
-        "Invoke via delegate_task to run an isolated subtask whose intermediate steps " +
-        "should not pollute the main trace.",
+internal val DefaultAgentDefinition = AgentDefinition(
     allowedTools =
             setOf(
                     "mobile_action",
@@ -28,7 +21,6 @@ internal val DefaultRoleDef = AgentRoleDef(
                     "ask_user",
                     "remember_experience",
                     "activate_skill",
-                    "delegate_task",
                     ToolName.BrowserScript.raw
             ),
     systemPrompt =
@@ -84,11 +76,6 @@ internal val DefaultRoleDef = AgentRoleDef(
         - Trust the user's stated intent end-to-end, including commits. "Send X to John" → send it. If they wanted to stage, they would have said "draft" / "prepare".
         - Hand off when you made many decisions for the user (e.g. "shop for a phone case" → you picked product, color, qty): navigate to the final confirm screen, do not tap commit yourself, then `ask_user(action, ...)` so the user reviews and taps commit.
         - Never enter credentials, passwords, or payment info unless the user explicitly provides them.
-
-        ## Delegation
-        - You may call `delegate_task` to spin up an isolated subagent for an independent subtask whose intermediate steps would otherwise pollute your trace (e.g. a noisy one-shot exploration or a self-contained side-quest with a clean success criterion).
-        - The subagent returns a one-line summary; its turns are invisible to you. Prefer inline execution when the result needs further reasoning against the same screen state.
-        - Use delegation when the subtask is isolatable (its context does not bleed into yours) and the noise reduction outweighs the lost detail.
 
         ## Device Environment
         - Device: {{device_model}} ({{device_manufacturer}})

@@ -65,7 +65,7 @@ internal class TurnPlanningPhaseRunner(
                         )
                 val systemPrompt =
                         requireNotNull(config.systemPrompt) {
-                                "System prompt must be provided by AgentRoleDef."
+                                "System prompt must be provided by AgentDefinition."
                         }
 
                 // Activate any /skill-name mentions in the goal before prompt build.

@@ -8,7 +8,7 @@
 | Principle | Description |
 |-----------|-------------|
 | **Task-Based Model** | Session > Task > Turn hierarchy. Multi-round interaction via `Idle` state between tasks. |
-| **Unified Runtime** | One default main agent can execute directly or delegate an isolated subtask with `delegate_task`. |
+| **Unified Runtime** | One agent executes the task directly. |
 | **Streaming Responses** | Native streaming with `LLMStreamEvent` for real-time UI updates. |
 | **Thin Session Layer** | Session manages lifecycle only. Intelligence lives under `agent/`. |
 | **Tools with Observation** | Tool execution captures post-action screen context for grounding. |
@@ -79,15 +79,14 @@ id.steveimm.pocketpilot/
 │   ├── TurnErrorClassifier.kt          # Error classification (recoverable/fatal)
 │   ├── AgentModelResolver.kt           # Catalog-driven model resolution
 │   ├── AgentRuntimeTypes.kt            # Stop reasons, turn outcomes, turn state
-│   ├── AgentExecutionConfig.kt         # Runtime config + AgentExecutionRole
+│   ├── AgentExecutionConfig.kt         # Runtime configuration
 │   ├── AgentEventDispatcher.kt         # Event emission helpers
 │   ├── ActionTarget.kt                 # Shared UI-element target decoder (text/bounds/point/index)
 │   ├── ActionDescriptionFormatter.kt   # Human-readable tool descriptions
 │   ├── Turn.kt                         # LLM call wrapper (streaming + sync)
 │   ├── definition/                     # Agent role definitions
-│   │   ├── AgentRoleDef.kt              # Unified role definition data class
-│   │   ├── AgentDefRegistry.kt         # Single default role registry
-│   │   └── DefaultAgentDef.kt          # Default main/subagent role definition
+│   │   ├── AgentDefinition.kt              # Unified role definition data class
+│   │   └── DefaultAgentDef.kt          # Default agent prompt and tools
 │   ├── cognition/
 │   │   ├── prompt/
 │   │   │   ├── PromptBuilder.kt        # History → Memory → Observation assembly
@@ -97,8 +96,6 @@ id.steveimm.pocketpilot/
 │   │   └── policy/
 │   │       ├── TurnToolPolicy.kt       # Tool arbitration + completion decision
 │   │       └── LoopDetectionPolicy.kt  # Repeated screen/action warnings
-│   └── subagent/
-│       └── SubAgentRunner.kt           # SubAgentRequest, SubAgentResult, IsolatedSubAgentRunner
 │
 ├── session/                            # Session management
 │   ├── AgentSession.kt                 # Lifecycle manager (Op → state transitions)
@@ -150,7 +147,6 @@ id.steveimm.pocketpilot/
 ## Related Docs
 
 - [Loop Execution](loop.md) - ReAct loop, Turn, streaming
-- [Multi-Agent](multiagent.md) - Sub-agent system and delegation
 - [Planning State](planning.md) - Todos, scratchpad, context hygiene
 - [Turn Prompt Anatomy](turn_prompt_anatomy.md) - Prompt structure and trace
 - [Session Infrastructure](../infra/session.md) - AgentSession lifecycle

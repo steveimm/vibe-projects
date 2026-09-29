@@ -8,9 +8,8 @@ import id.steveimm.pocketpilot.agent.Agent
 import id.steveimm.pocketpilot.agent.AgentEventDispatcher
 import id.steveimm.pocketpilot.agent.AgentExecutionConfig
 import id.steveimm.pocketpilot.agent.AgentStopReason
-import id.steveimm.pocketpilot.agent.definition.AgentDefRegistry
-import id.steveimm.pocketpilot.agent.definition.ResolvedAgentRole
-import id.steveimm.pocketpilot.agent.subagent.IsolatedSubAgentRunner
+import id.steveimm.pocketpilot.agent.definition.ResolvedAgentDefinition
+import id.steveimm.pocketpilot.agent.definition.DefaultAgentDefinition
 import id.steveimm.pocketpilot.history.Compactor
 import id.steveimm.pocketpilot.llm.LLMClient
 import id.steveimm.pocketpilot.llm.ModelCatalog
@@ -19,7 +18,6 @@ import id.steveimm.pocketpilot.protocol.AgentEvent
 import id.steveimm.pocketpilot.protocol.SessionId
 import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.tool.ToolName
-import id.steveimm.pocketpilot.tool.impl.DelegateTaskTool
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -58,22 +56,18 @@ internal class SessionAgentRunner(
     val completions = Channel<AgentStopReason>(capacity = Channel.BUFFERED)
 
     fun start(taskInput: String, taskId: String) {
-        val agentDef = AgentDefRegistry.main
+        val agentDef = DefaultAgentDefinition
         // Read excludedTools from services.config — SessionServices.create stamps the user-pref tool gates (e.g. browser_script when off)
         // into that copy. The local `config` field is the original, pre-merge SessionConfig and would re-expose the gated tool to the LLM.
-        val resolvedAgentDef: ResolvedAgentRole = agentDef.resolve(
+        val resolvedAgentDef: ResolvedAgentDefinition = agentDef.resolve(
             snapshot = services.termuxSnapshot,
             excludedTools = services.config.excludedTools.toToolNames()
         )
 
-        if (ToolName.DelegateTask.raw in resolvedAgentDef.allowedToolNames) {
-            ensureDelegationToolRegistered()
-        }
         ensureAskUserToolRegistered()
 
         val signal = CompletableDeferred<AgentStopReason>()
 
-        // Subagents inherit the main model — no per-role override.
         val modelName = config.mainModel
 
         val agentConfig = AgentExecutionConfig(
@@ -84,8 +78,6 @@ internal class SessionAgentRunner(
             debugMode = config.debugMode,
             systemPrompt = resolvePromptTemplates(resolvedAgentDef.systemPrompt),
             allowedToolNames = resolvedAgentDef.allowedToolNames,
-            agentId = sessionId.value,
-            agentRole = resolvedAgentDef.executionRole,
             modelName = modelName,
             evalTurnBudget = config.evalTurnBudget
         )
@@ -150,29 +142,6 @@ internal class SessionAgentRunner(
             .replace("{{screen_width}}", (dm?.widthPixels ?: 0).toString())
             .replace("{{screen_height}}", (dm?.heightPixels ?: 0).toString())
             .replace("{{current_date}}", "$today, $dayOfWeek")
-    }
-
-    private fun ensureDelegationToolRegistered() {
-        if (services.toolRegistry.contains("delegate_task")) return
-
-        val delegatableRoles = AgentDefRegistry.delegatableRoles()
-        val (initialPrompt, updatePrompt) = CompactionPromptCache.load(context)
-        val delegateTool = DelegateTaskTool(
-            delegatableRoles = delegatableRoles,
-            runnerFactory = { roleDef ->
-                IsolatedSubAgentRunner(
-                    roleDef = roleDef,
-                    parentServices = services,
-                    parentSessionId = sessionId,
-                    eventDispatcher = eventDispatcher,
-                    parentEventEmitter = emitEvent,
-                    compactionInitialPrompt = initialPrompt,
-                    compactionUpdatePrompt = updatePrompt,
-                )
-            },
-            eventDispatcher = eventDispatcher
-        )
-        services.toolRegistry.register(delegateTool)
     }
 
     private fun ensureAskUserToolRegistered() {

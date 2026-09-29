@@ -173,7 +173,7 @@ Shizuku bindings.
 Termux runtime wiring is also captured at session creation. `SessionServices.create(...)` asks
 `TermuxBridgeManager.ensureReadyForSession(...)` to restart an already-deployed idle bridge without
 running package install, then snapshots `TermuxCapabilitySnapshot`. `SessionToolingBootstrapper`
-uses that snapshot to register `termux_shell`, and `AgentRoleDef.resolve(...)` uses the same
+uses that snapshot to register `termux_shell`, and `AgentDefinition.resolve(...)` uses the same
 snapshot to inject the workspace-shell prompt for Standalone, Planner, and Executor roles. The
 snapshot remains fixed for the session, including Hot Idle follow-up tasks.
 
@@ -199,7 +199,7 @@ Built-in tool registration includes:
 - `remember_experience` (registered in `SessionServices.create()`)
 - `browser_script` (registered in `SessionServices.create()` with session-scoped browser runtime)
 
-`delegate_task` and `ask_user` are not part of static built-in registration. They are attached lazily by `SessionAgentRunner.start()` when required.
+`ask_user` is attached by `SessionAgentRunner.start()` to the session response channel.
 
 ---
 
@@ -208,12 +208,10 @@ Built-in tool registration includes:
 → See: `session/SessionAgentRunner.kt`
 
 Bridges `AgentSession` and runtime `Agent`:
-- Chooses the main agent definition via `AgentDefRegistry.main`
+- Uses `DefaultAgentDefinition`
 - Builds `AgentExecutionConfig` from selected definition (prompt + allowed tools + execution role)
-- Registers `delegate_task` when the resolved main-agent allowlist includes it
 - Always registers `ask_user` with `UserResponseChannel` and event emitter
 - Handles lifecycle (`start`, `pause`, `resume`, `stop`, `cancelJob`, `shutdown`)
-- Wires the single delegatable `DefaultRoleDef` + `IsolatedSubAgentRunner`
 
 **Cancellation ordering:** Both `cancelJob()` and `shutdown()` complete the `cancellationSignal` **before** cancelling the coroutine job. This ensures the `CancellationException` catch block in the agent coroutine sees `signal.isCompleted == true` and reports `UserRequested` rather than an unexpected cancellation.
 
@@ -221,7 +219,7 @@ Bridges `AgentSession` and runtime `Agent`:
 
 ### Unified Agent Mode
 
-There is one main agent role (`DefaultRoleDef`). Delegation is always available when `delegate_task` is present in the resolved allowlist; subagents reuse the default role with runtime exclusions for recursive delegation and long-term memory writes.
+There is one agent definition (`DefaultAgentDefinition`), with tools filtered by enabled capabilities and explicit exclusions.
 
 ### Takeover Timing
 

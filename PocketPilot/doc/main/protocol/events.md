@@ -34,10 +34,6 @@ AgentEvent (sealed interface)
 │   └── ApprovalRequired(description, details: ApprovalDetails)
 ├── AskUserDomainEvent
 │   └── AskUser(type: AskUserType, message, callId)
-├── SubAgentDomainEvent
-│   ├── SubAgentStarted(agentName, query)
-│   ├── SubAgentActivity(agentName, activity)
-│   └── SubAgentCompleted(agentName, success, message)
 ├── PerceptionDomainEvent
 │   └── ScreenCaptured(elementCount, packageName?, ...)
 └── StatusDomainEvent

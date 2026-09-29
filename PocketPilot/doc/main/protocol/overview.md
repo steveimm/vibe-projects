@@ -127,7 +127,6 @@ protocol/
 ├── ActionEvents.kt           # ActionProposed/Executed + ActionOutcome
 ├── ApprovalEvents.kt         # ApprovalRequired
 ├── AskUserEvents.kt          # AskUser (+ AskUserType.kt)
-├── SubAgentEvents.kt         # SubAgentStarted/Activity/Completed
 ├── PerceptionEvents.kt       # ScreenCaptured (+ ScreenStatePhase.kt)
 ├── StatusEvents.kt           # StatusUpdate
 ├── ApprovalTypes.kt          # ApprovalDecision, ApprovalScope, ApprovalDetails

@@ -421,10 +421,7 @@ function renderTree() {
   }
 
   const stepsBySession = buildStepsBySession(steps);
-  let roots = sessions.filter((node) => !node.parent_session_id || !sessionById.has(node.parent_session_id));
-  if (!roots.length) {
-    roots = sessions.slice();
-  }
+  const roots = sessions;
   treePanel.innerHTML = "";
 
   const list = document.createElement("div");
@@ -463,7 +460,7 @@ function buildStepsBySession(allSteps) {
 function appendSessionNode(sessionId, parent, depth, stepsBySession) {
   const session = sessionById.get(sessionId);
   const sessionLabel = session
-    ? `${roleLabel(session.agent_role)} ${session.session_id}`
+    ? session.session_id
     : `[?] ${sessionId}`;
 
   if (filterQuery && !sessionHasVisibleSteps(sessionId, stepsBySession)) {
@@ -481,47 +478,22 @@ function appendSessionNode(sessionId, parent, depth, stepsBySession) {
 
   const sessionSteps = stepsBySession.get(sessionId) || [];
   sessionSteps.forEach((step) => {
-    if (!stepIsVisible(step, stepsBySession)) return;
-    parent.appendChild(createStepNode(step, depth + 1, stepsBySession));
+    if (!stepMatchesFilter(step)) return;
+    parent.appendChild(createStepNode(step, depth + 1));
   });
   return true;
 }
 
-function createStepNode(step, depth, stepsBySession) {
-  const hasChildren = Array.isArray(step.links?.child_session_ids) && step.links.child_session_ids.length > 0;
-  const isMatch = stepMatchesFilter(step);
-  const isContext = filterQuery && !isMatch;
-  const isActive = step.step_id === selectedStepId;
-  const stepContent = buildStepContent(step, depth, isActive, isContext);
-
-  if (!hasChildren) {
-    stepContent.addEventListener("click", () => selectStepById(step.step_id));
-    return stepContent;
-  }
-
-  const details = document.createElement("details");
-  details.className = "tree-branch";
-  details.open = step.step_id === selectedStepId || stepHasSelectedDescendant(step, stepsBySession);
-
-  const summary = document.createElement("summary");
-  summary.appendChild(stepContent);
-  summary.addEventListener("click", () => selectStepById(step.step_id));
-  details.appendChild(summary);
-
-  const childContainer = document.createElement("div");
-  const childSessions = step.links?.child_session_ids || [];
-  childSessions.forEach((childSessionId) => {
-    appendSessionNode(childSessionId, childContainer, depth + 1, stepsBySession);
-  });
-  details.appendChild(childContainer);
-  return details;
+function createStepNode(step, depth) {
+  const content = buildStepContent(step, depth, step.step_id === selectedStepId);
+  content.addEventListener("click", () => selectStepById(step.step_id));
+  return content;
 }
 
-function buildStepContent(step, depth, isActive, isContext) {
+function buildStepContent(step, depth, isActive) {
   const item = document.createElement("div");
   item.className = "tree-step";
   if (isActive) item.classList.add("active");
-  if (isContext) item.classList.add("context");
   item.style.marginLeft = `${depth * 14}px`;
 
   const types = Array.isArray(step.event_types) ? step.event_types.join(" -> ") : "";
@@ -534,13 +506,6 @@ function buildStepContent(step, depth, isActive, isContext) {
     <div class="tree-meta-line">${escapeHtml(getToolSummary(step))}</div>
   `;
   return item;
-}
-
-function roleLabel(role) {
-  const normalized = String(role || "unknown").toLowerCase();
-  if (normalized.includes("planner")) return "[P]";
-  if (normalized.includes("executor")) return "[E]";
-  return "[?]";
 }
 
 function applyFilters() {
@@ -579,55 +544,8 @@ function stepMatchesFilter(step) {
   return parts.join(" ").toLowerCase().includes(filterQuery);
 }
 
-function stepIsVisible(step, stepsBySession) {
-  if (!filterQuery) return true;
-  if (stepMatchesFilter(step)) return true;
-  return stepHasVisibleDescendant(step, stepsBySession, new Map(), new Set());
-}
-
-function sessionHasVisibleSteps(sessionId, stepsBySession, memo = new Map(), visiting = new Set()) {
-  if (memo.has(sessionId)) return memo.get(sessionId);
-  if (visiting.has(sessionId)) return false;
-  visiting.add(sessionId);
-  const sessionSteps = stepsBySession.get(sessionId) || [];
-  for (const step of sessionSteps) {
-    if (stepMatchesFilter(step)) {
-      memo.set(sessionId, true);
-      visiting.delete(sessionId);
-      return true;
-    }
-    if (stepHasVisibleDescendant(step, stepsBySession, memo, visiting)) {
-      memo.set(sessionId, true);
-      visiting.delete(sessionId);
-      return true;
-    }
-  }
-  memo.set(sessionId, false);
-  visiting.delete(sessionId);
-  return false;
-}
-
-function stepHasVisibleDescendant(step, stepsBySession, memo, visiting) {
-  const childSessions = step.links?.child_session_ids || [];
-  for (const childSessionId of childSessions) {
-    if (sessionHasVisibleSteps(childSessionId, stepsBySession, memo, visiting)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function stepHasSelectedDescendant(step, stepsBySession) {
-  if (!selectedStepId) return false;
-  const childSessions = step.links?.child_session_ids || [];
-  for (const childSessionId of childSessions) {
-    const steps = stepsBySession.get(childSessionId) || [];
-    for (const childStep of steps) {
-      if (childStep.step_id === selectedStepId) return true;
-      if (stepHasSelectedDescendant(childStep, stepsBySession)) return true;
-    }
-  }
-  return false;
+function sessionHasVisibleSteps(sessionId, stepsBySession) {
+  return (stepsBySession.get(sessionId) || []).some(stepMatchesFilter);
 }
 
 function moveSelection(delta) {
@@ -658,8 +576,6 @@ function selectStep(index) {
     step,
     getFileUrl: getFile, // Pass the function that returns URL
     escapeHtml,
-    onJumpToStepId: (stepId) => jumpToStep(stepId),
-    onJumpToSessionId: (sessionId) => jumpToSession(sessionId),
   });
 
   // Render summary to sidebar
@@ -687,28 +603,7 @@ function selectStepById(stepId) {
     step: stepById.get(stepId),
     getFileUrl: getFile,
     escapeHtml,
-    onJumpToStepId: (nextStepId) => jumpToStep(nextStepId),
-    onJumpToSessionId: (sessionId) => jumpToSession(sessionId),
   });
-}
-
-function jumpToStep(stepId) {
-  if (!stepId || !stepById.has(stepId)) return;
-  clearFilter();
-  applyFilters();
-  selectStepById(stepId);
-}
-
-function jumpToSession(sessionId) {
-  if (!sessionId) return;
-  clearFilter();
-  applyFilters();
-  const sessionSteps = steps
-    .filter((step) => step.session_id === sessionId)
-    .sort((a, b) => Number(a.ts_start_ms ?? 0) - Number(b.ts_start_ms ?? 0));
-  if (sessionSteps.length > 0) {
-    selectStepById(sessionSteps[0].step_id);
-  }
 }
 
 function clearFilter() {

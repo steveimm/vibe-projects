@@ -29,7 +29,6 @@ bridge:
   package_name: id.steveimm.pocketpilot
   activity: id.steveimm.pocketpilot/.app.MainActivity
   server_base_url: ""
-  agent_mode: basic
   perception_mode: accessibility_only
   platform_mode: accessibility
   main_model: ""  # Supply POCKETPILOT_MODEL_ID or set the server model ID here.

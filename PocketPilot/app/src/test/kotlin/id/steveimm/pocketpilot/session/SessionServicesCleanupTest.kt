@@ -205,7 +205,7 @@ class SessionServicesCleanupTest {
         val client = mockk<LLMClient>(relaxed = true)
         val factory = mockk<LLMClientFactory>(relaxed = true)
         val trace = mockk<TraceRecorder>(relaxed = true)
-        val services = buildServices(client, factory, trace).copy(toolRouter = router, historyManager = history)
+        val services = buildServices(client, factory, trace, router = router, history = history)
 
         val result = services.cleanup()
 
@@ -221,11 +221,13 @@ class SessionServicesCleanupTest {
         llmClient: LLMClient,
         factory: LLMClientFactory,
         trace: TraceRecorder,
-        browserSessionManager: BrowserSessionManager? = null
+        browserSessionManager: BrowserSessionManager? = null,
+        router: ToolRouter? = null,
+        history: HistoryManager = HistoryManager(),
     ): SessionServices {
         val toolRegistry = ToolRegistry()
         val policyEngine = PolicyEngine(appClassifier = AppClassifier(emptyMap()))
-        val toolRouter = ToolRouter(toolRegistry, policyEngine)
+        val toolRouter = router ?: ToolRouter(toolRegistry, policyEngine)
         val catalog =
             testModelCatalog(
                 """{"gpt-5.2":{"display_name":"GPT-5.2","model_id":"gpt-5.2"}}"""
@@ -233,7 +235,7 @@ class SessionServicesCleanupTest {
         return SessionServices(
             toolRegistry = toolRegistry,
             toolRouter = toolRouter,
-            historyManager = HistoryManager(),
+            historyManager = history,
             sessionState = AgentSessionState(),
             policyEngine = policyEngine,
             appClassifier = AppClassifier(emptyMap()),

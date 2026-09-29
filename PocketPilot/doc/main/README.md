@@ -29,7 +29,6 @@ doc/main/
 │   ├── overview.md    # Design principles, architecture, package structure
 │   ├── loop.md        # ReAct loop, Turn, streaming execution
 │   ├── turn_prompt_anatomy.md # Per-turn OpenAI prompt/input/tools breakdown
-│   ├── multiagent.md  # Multi-agent system, delegate_task, subagent runtime
 │   ├── planning.md    # TodoState, ScratchpadState, context hygiene
 │   ├── memory.md      # Cross-session memory (MemoryStore, recall, auto-retain)
 │   └── agent_skills.md # Agentskills.io system: catalog, activate_skill, App vs Agent skills
@@ -121,15 +120,13 @@ app/src/main/kotlin/id/steveimm/pocketpilot/
 │   ├── ActionTarget.kt           # Shared UI-element target decoder (text/bounds/point/index)
 │   ├── ActionDescriptionFormatter.kt # Tool action descriptions
 │   ├── Turn.kt                   # LLM call wrapper (OpenAI Responses API)
-│   ├── definition/               # AgentRoleDef: single Default role (main + subagent)
+│   ├── definition/               # AgentDefinition: Single-agent prompt and tools
 │   ├── cognition/                # PromptBuilder, TurnObservation, policies, NavigationState
-│   └── subagent/
-│       └── SubAgentRunner.kt     # Isolated subagent runner + tool filtering
 │
 ├── session/                      # Session management
 │   ├── AgentSession.kt           # Lifecycle manager (bootstrap → run → Hot Idle → teardown)
 │   ├── SessionCoordinator.kt     # Event-driven input queue, cold-idle auto-reload support
-│   ├── SessionAgentRunner.kt     # Agent runner + delegate_task tool wiring
+│   ├── SessionAgentRunner.kt     # Agent runner and user-input tool wiring
 │   ├── SessionServices.kt        # Dependency injection container
 │   ├── SessionCheckpointCoordinator.kt # Checkpoint persistence for process-death recovery
 │   ├── AgentSessionState.kt      # Shared state container
@@ -309,7 +306,6 @@ app/src/main/kotlin/id/steveimm/pocketpilot/
 |------|------------|
 | Agent behavior | [loop.md](agent/loop.md), [turn_prompt_anatomy.md](agent/turn_prompt_anatomy.md), [planning.md](agent/planning.md) |
 | Memory system | [memory.md](agent/memory.md) |
-| Multi-agent | [multiagent.md](agent/multiagent.md) |
 | Adding tools | [tools.md](infra/tools.md) |
 | Session lifecycle | [session.md](infra/session.md), [session/](ui/session/state_machine.md) |
 | Screen perception | [perception.md](infra/perception.md), [platform.md](infra/platform.md) |
@@ -331,7 +327,6 @@ app/src/main/kotlin/id/steveimm/pocketpilot/
 | **ReAct Loop** | Perceive → Think → Act → Observe | [loop.md](agent/loop.md) |
 | **Task** | Work unit from user input to completion | [protocol/overview.md](protocol/overview.md) |
 | **Turn** | One LLM call + tool execution cycle | [loop.md](agent/loop.md) |
-| **AgentDef** | Agent role definition (single Default role, runtime tagged MAIN/SUBAGENT) | [multiagent.md](agent/multiagent.md) |
 | **Op** | User intent (UI → Agent) | [protocol/overview.md](protocol/overview.md) |
 | **AgentEvent** | State notification (Agent → UI) | [protocol/events.md](protocol/events.md) |
 | **SessionConfig** | Compiled settings snapshot for a session | [settings.md](app/settings.md) |

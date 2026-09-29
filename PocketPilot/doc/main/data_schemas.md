@@ -28,7 +28,6 @@ File: `app/src/main/kotlin/id/steveimm/pocketpilot/history/model/SessionRuntimeS
 ```kotlin
 data class ConversationConfigSnapshot(
     val mainModel: String,
-    val subagentModel: String? = null,
     val perceptionMode: String,   // backed by free-form string + UI options
     val platformMode: String,     // backed by PlatformMode enum
     val approvalMode: String = "SMART", // backed by ApprovalMode enum

@@ -24,7 +24,7 @@ The OpenAI Java SDK remains a protocol/serialization dependency. Its account log
 
 ## Lifecycle and retry
 
-Each session factory owns its clients, including superseded credential generations, until teardown. `cleanupAll()` closes every owned client and prevents further creation. Child agents use the same configured endpoint and model as their parent.
+Each session factory owns its clients, including superseded credential generations, until teardown. `cleanupAll()` closes every owned client and prevents further creation.
 
 Streaming producers run on IO and wait for channel capacity. Each collection owns its response. Cancellation closes that response and propagates without retrying or changing endpoints. Requests cancelled before the SDK returns headers close when their response becomes available.
 

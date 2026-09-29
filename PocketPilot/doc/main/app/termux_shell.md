@@ -30,7 +30,7 @@ TermuxShellTool (ToolSpec, OkHttp, result mapping)
         ^
         | conditional registration + prompt injection
         v
-AgentRoleDef.resolve(...) for Standalone / Planner / Executor
+AgentDefinition.resolve(...) for the session agent
 ```
 
 Primary files:
@@ -38,7 +38,7 @@ Primary files:
 - `termux/TermuxBridgeManager.kt` - singleton bridge state, setup, restart, session readiness.
 - `termux/TermuxRunCommandAdapter.kt` - Termux `RUN_COMMAND` bootstrap adapter.
 - `tool/impl/TermuxShellTool.kt` - tool schema and HTTP execution.
-- `agent/definition/AgentRoleDef.kt` - role resolution from a Termux capability snapshot.
+- `agent/definition/AgentDefinition.kt` - role resolution from a Termux capability snapshot.
 
 ## State Machine
 
@@ -91,8 +91,7 @@ Primary files:
 - Non-zero process exit codes are normal tool output, not transport failures. The LLM receives
   `exit_code`, `stdout`, `stderr`, timeout flags, and truncation refs.
 - The bridge drains both output pipes through one selector loop. The command deadline remains active after the shell exits if a descendant still holds a pipe open.
-- Command timeout defaults to 120s. The executor sub-agent timeout is raised to 150s only when
-  `termux_shell` is exposed.
+- Command timeout defaults to 120s.
 - Workspace cwd defaults to `~/pocketpilot/workspace/`. Bridge-side cwd validation rejects paths
   outside that workspace. To share files with other Android apps, copy them to `/sdcard/Download/`.
 - `termux_shell` is non-screen-changing and auto-allowed like `shell`, but it must not control

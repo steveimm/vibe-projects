@@ -112,8 +112,7 @@ outputs are usually 13–65 tokens but unbounded in principle): `NONE` (unlimite
 
 > See: `history/Compactor.kt`
 
-Context-window-triggered auto-compaction. One instance per `Agent` (subagents
-build their own bound to the child model + `LLMClient`).
+Context-window-triggered auto-compaction uses the configured server model and session client.
 
 ### Trigger
 

@@ -35,10 +35,8 @@ internal class AgentTrace(
                 buildJsonObject {
                     put("goal", JsonPrimitive(config.goal))
                     put("task_id", JsonPrimitive(config.taskId))
-                    put("agent_id", JsonPrimitive(config.agentId))
-                    put("agent_role", JsonPrimitive(config.agentRole.name.lowercase()))
-                    config.parentSessionId?.let { put("parent_session_id", JsonPrimitive(it.value)) }
-                    config.delegationCallId?.let { put("delegation_call_id", JsonPrimitive(it)) }
+                    put("agent_id", JsonPrimitive(sessionId.value))
+                    put("agent_role", JsonPrimitive("main"))
                     put("ui_settle_delay_ms", JsonPrimitive(config.uiSettleDelayMs))
                     put("llm_backend", JsonPrimitive("chat_completions"))
                     put("model", JsonPrimitive(config.modelName))

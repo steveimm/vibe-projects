@@ -249,7 +249,6 @@ def load_config(workspace_root: Path, args: argparse.Namespace) -> RunnerConfig:
         package_name=str(bridge_cfg.get("package_name", "id.steveimm.pocketpilot")),
         activity=str(bridge_cfg.get("activity", "id.steveimm.pocketpilot/.app.MainActivity")),
         server_base_url=str(bridge_cfg.get("server_base_url", "")),
-        agent_mode=str(bridge_cfg.get("agent_mode", "pro")),
         perception_mode=str(bridge_cfg.get("perception_mode", "accessibility_only")),
         platform_mode=str(args.platform_mode or bridge_cfg.get("platform_mode", "accessibility")),
         main_model=str(bridge_cfg.get("main_model", "")),

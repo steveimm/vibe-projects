@@ -61,7 +61,8 @@ class AgentTraceObservabilityTest {
                         AgentExecutionConfig(
                                 goal = "test",
                                 sessionId = SessionId("session-1"),
-                                systemPrompt = "test prompt"
+                                systemPrompt = "test prompt",
+                                modelName = "local-model"
                         )
                 )
                 trace.llmRequest(
@@ -72,8 +73,8 @@ class AgentTraceObservabilityTest {
                         userContextText = "Authorization: token=abcdefghijklmnop1234567890",
                         history = emptyList(),
                         inputItems = inputItems,
-                        modelName = "gpt-5.2",
-                        modelId = "gpt-5.2"
+                        modelName = "local-model",
+                        modelId = "local-model"
                 )
                 trace.sessionStopped(AgentStopReason.GoalAchieved(), turnsExecuted = 1)
 
@@ -82,8 +83,8 @@ class AgentTraceObservabilityTest {
                 val dataJson = Json.parseToJsonElement(sessionStarted!!.data.toString()).jsonObject
                 assertThat(dataJson["agent_role"]?.jsonPrimitive?.content).isEqualTo("main")
                 assertThat(dataJson["agent_id"]?.jsonPrimitive?.content).isEqualTo("session-1")
-                assertThat(dataJson["model"]?.jsonPrimitive?.content).isEqualTo("gpt-5.2")
-                assertThat(dataJson["main_model"]?.jsonPrimitive?.content).isEqualTo("gpt-5.2")
+                assertThat(dataJson["model"]?.jsonPrimitive?.content).isEqualTo("local-model")
+                assertThat(dataJson["main_model"]?.jsonPrimitive?.content).isEqualTo("local-model")
 
                 val fullPrompt = recorder.findStored("turn_1_full_prompt.txt")
                 val inputItemsJson = recorder.findStored("turn_1_llm_input_items.json")
@@ -112,12 +113,12 @@ private fun buildServices(traceRecorder: TraceRecorder): SessionServices {
         val config =
                 SessionConfig(
                         actionDelayMs = 0,
-                        mainModel = "gpt-5.2",
+                        mainModel = "local-model",
                         llm = SessionLlmConfig(baseUrl = "http://localhost:8000/v1")
                 )
         val testCatalog =
                 testModelCatalog(
-                        """{"gpt-5.2":{"display_name":"GPT-5.2","model_id":"gpt-5.2"}}"""
+                        """{"local-model":{"display_name":"GPT-5.2","model_id":"local-model"}}"""
                 )
         val noopClient = NoopLLMClient()
         return SessionServices(

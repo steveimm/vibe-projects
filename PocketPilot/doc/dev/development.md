@@ -164,7 +164,7 @@ SMART mode still asks for approval before `browser_script` runs against Chrome.
 
 When tuning the agent's cognition, edit the narrowest owner:
 
-- Core cross-tool behavior: `agent/definition/DefaultAgentDef.kt` (the single Default role used by both main and subagent runtimes)
+- Core cross-tool behavior: `agent/definition/DefaultAgentDef.kt` (the session agent prompt)
 - Tool-local semantics: tool `description` strings in `tool/impl/*.kt`
 - App-specific guidance: `app/src/main/assets/app_skills/<package>/SKILL.md`
 

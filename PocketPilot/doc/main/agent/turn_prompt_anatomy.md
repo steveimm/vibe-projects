@@ -20,12 +20,10 @@ Primary wiring:
 
 ## 1. System Prompt (Instructions)
 
-System prompt text is sourced from `DefaultRoleDef` and passed to `Turn`.
+System prompt text is sourced from `DefaultAgentDefinition` and passed to `Turn`.
 
 - Main agent (`SessionAgentRunner`):
-  - `DefaultRoleDef.systemPrompt`
-- Subagent (`IsolatedSubAgentRunner`):
-  - Reuses `DefaultRoleDef.systemPrompt` with runtime tool exclusions
+  - `DefaultAgentDefinition.systemPrompt`
 
 `AgentTurnRunner` enforces prompt presence with `requireNotNull(config.systemPrompt)`.
 
@@ -222,12 +220,11 @@ No ordering dependency: the observation is immutable, so prompt building and his
 
 `Turn` generates tool schemas from `ToolRegistry` and applies `allowedToolNames` filtering.
 
-Role-level allowlists are defined by `DefaultRoleDef` and filtered at runtime:
+Role-level allowlists are defined by `DefaultAgentDefinition` and filtered at runtime:
 
 | Runtime | Available Tools |
 |---------|-----------------|
-| Main agent | `mobile_action`, `system_button`, `wait`, `open_app`, `shell`, `write_todos`, `scratchpad`, `complete_task`, `ask_user`, `remember_experience`, `delegate_task`, `browser_script`, `activate_skill`* |
-| Subagent | Main-agent tools minus `delegate_task` and `remember_experience` |
+| Main agent | `mobile_action`, `system_button`, `wait`, `open_app`, `shell`, `write_todos`, `scratchpad`, `complete_task`, `ask_user`, `remember_experience`, `browser_script`, `activate_skill`* |
 
 *`activate_skill` is registered only when `AgentSkillManager` finds at least one valid skill under `filesDir/skills/`. If no skills are present, the tool is omitted entirely.
 

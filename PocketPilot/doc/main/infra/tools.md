@@ -139,14 +139,12 @@ Classifies Android packages into security tiers.
 | `complete_task` | Signal completion | `status`, `answer` |
 | `write_todos` | Todo list management | `todos` array |
 | `scratchpad` | JSON-backed memory | `action`, `content` (JSON string for write) |
-| `delegate_task` | Subagent delegation (routes to the default role with subagent runtime exclusions) | `query`, `important_notes` |
 | `ask_user` | Request user help mid-task | `type` (`question`/`action`), `message` |
 | `shell` | Execute file-related shell commands | `command`, optional `timeout_ms` |
 | `termux_shell` | Execute full Linux bash through the Termux bridge | `command`, optional `cwd`, `timeout_seconds`, `env` |
 | `remember_experience` | Save reusable learning to long-term memory | `category`, `content`, optional `package_name` |
 | `browser_script` | Run a JS automation script against the user's real Chrome over CDP | `script`, optional `timeout_ms` |
 
-`delegate_task` is registered lazily only when the selected agent definition requires delegation.
 
 `ask_user` is registered lazily in `SessionAgentRunner.start()`. It suspends the agent coroutine via `UserResponseChannel` (CompletableDeferred) until the user responds through the capsule UI, or times out after 5 minutes. See [session.md](session.md) for `UserResponseChannel` details.
 

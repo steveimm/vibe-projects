@@ -28,7 +28,7 @@ data class SessionConfig(
 |---------|---------|-------------|
 | `actionDelayMs` | 2000 | Delay after actions for UI settle |
 | `approvalMode` | `SMART` | `ALWAYS_ASK` / `AUTO_APPROVE` / `SMART` |
-| `mainModel` | `glm-5` | Model for the main agent (subagents inherit this) |
+| `mainModel` | empty | Model ID on the configured server |
 | `traceEnabled` | false | Persist full JSONL trace events/artifacts |
 | `platformMode` | `ACCESSIBILITY` | `ACCESSIBILITY` or `VIRTUAL_DISPLAY` |
 | `excludedTools` | empty | Tool names to exclude (e.g., for eval) |

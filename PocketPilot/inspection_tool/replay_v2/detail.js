@@ -1,4 +1,4 @@
-export function renderDetailPanel({ container, step, getFileUrl, escapeHtml, onJumpToStepId, onJumpToSessionId }) {
+export function renderDetailPanel({ container, step, getFileUrl, escapeHtml }) {
   container.innerHTML = "";
 
 
@@ -13,7 +13,6 @@ export function renderDetailPanel({ container, step, getFileUrl, escapeHtml, onJ
   const mindColumn = document.createElement("div");
   mindColumn.className = "detail-column";
   mindColumn.appendChild(renderMindPanel(step, getFileUrl, escapeHtml));
-  mindColumn.appendChild(renderLinksPanel(step, escapeHtml, onJumpToStepId, onJumpToSessionId));
 
   grid.appendChild(worldColumn);
   grid.appendChild(mindColumn);
@@ -686,52 +685,6 @@ function appendSectionBlock(container, title, text, escapeHtml, collapsible = fa
   }
 
   container.appendChild(block);
-}
-
-function renderLinksPanel(step, escapeHtml, onJumpToStepId, onJumpToSessionId) {
-  const links = document.createElement("div");
-  links.className = "section links-section";
-  links.innerHTML = `<div class="section-title">Links</div>`;
-
-  const parent = step.links?.parent_step_id;
-  const parentRow = document.createElement("div");
-  parentRow.className = "code";
-  parentRow.textContent = `parent_step_id: ${parent || "-"}`;
-  links.appendChild(parentRow);
-
-  if (parent && onJumpToStepId) {
-    const parentButtons = document.createElement("div");
-    parentButtons.className = "link-row";
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "btn";
-    button.textContent = "Jump to parent";
-    button.addEventListener("click", () => onJumpToStepId(parent));
-    parentButtons.appendChild(button);
-    links.appendChild(parentButtons);
-  }
-
-  const childIds = step.links?.child_session_ids || [];
-  const childRow = document.createElement("div");
-  childRow.className = "code";
-  childRow.textContent = `child_session_ids: ${childIds.join(", ") || "-"}`;
-  links.appendChild(childRow);
-
-  if (childIds.length && onJumpToSessionId) {
-    const childButtons = document.createElement("div");
-    childButtons.className = "link-row";
-    childIds.forEach((sessionId) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "btn";
-      button.textContent = `Jump ${sessionId}`;
-      button.addEventListener("click", () => onJumpToSessionId(sessionId));
-      childButtons.appendChild(button);
-    });
-    links.appendChild(childButtons);
-  }
-
-  return links;
 }
 
 function findArtifact(artifacts, kind) {

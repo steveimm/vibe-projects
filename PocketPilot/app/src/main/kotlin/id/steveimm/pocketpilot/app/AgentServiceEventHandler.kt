@@ -54,16 +54,6 @@ internal class AgentServiceEventHandler(
                 recordingService?.updateActionState(event.actionId, state, event.result)
                 overlay?.onActionExecuted(event.toolName, event.outcome == ActionOutcome.SUCCESS)
             }
-            is SubAgentStarted -> {
-                updateStatus("🤖 Delegating to ${event.agentName}...")
-            }
-            is SubAgentActivity -> {
-                // Activity events can be very frequent; keep UI/log noise low.
-            }
-            is SubAgentCompleted -> {
-                val status = if (event.success) "completed" else "failed"
-                updateStatus("🤖 ${event.agentName} $status")
-            }
             is TaskCompleted -> {
                 Log.i(logTag, "Task completed: ${event.taskId}, outcome: ${event.outcome}")
                 // Stash outcome BEFORE finalize so the recorder can derive

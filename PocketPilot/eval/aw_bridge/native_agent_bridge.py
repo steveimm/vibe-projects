@@ -22,7 +22,6 @@ class BridgeConfig:
     package_name: str
     activity: str
     server_base_url: str
-    agent_mode: str
     perception_mode: str
     platform_mode: str
     main_model: str
@@ -199,9 +198,6 @@ class NativeAgentBridge:
             "--es",
             "server_base_url",
             self._server_url_for_device(),
-            "--es",
-            "agent_mode",
-            self._config.agent_mode,
             "--es",
             "perception_mode",
             self._config.perception_mode,

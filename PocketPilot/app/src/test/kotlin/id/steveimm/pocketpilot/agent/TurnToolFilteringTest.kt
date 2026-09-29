@@ -48,7 +48,7 @@ class TurnToolFilteringTest {
                 ToolRegistry().apply {
                     register(TestTurnTool("mobile_action"))
                     register(TestTurnTool("open_app"))
-                    register(TestTurnTool("delegate_task"))
+                    register(TestTurnTool("open_app"))
                     register(TestTurnTool("complete_task"))
                     register(TestTurnTool("write_todos"))
                 }
@@ -57,7 +57,7 @@ class TurnToolFilteringTest {
                 Turn(
                         toolRegistry = registry,
                         llmClient = llm,
-                        allowedToolNames = setOf("delegate_task", "complete_task", "write_todos")
+                        allowedToolNames = setOf("open_app", "complete_task", "write_todos")
                 )
 
         val result =
@@ -69,7 +69,7 @@ class TurnToolFilteringTest {
 
         assertThat(result.toolCalls).isEmpty()
         assertThat(llm.lastToolNames)
-                .containsExactly("delegate_task", "complete_task", "write_todos")
+                .containsExactly("open_app", "complete_task", "write_todos")
     }
 
     @Test
@@ -93,14 +93,14 @@ class TurnToolFilteringTest {
         val registry =
                 ToolRegistry().apply {
                     register(TestTurnTool("mobile_action"))
-                    register(TestTurnTool("delegate_task"))
+                    register(TestTurnTool("open_app"))
                 }
 
         val turn =
                 Turn(
                         toolRegistry = registry,
                         llmClient = llm,
-                        allowedToolNames = setOf("delegate_task")
+                        allowedToolNames = setOf("open_app")
                 )
 
         val result =
@@ -290,13 +290,13 @@ class TurnToolFilteringTest {
         val registry =
                 ToolRegistry().apply {
                     register(TestTurnTool("mobile_action"))
-                    register(TestTurnTool("delegate_task"))
+                    register(TestTurnTool("open_app"))
                 }
         val turn =
                 Turn(
                         toolRegistry = registry,
                         llmClient = llm,
-                        allowedToolNames = setOf("delegate_task")
+                        allowedToolNames = setOf("open_app")
                 )
 
         val events =

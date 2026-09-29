@@ -1,6 +1,6 @@
 ---
 name: cog-tune
-description: Analyze PocketPilot agent cognition using debug-run traces/replay artifacts and eval results, then propose and implement improvements to prompts, tool definitions, context packing (todo/scratchpad/history), and multi-agent coordination. Use when a debug run feels wrong, when eval metrics regress, when tuning context engineering for generalizable gains, or when reviewing LLM input/output and tool usage; produce both a report and code/doc changes.
+description: Analyze PocketPilot agent cognition using debug-run traces/replay artifacts and eval results, then propose and implement improvements to prompts, tool definitions, context packing (todo/scratchpad/history). Use when a debug run feels wrong, when eval metrics regress, when tuning context engineering for generalizable gains, or when reviewing LLM input/output and tool usage; produce both a report and code/doc changes.
 ---
 
 # Cog Tune
@@ -92,7 +92,6 @@ Look for mismatches between:
 - Screen state vs. what the model believed
 - Tool call args vs. available UI elements
 - History/todo/scratchpad vs. chosen action
-- Planner vs. executor handoff (delegation summaries)
 - Eval-level regressions vs. per-task cognition patterns (for example: lower success rate tied to repeated tool mis-targeting)
 
 ### 4. Classify root cause
@@ -103,7 +102,6 @@ Bucket issues before changing prompts:
 - **Reasoning** (bad choice despite correct inputs)
 - **Execution** (tool call failure or wrong target) — use `./scripts/action-test.sh` to isolate and reproduce action-level failures independently of the agent
 - **Observation** (post-action state not captured)
-- **Orchestration** (multi-agent handoff gaps)
 - **Evaluation gap** (metric selection/run config mismatch, flaky task set, or benchmark harness artifact) — use `eval/aw_bridge/setup_task_only.py --task <TaskName>` to run task setup in isolation and manually verify the environment state
 
 ### 5. Apply changes (minimal, generalizable)
@@ -114,7 +112,6 @@ Possible change areas:
 - **Context packing**: `agent/cognition/context/ContextPackager.kt`
 - **Policies**: `agent/cognition/policy/*`
 - **Tool schemas**: `tool/ToolSpec.kt`, tool impls under `tool/impl/`
-- **Delegation**: `tool/impl/DelegateTaskTool.kt`, `agent/subagent/*`
 
 Use `rg` to locate prompt or tool definition text before edits.
 
@@ -173,7 +170,7 @@ Configure POCKETPILOT_SERVER_URL and POCKETPILOT_MODEL_ID for the reachable mode
 - Eval runner: `eval/aw_bridge/runner.py`
 - Eval remote config: `eval/config/remote.yaml`
 - Remote eval: see `/autotune` skill Step 3
-- Eval bridge config: `eval/aw_bridge/native_agent_bridge.py` (agent_mode, perception_mode, platform_mode, excluded_tools, model selection)
+- Eval bridge config: `eval/aw_bridge/native_agent_bridge.py` (perception_mode, platform_mode, excluded_tools, model selection)
 - Eval completion monitor: `eval/aw_bridge/completion_monitor.py`
 - Eval preflight / snapshot policy: `eval/aw_bridge/runner_preflight.py`
 - Eval per-task lifecycle: `eval/aw_bridge/runner_execution.py`

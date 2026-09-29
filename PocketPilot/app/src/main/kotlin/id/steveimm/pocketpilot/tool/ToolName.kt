@@ -9,7 +9,7 @@ sealed class ToolName(
     val isScreenChanging: Boolean
         get() =
             when (this) {
-                MobileAction, OpenApp, SystemButton, DelegateTask, BrowserScript -> true
+                MobileAction, OpenApp, SystemButton, BrowserScript -> true
                 Wait, CompleteTask, WriteTodos, Scratchpad, RememberExperience, AskUser,
                 Shell, TermuxShell, ActivateSkill -> false
                 is Unknown -> true
@@ -49,11 +49,6 @@ sealed class ToolName(
         raw = "scratchpad",
         canonical = "scratchpad",
         displayName = "Scratchpad"
-    )
-    data object DelegateTask : ToolName(
-        raw = "delegate_task",
-        canonical = "delegate_task",
-        displayName = "Delegate task"
     )
     data object RememberExperience : ToolName(
         raw = "remember_experience",
@@ -101,7 +96,6 @@ sealed class ToolName(
                 CompleteTask.canonical -> CompleteTask
                 WriteTodos.canonical -> WriteTodos
                 Scratchpad.canonical -> Scratchpad
-                DelegateTask.canonical -> DelegateTask
                 RememberExperience.canonical -> RememberExperience
                 AskUser.canonical -> AskUser
                 Shell.canonical -> Shell

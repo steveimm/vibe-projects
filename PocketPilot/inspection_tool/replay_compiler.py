@@ -151,16 +151,6 @@ def event_artifacts(event: dict[str, Any]) -> list[dict[str, Any]]:
     return []
 
 
-def parse_parent_session_id(session_id: str) -> str | None:
-    """Remove the final delegation segment to identify a parent session.
-
-    Args:
-        session_id: Session identifier containing optional delegation segments.
-    """
-    parent, separator, _ = session_id.rpartition("::")
-    return parent if separator else None
-
-
 def extract_artifact(artifacts: Iterable[dict[str, Any]], kind: str) -> dict[str, Any] | None:
     """Return the first artifact matching the requested kind.
 
@@ -190,7 +180,7 @@ def summarize_event(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def compile_sessions(events: list[dict[str, Any]]) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
-    """Build session metadata and parent-child links from session lifecycle events.
+    """Build session metadata from lifecycle events.
 
     Args:
         events: Trace events ordered by sequence and timestamp.
@@ -207,24 +197,17 @@ def compile_sessions(events: list[dict[str, Any]]) -> tuple[dict[str, dict[str, 
             continue
 
         data = event.get("data") if isinstance(event.get("data"), dict) else {}
-        parent_session_id = data.get("parent_session_id")
-        if not isinstance(parent_session_id, str):
-            parent_session_id = parse_parent_session_id(session_id)
-
         role = data.get("agent_role") if isinstance(data.get("agent_role"), str) else "unknown"
         status = "running"
         sessions[session_id] = {
             "session_id": session_id,
-            "parent_session_id": parent_session_id,
             "agent_role": role,
             "agent_id": data.get("agent_id") if isinstance(data.get("agent_id"), str) else session_id,
             "goal": data.get("goal"),
             "task_id": data.get("task_id"),
-            "delegation_call_id": data.get("delegation_call_id") if isinstance(data.get("delegation_call_id"), str) else None,
             "status": status,
             "started_at_ms": event.get("tsMs"),
             "stopped_at_ms": None,
-            "children": [],
         }
 
     for event in events:
@@ -236,27 +219,19 @@ def compile_sessions(events: list[dict[str, Any]]) -> tuple[dict[str, dict[str, 
         if session_id not in sessions:
             sessions[session_id] = {
                 "session_id": session_id,
-                "parent_session_id": parse_parent_session_id(session_id),
                 "agent_role": "unknown",
                 "agent_id": session_id,
                 "goal": None,
                 "task_id": None,
-                "delegation_call_id": None,
                 "status": "stopped",
                 "started_at_ms": None,
                 "stopped_at_ms": event.get("tsMs"),
-                "children": [],
             }
 
         data = event.get("data") if isinstance(event.get("data"), dict) else {}
         reason = data.get("reason") if isinstance(data.get("reason"), str) else "stopped"
         sessions[session_id]["status"] = reason
         sessions[session_id]["stopped_at_ms"] = event.get("tsMs")
-
-    for session_id, info in sessions.items():
-        parent_id = info.get("parent_session_id")
-        if isinstance(parent_id, str) and parent_id in sessions:
-            sessions[parent_id]["children"].append(session_id)
 
     for session_id in sorted(sessions.keys()):
         raw_session_nodes.append(sessions[session_id])
@@ -265,7 +240,7 @@ def compile_sessions(events: list[dict[str, Any]]) -> tuple[dict[str, dict[str, 
 
 
 def compile_steps(events: list[dict[str, Any]], sessions: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
-    """Group events by session and turn, linking screens, tools, and delegated sessions.
+    """Group events by session and turn, preserving screen and tool artifacts.
 
     Args:
         events: Trace events ordered by sequence and timestamp.
@@ -280,7 +255,6 @@ def compile_steps(events: list[dict[str, Any]], sessions: dict[str, dict[str, An
             continue
         grouped[(session_id, turn_number)].append(event)
 
-    call_to_step: dict[str, str] = {}
     steps: list[dict[str, Any]] = []
 
     for key in sorted(grouped.keys(), key=lambda item: (item[0], item[1])):
@@ -302,7 +276,6 @@ def compile_steps(events: list[dict[str, Any]], sessions: dict[str, dict[str, An
 
         for event in turn_events:
             et = event_type(event)
-            data = event.get("data") if isinstance(event.get("data"), dict) else {}
             artifacts = event_artifacts(event)
 
             if et == "screen_captured" and screen_pre is None:
@@ -318,9 +291,6 @@ def compile_steps(events: list[dict[str, Any]], sessions: dict[str, dict[str, An
                 llm_resp = summarize_event(event)
             elif et == "tool_call":
                 tool_calls.append(summarize_event(event))
-                call_id = data.get("id") if isinstance(data.get("id"), str) else None
-                if call_id:
-                    call_to_step[call_id] = step_id
             elif et == "tool_result":
                 tool_results.append(summarize_event(event))
                 post_screen_candidate = {
@@ -361,38 +331,8 @@ def compile_steps(events: list[dict[str, Any]], sessions: dict[str, dict[str, An
                 "calls": tool_calls,
                 "results": tool_results,
             },
-            "links": {
-                "parent_step_id": None,
-                "child_session_ids": [],
-            },
         }
         steps.append(step)
-
-    # Connect parent step by delegation call id captured in child session start metadata.
-    for step in steps:
-        session_id = step.get("session_id")
-        if not isinstance(session_id, str):
-            continue
-        session_info = sessions.get(session_id)
-        if not isinstance(session_info, dict):
-            continue
-        delegation_call_id = session_info.get("delegation_call_id")
-        if isinstance(delegation_call_id, str) and delegation_call_id in call_to_step:
-            parent_step_id = call_to_step[delegation_call_id]
-            step["links"]["parent_step_id"] = parent_step_id
-
-    step_index = {step["step_id"]: step for step in steps if isinstance(step.get("step_id"), str)}
-    for step in steps:
-        parent_step_id = step.get("links", {}).get("parent_step_id")
-        if not isinstance(parent_step_id, str):
-            continue
-        parent_step = step_index.get(parent_step_id)
-        if not parent_step:
-            continue
-        child_session_id = step.get("session_id")
-        children = parent_step["links"].setdefault("child_session_ids", [])
-        if isinstance(child_session_id, str) and child_session_id not in children:
-            children.append(child_session_id)
 
     steps.sort(key=lambda step: (_integer(step.get("ts_start_ms")), str(step.get("step_id"))))
     return steps

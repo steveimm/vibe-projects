@@ -51,7 +51,6 @@ PocketPilot is an open-source **agent harness for Android**. Give it a natural-l
 
 - 🧠 **A full on-device agent harness, in the making.** Built in Kotlin, native to Android. ReAct loop, no external orchestrator. The pieces:
   - 🔩 **Primitive toolset** — `mobile_action` (tap, type, swipe/scroll), `open_app` + `system_button` for navigation, and `todo` + `scratchpad` as in-session working memory for long-horizon tasks.
-  - 🌿 **Subagents via `delegate_task`** — spin off a subagent for delegation in long-range complicated tasks, clean handoff with summary message.
   - 💾 **Long-term memory** *(preliminary)* — markdown files at user / device / per-app scope; the agent appends via `remember_experience`.
   - 📚 **Skills** *(preliminary, two kinds)*:
     - **agent-skills** — [agentskills.io](http://agentskills.io)-format skills, progressively loaded on-demand by the agent. Today bundled with the app; a discovery engine is in progress.
@@ -115,8 +114,8 @@ PocketPilot gets noticeably more capable when you opt in to two optional integra
 
 High-level layers:
 
-- **Agent loop** — ReAct turn engine, optional `delegate_task` subagent delegation, todo + scratchpad state, cross-session memory
-- **Tools** — UI primitives (`mobile_action`, `open_app`, `system_button`); working memory & control (`todo`, `scratchpad`, `remember_experience`, `delegate_task`, `activate_skill`); advanced (`shell`, `termux_shell` needs Termux, `browser_script` needs Shizuku)
+- **Agent loop** — ReAct turn engine, todo + scratchpad state, cross-session memory
+- **Tools** — UI primitives (`mobile_action`, `open_app`, `system_button`); working memory & control (`todo`, `scratchpad`, `remember_experience`, `activate_skill`); advanced (`shell`, `termux_shell` needs Termux, `browser_script` needs Shizuku)
 - **Platforms** — `AccessibilityPlatform` for normal use, `VirtualDisplayPlatform` (Shizuku) for hybrid background sessions
 - **LLM** — Chat Completions client for the configured server, optional model discovery, and bounded retries
 

@@ -31,7 +31,7 @@ class DefaultToolsExcludedByPrefTest {
         val excluded = defaultToolsExcludedByPref(browserScriptEnabled = false)
             .map { ToolName.from(it) }.toSet()
 
-        val resolved = DefaultRoleDef.resolve(
+        val resolved = DefaultAgentDefinition.resolve(
             snapshot = termuxUnavailable,
             excludedTools = excluded,
         )
@@ -47,7 +47,7 @@ class DefaultToolsExcludedByPrefTest {
         val excluded = defaultToolsExcludedByPref(browserScriptEnabled = true)
             .map { ToolName.from(it) }.toSet()
 
-        val resolved = DefaultRoleDef.resolve(
+        val resolved = DefaultAgentDefinition.resolve(
             snapshot = termuxUnavailable,
             excludedTools = excluded,
         )
