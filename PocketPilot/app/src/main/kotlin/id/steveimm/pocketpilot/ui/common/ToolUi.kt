@@ -41,7 +41,6 @@ private fun resolveToolDisplay(toolName: String): ToolDisplay {
         ToolName.Scratchpad -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
         ToolName.RememberExperience -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
         ToolName.AskUser -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
-        ToolName.Shell -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
         ToolName.TermuxShell -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
         ToolName.ActivateSkill -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
         ToolName.BrowserScript -> ToolDisplay(tool.displayName, Icons.Rounded.Build)

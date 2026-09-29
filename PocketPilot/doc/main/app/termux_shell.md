@@ -9,9 +9,8 @@
 full bash inside Termux through a localhost bridge, so the agent can use pipes, redirects, git,
 python, ripgrep, and other installed Termux packages.
 
-Use `termux_shell` for files, repositories, scripts, tests, build tools, and data processing. Use
-the existing `shell` tool only for quick Android toybox inspection commands; it has a restricted
-command surface and intentionally rejects shell metacharacters such as pipes and redirects.
+Use `termux_shell` for files, repositories, scripts, tests, build tools, and data processing.
+It is exposed only when Termux is installed, enabled, and bridge-ready.
 
 This page is the runtime map and operational contract.
 
@@ -94,11 +93,11 @@ Primary files:
 - Command timeout defaults to 120s.
 - Workspace cwd defaults to `~/pocketpilot/workspace/`. Bridge-side cwd validation rejects paths
   outside that workspace. To share files with other Android apps, copy them to `/sdcard/Download/`.
-- `termux_shell` is non-screen-changing and auto-allowed like `shell`, but it must not control
+- `termux_shell` is non-screen-changing and auto-allowed, but it must not control
   Android UI or bypass app-tier restrictions. UI work still belongs to `mobile_action`,
   `system_button`, `open_app`, and related UI tools.
 - `TurnToolPolicy` hoists only cognitive tools (`scratchpad`, `write_todos`,
-  `remember_experience`). `termux_shell`, `shell`, and UI tools keep the LLM-returned order.
+  `remember_experience`). `termux_shell` and UI tools keep the LLM-returned order.
 
 ## Known Limitations
 

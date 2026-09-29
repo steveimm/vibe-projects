@@ -15,7 +15,6 @@ internal val DefaultAgentDefinition = AgentDefinition(
                     "wait",
                     "open_app",
                     "scratchpad",
-                    "shell",
                     "write_todos",
                     "complete_task",
                     "ask_user",
@@ -40,8 +39,7 @@ internal val DefaultAgentDefinition = AgentDefinition(
         6. Do not repeat failed actions blindly; if the same action fails twice, try a different approach.
         7. Ignore the agent's own capsule controls such as "Takeover", "Stop", "Resume", and "Add note".
         8. Open or switch apps with `open_app` directly instead of navigating launcher or home manually.
-        9. Use shell only for accessible file inspection or verification. If the same shell approach fails twice, switch strategies.
-        10. When the goal names both a source app/file AND a destination app, open the destination app to enter data. Do not create artifacts in the source app.
+        9. When the goal names both a source app/file AND a destination app, open the destination app to enter data. Do not create artifacts in the source app.
 
         ## Execution Loop
         1. Observe the latest screen state, warnings, and screenshot if present.

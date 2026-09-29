@@ -8,7 +8,7 @@ metadata:
 - Use `element_index` on file names, NOT coordinate clicks. Left edge (x < 150) overlaps the hamburger menu.
 - If the side drawer opens accidentally, press Back to close it.
 - Home "Downloads" is the default view. If not visible, use the navigation drawer.
-- For move operations: if the hamburger menu won't open via click, swipe right from left edge. Shell `mv` works as fallback.
+- For move operations: if the hamburger menu won't open via click, swipe right from left edge.
 
 ## Safety
 

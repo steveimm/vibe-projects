@@ -98,7 +98,6 @@ Before finalizing, verify:
 
 ### Tool descriptions
 - `app/src/main/kotlin/id/steveimm/pocketpilot/tool/impl/MobileActionTool.kt`
-- `app/src/main/kotlin/id/steveimm/pocketpilot/tool/impl/ShellTool.kt`
 - `app/src/main/kotlin/id/steveimm/pocketpilot/tool/impl/CompleteTaskTool.kt`
 - `app/src/main/kotlin/id/steveimm/pocketpilot/tool/impl/OpenAppTool.kt`
 - `app/src/main/kotlin/id/steveimm/pocketpilot/tool/impl/ScratchpadTool.kt`

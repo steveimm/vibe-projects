@@ -11,7 +11,7 @@ sealed class ToolName(
             when (this) {
                 MobileAction, OpenApp, SystemButton, BrowserScript -> true
                 Wait, CompleteTask, WriteTodos, Scratchpad, RememberExperience, AskUser,
-                Shell, TermuxShell, ActivateSkill -> false
+                TermuxShell, ActivateSkill -> false
                 is Unknown -> true
             }
 
@@ -60,11 +60,6 @@ sealed class ToolName(
         canonical = "ask_user",
         displayName = "Ask user"
     )
-    data object Shell : ToolName(
-        raw = "shell",
-        canonical = "shell",
-        displayName = "Shell"
-    )
     data object TermuxShell : ToolName(
         raw = "termux_shell",
         canonical = "termux_shell",
@@ -98,7 +93,6 @@ sealed class ToolName(
                 Scratchpad.canonical -> Scratchpad
                 RememberExperience.canonical -> RememberExperience
                 AskUser.canonical -> AskUser
-                Shell.canonical -> Shell
                 TermuxShell.canonical -> TermuxShell
                 ActivateSkill.canonical -> ActivateSkill
                 BrowserScript.canonical -> BrowserScript

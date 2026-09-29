@@ -166,7 +166,6 @@ app/src/main/kotlin/id/steveimm/pocketpilot/
 │       ├── ScratchpadTool.kt
 │       ├── DelegateTaskTool.kt
 │       ├── RememberExperienceTool.kt
-│       ├── ShellTool.kt
 │       ├── TermuxShellTool.kt              # termux_shell: full bash through Termux bridge
 │       ├── BrowserScriptTool.kt              # browser_script: validation, capability gate, bounded output, trace
 │       ├── BrowserScriptTypes.kt             # gate/invoker/sink interfaces, outcome taxonomy, runner JSON serializer

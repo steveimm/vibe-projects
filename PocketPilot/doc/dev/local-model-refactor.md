@@ -31,3 +31,9 @@ The deployed server's tokenize endpoint confirms that assistant `reasoning` is r
 Native reasoning now survives the turn result, conversation history, runtime checkpoint, prompt assembly, and Chat Completions serialization. The HTTP integration test verifies both supported field names alongside their assistant tool call and matching tool response after checkpoint serialization. Token estimation includes the reasoning text.
 
 Verification: 1,725 release tests passed. The combined shell-removal/reasoning-history build completed "Open Settings" in two turns with two successful tools and no errors. The emulator checkpoint retained 645 and 399 characters of native reasoning from its two assistant turns.
+
+## Restricted shell removal
+
+Removed the app-process shell implementation, registration, tool identifier, prompt instructions, and tests. Removed browser helper assets and instructions that depended on reading snippets through that tool. Optional `termux_shell` remains independently gated by actual Termux availability.
+
+Verification: the combined release suite passed 1,725 tests, UI tests compiled, and the signed ARM64 build completed the two-turn Settings task described above. No restricted shell tool remains in the runtime roster. The final Settings screen was verified separately from tool success messages.

@@ -56,7 +56,6 @@ PocketPilot is an open-source **agent harness for Android**. Give it a natural-l
     - **agent-skills** — [agentskills.io](http://agentskills.io)-format skills, progressively loaded on-demand by the agent. Today bundled with the app; a discovery engine is in progress.
     - **app-skills** — PocketPilot-unique design. Per-package `SKILL.md` files that teach the agent how to operate specific apps. Auto-loaded whenever that app is in the foreground.
 - 🛠️ **Advanced agent-first tools.** Programmatic escapes from tap-and-swipe:
-  - 🐚 **`shell`** — Android toybox file commands (`ls` / `cat` / `grep` / `head` / `mv` / `cp`). One command per call; no pipes / redirects / command substitution. No setup.
   - 🐧 **`termux_shell`** — full Linux toolchain on the device: `python` / `git` / `curl` / `jq`, plus anything you `pkg install`. Needs [Termux](https://github.com/termux/termux-app).
   - 🌐 **`browser_script`** — JS automation against real Chrome via Chrome DevTools Protocol; loops, branches, and retries happen inside one tool call. Needs Chrome + [Shizuku](https://shizuku.rikka.app/).
 - 🪟 **Virtual display platform.** Hybrid background sessions via Shizuku — the agent operates a parallel Android display so the foreground stays yours.
@@ -115,7 +114,7 @@ PocketPilot gets noticeably more capable when you opt in to two optional integra
 High-level layers:
 
 - **Agent loop** — ReAct turn engine, todo + scratchpad state, cross-session memory
-- **Tools** — UI primitives (`mobile_action`, `open_app`, `system_button`); working memory & control (`todo`, `scratchpad`, `remember_experience`, `activate_skill`); advanced (`shell`, `termux_shell` needs Termux, `browser_script` needs Shizuku)
+- **Tools** — UI primitives (`mobile_action`, `open_app`, `system_button`); working memory & control (`todo`, `scratchpad`, `remember_experience`, `activate_skill`); advanced (`termux_shell` needs Termux, `browser_script` needs Shizuku)
 - **Platforms** — `AccessibilityPlatform` for normal use, `VirtualDisplayPlatform` (Shizuku) for hybrid background sessions
 - **LLM** — Chat Completions client for the configured server, optional model discovery, and bounded retries
 

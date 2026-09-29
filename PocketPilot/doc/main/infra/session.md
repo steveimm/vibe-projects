@@ -194,7 +194,6 @@ val services = SessionServices.create(config, platform, apiKeys, context, scope,
 Built-in tool registration includes:
 - `mobile_action`, `open_app`, `system_button`, `wait`
 - `write_todos`, `scratchpad`, `complete_task`
-- `shell` (restricted file-related shell command execution)
 - `termux_shell` (full bash through Termux, only when the session snapshot is enabled and ready)
 - `remember_experience` (registered in `SessionServices.create()`)
 - `browser_script` (registered in `SessionServices.create()` with session-scoped browser runtime)

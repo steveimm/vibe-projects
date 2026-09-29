@@ -65,22 +65,6 @@ class BundledAgentSkillInstallerTest {
         assertThat(File(installedDir, "scripts/stale.js").exists()).isFalse()
     }
 
-    @Test
-    fun `install substitutes placeholders in real browser use asset`() {
-        val skillsDir = tempDir.newFolder("skills")
-        val assets = fileBackedAssets(File("src/main/assets"))
-
-        BundledAgentSkillInstaller(assets).install(skillsDir)
-
-        val installedDir = File(skillsDir, "browser-use")
-        assertThat(File(installedDir, BundledAgentSkillInstaller.INSTALL_SENTINEL).isFile).isTrue()
-        val installedSkill = File(installedDir, "SKILL.md").readText()
-        assertThat(installedSkill).doesNotContain("{{SKILL_DIR}}")
-        assertThat(installedSkill).contains("${installedDir.absolutePath}/scripts/page.js")
-        assertThat(installedSkill).contains("${installedDir.absolutePath}/scripts/tabs.js")
-        assertThat(installedSkill).contains("${installedDir.absolutePath}/scripts/input.js")
-    }
-
     private fun browserUseAssets(): Map<String, String> = mapOf(
         "agent_skills/browser-use/SKILL.md" to """
             |---
@@ -105,18 +89,6 @@ class BundledAgentSkillInstallerTest {
             val path = firstArg<String>()
             val content = files[path] ?: throw FileNotFoundException(path)
             ByteArrayInputStream(content.toByteArray(Charsets.UTF_8))
-        }
-        return assets
-    }
-
-    private fun fileBackedAssets(root: File): AssetManager {
-        val assets = mockk<AssetManager>()
-        every { assets.list(any<String>()) } answers {
-            val file = File(root, firstArg<String>())
-            if (file.isDirectory) file.list().orEmpty() else emptyArray()
-        }
-        every { assets.open(any<String>()) } answers {
-            File(root, firstArg<String>()).inputStream()
         }
         return assets
     }

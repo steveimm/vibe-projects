@@ -39,7 +39,7 @@ class DefaultToolsExcludedByPrefTest {
         assertThat(resolved.allowedToolNames).doesNotContain(ToolName.BrowserScript.raw)
         // Other tools must remain — exclusion must not over-prune.
         assertThat(resolved.allowedToolNames).contains("mobile_action")
-        assertThat(resolved.allowedToolNames).contains("shell")
+        assertThat(resolved.allowedToolNames).contains("ask_user")
     }
 
     @Test

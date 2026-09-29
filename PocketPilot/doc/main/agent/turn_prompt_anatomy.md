@@ -224,7 +224,7 @@ Role-level allowlists are defined by `DefaultAgentDefinition` and filtered at ru
 
 | Runtime | Available Tools |
 |---------|-----------------|
-| Main agent | `mobile_action`, `system_button`, `wait`, `open_app`, `shell`, `write_todos`, `scratchpad`, `complete_task`, `ask_user`, `remember_experience`, `browser_script`, `activate_skill`* |
+| Main agent | `mobile_action`, `system_button`, `wait`, `open_app`, `write_todos`, `scratchpad`, `complete_task`, `ask_user`, `remember_experience`, `browser_script`, `activate_skill`* |
 
 *`activate_skill` is registered only when `AgentSkillManager` finds at least one valid skill under `filesDir/skills/`. If no skills are present, the tool is omitted entirely.
 

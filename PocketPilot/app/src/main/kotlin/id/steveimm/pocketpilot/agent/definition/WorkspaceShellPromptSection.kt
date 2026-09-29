@@ -14,10 +14,6 @@ internal val WORKSPACE_SHELL_PROMPT_SECTION =
     Working directory: ~/pocketpilot/workspace/. Input and output files go in this directory.
     To share with other apps, cp to /sdcard/Download/.
 
-    ### When to use which shell
-    - termux_shell: when you need a full toolchain (python/git/node, etc.) or pipe/redirect
-    - shell: quick device file checks (ls/cat/stat), when you don't need the Termux toolchain
-
     ### When to use UI tools vs shell
     - UI tools (mobile_action, etc.): phone app interactions, screen navigation
     - termux_shell: files/commands/git/build/scripts

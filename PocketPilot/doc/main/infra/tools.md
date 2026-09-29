@@ -140,7 +140,6 @@ Classifies Android packages into security tiers.
 | `write_todos` | Todo list management | `todos` array |
 | `scratchpad` | JSON-backed memory | `action`, `content` (JSON string for write) |
 | `ask_user` | Request user help mid-task | `type` (`question`/`action`), `message` |
-| `shell` | Execute file-related shell commands | `command`, optional `timeout_ms` |
 | `termux_shell` | Execute full Linux bash through the Termux bridge | `command`, optional `cwd`, `timeout_seconds`, `env` |
 | `remember_experience` | Save reusable learning to long-term memory | `category`, `content`, optional `package_name` |
 | `browser_script` | Run a JS automation script against the user's real Chrome over CDP | `script`, optional `timeout_ms` |
@@ -148,7 +147,6 @@ Classifies Android packages into security tiers.
 
 `ask_user` is registered lazily in `SessionAgentRunner.start()`. It suspends the agent coroutine via `UserResponseChannel` (CompletableDeferred) until the user responds through the capsule UI, or times out after 5 minutes. See [session.md](session.md) for `UserResponseChannel` details.
 
-`shell` executes shell commands on the device via `ProcessBuilder("sh", "-c", command)` with a 10s timeout. Two layers of validation: (1) **metacharacter rejection** — `;`, `|`, `&`, `` ` ``, `>`, `<`, `$`, newline, and CR are rejected at validation time to prevent chaining/bypass; (2) **blocklist** — first token checked against `am`, `pm`, `reboot`, `su`, `env`, `xargs`, `find`. Output is capped at `MAX_OUTPUT_CHARS` (4096) with a truncation indicator when exceeded. Password field text is suppressed at the perception layer (Perceptor checks `AccessibilityNodeInfo.isPassword()`).
 
 `termux_shell` runs bash through a Python bridge daemon inside Termux. It supports pipes,
 redirects, git, python, ripgrep, and installed Termux packages. The tool is registered only when
@@ -362,7 +360,6 @@ tool/
     ├── ScratchpadTool.kt
     ├── DelegateTaskTool.kt
     ├── AskUserTool.kt
-    ├── ShellTool.kt
     ├── BrowserScriptTool.kt              # browser_script tool: validation, gate, output cap, trace
     ├── BrowserScriptTypes.kt             # gate/invoker/sink interfaces, outcome taxonomy, runner JSON serializer
     └── DefaultBrowserScriptCapabilityGate.kt  # production gate: experimental flag → Shizuku → preflight

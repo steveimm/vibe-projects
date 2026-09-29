@@ -163,9 +163,6 @@ Current bundled seed:
 ```text
 app/src/main/assets/agent_skills/browser-use/
   SKILL.md
-  scripts/page.js
-  scripts/tabs.js
-  scripts/input.js
 ```
 
 The installer copies the whole skill directory into `context.filesDir/skills/browser-use/`,
@@ -194,6 +191,5 @@ Catalog refresh requires a new session (catalog is immutable per session).
 - `AgentSkillManagerTest` — activate, idempotent, mention parsing, boundary, concurrency, read failure
 - `ActivateSkillToolTest` — valid, unknown, body return path
 - `AppSkillAssetIntegrityTest` — parses every real `app_skills/*/SKILL.md` at build time, asserts `name: app-*` + `metadata.package` matches directory
-- `BundledAgentSkillInstallerTest` — bundled copy, `{{SKILL_DIR}}` substitution, idempotent overwrite, real asset substitution
-- `BrowserUseSkillAssetTest` — real `browser-use` asset files and snippet grouping
+- `BundledAgentSkillInstallerTest` — bundled copy, `{{SKILL_DIR}}` substitution, idempotent overwrite
 - `SessionServicesBundledSkillInstallTest` — first-install failure, sentinel-gated refresh fallback

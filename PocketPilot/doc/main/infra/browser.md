@@ -19,17 +19,7 @@ The runtime exposes one primitive to scripts:
 await cdp(method, params = {}, options = {})
 ```
 
-There are no native `browser_click`, `browser_type`, or helper APIs. Loops, retries, parsing, and
-workflow-specific helpers live in the submitted JavaScript or installed agent skill snippets.
-
-The bundled `browser-use` Agent Skill packages the reusable snippets. APK assets live under
-`app/src/main/assets/agent_skills/browser-use/`, but session runtime loads only the installed copy
-under `context.filesDir/skills/browser-use/`. Installed `SKILL.md` contains absolute paths to:
-
-- `scripts/page.js` — `pageJs`, navigation/load wait, `screenshot()` (writes to the trace artifact
-  store via `storeArtifact` and returns the relative path; never returns base64 bytes), page info
-- `scripts/tabs.js` — list/current/switch/new tab helpers
-- `scripts/input.js` — click/type/key/scroll helpers
+Browser automation uses raw CDP calls in submitted JavaScript. The bundled `browser-use` skill provides self-contained examples and does not require a shell tool to load helper files.
 
 ## Transport Cascade
 
@@ -170,9 +160,7 @@ JVM coverage:
 - `PolicyEngineTest` — Chrome SMART-mode ask rule and allow-list bypass guard.
 - `SessionBrowserIntegrationTest` — `browser_script` registration.
 - `SessionServicesCleanupTest` — shutdown cleanup after browser use.
-- `BundledAgentSkillInstallerTest`, `BrowserUseSkillAssetTest`,
-  `SessionServicesBundledSkillInstallTest` — bundled `browser-use` copy, snippet assets,
-  placeholder substitution, and sentinel-gated refresh fallback.
+- `BundledAgentSkillInstallerTest` and `SessionServicesBundledSkillInstallTest` cover bundled skill updates and sentinel-gated refresh fallback.
 - `BrowserSessionManagerTest` — transport failure, synchronous send failure, server close, full
   CDP/bridge teardown, and reconnect on the next run.
 - `RelayAuthTokenTest` — generate and verify constant-time behavior, header parse, deadline enforcement,

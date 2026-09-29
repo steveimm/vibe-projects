@@ -40,9 +40,7 @@ class BrowserScriptTool(
         Run an automation script against the user's real Chrome browser via raw Chrome DevTools
         Protocol. Inside the script call `await cdp(method, params, options)` — loops, branches,
         parsing and retries all happen in one tool call.
-        For richer examples and reusable snippets (pageJs, waitForLoad, screenshot, tab/input
-        helpers), activate the bundled `browser-use` agent skill — SKILL.md indexes installed
-        snippet files you can read with `shell` and inline into your script.
+        The bundled browser-use skill contains raw CDP examples.
         Gated at execution time on experimental flag, Shizuku authorization, and Chrome's
         DevTools socket — any gate failure returns an actionable setup error.
     """.trimIndent()

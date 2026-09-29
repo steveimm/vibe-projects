@@ -44,7 +44,7 @@ Given a proposed rule or change, walk top-to-bottom:
 - Tool-local examples
 - Examples per tool:
   - `mobile_action`: selector forms, scroll vs swipe semantics, coordinate fallback
-  - `shell`: file-oriented scope, blocked command classes, read-only examples
+  - `termux_shell`: workspace command scope and execution limits
   - `open_app`: direct launch behavior
   - `scratchpad`: read/write/delete semantics
   - `write_todos`: full-list replacement semantics

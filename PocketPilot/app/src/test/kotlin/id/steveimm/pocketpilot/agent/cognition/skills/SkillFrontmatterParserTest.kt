@@ -14,7 +14,7 @@ class SkillFrontmatterParserTest {
             |license: MIT
             |compatibility: android
             |allowed-tools:
-            |  - shell
+            |  - ask_user
             |  - mobile_action
             |metadata:
             |  author: pocketpilot
@@ -29,7 +29,7 @@ class SkillFrontmatterParserTest {
         assertThat(result.frontmatter.description).isEqualTo("Compute exact date ranges for calendar queries.")
         assertThat(result.frontmatter.license).isEqualTo("MIT")
         assertThat(result.frontmatter.compatibility).isEqualTo("android")
-        assertThat(result.frontmatter.allowedTools).containsExactly("shell", "mobile_action")
+        assertThat(result.frontmatter.allowedTools).containsExactly("ask_user", "mobile_action")
         assertThat(result.frontmatter.metadata).containsExactly("author", "pocketpilot", "version", "1.0")
         assertThat(result.body).isEqualTo("Use this skill when computing date ranges.")
     }
@@ -156,14 +156,14 @@ class SkillFrontmatterParserTest {
             |---
             |name: csv-tools
             |description: Tools as CSV.
-            |allowed-tools: shell, mobile_action
+            |allowed-tools: ask_user, mobile_action
             |---
             |Body.
         """.trimMargin()
 
         val result = SkillFrontmatterParser.parse(content)!!
 
-        assertThat(result.frontmatter.allowedTools).containsExactly("shell", "mobile_action")
+        assertThat(result.frontmatter.allowedTools).containsExactly("ask_user", "mobile_action")
     }
 
     @Test
