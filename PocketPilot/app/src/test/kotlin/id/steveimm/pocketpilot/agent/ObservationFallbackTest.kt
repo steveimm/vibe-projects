@@ -15,7 +15,6 @@ import id.steveimm.pocketpilot.protocol.ApprovalMode
 import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.protocol.SessionId
 import id.steveimm.pocketpilot.protocol.SessionLlmConfig
-import id.steveimm.pocketpilot.session.AgentSessionState
 import id.steveimm.pocketpilot.session.SessionServices
 import id.steveimm.pocketpilot.tool.AppClassifier
 import id.steveimm.pocketpilot.tool.PolicyEngine
@@ -57,7 +56,6 @@ class ObservationFallbackTest {
             toolRegistry = registry,
             toolRouter = ToolRouter(registry, policyEngine),
             historyManager = HistoryManager(),
-            sessionState = AgentSessionState(),
             policyEngine = policyEngine,
             appClassifier = AppClassifier(emptyMap()),
             platform = platform,

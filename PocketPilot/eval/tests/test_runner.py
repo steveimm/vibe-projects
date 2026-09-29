@@ -47,7 +47,6 @@ def _bridge_config() -> BridgeConfig:
         api_key=None,
         shizuku_apk_path=None,
         excluded_tools="",
-        clear_memory_before_task=True,
     )
 
 
@@ -85,13 +84,11 @@ def _runner_config(**overrides: object) -> RunnerConfig:
 
 
 class RunnerAdbTest(unittest.TestCase):
-    def test_load_default_config_disables_memory_for_eval(self) -> None:
+    def test_load_default_config_disables_user_questions_for_eval(self) -> None:
         workspace_root = Path(__file__).resolve().parents[2]
         config = load_config_from_path(workspace_root, "eval/config/default.yaml")
 
         self.assertIn("ask_user", config.bridge.excluded_tools)
-        self.assertIn("remember_experience", config.bridge.excluded_tools)
-        self.assertTrue(config.bridge.clear_memory_before_task)
 
     def test_run_adb_uses_default_timeout(self) -> None:
         config = _runner_config(adb_serial="emulator-5554")

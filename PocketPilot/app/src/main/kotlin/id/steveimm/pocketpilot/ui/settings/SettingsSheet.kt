@@ -25,8 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import id.steveimm.pocketpilot.app.AppSettingsState
-import id.steveimm.pocketpilot.app.MemoryEditGate
-import id.steveimm.pocketpilot.memory.MemoryStore
 import id.steveimm.pocketpilot.protocol.ApprovalMode
 import id.steveimm.pocketpilot.protocol.PlatformMode
 import id.steveimm.pocketpilot.tool.AppClassifier
@@ -38,7 +36,6 @@ enum class SettingsPage {
     HOME,
     MODEL_SERVER,
     AGENT_BEHAVIOR,
-    MEMORY,
     PERMISSIONS_ADVANCED,
     APP_ACCESS,
     OPEN_SOURCE_LICENSES,
@@ -53,8 +50,6 @@ fun SettingsSheet(
     onDebugModeChange: (Boolean) -> Unit,
     traceEnabled: Boolean,
     onTraceEnabledChange: (Boolean) -> Unit,
-    browserScriptEnabled: Boolean,
-    onBrowserScriptEnabledChange: (Boolean) -> Unit,
     isAccessibilityEnabled: Boolean,
     isOverlayEnabled: Boolean,
     onAccessibilityClick: () -> Unit,
@@ -66,9 +61,6 @@ fun SettingsSheet(
     modifier: Modifier = Modifier,
     initialPage: SettingsPage = SettingsPage.HOME,
     appClassifier: AppClassifier = AppClassifierHolder.get(LocalContext.current.applicationContext),
-    isSessionRunning: Boolean = false,
-    memoryStore: MemoryStore,
-    memoryEditGate: MemoryEditGate,
     approvalMode: ApprovalMode = ApprovalMode.SMART,
     onApprovalModeChange: (ApprovalMode) -> Unit = {},
 ) {
@@ -142,18 +134,9 @@ fun SettingsSheet(
                         platformMode = platformMode,
                         effectivePlatformMode = effectivePlatformMode,
                         onPlatformModeChange = onPlatformModeChange,
-                        browserScriptEnabled = browserScriptEnabled,
-                        onBrowserScriptEnabledChange = onBrowserScriptEnabledChange,
                         approvalMode = approvalMode,
                         onApprovalModeChange = onApprovalModeChange,
                         onNavigateToAppAccess = { settingsPage = SettingsPage.APP_ACCESS },
-                        onBack = { settingsPage = SettingsPage.HOME },
-                        onClose = onDismiss,
-                        isSessionRunning = isSessionRunning,
-                    )
-                    SettingsPage.MEMORY -> MemorySettingsPage(
-                        memoryStore = memoryStore,
-                        gate = memoryEditGate,
                         onBack = { settingsPage = SettingsPage.HOME },
                         onClose = onDismiss,
                     )
@@ -171,8 +154,6 @@ fun SettingsSheet(
                     )
                     SettingsPage.APP_ACCESS -> AppAccessSettingsPage(
                         appClassifier = appClassifier,
-                        memoryStore = memoryStore,
-                        gate = memoryEditGate,
                         approvalMode = approvalMode,
                         onBack = { settingsPage = SettingsPage.HOME },
                         onClose = onDismiss,

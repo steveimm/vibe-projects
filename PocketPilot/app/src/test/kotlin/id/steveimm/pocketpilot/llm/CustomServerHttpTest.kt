@@ -9,7 +9,6 @@ import id.steveimm.pocketpilot.history.MessageKind
 import id.steveimm.pocketpilot.history.ResponseItem
 import id.steveimm.pocketpilot.history.model.HistoryItemConverter
 import id.steveimm.pocketpilot.history.model.PersistedHistoryItem
-import id.steveimm.pocketpilot.session.AgentSessionState
 import id.steveimm.pocketpilot.trace.LlmInputItemsTraceSerializer
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -110,7 +109,7 @@ class CustomServerHttpTest {
                     history.addItem(restored)
                     history.addItem(ResponseItem.FunctionCall("call1", "open_app", JSONObject("""{"app_name":"Settings"}""")))
                     history.addItem(ResponseItem.FunctionCallOutput("call1", "Settings opened"))
-                    val items = PromptBuilder(history, AgentSessionState()).buildInputItems(
+                    val items = PromptBuilder(history).buildInputItems(
                         TurnObservation(null, 0, false, false, null, "Current screen: Settings"),
                     )
                     assertThat(LlmInputItemsTraceSerializer.toJson(items)[0].jsonObject[field]?.jsonPrimitive?.content)

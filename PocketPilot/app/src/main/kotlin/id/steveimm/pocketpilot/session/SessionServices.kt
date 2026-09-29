@@ -3,22 +3,13 @@ package id.steveimm.pocketpilot.session
 import android.content.Context
 import android.util.Log
 import id.steveimm.pocketpilot.app.AppSettingsStore
-import id.steveimm.pocketpilot.agent.definition.defaultToolsExcludedByPref
-import id.steveimm.pocketpilot.agent.cognition.prompt.AppSkillRepository
-import id.steveimm.pocketpilot.agent.cognition.prompt.AssetAppSkillRepository
-import id.steveimm.pocketpilot.agent.cognition.prompt.EmptyAppSkillRepository
-import id.steveimm.pocketpilot.agent.cognition.skills.AgentSkillManager
-import id.steveimm.pocketpilot.agent.cognition.skills.BundledAgentSkillInstaller
 import id.steveimm.pocketpilot.auth.ServerCredentialStore
-import id.steveimm.pocketpilot.browser.script.BrowserSessionManager
 import id.steveimm.pocketpilot.history.HistoryManager
 import id.steveimm.pocketpilot.history.SessionRecordingService
 import id.steveimm.pocketpilot.llm.LLMClient
 import id.steveimm.pocketpilot.llm.LLMClientFactory
 import id.steveimm.pocketpilot.llm.ModelCatalog
 import id.steveimm.pocketpilot.llm.ModelCatalogRepositoryHolder
-import id.steveimm.pocketpilot.memory.MemoryRecaller
-import id.steveimm.pocketpilot.memory.MemoryStore
 import id.steveimm.pocketpilot.platform.AndroidPlatform
 import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.termux.TermuxBridgeManager
@@ -26,21 +17,13 @@ import id.steveimm.pocketpilot.termux.TermuxBridgeStatus
 import id.steveimm.pocketpilot.termux.TermuxCapabilitySnapshot
 import id.steveimm.pocketpilot.tool.AppClassifier
 import id.steveimm.pocketpilot.tool.PolicyEngine
-import id.steveimm.pocketpilot.tool.ToolName
 import id.steveimm.pocketpilot.tool.ToolRegistry
 import id.steveimm.pocketpilot.tool.ToolRouter
-import id.steveimm.pocketpilot.tool.impl.BrowserScriptInvoker
-import id.steveimm.pocketpilot.tool.impl.BrowserScriptTool
-import id.steveimm.pocketpilot.tool.impl.BrowserScriptTraceMetadata
-import id.steveimm.pocketpilot.tool.impl.BrowserScriptTraceSink
-import id.steveimm.pocketpilot.tool.impl.DefaultBrowserScriptCapabilityGate
-import id.steveimm.pocketpilot.tool.impl.RememberExperienceTool
 import id.steveimm.pocketpilot.trace.TraceRecorder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
-import org.json.JSONObject
 
 internal interface TermuxSessionBridge {
     suspend fun healthCheck(): TermuxBridgeStatus
@@ -64,7 +47,6 @@ class SessionServices internal constructor(
         val toolRegistry: ToolRegistry,
         val toolRouter: ToolRouter,
         val historyManager: HistoryManager,
-        val sessionState: AgentSessionState,
         val policyEngine: PolicyEngine,
         val appClassifier: AppClassifier,
         val platform: AndroidPlatform,
@@ -74,13 +56,8 @@ class SessionServices internal constructor(
         val llmClientFactory: LLMClientFactory,
         val traceRecorder: TraceRecorder,
         val recordingService: SessionRecordingService,
-        val browserSessionManager: BrowserSessionManager? = null,
         val termuxSnapshot: TermuxCapabilitySnapshot = TermuxCapabilitySnapshot.Unavailable,
-        internal val appSkillRepository: AppSkillRepository = EmptyAppSkillRepository,
-        val agentSkillManager: AgentSkillManager = AgentSkillManager(java.io.File("")),
         val userResponseChannel: UserResponseChannel = UserResponseChannel(),
-        val memoryStore: MemoryStore = MemoryStore(java.io.File("")),
-        val memoryRecaller: MemoryRecaller = MemoryRecaller(memoryStore)
 ) {
     companion object {
         private const val TAG = "SessionServices"
@@ -109,80 +86,41 @@ class SessionServices internal constructor(
             val llmClient: LLMClient = llmBootstrap.llmClient
             Log.d(TAG, "Created LLMClient: ${llmClient.javaClass.simpleName}")
 
-            val skillsDir = java.io.File(context.filesDir, "skills")
-            installBundledAgentSkills(context, skillsDir)
             val settingsStore = AppSettingsStore(context)
-            // Snapshot once at session start — KISS "next session" semantics: toggling a
-            // skill in Settings does not mutate this manager mid-session.
-            val disabledAgentSkills = settingsStore.disabledAgentSkills.value
-            val agentSkillManager = AgentSkillManager(skillsDir, disabledAgentSkills)
             val termuxManager = TermuxBridgeManager.get(context)
             val termuxSnapshot = captureTermuxSnapshot(
                     bridge = TermuxBridgeManagerSessionBridge(termuxManager),
                     termuxShellEnabled = settingsStore.termuxShellEnabled.value
             )
-            // Keep preference exclusions in the session config so tool registration and the LLM allowlist use the same set.
-            val effectiveExcludedTools = config.excludedTools +
-                    defaultToolsExcludedByPref(settingsStore.browserScriptEnabled.value)
-            val effectiveConfig =
-                    if (effectiveExcludedTools == config.excludedTools) config
-                    else config.copy(excludedTools = effectiveExcludedTools)
             val tooling = SessionToolingBootstrapper.create(
-                approvalMode = effectiveConfig.approvalMode,
+                approvalMode = config.approvalMode,
                 appClassifier = appClassifier,
-                agentSkillManager = agentSkillManager,
                 termuxSnapshot = termuxSnapshot,
-                excludedTools = effectiveConfig.excludedTools,
+                excludedTools = config.excludedTools,
                 context = context.applicationContext
             )
             val policyEngine = tooling.policyEngine
-            val sessionState = tooling.sessionState
             val toolRegistry = tooling.toolRegistry
             val toolRouter = tooling.toolRouter
-            val browserSessionManager = registerBrowserScriptTool(
-                toolRegistry = toolRegistry,
-                context = context.applicationContext,
-                scope = scope,
-                traceRecorder = traceRecorder,
-                settingsStore = settingsStore,
-                browserScriptToolExcluded =
-                        ToolName.BrowserScript.raw in effectiveExcludedTools,
-            )
-
             val history = SessionHistoryBootstrapper.create(context, scope)
             val historyManager = history.historyManager
             val recordingService = history.recordingService
-            val appSkillRepository = AssetAppSkillRepository(context.assets)
-
-            // Memory system — eval hygiene is handled by the eval bridge clearing files/memory
-            // before each task launch.
-            val memoryDir = java.io.File(context.filesDir ?: java.io.File("/tmp"), "memory")
-            val memoryStore = MemoryStore(memoryDir)
-            val memoryRecaller = MemoryRecaller(memoryStore)
-            toolRegistry.register(RememberExperienceTool(memoryStore, appClassifier))
-
             Log.i(TAG, "SessionServices created successfully")
 
             return SessionServices(
                     toolRegistry = toolRegistry,
                     toolRouter = toolRouter,
                     historyManager = historyManager,
-                    sessionState = sessionState,
                     policyEngine = policyEngine,
                     appClassifier = appClassifier,
                     platform = platform,
-                    config = effectiveConfig,
+                    config = config,
                     llmClient = llmClient,
                     modelCatalog = modelCatalog,
                     llmClientFactory = llmClientFactory,
                     traceRecorder = traceRecorder,
                     recordingService = recordingService,
-                    browserSessionManager = browserSessionManager,
                     termuxSnapshot = termuxSnapshot,
-                    appSkillRepository = appSkillRepository,
-                    agentSkillManager = agentSkillManager,
-                    memoryStore = memoryStore,
-                    memoryRecaller = memoryRecaller
             )
         }
 
@@ -204,82 +142,6 @@ class SessionServices internal constructor(
             return bridge.snapshot(termuxShellEnabled)
         }
 
-        internal fun installBundledAgentSkills(context: Context, skillsDir: java.io.File) {
-            val hasExistingBrowserUse = BundledAgentSkillInstaller.hasCompletedBrowserUseInstall(skillsDir)
-            try {
-                BundledAgentSkillInstaller(context.assets).install(skillsDir)
-            } catch (e: Exception) {
-                if (!hasExistingBrowserUse) {
-                    throw IllegalStateException("Failed to install bundled browser-use skill", e)
-                }
-                Log.w(TAG, "Failed to refresh bundled agent skills; keeping existing install", e)
-            }
-        }
-
-        internal fun registerBrowserScriptTool(
-            toolRegistry: ToolRegistry,
-            context: Context,
-            scope: CoroutineScope,
-            traceRecorder: TraceRecorder,
-            settingsStore: AppSettingsStore,
-            browserScriptToolExcluded: Boolean = false,
-        ): BrowserSessionManager {
-            val browserSessionManager = BrowserSessionManager(
-                context = context.applicationContext,
-                sessionScope = scope,
-                traceRecorder = traceRecorder,
-            )
-            // Skip registration when the user pref excludes browser_script.
-            if (browserScriptToolExcluded) {
-                Log.d(TAG, "Skipping BrowserScriptTool registration — excluded by pref")
-                return browserSessionManager
-            }
-            val browserGate = DefaultBrowserScriptCapabilityGate(
-                isExperimentalEnabled = { settingsStore.load().browserScriptEnabled },
-                preflight = browserSessionManager::preflight,
-                invokerFactory = {
-                    BrowserScriptInvoker { script, timeout ->
-                        browserSessionManager.run(script, timeout)
-                    }
-                },
-            )
-            toolRegistry.register(
-                BrowserScriptTool(
-                    capabilityGate = browserGate,
-                    traceSink = browserScriptTraceSink(traceRecorder),
-                )
-            )
-            return browserSessionManager
-        }
-
-        private fun browserScriptTraceSink(traceRecorder: TraceRecorder): BrowserScriptTraceSink =
-            BrowserScriptTraceSink { metadata ->
-                if (!traceRecorder.enabled) return@BrowserScriptTraceSink
-                traceRecorder.storeText(
-                    kind = "browser_script",
-                    filenameHint = "browser_script_${metadata.callId ?: "call"}.json",
-                    content = browserScriptTraceJson(metadata).toString(),
-                    mimeType = "application/json",
-                    description = "Raw browser_script execution metadata",
-                )
-            }
-
-        private fun browserScriptTraceJson(metadata: BrowserScriptTraceMetadata): JSONObject {
-            return JSONObject().apply {
-                put("call_id", metadata.callId ?: JSONObject.NULL)
-                put("script", metadata.script)
-                put("timeout_ms", metadata.timeoutMs)
-                put("duration_ms", metadata.durationMs)
-                put("outcome", metadata.outcome)
-                put("outcome_code", metadata.outcomeCode ?: JSONObject.NULL)
-                put("severity", metadata.severity?.name ?: JSONObject.NULL)
-                put("retryable", metadata.retryable)
-                put("raw_result_json", metadata.rawResultJson ?: JSONObject.NULL)
-                put("error_message", metadata.errorMessage ?: JSONObject.NULL)
-                put("original_chars", metadata.originalChars)
-                put("truncated_chars", metadata.truncatedChars)
-            }
-        }
     }
 
     /** Cleanup all services. Aggregates per-step failures rather than aborting, so callers can surface partial teardown errors. */
@@ -290,7 +152,6 @@ class SessionServices internal constructor(
         runStep("toolRouter.cancelAll", failures) { toolRouter.cancelAll() }
         runStep("userResponseChannel.cancel", failures) { userResponseChannel.cancel() }
         runStep("historyManager.clear", failures) { historyManager.clear() }
-        runStep("browserSessionManager.close", failures) { browserSessionManager?.close() }
         runStep("platform.stop", failures) { platform.stop() }
         runStep("llmClient.cleanup", failures) {
             if (!llmClientFactory.owns(llmClient)) llmClient.cleanup()

@@ -2,19 +2,13 @@ package id.steveimm.pocketpilot.qa
 
 import id.steveimm.pocketpilot.app.AppSettingsState
 import id.steveimm.pocketpilot.app.AppSettingsStore
-import id.steveimm.pocketpilot.app.MemoryEditGate
-import id.steveimm.pocketpilot.memory.MemoryStore
 import id.steveimm.pocketpilot.protocol.PlatformMode
-import id.steveimm.pocketpilot.session.SessionCoordinator
 import id.steveimm.pocketpilot.ui.settings.PermissionsAdvancedSettingsPage
 import id.steveimm.pocketpilot.ui.settings.SettingsSheet
 import id.steveimm.pocketpilot.ui.theme.PocketPilotTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 
 /** Render the real SettingsSheet with sensible defaults; callers override what they need. Used by navigation tests (S1-S4) that
  * exercise the full sheet. */
@@ -23,13 +17,6 @@ internal fun TestSettingsSheet(
     onDismiss: () -> Unit = {},
 ) {
     val context = LocalContext.current
-    val memoryStore = remember(context) {
-        MemoryStore(java.io.File(context.cacheDir, "qa-memory-${System.nanoTime()}"))
-    }
-    val gate = remember(context) {
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-        MemoryEditGate(SessionCoordinator(scope), scope)
-    }
     PocketPilotTheme {
         SettingsSheet(
             settings = remember { AppSettingsState(AppSettingsStore(context)) },
@@ -39,8 +26,6 @@ internal fun TestSettingsSheet(
             onDebugModeChange = {},
             traceEnabled = false,
             onTraceEnabledChange = {},
-            browserScriptEnabled = false,
-            onBrowserScriptEnabledChange = {},
             isAccessibilityEnabled = true,
             isOverlayEnabled = true,
             onAccessibilityClick = {},
@@ -49,8 +34,6 @@ internal fun TestSettingsSheet(
             effectivePlatformMode = null,
             onPlatformModeChange = {},
             onDismiss = onDismiss,
-            memoryStore = memoryStore,
-            memoryEditGate = gate,
         )
     }
 }

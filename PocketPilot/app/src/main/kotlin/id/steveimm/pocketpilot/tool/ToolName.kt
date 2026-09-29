@@ -9,9 +9,8 @@ sealed class ToolName(
     val isScreenChanging: Boolean
         get() =
             when (this) {
-                MobileAction, OpenApp, SystemButton, BrowserScript -> true
-                Wait, CompleteTask, WriteTodos, Scratchpad, RememberExperience, AskUser,
-                TermuxShell, ActivateSkill -> false
+                MobileAction, OpenApp, SystemButton -> true
+                Wait, CompleteTask, AskUser, TermuxShell -> false
                 is Unknown -> true
             }
 
@@ -40,21 +39,6 @@ sealed class ToolName(
         canonical = "complete_task",
         displayName = "Complete task"
     )
-    data object WriteTodos : ToolName(
-        raw = "write_todos",
-        canonical = "write_todos",
-        displayName = "Write todos"
-    )
-    data object Scratchpad : ToolName(
-        raw = "scratchpad",
-        canonical = "scratchpad",
-        displayName = "Scratchpad"
-    )
-    data object RememberExperience : ToolName(
-        raw = "remember_experience",
-        canonical = "remember_experience",
-        displayName = "Remember experience"
-    )
     data object AskUser : ToolName(
         raw = "ask_user",
         canonical = "ask_user",
@@ -64,16 +48,6 @@ sealed class ToolName(
         raw = "termux_shell",
         canonical = "termux_shell",
         displayName = "Termux shell"
-    )
-    data object ActivateSkill : ToolName(
-        raw = "activate_skill",
-        canonical = "activate_skill",
-        displayName = "Activate skill"
-    )
-    data object BrowserScript : ToolName(
-        raw = "browser_script",
-        canonical = "browser_script",
-        displayName = "Browser script"
     )
     data class Unknown(private val name: String) : ToolName(
         raw = name,
@@ -89,13 +63,8 @@ sealed class ToolName(
                 Wait.canonical -> Wait
                 SystemButton.canonical -> SystemButton
                 CompleteTask.canonical -> CompleteTask
-                WriteTodos.canonical -> WriteTodos
-                Scratchpad.canonical -> Scratchpad
-                RememberExperience.canonical -> RememberExperience
                 AskUser.canonical -> AskUser
                 TermuxShell.canonical -> TermuxShell
-                ActivateSkill.canonical -> ActivateSkill
-                BrowserScript.canonical -> BrowserScript
                 else -> Unknown(raw)
             }
         }

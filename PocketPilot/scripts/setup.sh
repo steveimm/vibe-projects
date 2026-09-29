@@ -90,7 +90,7 @@ else
             warn "start.sh ran but shizuku_server is still not detected. Open the Shizuku app and start it manually before invoking debug-run.sh."
         fi
     else
-        warn "Shizuku not installed (no $SHIZUKU_START). Install Shizuku from Play Store / GitHub and start it before browser_script will work."
+        warn "Shizuku not installed (no $SHIZUKU_START). Install Shizuku from Play Store / GitHub and start it before using Virtual Display."
     fi
 fi
 

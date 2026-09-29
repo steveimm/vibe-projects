@@ -69,7 +69,6 @@ class Agent(
         var turnRunnerState = TurnRunnerState()
         var recoverableRetryCount = 0
         var consecutiveCompactionFailures = 0
-        var lastKnownPackage: String? = null
         try {
         while (shouldContinue()) {
             if (pauseState.value) {
@@ -132,24 +131,12 @@ class Agent(
             val turnExecution = turnRunner.executeTurn(turnId, turnCount, turnRunnerState)
             turnRunnerState = turnExecution.nextState
             // Track foreground package for auto-retain fallback
-            services.platform.getCurrentPackageName()?.let { lastKnownPackage = it }
             when (val result = turnExecution.outcome) {
                 is TurnOutcome.Continue -> {
                     recoverableRetryCount = 0
                     delay(config.uiSettleDelayMs)
                 }
                 is TurnOutcome.Complete -> {
-                    if (!result.success && !services.memoryStore.hasWrittenThisSession()) {
-                        val pkg = services.platform.getCurrentPackageName() ?: lastKnownPackage
-                        if (pkg != null) {
-                            val entry = "Failed on \"${config.goal.take(60)}\": ${result.message.take(80)}"
-                            if (services.memoryStore.appendAppOperationalNote(pkg, entry)) {
-                                Log.i(TAG, "Auto-retained app memory for $pkg")
-                            } else {
-                                Log.w(TAG, "Failed to auto-retain app memory for $pkg")
-                            }
-                        }
-                    }
                     if (result.success) {
                         eventDispatcher.status("✅ Goal achieved!")
                         stopReason = AgentStopReason.GoalAchieved(result.message)

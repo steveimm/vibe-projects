@@ -348,7 +348,7 @@ class SessionRecordingService(
     private var contextFileName: String? = null
     private var checkpointSaveJob: Job? = null
 
-    /** Schedule a debounced checkpoint save. Called when HistoryManager, TodoState, or ScratchpadState mutates. */
+    /** Schedule a debounced checkpoint save. Called when conversation history changes. */
     fun scheduleCheckpoint(snapshotProvider: () -> SessionRuntimeSnapshot) {
         synchronized(stateLock) {
             checkpointSaveJob?.cancel()

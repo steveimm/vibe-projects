@@ -18,7 +18,6 @@ import id.steveimm.pocketpilot.platform.AndroidPlatform
 import id.steveimm.pocketpilot.platform.AppInfo
 import id.steveimm.pocketpilot.platform.DisplayInfo
 import id.steveimm.pocketpilot.platform.UIAction
-import id.steveimm.pocketpilot.session.AgentSessionState
 import id.steveimm.pocketpilot.session.SessionServices
 import id.steveimm.pocketpilot.test.FakeAndroidPlatform
 import id.steveimm.pocketpilot.tool.AppClassifier
@@ -374,7 +373,6 @@ class AgentRunLoopTest {
             toolRegistry = toolRegistry,
             toolRouter = ToolRouter(toolRegistry, policyEngine),
             historyManager = historyManager,
-            sessionState = AgentSessionState(),
             policyEngine = policyEngine,
             appClassifier = AppClassifier(emptyMap()),
             platform = platform,

@@ -144,7 +144,7 @@ There is no `MaxTurnsReached` stop reason; the agent runs until the goal is achi
 
 ## Auto-Compaction
 
-→ See: `history/Compactor.kt`, [memory.md](memory.md) (Conversation History & Compaction)
+→ See: `history/Compactor.kt`, [memory.md](context.md) (Conversation History & Compaction)
 
 Auto-compaction replaces the previous `maxTurns` hard cap. Two layers:
 
@@ -188,7 +188,6 @@ catch (e: ContextWindowExceededException) {
 → See: `agent/cognition/`
 
 - **Prompt layer**: `PromptBuilder` assembles History → Working Memory → Recalled Memory → App Skill → Current Observation input items. `COMPACTION_SUMMARY` items are rendered as user-role messages with a `[Context checkpoint from earlier work in this session]` prefix.
-- **Memory layer**: `MemoryRecaller.recall(currentPackageName)` injects cross-session learnings per turn; `Agent.kt` auto-retains `[pitfall]` entries on failure.
 - **Context layer**: `NavigationState` tracks recent screen signatures for loop detection.
 - **Policy layer**: `TurnToolPolicy` arbitrates tool calls — keeps cognitive tools and screen-changing tools, defers `complete_task` when action tools exist. Navigation isolation (one screen-changing action per turn) is enforced at the prompt layer, not in code.
 - **Loop guard**: `LoopDetectionPolicy` detects stable screens (near-identical for 5 consecutive turns at Jaccard >= 0.95) and emits a factual warning. No strategy suggestions — the LLM decides what to do.
@@ -225,7 +224,6 @@ data class TurnResult(
 
 `TurnToolPolicy` enforces structured tool execution per turn:
 
-- **Cognitive tools** (`write_todos`, `scratchpad`): always allowed alongside screen actions
 - **Screen-changing tools** (`mobile_action`, `open_app`, etc.): all kept (multi-action for form filling); navigation isolation enforced by prompt
 - `complete_task`: deferred if a non-completion action tool exists
 - Completion decided only when no non-completion action remains
@@ -292,12 +290,6 @@ Plus run-level summary: `run_summary.json`
 
 `TraceRecorder` exposes a `flush()` suspend function that blocks until all enqueued trace events are written to disk. `AgentSession.handleAgentComplete()` calls `flush()` **before** emitting `TaskCompleted`, ensuring trace data is persisted before the eval runner force-stops the process.
 
-### Memory Auto-Retain
-
-Before trace flush, `Agent.kt` checks for failed tasks where the LLM never voluntarily called `remember_experience`. If both conditions hold, it auto-saves a `[pitfall]` entry using `lastKnownPackage` as fallback when `getCurrentPackageName()` returns null.
-
-→ See: [memory.md](memory.md) for details.
-
 `FileTraceRecorder` implements flush via a `CompletableDeferred`-based `WriteOp.Flush` sent through the writer channel. The writer loop completes the deferred after processing all preceding writes. `NoopTraceRecorder.flush()` is a no-op.
 
 → See: `trace/TraceRecorder.kt`, `trace/FileTraceRecorder.kt`
@@ -307,7 +299,6 @@ Before trace flush, `Agent.kt` checks for failed tasks where the LLM never volun
 ## Related Docs
 
 - [Overview](overview.md) - Architecture context
-- [Planning State](planning.md) - State persistence across turns
 - [Turn Prompt Anatomy](turn_prompt_anatomy.md) - Exact prompt composition
-- [Memory & History Compaction](memory.md) - HistoryManager + Compactor mechanics
+- [Memory & History Compaction](context.md) - HistoryManager + Compactor mechanics
 - [Protocol](../protocol/overview.md) - Event types

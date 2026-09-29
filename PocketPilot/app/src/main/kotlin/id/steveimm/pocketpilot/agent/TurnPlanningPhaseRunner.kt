@@ -1,7 +1,6 @@
 package id.steveimm.pocketpilot.agent
 
 import android.util.Log
-import id.steveimm.pocketpilot.agent.cognition.skills.ActivationResult
 import id.steveimm.pocketpilot.agent.cognition.policy.ToolArbitrationResult
 import id.steveimm.pocketpilot.agent.cognition.policy.TurnToolPolicy
 import id.steveimm.pocketpilot.agent.cognition.prompt.PromptBuilder
@@ -68,24 +67,6 @@ internal class TurnPlanningPhaseRunner(
                                 "System prompt must be provided by AgentDefinition."
                         }
 
-                // Activate any /skill-name mentions in the goal before prompt build.
-                val activationResults = services.agentSkillManager.activateExplicitMentions(config.goal)
-                val activatedSkillBodies = activationResults
-                        .filterIsInstance<ActivationResult.Success>()
-                        .joinToString("\n\n") { "## Skill: ${it.name}\n${it.body}" }
-                        .takeIf { it.isNotEmpty() }
-
-                // Catalog (one-liner descriptions) stays in system prompt.
-                // Activated skill BODIES go into user-role messages (lower priority).
-                val catalogSection = services.agentSkillManager.catalogPrompt()
-                val fullSystemPrompt = buildString {
-                        append(systemPrompt)
-                        if (catalogSection != null) {
-                                append("\n\n")
-                                append(catalogSection)
-                        }
-                }
-
                 // Canonical observation — computed once, consumed by prompt and history.
                 val observation = TurnObservation.capture(
                         snapshot = snapshot,
@@ -95,19 +76,13 @@ internal class TurnPlanningPhaseRunner(
                 val promptBuilder =
                         PromptBuilder(
                                 historyManager = services.historyManager,
-                                sessionState = services.sessionState,
                                 supportsVision = model.supportsVision
                         )
-                val appSkill = buildAppSkillMessage(currentPackageName)
-                val recalledMemory = services.memoryRecaller.recall(currentPackageName)
                 val inputItems =
                         promptBuilder.buildInputItems(
                                 observation = observation,
                                 warnings = warnings,
                                 turnNumber = turnNumber,
-                                appSkill = appSkill,
-                                recalledMemory = recalledMemory,
-                                activatedAgentSkills = activatedSkillBodies
                         )
 
                 // Record screen observation for future turns.
@@ -123,7 +98,7 @@ internal class TurnPlanningPhaseRunner(
                         turnId = turnId,
                         turnNumber = turnNumber,
                         snapshot = snapshot,
-                        systemPrompt = fullSystemPrompt,
+                        systemPrompt = systemPrompt,
                         userContextText = "(built by PromptBuilder)",
                         history = services.historyManager.forPrompt(),
                         inputItems = inputItems,
@@ -135,7 +110,7 @@ internal class TurnPlanningPhaseRunner(
                 var turnResult: TurnResult? = null
                 var streamError: Throwable? = null
                 turn.runStreaming(
-                                systemPrompt = fullSystemPrompt,
+                                systemPrompt = systemPrompt,
                                 inputItems = inputItems,
                                 model = model.modelId,
                                 rebuildInputItems = {
@@ -147,9 +122,6 @@ internal class TurnPlanningPhaseRunner(
                                                 observation = observation,
                                                 warnings = warnings,
                                                 turnNumber = turnNumber,
-                                                appSkill = appSkill,
-                                                recalledMemory = recalledMemory,
-                                                activatedAgentSkills = activatedSkillBodies
                                         )
                                 }
                         )
@@ -210,19 +182,6 @@ internal class TurnPlanningPhaseRunner(
                 trace.llmReasoning(turnId, turnNumber, reasoning.toString())
 
                 return PlanningPhaseOutput(turnResult = result, arbitration = arbitration)
-        }
-
-        private fun buildAppSkillMessage(currentPackageName: String?): String? {
-                val packageName = currentPackageName?.trim()?.takeIf { it.isNotEmpty() } ?: return null
-                val skillBody = services.appSkillRepository.load(packageName)
-                Log.d(TAG, "App skill lookup: pkg=$packageName, found=${skillBody != null}")
-                if (skillBody == null) return null
-                return buildString {
-                        appendLine("## App Skill")
-                        appendLine("Package: $packageName")
-                        appendLine()
-                        append(skillBody)
-                }.trim()
         }
 
         private suspend fun emitArbitrationWarnings(

@@ -127,7 +127,7 @@ maybeCompact() runs at top of each agent turn:
 
 | Constant | Value | Rationale |
 |---|---|---|
-| `staticOverheadTokens` | 12_000 | System prompt + tool schemas + skills + scratchpad |
+| `staticOverheadTokens` | 12_000 | System prompt and tool schemas |
 | `reserveTokens` | 24_000 | Next-turn output + summary message + overhead drift |
 | `keepRecentTokens` | 20_000 | ~3–5 most recent turns survive verbatim |
 | `keepRecentTokens` (forced) | 10_000 | Reactive path uses half — more aggressive |

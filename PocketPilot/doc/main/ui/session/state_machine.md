@@ -118,7 +118,6 @@ After task completion, the session enters `Idle` instead of shutting down.
 | VirtualDisplay + ImageReader | Yes (released only on Shutdown via `services.cleanup()`) | Shutdown | Kept alive for instant follow-up; running VD apps survive |
 | AgentRunner state | **No** (`agentRunner.clear()`) | TaskCompleted | Loop references; rebuilt on follow-up |
 | HistoryManager | Yes | Shutdown | ~100KB-1MB; needed for follow-up context |
-| TodoState + ScratchpadState | Yes | Shutdown | ~2KB conversation state |
 | LLM client (cloud) | Yes | Shutdown | Stateless HTTP wrapper, negligible |
 | ToolRouter | Yes | Shutdown | Cheap; tool registry reused |
 | TraceRecorder | Yes | Shutdown | May append follow-up traces |
@@ -149,18 +148,17 @@ Idle + explicit Shutdown → cancel timeout, immediate cleanup
 
 | CheckpointState | Written when | Content |
 |-----------------|-------------|---------|
-| `IDLE_READY` | Task completion (`flushIdleReady()`) | History, todos, scratchpad, config |
+| `IDLE_READY` | Task completion (`flushIdleReady()`) | History and configuration |
 | `CLOSED` | Shutdown (`flushClosed()`) | Same data, marks session as finished |
 
 ### 6.2 Mutation-driven scheduling
 
-History, todos, and scratchpad changes trigger `scheduleCheckpoint()` via mutation listeners. Listeners are disabled on Shutdown to prevent writes after cleanup.
+History changes trigger `scheduleCheckpoint()` via mutation listeners. Listeners are disabled on Shutdown to prevent writes after cleanup.
 
 ### 6.3 Reload from checkpoint
 
 `AgentSession.reload(snapshot)` hydrates a new session from a persisted `SessionRuntimeSnapshot`:
 - Restores `HistoryManager.replaceAll()` with deserialized history items
-- Restores `TodoState` and `ScratchpadState`
 - Returns session in `Created` state (first `UserInput` re-acquires platform)
 
 Guard: only `IDLE_READY` and `CLOSED` snapshots are reloadable.

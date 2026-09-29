@@ -13,10 +13,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import id.steveimm.pocketpilot.memory.MemoryStore
 import id.steveimm.pocketpilot.onboarding.PermissionStateMonitor.PermissionRepairModel
 import id.steveimm.pocketpilot.protocol.PlatformMode
-import id.steveimm.pocketpilot.protocol.SessionState
 import id.steveimm.pocketpilot.tool.AppClassifier
 import id.steveimm.pocketpilot.ui.capsule.CapsuleBinding
 import id.steveimm.pocketpilot.ui.capsule.InertCapsuleBinding
@@ -69,18 +67,10 @@ internal fun MainActivityContent(
     onFixBattery: () -> Unit = {},
     effectivePlatformModeFlow: StateFlow<PlatformMode?> = MutableStateFlow(null),
     appClassifier: AppClassifier,
-    currentSessionStateFlow: StateFlow<SessionState?> = MutableStateFlow(null),
-    memoryStore: MemoryStore,
-    memoryEditGate: MemoryEditGate,
 ) {
     PocketPilotTheme {
         val sessions by viewModel.sessions.collectAsStateWithLifecycle()
         val effectivePlatformMode by effectivePlatformModeFlow.collectAsStateWithLifecycle()
-        val currentSessionState by currentSessionStateFlow.collectAsStateWithLifecycle()
-        // Mirrors MemoryEditGate: any non-Shutdown session (including creation-in-progress Created) counts as "session running" for the
-        // next-session subtitle on disabled skills. Only `null` or Shutdown means the next session reads the latest toggle.
-        val isSessionRunning = currentSessionState != null && currentSessionState != SessionState.Shutdown
-
         // Register the launcher before consuming an overlay voice-permission request, including on a cold start.
         val activity = LocalContext.current as? MainActivity
         if (activity != null) {
@@ -147,8 +137,6 @@ internal fun MainActivityContent(
                     onDebugModeChange = settingsState::updateDebugMode,
                     traceEnabled = settingsState.traceEnabled,
                     onTraceEnabledChange = settingsState::updateTraceEnabled,
-                    browserScriptEnabled = settingsState.browserScriptEnabled,
-                    onBrowserScriptEnabledChange = settingsState::updateBrowserScriptEnabled,
                     isAccessibilityEnabled = isAccessibilityEnabled,
                     isOverlayEnabled = isOverlayEnabled,
                     onAccessibilityClick = onAccessibilityClick,
@@ -162,9 +150,6 @@ internal fun MainActivityContent(
                         DeepLinkPage.HOME, null -> SettingsPage.HOME
                     },
                     appClassifier = appClassifier,
-                    isSessionRunning = isSessionRunning,
-                    memoryStore = memoryStore,
-                    memoryEditGate = memoryEditGate,
                     approvalMode = settingsState.approvalMode,
                     onApprovalModeChange = settingsState::updateApprovalMode,
                 )

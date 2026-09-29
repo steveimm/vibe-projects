@@ -9,11 +9,6 @@ data class SessionRuntimeSnapshot(
     val sessionId: String,
     val config: ConversationConfigSnapshot,
     val historyItems: List<PersistedHistoryItem>,
-    val todos: List<TodoSnapshot>,
-    val scratchpadJson: String = "{}",
-    // Legacy field: old checkpoints stored scratchpad as Map<String, String>.
-    // Kept for backward-compatible deserialization. New writes use scratchpadJson only.
-    val scratchpad: Map<String, String>? = null,
     val checkpointState: CheckpointState,
     val lastCheckpointAt: Long,
     /** Name of the last TaskOutcome recorded in this session (or null if no task has completed). */
@@ -63,12 +58,6 @@ data class ConversationConfigSnapshot(
     val traceEnabled: Boolean = false,
     val traceRunId: String? = null,
     val excludedTools: List<String> = emptyList()
-)
-
-@Serializable
-data class TodoSnapshot(
-    val description: String,
-    val status: String
 )
 
 @Serializable

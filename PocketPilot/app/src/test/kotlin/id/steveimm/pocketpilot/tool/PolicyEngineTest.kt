@@ -97,32 +97,6 @@ class PolicyEngineTest {
     }
 
     @Test
-    fun `browser_script asks in smart mode for chrome even though chrome is normal`() {
-        val engine = engineWith(
-            tiers = mapOf("com.android.chrome" to AppTier.NORMAL)
-        )
-
-        val decision = engine.check("browser_script", JSONObject(), "com.android.chrome")
-
-        assertThat(decision).isInstanceOf(PolicyDecision.AskUser::class.java)
-        val ask = decision as PolicyDecision.AskUser
-        assertThat(ask.appTier).isEqualTo(AppTier.NORMAL)
-        assertThat(ask.reason).contains("Browser automation")
-    }
-
-    @Test
-    fun `browser_script smart rule is not bypassed by user allow-list`() {
-        val engine = engineWith(
-            tiers = mapOf("com.android.chrome" to AppTier.NORMAL)
-        )
-        engine.allowPackageForSession("com.android.chrome")
-
-        val decision = engine.check("browser_script", JSONObject(), "com.android.chrome")
-
-        assertThat(decision).isInstanceOf(PolicyDecision.AskUser::class.java)
-    }
-
-    @Test
     fun `session allow-list allows cautious app in smart mode`() {
         val engine = engineWith()
         engine.allowPackageForSession("com.unknown.app")
@@ -133,32 +107,20 @@ class PolicyEngineTest {
     }
 
     @Test
-    fun `browser_script allowed in auto approve mode after runtime gates`() {
-        val engine = engineWith(
-            mode = ApprovalMode.AUTO_APPROVE,
-            tiers = mapOf("com.android.chrome" to AppTier.NORMAL)
-        )
-
-        val decision = engine.check("browser_script", JSONObject(), "com.android.chrome")
-
-        assertThat(decision).isEqualTo(PolicyDecision.Allow)
-    }
-
-    @Test
     fun `non-screen-changing tool allowed regardless of tier`() {
         val engine = engineWith(
             tiers = mapOf("com.bank" to AppTier.BLOCKED)
         )
-        val decision = engine.check("scratchpad", JSONObject(), "com.bank")
+        val decision = engine.check("ask_user", JSONObject(), "com.bank")
         assertThat(decision).isEqualTo(PolicyDecision.Allow)
     }
 
     @Test
-    fun `write_todos allowed on blocked app`() {
+    fun `wait allowed on blocked app`() {
         val engine = engineWith(
             tiers = mapOf("com.bank" to AppTier.BLOCKED)
         )
-        val decision = engine.check("write_todos", JSONObject(), "com.bank")
+        val decision = engine.check("wait", JSONObject(), "com.bank")
         assertThat(decision).isEqualTo(PolicyDecision.Allow)
     }
 
@@ -244,21 +206,6 @@ class PolicyEngineTest {
         val engine = PolicyEngine(ApprovalMode.ALWAYS_ASK, classifier)
 
         val decision = engine.check("open_app", JSONObject(), "com.unknown.app")
-        assertThat(decision).isInstanceOf(PolicyDecision.AskUser::class.java)
-    }
-
-    @Test
-    fun `browser_script under SMART asks even with NORMAL override on cautious app`() = runBlocking {
-        // Bundled-CAUTIOUS (absent from map) + user NORMAL override → override is Accepted, but
-        // the browser_script rule must still fire (NORMAL override does NOT bypass step 4).
-        val classifier = AppClassifier(emptyMap())
-        val result = classifier.setOverride("com.android.chrome", AppTier.NORMAL)
-        assertThat(result).isEqualTo(SetOverrideResult.Accepted)
-        assertThat(classifier.userOverrides.value).containsKey("com.android.chrome")
-        val engine = PolicyEngine(ApprovalMode.SMART, classifier)
-
-        val decision = engine.check("browser_script", JSONObject(), "com.android.chrome")
-
         assertThat(decision).isInstanceOf(PolicyDecision.AskUser::class.java)
     }
 

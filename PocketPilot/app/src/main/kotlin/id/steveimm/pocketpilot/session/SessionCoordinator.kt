@@ -7,9 +7,6 @@ import id.steveimm.pocketpilot.protocol.SessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 
@@ -27,11 +24,6 @@ class SessionCoordinator(private val scope: CoroutineScope) {
 
     var currentSession: AgentSession? = null
         private set
-
-    private val _currentSessionState = MutableStateFlow<SessionState?>(null)
-
-    /** State of the currently-owned session, or `null` when no session exists. */
-    val currentSessionState: StateFlow<SessionState?> = _currentSessionState.asStateFlow()
 
     var selectedSessionForReload: SessionInfo? = null
 
@@ -72,19 +64,13 @@ class SessionCoordinator(private val scope: CoroutineScope) {
     ): CreateResult {
         if (!mutex.tryLock()) return CreateResult.LockBusy
         try {
-            // Lock the memory-edit gate before the suspending create block runs. Without this, an `append` racing with creation could fire
-            // while currentSessionState is still null.
-            _currentSessionState.value = SessionState.Created
             val session = try {
                 create()
             } catch (t: Throwable) {
-                // Creation threw — no session exists, so the gate must unlock.
-                _currentSessionState.value = null
                 pendingInputs.clear()
                 throw t
             }
             if (session == null) {
-                _currentSessionState.value = null
                 pendingInputs.clear()
                 return CreateResult.Aborted
             }
@@ -106,14 +92,13 @@ class SessionCoordinator(private val scope: CoroutineScope) {
     /** Attach an externally-managed session (e.g., rebound from service). Starts state observation for event-driven drain. */
     fun attachSession(session: AgentSession) {
         currentSession = session
-        // Synchronous snapshot so MemoryEditGate reflects the attached session immediately — the launched collector runs asynchronously
-        // and would leave a stale-unlocked window for callers reading the flow on the same tick as the attach.
-        _currentSessionState.value = session.state.value
         observeSessionState(session)
     }
 
     /** Detach the current session without shutting it down. Used when switching to history viewing mode. */
     fun detachSession() {
+        stateObserverJob?.cancel()
+        stateObserverJob = null
         currentSession = null
         pendingInputs.clear()
         lastDeadSessionFileName = null
@@ -151,14 +136,12 @@ class SessionCoordinator(private val scope: CoroutineScope) {
         stateObserverJob = null
         currentSession = null
         pendingInputs.clear()
-        _currentSessionState.value = null
     }
 
     private fun observeSessionState(session: AgentSession) {
         stateObserverJob?.cancel()
         stateObserverJob = scope.launch {
             session.state.collect { state ->
-                _currentSessionState.value = state
                 if (state == SessionState.Idle || state == SessionState.Created) {
                     drainPending()
                 }

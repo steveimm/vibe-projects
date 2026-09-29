@@ -5,13 +5,6 @@ import id.steveimm.pocketpilot.agent.TurnResult
 import id.steveimm.pocketpilot.tool.ToolName
 
 private val COMPLETE_TASK_TOOL = ToolName.CompleteTask.raw
-private val HOISTABLE_TOOL_NAMES =
-        setOf(
-                ToolName.Scratchpad.canonical,
-                ToolName.WriteTodos.canonical,
-                ToolName.RememberExperience.canonical
-        )
-
 /** Result of choosing which tool calls from one LLM turn should actually execute. */
 internal data class ToolArbitrationResult(
         val selectedToolCalls: List<ToolCallRequest>,
@@ -51,21 +44,11 @@ internal class TurnToolPolicy {
                 nonCompletionCalls.filter { call ->
                         ToolName.from(call.name).isScreenChanging
                 }
-        val hoistableCalls =
-                nonCompletionCalls.filter { call ->
-                        ToolName.from(call.name).canonical in HOISTABLE_TOOL_NAMES
-                }
-        val orderedCalls =
-                nonCompletionCalls.filterNot { call ->
-                        ToolName.from(call.name).canonical in HOISTABLE_TOOL_NAMES
-                }
-
         val hasScreenAction = screenCalls.isNotEmpty()
         val selectedCompletion = if (!hasScreenAction) completionCall else null
         val selectedToolCalls =
                 buildList {
-                        addAll(hoistableCalls)
-                        addAll(orderedCalls)
+                        addAll(nonCompletionCalls)
                         selectedCompletion?.let(::add)
                 }
 

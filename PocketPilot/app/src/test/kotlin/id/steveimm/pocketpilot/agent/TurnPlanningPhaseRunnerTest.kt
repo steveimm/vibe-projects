@@ -19,7 +19,6 @@ import id.steveimm.pocketpilot.protocol.SessionId
 import id.steveimm.pocketpilot.protocol.SessionLlmConfig
 import id.steveimm.pocketpilot.protocol.StatusUpdate
 import id.steveimm.pocketpilot.protocol.ReasoningDelta
-import id.steveimm.pocketpilot.session.AgentSessionState
 import id.steveimm.pocketpilot.session.SessionServices
 import id.steveimm.pocketpilot.test.FakeAndroidPlatform
 import id.steveimm.pocketpilot.tool.AppClassifier
@@ -169,7 +168,6 @@ private class PlanningHarness(
                 toolRegistry = toolRegistry,
                 toolRouter = ToolRouter(toolRegistry, policyEngine),
                 historyManager = HistoryManager(),
-                sessionState = AgentSessionState(),
                 policyEngine = policyEngine,
                 appClassifier = AppClassifier(emptyMap()),
                 platform = FakeAndroidPlatform(),

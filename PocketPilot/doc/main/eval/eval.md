@@ -64,7 +64,7 @@ Per-task agent settings passed to `NativeAgentBridge`.
 Key fields: `package_name`, `activity`, `server_base_url`,
 `perception_mode`, `platform_mode`, `main_model`,
 `max_turns`, `auto_start`, `fresh_session`, `max_wait_seconds`,
-`excluded_tools`, `clear_memory_before_task`, `api_key`.
+`excluded_tools`, `api_key`.
 
 The yaml-side `max_turns` key is preserved for backwards compatibility, but the
 runner now plumbs it through to `SessionConfig.evalTurnBudget` (intent extra
@@ -115,9 +115,7 @@ Per-task config overrides under `bridge.task_overrides`.  Resolved by
 **longest-prefix match** on the task name.  Any `BridgeConfig` field can
 be overridden (`perception_mode`, `max_turns`, `excluded_tools`, etc.).
 
-Default eval hygiene excludes `remember_experience` and clears
-`files/memory` before each task launch so long-term memory cannot carry across
-tasks or from earlier runs.
+Default eval configuration excludes `ask_user` so unattended runs cannot pause for a human response.
 
 See `resolve_task_bridge_config()` in `runner_execution.py`.
 

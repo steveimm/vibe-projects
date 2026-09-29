@@ -294,8 +294,6 @@ class SessionRecordingServiceTest {
             historyItems = listOf(
                 PersistedHistoryItem.Message(kind = "USER_INTENT", content = "debounced")
             ),
-            todos = emptyList(),
-            scratchpadJson = "{}",
             checkpointState = CheckpointState.RUNNING_DIRTY,
             lastCheckpointAt = 100L
         )
@@ -309,8 +307,6 @@ class SessionRecordingServiceTest {
             historyItems = listOf(
                 PersistedHistoryItem.Message(kind = "USER_INTENT", content = "forced")
             ),
-            todos = emptyList(),
-            scratchpadJson = "{}",
             checkpointState = CheckpointState.IDLE_READY,
             lastCheckpointAt = 200L
         )

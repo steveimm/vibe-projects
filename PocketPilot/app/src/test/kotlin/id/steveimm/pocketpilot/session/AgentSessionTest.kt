@@ -348,7 +348,6 @@ class AgentSessionTest {
                                 toolRegistry = toolRegistry,
                                 toolRouter = toolRouter,
                                 historyManager = HistoryManager(),
-                                sessionState = AgentSessionState(),
                                 policyEngine = spiedPolicyEngine,
                                 appClassifier = sharedClassifier,
                                 platform = platform,
@@ -398,7 +397,6 @@ class AgentSessionTest {
                                 platformMode = "DEFAULT",
                         ),
                         historyItems = emptyList(),
-                        todos = emptyList(),
                         checkpointState = CheckpointState.IDLE_READY,
                         lastCheckpointAt = 0L,
                 )
@@ -1049,7 +1047,6 @@ private fun buildSessionWith(
                         toolRegistry = toolRegistry,
                         toolRouter = toolRouter,
                         historyManager = HistoryManager(),
-                        sessionState = AgentSessionState(),
                         policyEngine = policyEngine,
                         appClassifier = AppClassifier(emptyMap()),
                         platform = platform,

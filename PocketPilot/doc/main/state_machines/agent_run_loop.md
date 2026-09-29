@@ -141,14 +141,13 @@ Maps `(TurnResult, ToolArbitrationResult, ExecutionPhaseResult)` to `TurnOutcome
 
 ## Persistence
 
-The loop itself is fully transient; what makes it onto disk is what the turn writes through `services.historyManager`, `services.traceRecorder`, and `services.memoryStore` (auto-retain on failure).
+The loop itself is fully transient; what makes it onto disk is what the turn writes through `services.historyManager` and `services.traceRecorder`.
 
 ## Entry / exit side-effects
 
 - Entry: emits `🚀 Starting agent...` status, calls `trace.sessionStarted`, appends `USER_INTENT` history item with `Goal: …`.
 - Per turn (top): `compactor.maybeCompact`; on `Compacted` emits `📚 Compacted history (before → after tokens)`; on `Failed` increments the counter.
 - Per turn: `trace.turnStarted`, `eventDispatcher.turnStarted`, screen capture, planning, execution, `trace.turnCompleted`.
-- On failure of a turn (`TurnOutcome.Complete(success=false)` only) and only if `memoryStore.hasWrittenThisSession() == false`: appends an app operational note to memory for the foreground package.
 - Exit: `pauseConfirmed?.complete(Unit)`, `trace.sessionStopped(reason, turnCount)`.
 
 ## Error / recovery paths

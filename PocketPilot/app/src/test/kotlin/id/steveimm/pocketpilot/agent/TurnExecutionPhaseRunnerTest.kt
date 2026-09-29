@@ -23,7 +23,6 @@ import id.steveimm.pocketpilot.protocol.ScreenStatePhase
 import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.protocol.SessionId
 import id.steveimm.pocketpilot.protocol.SessionLlmConfig
-import id.steveimm.pocketpilot.session.AgentSessionState
 import id.steveimm.pocketpilot.session.SessionServices
 import id.steveimm.pocketpilot.tool.AppClassifier
 import id.steveimm.pocketpilot.tool.PolicyEngine
@@ -185,7 +184,6 @@ private class TestHarness(
                 toolRegistry = registry,
                 toolRouter = toolRouter,
                 historyManager = HistoryManager(),
-                sessionState = AgentSessionState(),
                 policyEngine = policyEngine,
                 appClassifier = AppClassifier(emptyMap()),
                 platform = platform,

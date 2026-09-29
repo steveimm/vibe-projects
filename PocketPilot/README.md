@@ -50,19 +50,14 @@ PocketPilot is an open-source **agent harness for Android**. Give it a natural-l
 > Most open-source phone-use agents today either need a **computer tethered over ADB** to drive a phone, or run inside a **cloud virtual phone** that doesn't have *your* accounts logged in. PocketPilot runs **on your actual phone**, against your actual apps — Gmail, Slack, your shopping app, your group chats — with your real sessions. No laptop. No cloud sandbox. No re-logging-in.
 
 - 🧠 **A full on-device agent harness, in the making.** Built in Kotlin, native to Android. ReAct loop, no external orchestrator. The pieces:
-  - 🔩 **Primitive toolset** — `mobile_action` (tap, type, swipe/scroll), `open_app` + `system_button` for navigation, and `todo` + `scratchpad` as in-session working memory for long-horizon tasks.
-  - 💾 **Long-term memory** *(preliminary)* — markdown files at user / device / per-app scope; the agent appends via `remember_experience`.
-  - 📚 **Skills** *(preliminary, two kinds)*:
-    - **agent-skills** — [agentskills.io](http://agentskills.io)-format skills, progressively loaded on-demand by the agent. Today bundled with the app; a discovery engine is in progress.
-    - **app-skills** — PocketPilot-unique design. Per-package `SKILL.md` files that teach the agent how to operate specific apps. Auto-loaded whenever that app is in the foreground.
+  - 🔩 **Primitive toolset** — `mobile_action` (tap, type, swipe/scroll), `open_app` + `system_button` for navigation.
 - 🛠️ **Advanced agent-first tools.** Programmatic escapes from tap-and-swipe:
   - 🐧 **`termux_shell`** — full Linux toolchain on the device: `python` / `git` / `curl` / `jq`, plus anything you `pkg install`. Needs [Termux](https://github.com/termux/termux-app).
-  - 🌐 **`browser_script`** — JS automation against real Chrome via Chrome DevTools Protocol; loops, branches, and retries happen inside one tool call. Needs Chrome + [Shizuku](https://shizuku.rikka.app/).
 - 🪟 **Virtual display platform.** Hybrid background sessions via Shizuku — the agent operates a parallel Android display so the foreground stays yours.
 - 🔌 **Local model server.** Supply the server URL and model ID. Discover models from `/models` or enter an ID manually. Requests have no cloud default or fallback.
 - 👁️ **Pluggable perception.** Accessibility tree by default; optional point-in-time screenshots in screenshot/hybrid modes.
 - 🔍 **Inspectable traces.** Every session writes LLM calls, tool calls, and perception snapshots to on-device storage; pull with `adb` for inspection.
-- 🔁 **Eval-driven agent-harness autotune loop.** Run an AndroidWorld task suite (`eval/`) against the agent; an autotune harness analyzes failures, proposes prompt / tool / skill fixes, and re-runs.
+- 🔁 **Eval-driven agent-harness autotune loop.** Run an AndroidWorld task suite (`eval/`) against the agent; an autotune harness analyzes failures, proposes prompt and tool fixes, and re-runs.
 
 ## 📦 Install
 
@@ -104,7 +99,6 @@ Then type a task on the home screen. The **Smart Capsule** overlay will follow t
 PocketPilot gets noticeably more capable when you opt in to two optional integrations. Neither is required.
 
 > [!NOTE]
-> **Shizuku** — unlocks the **virtual display platform** (the agent works in the background while you keep using your phone) and the **`browser_script`** tool. Follow the [Shizuku setup guide](https://shizuku.rikka.app/guide/setup/), then re-open PocketPilot → Settings → enable *Virtual display*.
 
 > [!NOTE]
 > **Termux** (install from [F-Droid](https://f-droid.org/packages/com.termux/), *not* the Play Store version — it's outdated) — unlocks the **`termux_shell`** tool. After install, open Termux once, run `pkg install termux-api`, then enable the bridge in PocketPilot Settings. Details: [`doc/main/app/termux_shell.md`](doc/main/app/termux_shell.md).
@@ -113,8 +107,8 @@ PocketPilot gets noticeably more capable when you opt in to two optional integra
 
 High-level layers:
 
-- **Agent loop** — ReAct turn engine, todo + scratchpad state, cross-session memory
-- **Tools** — UI primitives (`mobile_action`, `open_app`, `system_button`); working memory & control (`todo`, `scratchpad`, `remember_experience`, `activate_skill`); advanced (`termux_shell` needs Termux, `browser_script` needs Shizuku)
+- **Agent loop** — Screen observation, native reasoning, tool execution, and conversation history
+- **Tools** — UI primitives (`mobile_action`, `open_app`, `system_button`); user handoff and completion; optional `termux_shell` workspace commands
 - **Platforms** — `AccessibilityPlatform` for normal use, `VirtualDisplayPlatform` (Shizuku) for hybrid background sessions
 - **LLM** — Chat Completions client for the configured server, optional model discovery, and bounded retries
 
@@ -138,7 +132,7 @@ See the [Privacy Policy](PRIVACY_POLICY.md). In brief:
 <!-- TODO(publish-contributing): link CONTRIBUTING.md once it lands. -->
 A `CONTRIBUTING.md` is on the way. Until then: open an issue to discuss non-trivial changes, follow Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`), and run `./gradlew clean assembleDebug lint test` before opening a PR.
 
-Good first contributions: new tools (look at how `termux_shell` and `browser_script` are wired up), model-server compatibility, perception improvements, and Smart Capsule UX polish.
+Good first contributions: new tools (look at how `termux_shell` are wired up), model-server compatibility, perception improvements, and Smart Capsule UX polish.
 
 ### Dev tools tour
 
@@ -149,7 +143,7 @@ Good first contributions: new tools (look at how `termux_shell` and `browser_scr
   - **`/autotune`** — *one batch*. Run a curated AndroidWorld task set, apply the same diagnose-and-fix across all failures in the batch.
   - **`/autotune-loop`** — *many batches*. Orchestrate `/autotune` rounds unattended until convergence.
 
-  Two fix paths fork off the diagnosis: **`/prompt-tune`** applies cognition-class fixes across prompts / tool descriptions / app-skills (respecting layer ownership); **`/action-debug`** isolates execution-class failures at the action layer (baseline vs accessibility-service path). **`/ux-visual-debug`** is orthogonal — end-to-end UX QA via ADB, when the question is interaction quality rather than agent reasoning.
+  Two fix paths fork off the diagnosis: **`/prompt-tune`** applies cognition-class fixes across prompts and tool descriptions (respecting layer ownership); **`/action-debug`** isolates execution-class failures at the action layer (baseline vs accessibility-service path). **`/ux-visual-debug`** is orthogonal — end-to-end UX QA via ADB, when the question is interaction quality rather than agent reasoning.
 
   Both [`CLAUDE.md`](CLAUDE.md) and [`.claude/`](.claude/) are symlinked to their `AGENTS.md` / `GEMINI.md` / `.cursorrules` / `.codex/` / `.agents/` counterparts — the same project-local skills and conventions work for most AI coding agents.
 

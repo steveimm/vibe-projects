@@ -176,7 +176,6 @@ User selects a session from history drawer
   │   │   ├─ Validate: schemaVersion == 2, checkpoint isReloadable()
   │   │   ├─ AgentSession.reload(snapshot)
   │   │   │   ├─ Hydrate HistoryManager (replaceAll)
-  │   │   │   ├─ Restore TodoState + ScratchpadState
   │   │   │   └─ Return session in Created state
   │   │   └─ Resume recording service with existing session file
   │   │

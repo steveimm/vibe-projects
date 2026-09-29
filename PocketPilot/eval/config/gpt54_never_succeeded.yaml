@@ -33,8 +33,7 @@ bridge:
   platform_mode: accessibility
   main_model: ""  # Supply POCKETPILOT_MODEL_ID or set the server model ID here.
   max_turns: 30
-  excluded_tools: "ask_user,remember_experience"
-  clear_memory_before_task: true
+  excluded_tools: "ask_user"
   auto_start: true
   fresh_session: true
   debug_mode: false

@@ -15,7 +15,7 @@ This policy is written for users and for Google Play review. It describes how Po
 
 PocketPilot does not collect user data on PocketPilot-operated servers. The app does not include tracking, telemetry, analytics, advertising identifiers, or background profiling. PocketPilot does not operate a backend service that receives, stores, or sells your activity.
 
-The app can store settings on your device so it can function. This includes your selected LLM provider and the API key or credential you enter for that provider. Provider credentials are stored locally on your Android device. Persistent API keys are stored using AndroidX Security `EncryptedSharedPreferences`, protected by a `MasterKey` using AES256_GCM. If a temporary memory-only credential path is used by the app, that credential is not persisted and disappears when the app process ends.
+The app can store settings on your device so it can function. This includes your model server URL, model ID, and optional API key. Keys are stored locally and scoped to their server endpoint. Persistent API keys are stored using AndroidX Security `EncryptedSharedPreferences`, protected by a `MasterKey` using AES256_GCM.
 
 PocketPilot can read the current screen only through the Android Accessibility Service permission that you enable. It uses that access to understand the visible interface and perform the actions you request. PocketPilot does not use root access and does not record your screen.
 
@@ -53,16 +53,15 @@ In-app deletion (granular):
 
 - **Server API key** — clear the optional key in `Settings → Model server` and save. Keys are encrypted and scoped to each endpoint.
 - **Session history and local traces** — `Settings → Permissions & Advanced → Clear session history` and `Clear debug traces`. Removes recorded task transcripts, on-device debug screenshots, and tool-call logs.
-- **Memory files** — `Settings → Memory Files`, select a file, tap delete. Removes any agent memory entries you have saved.
 
 Full deletion (one tap):
 
-- Open Android `Settings → Apps → PocketPilot → Storage → Clear data`. This removes all credentials, history, traces, memory, and settings simultaneously.
+- Open Android `Settings → Apps → PocketPilot → Storage → Clear data`. This removes all credentials, history, traces, and settings simultaneously.
 - Uninstalling PocketPilot also deletes all local app data.
 
 What is deleted vs. kept:
 
-- **Deleted:** all data created by your use of the app, stored on the device — credentials, history, traces, memory, settings.
+- **Deleted:** all data created by your use of the app, stored on the device — credentials, history, traces, settings.
 - **Stored by your model server:** prompts or screen content retained by that server are governed by its configuration. Delete them on the server if needed.
 
 ## Children

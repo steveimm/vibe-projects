@@ -159,37 +159,6 @@ private constructor(
             val historyItems = HistoryItemConverter.fromRecords(snapshot.historyItems)
             services.historyManager.replaceAll(historyItems)
 
-            val restoredTodos =
-                    snapshot.todos.map { todo ->
-                        val status = try {
-                            TodoStatus.valueOf(todo.status)
-                        } catch (_: IllegalArgumentException) {
-                            Log.w(TAG, "Unknown TodoStatus in snapshot: ${todo.status}")
-                            TodoStatus.PENDING
-                        }
-                        id.steveimm.pocketpilot.protocol.Todo(
-                                description = todo.description,
-                                status = status
-                        )
-                    }
-            services.sessionState.todos.update(restoredTodos)
-
-            try {
-                val scratchpadObj = org.json.JSONObject(snapshot.scratchpadJson)
-                if (scratchpadObj.length() > 0) {
-                    scratchpadObj.keys().forEach { key ->
-                        services.sessionState.scratchpad.write(key, scratchpadObj.get(key))
-                    }
-                } else if (!snapshot.scratchpad.isNullOrEmpty()) {
-                    // Migrate legacy Map<String, String> format
-                    snapshot.scratchpad.forEach { (key, value) ->
-                        services.sessionState.scratchpad.write(key, value)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to parse scratchpad checkpoint, starting with empty scratchpad", e)
-            }
-
             Log.i(TAG, "Reloaded session $sessionId with ${historyItems.size} history items")
 
             snapshot.lastTaskOutcome?.let { outcomeName ->
@@ -235,14 +204,11 @@ private constructor(
             sessionId = sessionId.value,
             config = config,
             historyManager = services.historyManager,
-            sessionState = services.sessionState,
             recordingService = services.recordingService
     )
 
     init {
         services.historyManager.setMutationListener { checkpointCoordinator.scheduleCheckpoint(_state.value) }
-        services.sessionState.todos.setMutationListener { checkpointCoordinator.scheduleCheckpoint(_state.value) }
-        services.sessionState.scratchpad.setMutationListener { checkpointCoordinator.scheduleCheckpoint(_state.value) }
 
         // Route runner completion through the serialized lifecycle path
         scope.launch {
@@ -692,7 +658,5 @@ private constructor(
 
     private fun disableCheckpointMutationListeners() {
         services.historyManager.setMutationListener(null)
-        services.sessionState.todos.setMutationListener(null)
-        services.sessionState.scratchpad.setMutationListener(null)
     }
 }

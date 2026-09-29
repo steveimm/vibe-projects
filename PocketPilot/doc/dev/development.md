@@ -116,50 +116,6 @@ Critical pitfall: **never use Kotlin built-in `assert(...)` for verdicts** in an
 
 ### 2c. Browser Runtime Tests
 
-The browser CDP runtime has JVM coverage for transport, session lifecycle, policy, settings, and
-tool behavior, plus the wireless-ADB self-pair stack (SPAKE2-25519 KAT vectors, ADB wire protocol,
-relay stress harness) and the localhost-relay token gate. Run the full JVM suite after browser
-changes:
-
-```bash
-./gradlew test
-```
-
-The hidden-WebView prelude test lives in `app/src/androidTest/kotlin/id/steveimm/pocketpilot/browser/script/`.
-At minimum, compile the debug androidTest source set after CDP transport signature changes:
-
-```bash
-./gradlew :app:compileDebugAndroidTestKotlin
-```
-
-To run the on-device browser script host test directly:
-
-```bash
-./gradlew :app:connectedDebugAndroidTest \
-    -Pandroid.testInstrumentationRunnerArguments.class=id.steveimm.pocketpilot.browser.script.BrowserScriptRunnerInstrumentedTest
-```
-
-To exercise real `browser_script` from the app, enable **Settings → Agent Behavior → Tools →
-Browser Script**, keep Chrome installed and the DevTools socket reachable, and
-make sure at least one transport is available:
-
-- **`USER_SERVICE`** (preferred) — Shizuku running and authorized for PocketPilot.
-- **`WIRELESS_ADB_SELF_PAIR`** (fallback) — wireless debugging enabled in Developer Options
-  (Android 11+); PocketPilot self-pairs once and reuses the stored ADB key.
-
-SMART mode still asks for approval before `browser_script` runs against Chrome.
-
-> **AOSP emulator note:** Chrome stable on AOSP defaults to `chromium-enable-devtools-remote =
-> false` in `Local State`, which disables the `chrome_devtools_remote` socket entirely. On a
-> userdebug emulator where `adb root` works, unlock it by force-stopping Chrome, appending
-> `enable-command-line-on-non-rooted-devices@1` to
-> `/data/data/com.android.chrome/app_chrome/Local State` under
-> `browser.enabled_labs_experiments`, restoring the file owner/mode/SELinux context, writing
-> `/data/local/tmp/chrome-command-line` with
-> `_ --remote-debugging-socket-name=chrome_devtools_remote --enable-features=NetworkService`,
-> then cold-launching Chrome and verifying `/proc/net/unix` contains `@chrome_devtools_remote`.
-> Real devices do not need this.
-
 ### Prompt Ownership
 
 When tuning the agent's cognition, edit the narrowest owner:

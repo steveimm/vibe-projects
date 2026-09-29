@@ -9,9 +9,6 @@ import id.steveimm.pocketpilot.model.PerceptionElement
 import id.steveimm.pocketpilot.model.Point
 import id.steveimm.pocketpilot.model.ScreenSnapshot
 import id.steveimm.pocketpilot.perception.PerceptionConfig
-import id.steveimm.pocketpilot.protocol.Todo
-import id.steveimm.pocketpilot.protocol.TodoStatus
-import id.steveimm.pocketpilot.session.AgentSessionState
 import org.json.JSONObject
 import org.junit.Test
 
@@ -45,62 +42,6 @@ class PromptBuilderTest {
     private val emptyObservation = TurnObservation.capture(emptySnapshot, PerceptionConfig.DEFAULT)
     private val observationWithElements = TurnObservation.capture(snapshotWithElements, PerceptionConfig.DEFAULT)
     private val screenshotOnlyObservation = TurnObservation.capture(snapshotWithElements, PerceptionConfig.ScreenshotOnly())
-
-    @Test
-    fun `buildMemoryText returns null when both empty`() {
-        val builder = createBuilder()
-        assertThat(builder.buildMemoryText()).isNull()
-    }
-
-    @Test
-    fun `buildMemoryText includes todos when present`() {
-        val state = AgentSessionState()
-        state.todos.update(listOf(
-            Todo(description = "Open Gmail", status = TodoStatus.IN_PROGRESS),
-            Todo(description = "Read first email", status = TodoStatus.PENDING)
-        ))
-        val builder = createBuilder(sessionState = state)
-
-        val text = builder.buildMemoryText()
-
-        assertThat(text).isNotNull()
-        assertThat(text).contains("## Working Memory")
-        assertThat(text).contains("### Todo List")
-        assertThat(text).contains("[IN_PROGRESS] Open Gmail")
-        assertThat(text).contains("[PENDING] Read first email")
-    }
-
-    @Test
-    fun `buildMemoryText includes scratchpad when has entries`() {
-        val state = AgentSessionState()
-        state.scratchpad.write("email_count", "5")
-        val builder = createBuilder(sessionState = state)
-
-        val text = builder.buildMemoryText()
-
-        assertThat(text).isNotNull()
-        assertThat(text).contains("### Scratchpad")
-        assertThat(text).contains("\"email_count\": \"5\"")
-    }
-
-    @Test
-    fun `buildMemoryText combines todos and scratchpad`() {
-        val state = AgentSessionState()
-        state.todos.update(listOf(
-            Todo(description = "Do something", status = TodoStatus.PENDING)
-        ))
-        state.scratchpad.write("key1", "val1")
-        val builder = createBuilder(sessionState = state)
-
-        val text = builder.buildMemoryText()
-
-        assertThat(text).contains("### Todo List")
-        assertThat(text).contains("### Scratchpad")
-        // Todo comes before scratchpad
-        val todoIdx = text!!.indexOf("### Todo List")
-        val scratchIdx = text.indexOf("### Scratchpad")
-        assertThat(todoIdx).isLessThan(scratchIdx)
-    }
 
     @Test
     fun `buildObservationText includes screen state when accessibility available`() {
@@ -231,7 +172,6 @@ class PromptBuilderTest {
         historyManager.addItem(userIntent("Goal: Test"))
         val builder = PromptBuilder(
             historyManager = historyManager,
-            sessionState = AgentSessionState(),
             supportsVision = true
         )
 
@@ -262,7 +202,6 @@ class PromptBuilderTest {
 
         val builder = PromptBuilder(
             historyManager = historyManager,
-            sessionState = AgentSessionState(),
             supportsVision = true
         )
 
@@ -282,7 +221,6 @@ class PromptBuilderTest {
 
         val builder = PromptBuilder(
             historyManager = historyManager,
-            sessionState = AgentSessionState(),
             supportsVision = true
         )
 
@@ -295,36 +233,12 @@ class PromptBuilderTest {
     }
 
     @Test
-    fun `buildInputItems produces history then memory then observation`() {
-        val historyManager = HistoryManager()
-        historyManager.addItem(userIntent("Goal: Test"))
-        historyManager.addItem(assistantMessage("I'll test"))
-
-        val state = AgentSessionState()
-        state.todos.update(listOf(
-            Todo(description = "Test task", status = TodoStatus.PENDING)
-        ))
-
-        val builder = PromptBuilder(
-            historyManager = historyManager,
-            sessionState = state,
-            supportsVision = true
-        )
-
-        val items = builder.buildInputItems(emptyObservation)
-
-        // 2 history items + 1 memory + 1 observation = 4
-        assertThat(items).hasSize(4)
-    }
-
-    @Test
     fun `buildInputItems omits memory when empty`() {
         val historyManager = HistoryManager()
         historyManager.addItem(userIntent("Goal: Test"))
 
         val builder = PromptBuilder(
             historyManager = historyManager,
-            sessionState = AgentSessionState(),
             supportsVision = true
         )
 
@@ -355,7 +269,6 @@ class PromptBuilderTest {
 
         val builder = PromptBuilder(
             historyManager = historyManager,
-            sessionState = AgentSessionState(),
             supportsVision = true
         )
 
@@ -365,59 +278,11 @@ class PromptBuilderTest {
         assertThat(items).hasSize(5)
     }
 
-    @Test
-    fun `buildInputItems inserts recalled memory and app skill before observation`() {
-        val historyManager = HistoryManager()
-        historyManager.addItem(userIntent("Goal: Update note"))
-
-        val state = AgentSessionState()
-        state.todos.update(listOf(Todo(description = "Edit note", status = TodoStatus.PENDING)))
-
-        val builder = PromptBuilder(
-            historyManager = historyManager,
-            sessionState = state,
-            supportsVision = true
-        )
-
-        val appSkillText = """
-            ## App Skill
-            Package: net.gsantner.markor
-
-            # Markor Skill
-            - Use the Markor UI for file changes.
-        """.trimIndent()
-
-        val items = builder.buildInputItems(
-            observation = emptyObservation,
-            recalledMemory = """
-                ## Recalled Memory
-
-                # User Memory
-
-                ## Preferences
-                - [2026-03-13 18:32:34 EDT] Prefer search over scrolling.
-            """.trimIndent(),
-            appSkill = appSkillText
-        )
-
-        assertThat(items).hasSize(5)
-        assertThat(items[1].asEasyInputMessage().content().asTextInput())
-            .contains("## Working Memory")
-        assertThat(items[2].asEasyInputMessage().content().asTextInput())
-            .contains("## Recalled Memory")
-        assertThat(items[3].asEasyInputMessage().content().asTextInput())
-            .isEqualTo(appSkillText)
-        assertThat(items[4].asEasyInputMessage().content().asTextInput())
-            .contains("Screen state")
-    }
-
     private fun createBuilder(
         historyManager: HistoryManager = HistoryManager(),
-        sessionState: AgentSessionState = AgentSessionState(),
         supportsVision: Boolean = true
     ): PromptBuilder = PromptBuilder(
         historyManager = historyManager,
-        sessionState = sessionState,
         supportsVision = supportsVision
     )
 

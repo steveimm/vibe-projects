@@ -524,149 +524,7 @@ class SessionCoordinatorTest {
     }
 
     @Test
-    fun `currentSessionState starts as null`() = runTest {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        val scope = TestScope(dispatcher)
-        val coordinator = SessionCoordinator(scope)
-
-        assertThat(coordinator.currentSessionState.value).isNull()
-    }
-
-    @Test
-    fun `createAndSubmit emits Created before invoking suspending create block`() = runTest {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        val scope = TestScope(dispatcher)
-        val coordinator = SessionCoordinator(scope)
-        val state = MutableStateFlow<SessionState>(SessionState.Idle)
-        val session = fakeSession(state)
-        val gate = CompletableDeferred<Unit>()
-
-        scope.launch {
-            coordinator.createAndSubmit("first") {
-                gate.await()
-                session
-            }
-        }
-        runCurrent() // enters createAndSubmit; parks on gate inside create lambda
-        advanceUntilIdle()
-
-        // No AgentSession yet, but the state must already report Created so
-        // that MemoryEditGate locks during the creation window.
-        assertThat(coordinator.currentSession).isNull()
-        assertThat(coordinator.currentSessionState.value).isEqualTo(SessionState.Created)
-
-        gate.complete(Unit)
-        advanceUntilIdle()
-
-        assertThat(coordinator.currentSession).isEqualTo(session)
-        // After create returns and observer starts collecting, state mirrors the session.
-        assertThat(coordinator.currentSessionState.value).isEqualTo(SessionState.Idle)
-    }
-
-    @Test
-    fun `aborted createAndSubmit resets currentSessionState to null`() = runTest {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        val scope = TestScope(dispatcher)
-        val coordinator = SessionCoordinator(scope)
-
-        coordinator.createAndSubmit("rejected") { null }
-        advanceUntilIdle()
-
-        assertThat(coordinator.currentSessionState.value).isNull()
-    }
-
-    @Test
-    fun `currentSessionState mirrors session state transitions`() = runTest {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        val scope = TestScope(dispatcher)
-        val coordinator = SessionCoordinator(scope)
-        val state = MutableStateFlow<SessionState>(SessionState.Created)
-        val session = fakeSession(state)
-        coordinator.attachSession(session)
-        advanceUntilIdle()
-        assertThat(coordinator.currentSessionState.value).isEqualTo(SessionState.Created)
-
-        for (s in listOf(
-            SessionState.Running,
-            SessionState.Idle,
-            SessionState.TakeoverPending,
-            SessionState.Paused,
-            SessionState.Shutdown,
-        )) {
-            state.value = s
-            advanceUntilIdle()
-            assertThat(coordinator.currentSessionState.value).isEqualTo(s)
-        }
-    }
-
-    @Test
-    fun `clearSession resets currentSessionState to null`() = runTest {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        val scope = TestScope(dispatcher)
-        val coordinator = SessionCoordinator(scope)
-        val state = MutableStateFlow<SessionState>(SessionState.Idle)
-        val session = fakeSession(state)
-        coordinator.attachSession(session)
-        advanceUntilIdle()
-        assertThat(coordinator.currentSessionState.value).isEqualTo(SessionState.Idle)
-
-        coordinator.clearSession()
-        advanceUntilIdle()
-
-        assertThat(coordinator.currentSessionState.value).isNull()
-    }
-
-    @Test
-    fun `detachSession keeps currentSessionState tracking the detached session until Shutdown`() = runTest {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        val scope = TestScope(dispatcher)
-        val coordinator = SessionCoordinator(scope)
-        val state = MutableStateFlow<SessionState>(SessionState.Running)
-        val session = fakeSession(state)
-        coordinator.attachSession(session)
-        advanceUntilIdle()
-
-        coordinator.detachSession()
-        advanceUntilIdle()
-
-        // Detached session may still write memory — gate must stay locked.
-        assertThat(coordinator.currentSessionState.value).isEqualTo(SessionState.Running)
-
-        // State transitions on the detached session still flow through.
-        state.value = SessionState.Idle
-        advanceUntilIdle()
-        assertThat(coordinator.currentSessionState.value).isEqualTo(SessionState.Idle)
-
-        // Only Shutdown of the detached session unlocks the gate.
-        state.value = SessionState.Shutdown
-        advanceUntilIdle()
-        assertThat(coordinator.currentSessionState.value).isEqualTo(SessionState.Shutdown)
-    }
-
-    @Test
-    fun `SESSION_DEAD teardown resets currentSessionState to null`() = runTest {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        val scope = TestScope(dispatcher)
-        val coordinator = SessionCoordinator(scope)
-        val state = MutableStateFlow<SessionState>(SessionState.Shutdown)
-        val session = mockk<AgentSession>(relaxed = true)
-        every { session.state } returns state
-        val services = mockk<SessionServices>(relaxed = true)
-        every { session.getServices() } returns services
-        every { services.recordingService.getCurrentFileName() } returns "dead.json"
-        coEvery { session.submit(any()) } returns Unit
-
-        coordinator.attachSession(session)
-        advanceUntilIdle()
-
-        coordinator.submit("lost")
-        advanceUntilIdle()
-
-        assertThat(coordinator.currentSessionState.value).isNull()
-    }
-
-    @Test
-    fun `createAndSubmit resets currentSessionState to null when create throws`() = runTest {
+    fun `createAndSubmit releases its lock when creation throws`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val scope = TestScope(dispatcher)
         val coordinator = SessionCoordinator(scope)
@@ -682,7 +540,6 @@ class SessionCoordinatorTest {
         // Gate was locked when Created emitted, then unlocked after the throw.
         assertThat(caught).isInstanceOf(IllegalStateException::class.java)
         assertThat(coordinator.currentSession).isNull()
-        assertThat(coordinator.currentSessionState.value).isNull()
 
         // Mutex was released — a fresh creation can proceed.
         val state = MutableStateFlow<SessionState>(SessionState.Idle)
@@ -692,18 +549,4 @@ class SessionCoordinatorTest {
         assertThat(result).isEqualTo(CreateResult.Success)
     }
 
-    @Test
-    fun `attachSession synchronously snapshots session state so the flow is not stale`() {
-        // No runTest — assert the snapshot WITHOUT advancing the dispatcher. The launched collector cannot have run yet; only the
-        // synchronous snapshot inside attachSession can have populated the flow.
-        val dispatcher = StandardTestDispatcher()
-        val scope = TestScope(dispatcher)
-        val coordinator = SessionCoordinator(scope)
-        val state = MutableStateFlow<SessionState>(SessionState.Running)
-        val session = fakeSession(state)
-
-        coordinator.attachSession(session)
-
-        assertThat(coordinator.currentSessionState.value).isEqualTo(SessionState.Running)
-    }
 }

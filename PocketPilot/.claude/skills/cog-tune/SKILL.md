@@ -1,6 +1,6 @@
 ---
 name: cog-tune
-description: Analyze PocketPilot agent cognition using debug-run traces/replay artifacts and eval results, then propose and implement improvements to prompts, tool definitions, context packing (todo/scratchpad/history). Use when a debug run feels wrong, when eval metrics regress, when tuning context engineering for generalizable gains, or when reviewing LLM input/output and tool usage; produce both a report and code/doc changes.
+description: Analyze PocketPilot agent cognition using debug-run traces/replay artifacts and eval results, then propose and implement improvements to prompts, tool definitions, conversation history and native reasoning. Use when a debug run feels wrong, when eval metrics regress, when tuning context engineering for generalizable gains, or when reviewing LLM input/output and tool usage; produce both a report and code/doc changes.
 ---
 
 # Cog Tune
@@ -91,7 +91,7 @@ Always cross-check image evidence with a11y trees. If they disagree, document th
 Look for mismatches between:
 - Screen state vs. what the model believed
 - Tool call args vs. available UI elements
-- History/todo/scratchpad vs. chosen action
+- Conversation history and native reasoning vs. chosen action
 - Eval-level regressions vs. per-task cognition patterns (for example: lower success rate tied to repeated tool mis-targeting)
 
 ### 4. Classify root cause
@@ -108,8 +108,8 @@ Bucket issues before changing prompts:
 
 Possible change areas:
 
-- **Prompt assembly**: `agent/cognition/prompt/PromptAssembler.kt`, `AgentPromptBuilder.kt`
-- **Context packing**: `agent/cognition/context/ContextPackager.kt`
+- **Prompt assembly**: `agent/cognition/prompt/PromptBuilder.kt`
+- **Observation**: `agent/cognition/prompt/TurnObservation.kt`
 - **Policies**: `agent/cognition/policy/*`
 - **Tool schemas**: `tool/ToolSpec.kt`, tool impls under `tool/impl/`
 

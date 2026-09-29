@@ -4,8 +4,6 @@ import id.steveimm.pocketpilot.auth.ServerCredentialStore
 import id.steveimm.pocketpilot.llm.ModelIdValidator
 import id.steveimm.pocketpilot.llm.ServerBaseUrlValidator
 import id.steveimm.pocketpilot.protocol.ApprovalMode
-import id.steveimm.pocketpilot.ui.settings.BrowserScriptToggleError
-import id.steveimm.pocketpilot.ui.settings.gateBrowserScriptEnable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -29,7 +27,6 @@ internal suspend fun applyIntentPayloadToSettings(
     currentPendingApprovalMode: ApprovalMode?,
     currentPendingEvalTurnBudget: Int?,
     log: (String) -> Unit,
-    browserScriptGate: suspend () -> BrowserScriptToggleError? = { gateBrowserScriptEnable() },
 ): MainActivityIntentApplyResult {
     if (!isDebugBuild) {
         return MainActivityIntentApplyResult(
@@ -60,23 +57,6 @@ internal suspend fun applyIntentPayloadToSettings(
         settingsState.updateDebugMode(enabled)
         log("Debug mode set from intent: $enabled")
     }
-    payload.browserScriptEnabled?.let { enabled ->
-        if (!enabled) {
-            // OFF is unconditional — never makes things worse, mirrors the UI toggle.
-            settingsState.updateBrowserScriptEnabled(false)
-            log("browser_script enabled set from intent: false")
-        } else {
-            // ON must clear the same gate the UI uses (Shizuku reachable + permission + writable command-line file).
-            val gateError = browserScriptGate()
-            if (gateError == null) {
-                settingsState.updateBrowserScriptEnabled(true)
-                log("browser_script enabled set from intent: true (gate ok)")
-            } else {
-                log("browser_script enable from intent skipped: gate denied ($gateError)")
-            }
-        }
-    }
-
     val pendingTraceEnabled =
         payload.traceEnabled?.also { enabled ->
             log("Trace enabled set from intent: $enabled")

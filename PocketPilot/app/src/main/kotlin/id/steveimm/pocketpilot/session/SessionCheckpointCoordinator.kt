@@ -7,7 +7,6 @@ import id.steveimm.pocketpilot.history.model.CheckpointState
 import id.steveimm.pocketpilot.history.model.ConversationConfigSnapshot
 import id.steveimm.pocketpilot.history.model.HistoryItemConverter
 import id.steveimm.pocketpilot.history.model.SessionRuntimeSnapshot
-import id.steveimm.pocketpilot.history.model.TodoSnapshot
 import id.steveimm.pocketpilot.perception.PerceptionConfig
 import id.steveimm.pocketpilot.protocol.ApprovalMode
 import id.steveimm.pocketpilot.protocol.PlatformMode
@@ -20,7 +19,6 @@ internal class SessionCheckpointCoordinator(
     private val sessionId: String,
     private val config: SessionConfig,
     private val historyManager: HistoryManager,
-    private val sessionState: AgentSessionState,
     private val recordingService: SessionRecordingService
 ) {
     companion object {
@@ -59,16 +57,12 @@ internal class SessionCheckpointCoordinator(
 
     private fun buildSnapshot(state: CheckpointState): SessionRuntimeSnapshot {
         val items = historyManager.getAll()
-        val todos = sessionState.todos.get()
-        val scratchpadJson = sessionState.scratchpad.toJsonObject().toString()
 
         return SessionRuntimeSnapshot(
             schemaVersion = 2,
             sessionId = sessionId,
             config = config.toConfigSnapshot(),
             historyItems = HistoryItemConverter.toRecords(items),
-            todos = todos.map { TodoSnapshot(description = it.description, status = it.status.name) },
-            scratchpadJson = scratchpadJson,
             checkpointState = state,
             lastCheckpointAt = System.currentTimeMillis(),
             lastTaskOutcome = recordingService.getLastTaskOutcome()?.name

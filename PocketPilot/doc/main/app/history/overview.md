@@ -9,7 +9,7 @@ The session history system has three layers:
 
 1. **Persistence layer** — automatic recording of chat sessions to disk for browsing and resuming past conversations
 2. **Runtime layer** — in-memory conversation history (`HistoryManager`) with proactive screen downgrade plus context-window-driven auto-compaction (`Compactor`)
-3. **Checkpoint layer** — session state snapshots for process-death recovery (history + todos + scratchpad)
+3. **Checkpoint layer** — session state snapshots for process-death recovery (conversation history and native reasoning)
 
 ## Architecture
 

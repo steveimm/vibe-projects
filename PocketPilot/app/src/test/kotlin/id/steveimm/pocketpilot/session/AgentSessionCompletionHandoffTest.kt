@@ -191,7 +191,6 @@ class AgentSessionCompletionHandoffTest {
                         toolRegistry = toolRegistry,
                         toolRouter = toolRouter,
                         historyManager = HistoryManager(),
-                        sessionState = AgentSessionState(),
                         policyEngine = policyEngine,
                         appClassifier = appClassifier,
                         platform = platform,

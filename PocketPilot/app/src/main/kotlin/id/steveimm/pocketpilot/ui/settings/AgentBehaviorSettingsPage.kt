@@ -28,14 +28,11 @@ internal fun AgentBehaviorSettingsPage(
     platformMode: PlatformMode,
     effectivePlatformMode: PlatformMode?,
     onPlatformModeChange: (PlatformMode) -> Unit,
-    browserScriptEnabled: Boolean,
-    onBrowserScriptEnabledChange: (Boolean) -> Unit,
     approvalMode: ApprovalMode,
     onApprovalModeChange: (ApprovalMode) -> Unit,
     onNavigateToAppAccess: () -> Unit,
     onBack: () -> Unit,
     onClose: () -> Unit,
-    isSessionRunning: Boolean = false,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         PageMastheadDrillDown(title = "Agent Behavior", onBack = onBack, onClose = onClose)
@@ -61,11 +58,7 @@ internal fun AgentBehaviorSettingsPage(
                 onPlatformModeChange = onPlatformModeChange,
             )
             Spacer(modifier = Modifier.height(20.dp))
-            ToolsSection(
-                browserScriptEnabled = browserScriptEnabled,
-                onBrowserScriptEnabledChange = onBrowserScriptEnabledChange,
-                isSessionRunning = isSessionRunning,
-            )
+            ToolsSection()
             Fleuron()
             Spacer(modifier = Modifier.height(32.dp))
         }

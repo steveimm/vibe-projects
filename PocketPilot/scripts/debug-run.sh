@@ -151,18 +151,11 @@ case "$(echo "$APPROVAL_MODE" | tr '[:lower:]' '[:upper:]')" in
         APPROVAL_MODE="SMART"
         ;;
 esac
-DEBUG_BROWSER_SCRIPT_ENABLED="${DEBUG_BROWSER_SCRIPT_ENABLED:-}"
-if [[ -n "$DEBUG_BROWSER_SCRIPT_ENABLED" ]]; then
-    DEBUG_BROWSER_SCRIPT_ENABLED=$(normalize_bool "$DEBUG_BROWSER_SCRIPT_ENABLED")
-fi
 
 log "Using main model: $EFFECTIVE_MAIN_MODEL"
 log "Using perception mode: $PERCEPTION_MODE"
 log "Using platform mode: $PLATFORM_MODE"
 log "Using approval mode: $APPROVAL_MODE"
-if [[ -n "$DEBUG_BROWSER_SCRIPT_ENABLED" ]]; then
-    log "Using browser_script enabled override: $DEBUG_BROWSER_SCRIPT_ENABLED"
-fi
 
 # Ensure device connected
 DEVICE="$(select_device || true)"
@@ -271,9 +264,6 @@ SAFE_PLATFORM_MODE=$(escape_shell_arg "$PLATFORM_MODE")
 INTENT_EXTRAS="--es goal '$SAFE_GOAL' --es perception_mode '$SAFE_PERCEPTION_MODE' --es platform_mode '$SAFE_PLATFORM_MODE' --ez auto_start true --ez fresh_session true --ez debug_mode $DEBUG_MODE --ez trace_enabled true --es trace_run_id '$SAFE_RUN_ID'"
 SAFE_APPROVAL_MODE=$(escape_shell_arg "$APPROVAL_MODE")
 INTENT_EXTRAS="$INTENT_EXTRAS --es approval_mode '$SAFE_APPROVAL_MODE'"
-if [[ -n "$DEBUG_BROWSER_SCRIPT_ENABLED" ]]; then
-    INTENT_EXTRAS="$INTENT_EXTRAS --ez browser_script_enabled $DEBUG_BROWSER_SCRIPT_ENABLED"
-fi
 
 if [[ -n "$EFFECTIVE_MAIN_MODEL" ]]; then
     SAFE_MODEL=$(escape_shell_arg "$EFFECTIVE_MAIN_MODEL")

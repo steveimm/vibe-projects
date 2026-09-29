@@ -12,7 +12,6 @@ import id.steveimm.pocketpilot.model.ScreenSnapshot
 import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.protocol.SessionId
 import id.steveimm.pocketpilot.protocol.SessionLlmConfig
-import id.steveimm.pocketpilot.session.AgentSessionState
 import id.steveimm.pocketpilot.session.SessionServices
 import id.steveimm.pocketpilot.test.FakeAndroidPlatform
 import id.steveimm.pocketpilot.tool.AppClassifier
@@ -125,7 +124,6 @@ private fun buildServices(traceRecorder: TraceRecorder): SessionServices {
                 toolRegistry = toolRegistry,
                 toolRouter = toolRouter,
                 historyManager = HistoryManager(),
-                sessionState = AgentSessionState(),
                 policyEngine = policyEngine,
                 appClassifier = AppClassifier(emptyMap()),
                 platform = platform,

@@ -67,11 +67,6 @@ internal fun SettingsHomePage(
                 subtitle = agentBehaviorSubtitle(perceptionMode, platformMode, effectivePlatformMode, approvalMode),
                 onClick = { onNavigate(SettingsPage.AGENT_BEHAVIOR) }
             )
-            SettingsNavigationRow(
-                title = "Memory",
-                subtitle = "User and device knowledge",
-                onClick = { onNavigate(SettingsPage.MEMORY) }
-            )
 
             SectionHeader("Access")
             SettingsNavigationRow(

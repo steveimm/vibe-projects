@@ -134,15 +134,7 @@ tasks.configureEach {
     }
 }
 
-afterEvaluate {
-    // Kotlin 2.3.0's `produceReleaseComposeMapping` ships an older ASM that can't read class file major version 69 (Java 25).
-    // bcprov-jdk18on:1.84 bundles `META-INF/versions/25/*.class` in its multi-release jar, which crashes the mapping task.
-    listOf(
-        "produceReleaseComposeMapping",
-        "mergeReleaseComposeMapping",
-        "reportReleaseComposeMappingErrors",
-    ).forEach { tasks.findByName(it)?.enabled = false }
-}
+
 
 // Kotlin 2.3.0 compilerOptions DSL (replaces deprecated kotlinOptions)
 kotlin {
@@ -199,10 +191,7 @@ dependencies {
     // Hidden API bypass — for InputEvent.setDisplayId(), ServiceManager access, etc.
     implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
 
-    // BouncyCastle — X.509 self-signed cert generation for wireless ADB pairing
-    // (sun.security.x509 is not available on Android). "jdk18on" = JDK 1.8 onwards.
-    implementation("org.bouncycastle:bcpkix-jdk18on:1.84")
-    implementation("org.bouncycastle:bcprov-jdk18on:1.84")
+
 
     // SPAKE2-25519 — required for ADB pairing protocol (AOSP uses BoringSSL spake25519).
     implementation("net.i2p.crypto:eddsa:0.3.0")

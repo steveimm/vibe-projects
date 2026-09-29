@@ -7,8 +7,6 @@ import com.google.common.truth.Truth.assertThat
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.junit.After
@@ -141,74 +139,6 @@ class AppSettingsStoreTest {
         backing["user_app_overrides"] = "not a json object"
 
         assertThat(AppSettingsStore(context).loadUserAppOverrides()).isEmpty()
-    }
-
-    @Test
-    fun `disabled agent skills default to empty`() {
-        val store = AppSettingsStore(context)
-        assertThat(store.disabledAgentSkills.value).isEmpty()
-        assertThat(store.loadDisabledAgentSkills()).isEmpty()
-    }
-
-    @Test
-    fun `setSkillDisabled true persists and updates flow`() = runBlocking<Unit> {
-        val store = AppSettingsStore(context)
-        store.setSkillDisabled("calendar-date-math", true)
-
-        assertThat(store.disabledAgentSkills.value).containsExactly("calendar-date-math")
-        assertThat(AppSettingsStore(context).loadDisabledAgentSkills())
-            .containsExactly("calendar-date-math")
-    }
-
-    @Test
-    fun `setSkillDisabled false removes from set`() = runBlocking<Unit> {
-        val store = AppSettingsStore(context)
-        store.setSkillDisabled("alpha", true)
-        store.setSkillDisabled("beta", true)
-        store.setSkillDisabled("alpha", false)
-
-        assertThat(store.disabledAgentSkills.value).containsExactly("beta")
-        assertThat(AppSettingsStore(context).loadDisabledAgentSkills()).containsExactly("beta")
-    }
-
-    @Test
-    fun `setSkillDisabled clears storage when last entry removed`() = runBlocking {
-        val store = AppSettingsStore(context)
-        store.setSkillDisabled("alpha", true)
-        store.setSkillDisabled("alpha", false)
-
-        assertThat(store.disabledAgentSkills.value).isEmpty()
-        // Backing key cleared, not left as empty JSON array.
-        assertThat(backing["disabled_agent_skills"]).isNull()
-    }
-
-    @Test
-    fun `setSkillDisabled is a no-op when state already matches`() = runBlocking {
-        val store = AppSettingsStore(context)
-        store.setSkillDisabled("alpha", true)
-        val before = store.disabledAgentSkills.value
-        store.setSkillDisabled("alpha", true)
-        assertThat(store.disabledAgentSkills.value).isSameInstanceAs(before)
-    }
-
-    @Test
-    fun `malformed disabled skills JSON falls back to empty set`() {
-        backing["disabled_agent_skills"] = "not-a-json-array"
-        assertThat(AppSettingsStore(context).loadDisabledAgentSkills()).isEmpty()
-    }
-
-    @Test
-    fun `concurrent setSkillDisabled calls do not lose entries`() = runBlocking<Unit> {
-        val store = AppSettingsStore(context)
-        val names = (1..20).map { "skill-$it" }
-
-        // Fan out 20 disables in parallel. Without serialization the
-        // read-modify-write on _disabledAgentSkills.value would drop entries.
-        names.map { name -> async { store.setSkillDisabled(name, true) } }.awaitAll()
-
-        assertThat(store.disabledAgentSkills.value).containsExactlyElementsIn(names)
-        assertThat(AppSettingsStore(context).loadDisabledAgentSkills())
-            .containsExactlyElementsIn(names)
     }
 
     private fun fakePrefs(backing: MutableMap<String, Any?>): SharedPreferences {

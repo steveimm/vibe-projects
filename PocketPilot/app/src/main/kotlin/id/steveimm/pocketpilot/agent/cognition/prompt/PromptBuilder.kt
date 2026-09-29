@@ -4,7 +4,6 @@ import id.steveimm.pocketpilot.history.HistoryManager
 import id.steveimm.pocketpilot.history.MessageKind
 import id.steveimm.pocketpilot.history.ResponseItem
 import id.steveimm.pocketpilot.model.ScreenImage
-import id.steveimm.pocketpilot.session.AgentSessionState
 import com.openai.core.JsonValue
 import com.openai.models.responses.EasyInputMessage
 import com.openai.models.responses.ResponseFunctionToolCall
@@ -16,7 +15,6 @@ import com.openai.models.responses.ResponseInputText
 /** Builds the complete input items list for one LLM turn. */
 internal class PromptBuilder(
     private val historyManager: HistoryManager,
-    private val sessionState: AgentSessionState,
     private val supportsVision: Boolean = true
 ) {
 
@@ -25,15 +23,8 @@ internal class PromptBuilder(
         observation: TurnObservation,
         warnings: List<String> = emptyList(),
         turnNumber: Int = 0,
-        appSkill: String? = null,
-        recalledMemory: String? = null,
-        activatedAgentSkills: String? = null
     ): List<ResponseInputItem> = buildList {
         addAll(buildHistorySection())
-        buildMemorySection()?.let { add(it) }
-        recalledMemory?.trim()?.takeIf { it.isNotEmpty() }?.let { add(textUserMessage(it)) }
-        appSkill?.trim()?.takeIf { it.isNotEmpty() }?.let { add(textUserMessage(it)) }
-        activatedAgentSkills?.trim()?.takeIf { it.isNotEmpty() }?.let { add(textUserMessage(it)) }
         add(buildObservationSection(observation, warnings, turnNumber))
     }
 
@@ -41,37 +32,6 @@ internal class PromptBuilder(
      * HistoryManager on addItem(). */
     private fun buildHistorySection(): List<ResponseInputItem> {
         return historyManager.forPrompt().mapNotNull { it.toResponseInputItem() }
-    }
-
-    /** Build a single "Working Memory" user message (todos + scratchpad). Returns null when both are empty — no noise for early turns. */
-    private fun buildMemorySection(): ResponseInputItem? {
-        val text = buildMemoryText() ?: return null
-        return textUserMessage(text)
-    }
-
-    /** Produces the text body for the memory message. Package-visible for testing. */
-    internal fun buildMemoryText(): String? {
-        val todoContext = sessionState.todos.toPromptContext()
-        val scratchpadContext = sessionState.scratchpad.toPromptContext()
-        val hasTodos = todoContext.isNotEmpty()
-        val hasScratchpad = !scratchpadContext.startsWith("(empty)")
-
-        if (!hasTodos && !hasScratchpad) return null
-
-        return buildString {
-            appendLine("## Working Memory")
-            if (hasTodos) {
-                appendLine()
-                appendLine("### Todo List")
-                append(todoContext)
-            }
-            if (hasScratchpad) {
-                if (hasTodos) appendLine()
-                appendLine()
-                appendLine("### Scratchpad")
-                append(scratchpadContext)
-            }
-        }.trim()
     }
 
     private fun buildObservationSection(

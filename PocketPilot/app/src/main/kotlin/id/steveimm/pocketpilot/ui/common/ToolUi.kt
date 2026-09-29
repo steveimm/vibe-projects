@@ -2,7 +2,6 @@ package id.steveimm.pocketpilot.ui.common
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Build
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -37,13 +36,8 @@ private fun resolveToolDisplay(toolName: String): ToolDisplay {
         ToolName.Wait -> ToolDisplay(tool.displayName, Icons.Rounded.HourglassEmpty)
         ToolName.SystemButton -> ToolDisplay(tool.displayName, Icons.Rounded.TouchApp)
         ToolName.CompleteTask -> ToolDisplay(tool.displayName, Icons.Rounded.CheckCircle)
-        ToolName.WriteTodos -> ToolDisplay(tool.displayName, Icons.AutoMirrored.Rounded.FormatListBulleted)
-        ToolName.Scratchpad -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
-        ToolName.RememberExperience -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
         ToolName.AskUser -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
         ToolName.TermuxShell -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
-        ToolName.ActivateSkill -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
-        ToolName.BrowserScript -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
         is ToolName.Unknown -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
     }
 }

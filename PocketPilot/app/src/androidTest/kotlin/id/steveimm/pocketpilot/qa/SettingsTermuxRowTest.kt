@@ -94,8 +94,6 @@ class SettingsTermuxRowTest {
                         platformMode = id.steveimm.pocketpilot.protocol.PlatformMode.ACCESSIBILITY,
                         effectivePlatformMode = null,
                         onPlatformModeChange = {},
-                        browserScriptEnabled = false,
-                        onBrowserScriptEnabledChange = {},
                         approvalMode = id.steveimm.pocketpilot.protocol.ApprovalMode.SMART,
                         onApprovalModeChange = {},
                         onNavigateToAppAccess = {},

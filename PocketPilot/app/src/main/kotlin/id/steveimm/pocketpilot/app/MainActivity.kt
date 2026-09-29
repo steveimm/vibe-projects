@@ -30,7 +30,6 @@ import id.steveimm.pocketpilot.history.SessionHistoryManager
 import id.steveimm.pocketpilot.history.model.SessionInfo
 import id.steveimm.pocketpilot.history.model.isReloadable
 import id.steveimm.pocketpilot.history.storage.SessionStorage
-import id.steveimm.pocketpilot.memory.MemoryStore
 import id.steveimm.pocketpilot.onboarding.OnboardingDemoController
 import id.steveimm.pocketpilot.onboarding.OnboardingEffect
 import id.steveimm.pocketpilot.onboarding.OnboardingStore
@@ -75,7 +74,6 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_TRACE_ENABLED = "trace_enabled"
         const val EXTRA_TRACE_RUN_ID = "trace_run_id"
         const val EXTRA_APPROVAL_MODE = "approval_mode"
-        const val EXTRA_BROWSER_SCRIPT_ENABLED = "browser_script_enabled"
         const val EXTRA_PLATFORM_MODE = "platform_mode"
         const val EXTRA_EXCLUDED_TOOLS = "excluded_tools"
         const val EXTRA_EVAL_TURN_BUDGET = "eval_turn_budget"
@@ -84,12 +82,6 @@ class MainActivity : ComponentActivity() {
 
     private val sessionScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val coordinator = SessionCoordinator(sessionScope)
-    private val settingsMemoryStore: MemoryStore by lazy {
-        MemoryStore(java.io.File(applicationContext.filesDir, "memory"))
-    }
-    private val memoryEditGate: MemoryEditGate by lazy {
-        MemoryEditGate(coordinator, sessionScope)
-    }
     private lateinit var settingsState: AppSettingsState
     private var pendingTraceEnabled: Boolean? = null
     private var pendingTraceRunId: String? = null
@@ -253,9 +245,6 @@ class MainActivity : ComponentActivity() {
                     effectivePlatformModeFlow = AgentService.instance?.effectivePlatformMode
                         ?: kotlinx.coroutines.flow.MutableStateFlow(null),
                     appClassifier = AppClassifierHolder.get(applicationContext),
-                    currentSessionStateFlow = coordinator.currentSessionState,
-                    memoryStore = settingsMemoryStore,
-                    memoryEditGate = memoryEditGate,
                 )
                 pendingGoalForConfirmation?.let { goal ->
                     AlertDialog(

@@ -21,7 +21,6 @@ class AppSettingsState(private val store: AppSettingsStore) {
     val perceptionMode get() = current.perceptionMode
     val platformMode get() = current.platformMode
     val traceEnabled get() = current.traceEnabled
-    val browserScriptEnabled get() = current.browserScriptEnabled
     val approvalMode get() = current.approvalMode
 
     fun updateServer(baseUrl: String, modelId: String) {
@@ -41,11 +40,6 @@ class AppSettingsState(private val store: AppSettingsStore) {
     fun updateTraceEnabled(value: Boolean) {
         current = current.copy(traceEnabled = value)
         store.saveTraceEnabled(value)
-    }
-
-    fun updateBrowserScriptEnabled(value: Boolean) {
-        current = current.copy(browserScriptEnabled = value)
-        store.saveBrowserScriptEnabled(value)
     }
 
     fun updatePerceptionMode(value: String) {

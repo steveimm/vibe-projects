@@ -43,3 +43,9 @@ Verification: the combined release suite passed 1,725 tests, UI tests compiled, 
 A baseline image showed the external-goal dialog still closing after Run had been pressed. The model's first tap corresponded to that button in normalized screenshot coordinates. Confirmed goals now use the existing delayed dispatch path, allowing the dialog to disappear before the first capture.
 
 Verification: the emulator's first model image no longer contained the dialog, and "Open Settings" completed in two turns without a redundant tap. This was tested in the reduced-tool build; the launch change is independent of tool registration.
+
+## Reduced phone-automation tool set
+
+Removed todo/scratchpad state, persistent memory and automatic recall, runtime skills, browser scripting, their settings surfaces, and related tests, assets, and dependencies. App Access now manages only access rules. User handoff and optional Termux commands remain. Conversation history and native reasoning provide the model's retained context.
+
+Verification: 1,135 release tests passed, release lint passed, and UI tests compiled. The emulator completed "Open Settings" in two turns with two successful tools and no errors. The second request's trace contains the first assistant turn's native reasoning. Settings no longer shows Memory or skill controls, and changing Clock to Allow through App Access persisted the expected override. Python tooling tests passed (125 tests).

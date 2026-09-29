@@ -131,7 +131,6 @@ private fun buildServices(llmClient: LLMClient): SessionServices {
                 toolRegistry = toolRegistry,
                 toolRouter = toolRouter,
                 historyManager = HistoryManager(),
-                sessionState = id.steveimm.pocketpilot.session.AgentSessionState(),
                 policyEngine = policyEngine,
                 appClassifier = AppClassifier(emptyMap()),
                 platform = platform,

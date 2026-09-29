@@ -1,13 +1,9 @@
 package id.steveimm.pocketpilot.ui.settings
 
 import id.steveimm.pocketpilot.app.AppSettingsStore
-import id.steveimm.pocketpilot.browser.setup.ChromeCdpProbe
-import id.steveimm.pocketpilot.browser.setup.ChromeFlagDeepLink
-import id.steveimm.pocketpilot.browser.setup.ShizukuShellRunner
 import id.steveimm.pocketpilot.termux.NeedsSetupReason
 import id.steveimm.pocketpilot.termux.TermuxBridgeManager
 import id.steveimm.pocketpilot.termux.TermuxBridgeStatus
-import id.steveimm.pocketpilot.ui.theme.pocketPilot
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -15,29 +11,14 @@ import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -48,25 +29,9 @@ import kotlinx.coroutines.launch
 private const val TERMUX_INSTALL_URL = "https://f-droid.org/packages/com.termux/"
 private const val TERMUX_PACKAGE = "com.termux"
 
-/** "Tools" section for the Agent Behavior settings page. Hosts agent tool toggles (`termux_shell`, `browser_script`). */
 @Composable
-internal fun ToolsSection(
-    browserScriptEnabled: Boolean,
-    onBrowserScriptEnabledChange: (Boolean) -> Unit,
-    isSessionRunning: Boolean = false,
-) {
-    SettingsSection(title = "Tools") {
-        Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.md)) {
-            TermuxShellSettingsRow()
-            BrowserScriptToolRow(
-                enabled = browserScriptEnabled,
-                onEnabledChange = onBrowserScriptEnabledChange,
-            )
-        }
-    }
-    // Spacer is intentionally NOT rendered here — AgentSkillToggleRows owns its own top
-    // padding so an empty/loading catalog leaves zero extra gap under the Tools section.
-    AgentSkillToggleRows(isSessionRunning = isSessionRunning)
+internal fun ToolsSection() {
+    SettingsSection(title = "Tools") { TermuxShellSettingsRow() }
 }
 
 @Composable
@@ -219,146 +184,5 @@ private fun android.content.Context.launchTermux() {
         startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     } catch (_: ActivityNotFoundException) {
         Toast.makeText(this, "Unable to launch Termux", Toast.LENGTH_SHORT).show()
-    }
-}
-
-@Composable
-private fun BrowserScriptToolRow(
-    enabled: Boolean,
-    onEnabledChange: (Boolean) -> Unit,
-) {
-    val context = LocalContext.current
-    val appContext = context.applicationContext
-    val scope = rememberCoroutineScope()
-    val gate = rememberBrowserScriptToggleGate(onPersist = onEnabledChange)
-    val shellRunner = remember { ShizukuShellRunner() }
-    val probe = remember(shellRunner) { ChromeCdpProbe(shellRunner = shellRunner) }
-    val deepLink = remember(appContext, shellRunner) {
-        ChromeFlagDeepLink(context = appContext, shellRunner = shellRunner)
-    }
-    var probeState by remember {
-        mutableStateOf<BrowserScriptProbeState>(BrowserScriptProbeState.Probing)
-    }
-    var refreshTick by remember { mutableStateOf(0) }
-
-    // Only probe when the tool is actually live — enabled, gate done, no error.
-    val probeActive = enabled && !gate.pending && gate.error == null
-    LaunchedEffect(probeActive, refreshTick) {
-        if (!probeActive) {
-            probeState = BrowserScriptProbeState.Probing
-            return@LaunchedEffect
-        }
-        probeState = BrowserScriptProbeState.Probing
-        probeState = when (probe.probe()) {
-            ChromeCdpProbe.Result.Bound -> BrowserScriptProbeState.Bound
-            ChromeCdpProbe.Result.NotBound -> BrowserScriptProbeState.NotBound
-            ChromeCdpProbe.Result.Unknown -> BrowserScriptProbeState.Unknown
-        }
-    }
-
-    val statusResult = browserScriptStatusUi(
-        enabledPref = enabled,
-        gatePending = gate.pending,
-        gateError = gate.error,
-        probeResult = probeState,
-    )
-
-    val rowAction: (() -> Unit)? = when (statusResult.rowAction) {
-        RowAction.ClearErrorAndRetry -> {
-            { gate.setEnabled(true) }
-        }
-        RowAction.None, null -> null
-    }
-    val rowClickLabel = when (statusResult.rowAction) {
-        RowAction.ClearErrorAndRetry -> "Retry Shizuku setup"
-        RowAction.None, null -> null
-    }
-
-    // Expanded help only when the tool is on, no gate error, and the probe failed/was inconclusive.
-    val showExpandedHelp = enabled && gate.error == null &&
-        (probeState is BrowserScriptProbeState.NotBound ||
-                probeState is BrowserScriptProbeState.Unknown)
-
-    ToolSettingsCard(
-        title = "Browser Script",
-        status = statusResult.status,
-        switchChecked = enabled,
-        switchEnabled = !gate.pending,
-        onSwitchChange = gate::setEnabled,
-        onRowClick = rowAction,
-        onRowClickLabel = rowClickLabel,
-        expanded = if (showExpandedHelp) {
-            {
-                Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.sm)) {
-                    if (probeState is BrowserScriptProbeState.NotBound) {
-                        Button(
-                            onClick = { scope.launch { deepLink.open() } },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.large,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                            ),
-                        ) {
-                            Text(
-                                text = "Open chrome://flags →",
-                                style = MaterialTheme.typography.labelLarge,
-                            )
-                        }
-                    }
-                    // Inline manual-paste recovery.
-                    FlagUrlInlineHelp(
-                        onCopy = {
-                            val ok = deepLink.copyFlagUrlToClipboard()
-                            Toast.makeText(
-                                context,
-                                if (ok) "URL copied to clipboard" else "Copy failed — try again",
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        },
-                    )
-                    OutlinedButton(
-                        onClick = { refreshTick++ },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.large,
-                    ) {
-                        Text(text = "Re-check", style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-            }
-        } else null,
-    )
-}
-
-/** Manual-paste recovery: shows the chrome:// URL with a Copy button. Rendered alongside the CTA whenever the probe can't confirm the
- * socket is bound, so the user has a durable surface (not a transient Toast) for when Chrome opens but drops the URL. */
-@Composable
-private fun FlagUrlInlineHelp(onCopy: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = MaterialTheme.shapes.small,
-    ) {
-        Column(modifier = Modifier.padding(horizontal = MaterialTheme.pocketPilot.spacing.md, vertical = 10.dp)) {
-            Text(
-                text = "Chrome didn't open the flags page? Paste this URL manually:",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = ChromeFlagDeepLink.FLAG_URL,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = onCopy,
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-            ) {
-                Text(text = "Copy URL", style = MaterialTheme.typography.labelLarge)
-            }
-        }
     }
 }

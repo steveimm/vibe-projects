@@ -96,8 +96,7 @@ Primary files:
 - `termux_shell` is non-screen-changing and auto-allowed, but it must not control
   Android UI or bypass app-tier restrictions. UI work still belongs to `mobile_action`,
   `system_button`, `open_app`, and related UI tools.
-- `TurnToolPolicy` hoists only cognitive tools (`scratchpad`, `write_todos`,
-  `remember_experience`). `termux_shell` and UI tools keep the LLM-returned order.
+- Selected calls execute in model order.
 
 ## Known Limitations
 

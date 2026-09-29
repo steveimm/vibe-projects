@@ -49,12 +49,6 @@ class PolicyEngine(
             return PolicyDecision.Deny("Blocked: financial/auth app ($packageName)")
         }
 
-        // 4. browser_script mutates the user's real Chrome profile through CDP. Chrome is a NORMAL app, but the browser runtime needs its
-        // own SMART-mode approval rule and must not be bypassed by a NORMAL user override or the session allow-list.
-        if (tool == ToolName.BrowserScript) {
-            return browserScriptDecision(currentMode, effectiveTier)
-        }
-
         // 5. Session allow-list — capsule "Session" button writes here. Gated by ALWAYS_ASK so
         //    the user's "ask me everything" pref always wins over a prior session approval.
         if (currentMode != ApprovalMode.ALWAYS_ASK && isSessionAllowed(approvalSubject)) {
@@ -115,22 +109,8 @@ class PolicyEngine(
         return false
     }
 
-    private fun browserScriptDecision(mode: ApprovalMode, tier: AppTier): PolicyDecision {
-        return when (mode) {
-            ApprovalMode.ALWAYS_ASK -> PolicyDecision.AskUser(
-                reason = "User requested approval for all actions",
-                appTier = tier
-            )
-            ApprovalMode.AUTO_APPROVE -> PolicyDecision.Allow
-            ApprovalMode.SMART -> PolicyDecision.AskUser(
-                reason = "Browser automation requires approval",
-                appTier = tier
-            )
-        }
-    }
 }
 
-/** PolicyDecision — Result of policy evaluation. */
 sealed interface PolicyDecision {
     /** Tool call is allowed to execute immediately */
     data object Allow : PolicyDecision

@@ -8,10 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import org.json.JSONObject
 
 data class AppSettings(
@@ -21,7 +18,6 @@ data class AppSettings(
     val perceptionMode: String = AppSettingsStore.DEFAULT_PERCEPTION_MODE,
     val platformMode: PlatformMode = AppSettingsStore.DEFAULT_PLATFORM_MODE,
     val traceEnabled: Boolean = AppSettingsStore.DEFAULT_TRACE_ENABLED,
-    val browserScriptEnabled: Boolean = AppSettingsStore.DEFAULT_BROWSER_SCRIPT_ENABLED,
     val termuxShellEnabled: Boolean = AppSettingsStore.DEFAULT_TERMUX_SHELL_ENABLED,
     val approvalMode: ApprovalMode = AppSettingsStore.DEFAULT_APPROVAL_MODE,
 )
@@ -38,9 +34,7 @@ class AppSettingsStore(context: Context) {
         private const val KEY_PLATFORM_MODE = "platform_mode"
         private const val KEY_USER_APP_OVERRIDES = "user_app_overrides"
         private const val KEY_TRACE_ENABLED = "trace_enabled"
-        private const val KEY_BROWSER_SCRIPT_ENABLED = "browser_script_enabled"
         private const val KEY_TERMUX_SHELL_ENABLED = "termux_shell_enabled"
-        private const val KEY_DISABLED_AGENT_SKILLS = "disabled_agent_skills"
         private const val KEY_APPROVAL_MODE = "approval_mode"
         private const val KEY_COMPACT_OVERLAYS = "compact_overlays"
 
@@ -48,7 +42,6 @@ class AppSettingsStore(context: Context) {
         const val DEFAULT_PERCEPTION_MODE = "accessibility_only"
         val DEFAULT_PLATFORM_MODE = PlatformMode.ACCESSIBILITY
         const val DEFAULT_TRACE_ENABLED = false
-        const val DEFAULT_BROWSER_SCRIPT_ENABLED = false
         const val DEFAULT_TERMUX_SHELL_ENABLED = true
         val DEFAULT_APPROVAL_MODE = ApprovalMode.SMART
     }
@@ -57,16 +50,6 @@ class AppSettingsStore(context: Context) {
 
     private val _termuxShellEnabled = MutableStateFlow(loadTermuxShellEnabled())
     val termuxShellEnabled: StateFlow<Boolean> = _termuxShellEnabled.asStateFlow()
-
-    private val _browserScriptEnabled = MutableStateFlow(loadBrowserScriptEnabled())
-    val browserScriptEnabled: StateFlow<Boolean> = _browserScriptEnabled.asStateFlow()
-
-    private val _disabledAgentSkills = MutableStateFlow(loadDisabledAgentSkills())
-    val disabledAgentSkills: StateFlow<Set<String>> = _disabledAgentSkills.asStateFlow()
-
-    // Serializes setSkillDisabled so concurrent toggles from the UI cannot lose entries
-    // via the read-modify-write between _disabledAgentSkills.value and the prefs commit.
-    private val disabledSkillsMutex = Mutex()
 
     fun load(): AppSettings {
         val url = prefs.getString(KEY_SERVER_BASE_URL, null)
@@ -83,7 +66,6 @@ class AppSettingsStore(context: Context) {
                 ?: if (prefs.getBoolean(KEY_SCREENSHOT_INPUT, false)) "hybrid" else DEFAULT_PERCEPTION_MODE,
             platformMode = readEnum(KEY_PLATFORM_MODE, DEFAULT_PLATFORM_MODE),
             traceEnabled = prefs.getBoolean(KEY_TRACE_ENABLED, DEFAULT_TRACE_ENABLED),
-            browserScriptEnabled = loadBrowserScriptEnabled(),
             termuxShellEnabled = loadTermuxShellEnabled(),
             approvalMode = readEnum(KEY_APPROVAL_MODE, DEFAULT_APPROVAL_MODE)
                 .takeUnless { it == ApprovalMode.ALWAYS_ASK } ?: DEFAULT_APPROVAL_MODE,
@@ -109,16 +91,6 @@ class AppSettingsStore(context: Context) {
         _termuxShellEnabled.value = value
     }
 
-    fun loadBrowserScriptEnabled(): Boolean =
-        prefs.getBoolean(KEY_BROWSER_SCRIPT_ENABLED, DEFAULT_BROWSER_SCRIPT_ENABLED)
-
-    suspend fun setBrowserScriptEnabled(value: Boolean) {
-        withContext(Dispatchers.IO) {
-            prefs.edit().putBoolean(KEY_BROWSER_SCRIPT_ENABLED, value).apply()
-        }
-        _browserScriptEnabled.value = value
-    }
-
     fun saveDebugMode(value: Boolean) {
         prefs.edit().putBoolean(KEY_DEBUG_MODE, value).apply()
     }
@@ -131,11 +103,6 @@ class AppSettingsStore(context: Context) {
 
     fun saveTraceEnabled(value: Boolean) {
         prefs.edit().putBoolean(KEY_TRACE_ENABLED, value).apply()
-    }
-
-    fun saveBrowserScriptEnabled(value: Boolean) {
-        prefs.edit().putBoolean(KEY_BROWSER_SCRIPT_ENABLED, value).apply()
-        _browserScriptEnabled.value = value
     }
 
     fun savePerceptionMode(value: String) {
@@ -179,35 +146,4 @@ class AppSettingsStore(context: Context) {
         }
     }
 
-    fun loadDisabledAgentSkills(): Set<String> {
-        val raw = prefs.getString(KEY_DISABLED_AGENT_SKILLS, null) ?: return emptySet()
-        return try {
-            val arr = JSONArray(raw)
-            buildSet {
-                for (i in 0 until arr.length()) {
-                    val name = arr.optString(i)
-                    if (name.isNotEmpty()) add(name)
-                }
-            }
-        } catch (_: Exception) {
-            emptySet()
-        }
-    }
-
-    suspend fun setSkillDisabled(name: String, disabled: Boolean) = disabledSkillsMutex.withLock {
-        val current = _disabledAgentSkills.value
-        val next = if (disabled) current + name else current - name
-        if (next == current) return@withLock
-        withContext(Dispatchers.IO) {
-            val editor = prefs.edit()
-            if (next.isEmpty()) {
-                editor.remove(KEY_DISABLED_AGENT_SKILLS).apply()
-            } else {
-                val arr = JSONArray()
-                next.forEach { arr.put(it) }
-                editor.putString(KEY_DISABLED_AGENT_SKILLS, arr.toString()).apply()
-            }
-        }
-        _disabledAgentSkills.value = next
-    }
 }

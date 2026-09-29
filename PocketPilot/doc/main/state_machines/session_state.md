@@ -67,7 +67,7 @@ stateDiagram-v2
 ## Persistence
 
 Durable (via `SessionCheckpointCoordinator`):
-- History items, todos, scratchpad → checkpointed on every mutation while `_state.value` is non-Shutdown (AgentSession.kt:256-258).
+- History items → checkpointed on every mutation while `_state.value` is non-Shutdown (AgentSession.kt:256-258).
 - `flushIdleReady()` runs on `Running → Idle` (AgentSession.kt:459).
 - `flushClosed()` runs on any `→ Shutdown` (AgentSession.kt:670 region).
 

@@ -14,7 +14,6 @@ import id.steveimm.pocketpilot.history.model.CheckpointState
 import id.steveimm.pocketpilot.history.model.ConversationConfigSnapshot
 import id.steveimm.pocketpilot.history.model.PersistedHistoryItem
 import id.steveimm.pocketpilot.history.model.SessionRuntimeSnapshot
-import id.steveimm.pocketpilot.history.model.TodoSnapshot
 import id.steveimm.pocketpilot.llm.LLMClient
 import id.steveimm.pocketpilot.llm.LLMClientFactory
 import id.steveimm.pocketpilot.llm.LLMStreamEvent
@@ -26,8 +25,6 @@ import id.steveimm.pocketpilot.protocol.PlatformMode
 import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.protocol.SessionState
 import id.steveimm.pocketpilot.protocol.TaskOutcome
-import id.steveimm.pocketpilot.protocol.Todo
-import id.steveimm.pocketpilot.protocol.TodoStatus
 import id.steveimm.pocketpilot.test.FakeAndroidPlatform
 import id.steveimm.pocketpilot.tool.AppClassifier
 import id.steveimm.pocketpilot.tool.AppClassifierHolder
@@ -96,15 +93,14 @@ class SessionCheckpointReloadAndListenersTest {
         assertThat(reloaded).isNull()
     }
 
-    // endregion region §6.3 reload success path — Created state, restored containers, legacy scratchpad fallback, lastTaskOutcome
+    // endregion region §6.3 reload success path — Created state, restored history and lastTaskOutcome
     // propagation.
 
     @Test
-    fun `reload from IDLE_READY restores history todos scratchpad and returns Created`() = runTest {
+    fun `reload from IDLE_READY restores history and returns Created`() = runTest {
         val recordingService = mockk<SessionRecordingService>(relaxed = true)
         val historyManager = HistoryManager()
-        val sessionState = AgentSessionState()
-        val services = buildServices(this, historyManager, sessionState, recordingService)
+        val services = buildServices(this, historyManager, recordingService)
         installFactoryStubs(services)
 
         val snapshot = newSnapshot(
@@ -120,11 +116,6 @@ class SessionCheckpointReloadAndListenersTest {
                     argumentsRawJson = """{"target":"OK","x":42}"""
                 )
             ),
-            todos = listOf(
-                TodoSnapshot("draft", TodoStatus.COMPLETED.name),
-                TodoSnapshot("ship", TodoStatus.IN_PROGRESS.name)
-            ),
-            scratchpadJson = """{"note":"remember","count":7}""",
             lastTaskOutcome = TaskOutcome.GOAL_ACHIEVED.name
         )
 
@@ -144,15 +135,6 @@ class SessionCheckpointReloadAndListenersTest {
         assertThat(restoredCall.arguments.getString("target")).isEqualTo("OK")
         assertThat(restoredCall.arguments.getInt("x")).isEqualTo(42)
 
-        assertThat(sessionState.todos.get())
-            .containsExactly(
-                Todo("draft", TodoStatus.COMPLETED),
-                Todo("ship", TodoStatus.IN_PROGRESS)
-            ).inOrder()
-
-        assertThat(sessionState.scratchpad.read("note")).isEqualTo("remember")
-        assertThat(sessionState.scratchpad.read("count")).isEqualTo(7)
-
         verify { recordingService.setLastTaskOutcome(TaskOutcome.GOAL_ACHIEVED) }
 
         reloaded.submit(Op.Shutdown)
@@ -160,39 +142,10 @@ class SessionCheckpointReloadAndListenersTest {
     }
 
     @Test
-    fun `reload migrates legacy Map scratchpad when scratchpadJson is empty`() = runTest {
-        val recordingService = mockk<SessionRecordingService>(relaxed = true)
-        val historyManager = HistoryManager()
-        val sessionState = AgentSessionState()
-        val services = buildServices(this, historyManager, sessionState, recordingService)
-        installFactoryStubs(services)
-
-        val snapshot = newSnapshot(
-            checkpointState = CheckpointState.CLOSED,
-            scratchpadJson = "{}",
-            scratchpad = mapOf("legacy_key" to "legacy_value")
-        )
-
-        val reloaded = AgentSession.reload(
-            snapshot = snapshot,
-            service = mockk(relaxed = true),
-            scope = this,
-            credentialStore = null
-        )
-
-        assertThat(reloaded).isNotNull()
-        assertThat(sessionState.scratchpad.read("legacy_key")).isEqualTo("legacy_value")
-
-        reloaded!!.submit(Op.Shutdown)
-        advanceUntilIdle()
-    }
-
-    @Test
     fun `reload tolerates unknown lastTaskOutcome name`() = runTest {
         val recordingService = mockk<SessionRecordingService>(relaxed = true)
         val historyManager = HistoryManager()
-        val sessionState = AgentSessionState()
-        val services = buildServices(this, historyManager, sessionState, recordingService)
+        val services = buildServices(this, historyManager, recordingService)
         installFactoryStubs(services)
 
         val snapshot = newSnapshot(
@@ -219,11 +172,10 @@ class SessionCheckpointReloadAndListenersTest {
     // region §6.2 mutation listener wiring + shutdown unwiring
 
     @Test
-    fun `runtime mutations to history todos and scratchpad schedule checkpoints`() = runTest {
+    fun `history mutations schedule checkpoints`() = runTest {
         val recordingService = mockk<SessionRecordingService>(relaxed = true)
         val historyManager = HistoryManager()
-        val sessionState = AgentSessionState()
-        val services = buildServices(this, historyManager, sessionState, recordingService)
+        val services = buildServices(this, historyManager, recordingService)
 
         val session = AgentSession.createWithServices(
             config = services.config,
@@ -233,10 +185,8 @@ class SessionCheckpointReloadAndListenersTest {
         )
 
         historyManager.addItem(ResponseItem.Message(MessageKind.USER_INTENT, "hi"))
-        sessionState.todos.update(listOf(Todo("x", TodoStatus.PENDING)))
-        sessionState.scratchpad.write("k", "v")
 
-        verify(exactly = 3) { recordingService.scheduleCheckpoint(any()) }
+        verify(exactly = 1) { recordingService.scheduleCheckpoint(any()) }
 
         session.submit(Op.Shutdown)
         advanceUntilIdle()
@@ -246,8 +196,7 @@ class SessionCheckpointReloadAndListenersTest {
     fun `shutdown disables mutation listeners so post-shutdown writes do not schedule checkpoints`() = runTest {
         val recordingService = mockk<SessionRecordingService>(relaxed = true)
         val historyManager = HistoryManager()
-        val sessionState = AgentSessionState()
-        val services = buildServices(this, historyManager, sessionState, recordingService)
+        val services = buildServices(this, historyManager, recordingService)
         val session = AgentSession.createWithServices(
             config = services.config,
             service = mockk(relaxed = true),
@@ -265,8 +214,6 @@ class SessionCheckpointReloadAndListenersTest {
         io.mockk.clearMocks(recordingService, answers = false)
 
         historyManager.addItem(ResponseItem.Message(MessageKind.USER_INTENT, "after"))
-        sessionState.todos.update(listOf(Todo("x", TodoStatus.PENDING)))
-        sessionState.scratchpad.write("k", "v")
 
         verify(exactly = 0) { recordingService.scheduleCheckpoint(any()) }
         coVerify(exactly = 0) { recordingService.forceCheckpoint(any()) }
@@ -280,9 +227,6 @@ class SessionCheckpointReloadAndListenersTest {
         schemaVersion: Int = 2,
         checkpointState: CheckpointState,
         historyItems: List<PersistedHistoryItem> = emptyList(),
-        todos: List<TodoSnapshot> = emptyList(),
-        scratchpadJson: String = "{}",
-        scratchpad: Map<String, String>? = null,
         lastTaskOutcome: String? = null,
         sessionId: String = "session-reload"
     ): SessionRuntimeSnapshot = SessionRuntimeSnapshot(
@@ -294,9 +238,6 @@ class SessionCheckpointReloadAndListenersTest {
             platformMode = PlatformMode.ACCESSIBILITY.name
         ),
         historyItems = historyItems,
-        todos = todos,
-        scratchpadJson = scratchpadJson,
-        scratchpad = scratchpad,
         checkpointState = checkpointState,
         lastCheckpointAt = 1_700_000_000L,
         lastTaskOutcome = lastTaskOutcome
@@ -305,7 +246,6 @@ class SessionCheckpointReloadAndListenersTest {
     private fun buildServices(
         scope: CoroutineScope,
         historyManager: HistoryManager,
-        sessionState: AgentSessionState,
         recordingService: SessionRecordingService
     ): SessionServices {
         val toolRegistry = ToolRegistry()
@@ -321,7 +261,6 @@ class SessionCheckpointReloadAndListenersTest {
             toolRegistry = toolRegistry,
             toolRouter = toolRouter,
             historyManager = historyManager,
-            sessionState = sessionState,
             policyEngine = policyEngine,
             appClassifier = AppClassifier(emptyMap()),
             platform = platform,

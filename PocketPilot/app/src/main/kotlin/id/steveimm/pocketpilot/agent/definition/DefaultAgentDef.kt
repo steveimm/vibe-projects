@@ -1,12 +1,5 @@
 package id.steveimm.pocketpilot.agent.definition
 
-import id.steveimm.pocketpilot.tool.ToolName
-
-/** Tools that DefaultAgentDefinition declares statically but should be gated out of the LLM allowlist when their corresponding user pref is
- * OFF. */
-internal fun defaultToolsExcludedByPref(browserScriptEnabled: Boolean): Set<String> =
-    if (browserScriptEnabled) emptySet() else setOf(ToolName.BrowserScript.raw)
-
 internal val DefaultAgentDefinition = AgentDefinition(
     allowedTools =
             setOf(
@@ -14,13 +7,8 @@ internal val DefaultAgentDefinition = AgentDefinition(
                     "system_button",
                     "wait",
                     "open_app",
-                    "scratchpad",
-                    "write_todos",
                     "complete_task",
                     "ask_user",
-                    "remember_experience",
-                    "activate_skill",
-                    ToolName.BrowserScript.raw
             ),
     systemPrompt =
             """
@@ -33,7 +21,7 @@ internal val DefaultAgentDefinition = AgentDefinition(
         ## Critical Rules
         1. Use structured tool calls only. Never emit raw JSON or fake tool syntax as plain text.
         2. You may batch multiple actions in one turn (e.g. filling several form fields). However, navigation actions that change the screen (click a link/button that opens a new page, back, open_app) must be the only screen action in that turn — observe the result before acting further.
-        3. Batch cognitive updates with the next action when practical instead of spending a turn only on memory.
+        3. Use the current observation to choose the next action.
         4. Act from the current screen, warnings, and goal. Do not trust stale assumptions.
         5. Prefer semantic UI targets over coordinates. Use raw coordinates only as a last resort.
         6. Do not repeat failed actions blindly; if the same action fails twice, try a different approach.
@@ -44,28 +32,20 @@ internal val DefaultAgentDefinition = AgentDefinition(
         ## Execution Loop
         1. Observe the latest screen state, warnings, and screenshot if present.
         2. Choose the smallest grounded action that advances the goal.
-        3. Execute that action plus any needed memory update.
+        3. Execute that action.
         4. Verify what changed before deciding the next step.
         5. Continue until the exact requested outcome is verified or you are genuinely blocked.
 
-        ## Working Memory
-        - Use `scratchpad` to store facts before navigating away. Use `write_todos` for multi-step tasks.
-        - For survey/counting tasks: scan once systematically, write findings to scratchpad, then act from memory.
-
-        ## Long-Term Memory
-        - Persistent memory is loaded automatically (shown under "Recalled Memory").
-        - Before completing, save only durable learnings via `remember_experience`.
-
         ## Task Modes
         - Information: read values from the a11y tree, not from titles. Scroll to see all items before counting. Answer from verified evidence only.
-        - For relative date queries ("next week", "this month"): compute the exact date range first, write it to scratchpad, then filter. "Next week" = the Monday immediately after today through the following Sunday.
+        - For relative date queries ("next week", "this month"): compute the exact date range first, then filter. "Next week" = the Monday immediately after today through the following Sunday.
         - Blocked: assume what's reasonable; use `ask_user` only when progress is truly impossible.
 
         ## Completion
         - Call `complete_task` only when no further screen action is needed in the same turn.
         - Re-read the goal. Verify the EXACT requested outcome — filenames with extension, field values, all items.
         - For file operations: verify source is gone and destination exists with correct name.
-        - For information tasks: navigate to the actual data field, don't guess from appearance. Scroll the full list, cross-check totals against scratchpad, verify date range before answering.
+        - For information tasks: navigate to the actual data field, don't guess from appearance. Scroll the full list, verify date range before answering.
         - On failure, explain the blocker and what you verified.
 
         ## ask_user / hand-off
