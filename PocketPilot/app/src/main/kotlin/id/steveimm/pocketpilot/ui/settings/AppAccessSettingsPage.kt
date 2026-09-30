@@ -1,6 +1,6 @@
 package id.steveimm.pocketpilot.ui.settings
 
-import id.steveimm.pocketpilot.ui.theme.PageMastheadDrillDown
+import id.steveimm.pocketpilot.ui.theme.DetailPageHeader
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.selectable
@@ -97,7 +97,7 @@ internal fun AppAccessSettingsPage(
     }
     val visibleRows = remember(rows, query, filter, overrides) { filterRows(rows, appClassifier, query, filter) }
     Column(Modifier.fillMaxSize()) {
-        PageMastheadDrillDown(title = "App Access", onBack = onBack, onClose = onClose)
+        DetailPageHeader(title = "App Access", onBack = onBack, onClose = onClose)
         OutlinedTextField(
             value = query, onValueChange = { query = it }, label = { Text("Search apps") }, singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -170,7 +170,7 @@ private fun AppIcon(bitmap: ImageBitmap?) {
                 modifier = Modifier
                     .size(12.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.pocketPilot.inkFaint),
+                    .background(MaterialTheme.pocketPilot.mutedText),
             )
         }
     }

@@ -229,6 +229,8 @@ class ChatViewModel(
         }
     }
 
+    fun prepareMessage(text: String) { _pendingInput.value = text }
+
     /** Send a user message. */
     fun sendMessage(text: String) {
         val session = sessionProvider()

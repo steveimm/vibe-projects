@@ -47,14 +47,7 @@ fun MessageBubble(
     }
 }
 
-// Letter-on-paper: paper-wash background + asymmetric "folded corner" radius.
-// Intentional local shape exception: the top-start corner is the binding edge.
-private val UserBubbleShape = RoundedCornerShape(
-    topStart = 4.dp,
-    topEnd = 12.dp,
-    bottomEnd = 12.dp,
-    bottomStart = 12.dp,
-)
+private val UserBubbleShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomEnd = 6.dp, bottomStart = 20.dp)
 
 @Composable
 private fun UserBubble(
@@ -71,9 +64,8 @@ private fun UserBubble(
             modifier = Modifier
                 .widthIn(max = maxWidth)
                 .testTag("qa-user-bubble"),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            color = MaterialTheme.colorScheme.primaryContainer,
             shape = UserBubbleShape,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f)),
         ) {
             Column(
                 modifier = Modifier.padding(
@@ -89,13 +81,13 @@ private fun UserBubble(
                     Text(
                         text = message.text,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
                 Text(
                     text = formatTime(LocalContext.current, message.timestamp),
-                    style = MaterialTheme.pocketPilot.monoSmall,
-                    color = MaterialTheme.pocketPilot.inkFaint,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
                 )
             }
         }

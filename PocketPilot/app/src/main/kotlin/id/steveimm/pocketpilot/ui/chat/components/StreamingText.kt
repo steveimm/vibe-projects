@@ -41,7 +41,7 @@ fun StreamingText(
         return
     }
 
-    val cursorStyle = MaterialTheme.pocketPilot.serifItalic.copy(
+    val cursorStyle = MaterialTheme.typography.bodyLarge.copy(
         color = MaterialTheme.colorScheme.primary,
         fontSize = MaterialTheme.typography.bodyLarge.fontSize
     )

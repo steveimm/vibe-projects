@@ -1,5 +1,7 @@
 package id.steveimm.pocketpilot.ui.chat
 
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -75,7 +77,6 @@ import id.steveimm.pocketpilot.ui.settings.AlertTone
 import id.steveimm.pocketpilot.ui.settings.SettingsAlertCard
 import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
-import id.steveimm.pocketpilot.ui.theme.paperGrain
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -115,6 +116,10 @@ fun ChatScreen(
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
+    BackHandler(enabled = drawerState.isOpen) {
+        scope.launch { drawerState.close() }
+    }
 
     val ctx = LocalContext.current
     val voiceDeps = remember(ctx) {
@@ -185,25 +190,8 @@ fun ChatScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface),
+                .background(MaterialTheme.colorScheme.background),
         ) {
-            // Draw one continuous grain pass behind every Scaffold slot so the masthead, page body, dock, and capsule shell share the same
-            // paper without placing grain over text or controls.
-            Box(modifier = Modifier.matchParentSize().paperGrain())
-
-            // Empty-state paw mark — hoisted out of EmptyState so its TOP can bleed up through the masthead band (Scaffold renders ON TOP,
-            // so "PocketPilot" wordmark stays in front).
-            if (messages.isEmpty() && uiState.showEmptyState) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_paw_hero),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 48.dp, y = 35.dp)
-                        .size(300.dp),
-                )
-            }
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -214,6 +202,7 @@ fun ChatScreen(
                             scope.launch { drawerState.open() }
                         },
                         onNewChatClick = onNewSession,
+                        modelName = currentModel,
                         showNewChatButton = messages.isNotEmpty()
                     )
                 },
@@ -293,7 +282,7 @@ fun ChatScreen(
                     if (messages.isEmpty() && uiState.showEmptyState) {
                         // Empty state
                         EmptyState(
-                            onSuggestionClick = viewModel::sendMessage,
+                            onSuggestionClick = viewModel::prepareMessage,
                             modifier = Modifier.fillMaxSize()
                         )
                     } else if (messages.isNotEmpty()) {

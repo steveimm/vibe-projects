@@ -24,7 +24,6 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
-import com.composables.icons.lucide.Check
 import com.composables.icons.lucide.ChevronRight
 import com.composables.icons.lucide.Lucide
 import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
@@ -39,7 +38,7 @@ fun CollapsePill(
 ) {
     val spacing = MaterialTheme.pocketPilot.spacing
     val rotation by animateFloatAsState(
-        targetValue = if (expanded) -90f else 0f,
+        targetValue = if (expanded) 90f else 0f,
         animationSpec = tween(PocketPilotMotion.RowExpand, easing = PocketPilotMotion.EaseInOutSine),
         label = "CollapsePillChevronRotation",
     )
@@ -70,16 +69,9 @@ fun CollapsePill(
                     .rotate(rotation),
             )
             Spacer(Modifier.width(spacing.sm))
-            Icon(
-                imageVector = Lucide.Check,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.secondary,
-            )
-            Spacer(Modifier.width(spacing.xs))
             Text(
                 text = summary,
-                style = MaterialTheme.pocketPilot.monoSmall,
+                style = MaterialTheme.typography.labelMedium,
             )
         }
     }

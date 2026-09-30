@@ -30,7 +30,6 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
-import id.steveimm.pocketpilot.ui.theme.foldedPaper
 
 internal data class ToolStatusUi(
     val label: String,
@@ -77,7 +76,7 @@ internal fun ToolSettingsCard(
         }
 
     Surface(
-        modifier = surfaceModifier.foldedPaper(MaterialTheme.shapes.medium),
+        modifier = surfaceModifier,
         color = MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.medium,
     ) {

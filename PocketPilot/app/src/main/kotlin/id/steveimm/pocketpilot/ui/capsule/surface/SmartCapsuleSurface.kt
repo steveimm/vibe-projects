@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import id.steveimm.pocketpilot.ui.chat.components.ChatMarkdown
+import id.steveimm.pocketpilot.ui.common.PilotMark
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -57,7 +58,6 @@ import id.steveimm.pocketpilot.ui.overlay.model.CapsuleRenderSpec
 import id.steveimm.pocketpilot.ui.overlay.model.NavSpec
 import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
-import id.steveimm.pocketpilot.ui.theme.foldedPaper
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.TriangleAlert
 import kotlinx.coroutines.delay
@@ -121,7 +121,7 @@ fun SmartCapsuleSurface(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .foldedPaper(shape),
+            ,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = shape,
     ) {
@@ -245,7 +245,6 @@ private fun StartupErrorBanner(
                 .padding(end = 4.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // 2dp Rust left rule.
             Box(
                 modifier = Modifier
                     .width(2.dp)
@@ -313,7 +312,7 @@ private fun CapsuleStatusLine(
                 animationSpec = tween(PocketPilotMotion.StatusFlip, easing = PocketPilotMotion.EaseInOutSine),
                 label = "dotColor",
             )
-            StatusPawGlyph(
+            PilotMark(
                 color = dotColor,
                 size = 14.dp,
             )
@@ -326,7 +325,7 @@ private fun CapsuleStatusLine(
             Text(
                 text = elapsedLabel,
                 style = MaterialTheme.pocketPilot.monoSmall,
-                color = MaterialTheme.pocketPilot.inkFaint,
+                color = MaterialTheme.pocketPilot.mutedText,
                 maxLines = 1,
             )
             Spacer(Modifier.width(8.dp))

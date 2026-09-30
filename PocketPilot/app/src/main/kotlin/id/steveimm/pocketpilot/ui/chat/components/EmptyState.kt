@@ -1,181 +1,78 @@
 package id.steveimm.pocketpilot.ui.chat.components
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Contacts
+import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.ArrowRight
 import com.composables.icons.lucide.Lucide
-import id.steveimm.pocketpilot.R
-import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
-import id.steveimm.pocketpilot.ui.theme.Fraunces
-import id.steveimm.pocketpilot.ui.theme.pocketPilot
-import kotlinx.coroutines.delay
+import id.steveimm.pocketpilot.ui.common.PilotMark
 
-private data class Suggestion(val verb: String, val gloss: String) {
-    val full: String get() = "$verb $gloss"
-}
+private data class Suggestion(val title: String, val detail: String, val prompt: String, val icon: ImageVector)
 
-private val SUGGESTIONS = listOf(
-    Suggestion("Get me", "a ride home"),
-    Suggestion("Catch me up", "on emails and messages"),
-    Suggestion("Search", "for nearby restaurants"),
+private val suggestions = listOf(
+    Suggestion("Open an app", "Get where you need to go", "Open Android Settings", Icons.Rounded.PhoneAndroid),
+    Suggestion("Find a contact", "Look someone up on your phone", "Find a contact named ", Icons.Rounded.Contacts),
+    Suggestion("Change a setting", "Work through your phone's settings", "Help me change a setting on my phone.", Icons.Rounded.Tune),
 )
 
-/** EmptyState — Bound Edition first page. */
 @Composable
-fun EmptyState(
-    onSuggestionClick: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val spacing = MaterialTheme.pocketPilot.spacing
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .clipToBounds(),
+fun EmptyState(onSuggestionClick: (String) -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Paw glyph is rendered by ChatScreen at the outer Box layer so it can bleed up through the masthead band (transparent ChatHeader
-        // sits on top, "PocketPilot" wordmark stays readable). Kept out of this composable to avoid Scaffold-content clipping.
-
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .padding(horizontal = spacing.lg)
-                .padding(bottom = spacing.xl),
-        ) {
-            StaggeredReveal(index = 0) {
-                Text(
-                    text = "What can I\nhelp you with?",
-                    style = TextStyle(
-                        fontFamily = Fraunces,
-                        fontStyle = FontStyle.Italic,
-                        fontSize = 32.sp,
-                        lineHeight = 38.sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-
-            Spacer(Modifier.size(spacing.md))
-
-            StaggeredReveal(index = 1) {
-                HorizontalDivider(
-                    modifier = Modifier.width(64.dp),
-                    thickness = 1.dp,
-                    color = MaterialTheme.colorScheme.outline,
-                )
-            }
-
-            Spacer(Modifier.size(spacing.md))
-
-            SUGGESTIONS.forEachIndexed { i, s ->
-                StaggeredReveal(index = 2 + i) {
-                    MarginaliaSuggestion(
-                        verb = s.verb,
-                        gloss = s.gloss,
-                        onClick = { onSuggestionClick(s.full) },
-                    )
+        Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.primaryContainer) {
+            Box(Modifier.size(76.dp), contentAlignment = Alignment.Center) { PilotMark(size = 40.dp) }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text("What would you\nlike to do?", style = MaterialTheme.typography.displaySmall,
+            color = MaterialTheme.colorScheme.onBackground)
+        Text("Describe a task, or start with an idea below.", style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(8.dp))
+        suggestions.forEach { suggestion ->
+            Surface(
+                onClick = { onSuggestionClick(suggestion.prompt) },
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Icon(suggestion.icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(suggestion.title, style = MaterialTheme.typography.titleMedium)
+                        Text(suggestion.detail, style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Icon(Lucide.ArrowRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun MarginaliaSuggestion(
-    verb: String,
-    gloss: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val spacing = MaterialTheme.pocketPilot.spacing
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = spacing.sm),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Icon(
-            imageVector = Lucide.ArrowRight,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.pocketPilot.inkFaint,
-        )
-        Spacer(Modifier.width(spacing.sm))
-        Column {
-            Text(
-                text = verb,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = gloss,
-                style = MaterialTheme.pocketPilot.bodyItalic,
-                color = MaterialTheme.pocketPilot.inkFaint,
-            )
-        }
-    }
-}
-
-// 4-step choreography per motion.md: each index waits 80ms longer than the previous, then fades + slides 8dp into place over `TraceEnter`.
-// Reduced-motion short-circuits to immediate render.
-@Composable
-private fun StaggeredReveal(
-    index: Int,
-    content: @Composable () -> Unit,
-) {
-    if (PocketPilotMotion.reducedMotion()) {
-        content()
-        return
-    }
-    val offsetPx = with(LocalDensity.current) { 8.dp.roundToPx() }
-    var revealed by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        delay(index * 80L)
-        revealed = true
-    }
-    val progress by animateFloatAsState(
-        targetValue = if (revealed) 1f else 0f,
-        animationSpec = tween(PocketPilotMotion.TraceEnter, easing = PocketPilotMotion.EaseOutCubic),
-        label = "StaggeredReveal",
-    )
-    Box(
-        modifier = Modifier.graphicsLayer {
-            alpha = progress
-            translationY = (1f - progress) * offsetPx
-        },
-    ) {
-        content()
+        Text("Suggestions fill the message box so you can edit before sending.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp))
     }
 }

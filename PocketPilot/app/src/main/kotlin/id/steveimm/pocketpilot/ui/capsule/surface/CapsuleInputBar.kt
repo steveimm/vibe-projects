@@ -321,8 +321,8 @@ internal fun CapsuleInputBar(
                     colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
-                        disabledContainerColor = MaterialTheme.pocketPilot.inkFaint.copy(alpha = 0.30f),
-                        disabledContentColor = MaterialTheme.pocketPilot.inkFaint,
+                        disabledContainerColor = MaterialTheme.pocketPilot.mutedText.copy(alpha = 0.30f),
+                        disabledContentColor = MaterialTheme.pocketPilot.mutedText,
                     ),
                 ) {
                     Icon(

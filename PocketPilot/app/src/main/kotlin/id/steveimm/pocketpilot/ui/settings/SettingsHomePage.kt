@@ -25,8 +25,7 @@ import id.steveimm.pocketpilot.protocol.AppTier
 import id.steveimm.pocketpilot.protocol.ApprovalMode
 import id.steveimm.pocketpilot.protocol.PlatformMode
 import id.steveimm.pocketpilot.tool.AppClassifier
-import id.steveimm.pocketpilot.ui.theme.Fleuron
-import id.steveimm.pocketpilot.ui.theme.PageMastheadIdentity
+import id.steveimm.pocketpilot.ui.theme.RootPageHeader
 import id.steveimm.pocketpilot.ui.theme.SectionHeader
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 import kotlinx.coroutines.Dispatchers
@@ -46,7 +45,7 @@ internal fun SettingsHomePage(
     onDismiss: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        PageMastheadIdentity(title = "Settings", onClose = onDismiss)
+        RootPageHeader(title = "Settings", onClose = onDismiss)
 
         Column(
             modifier = Modifier
@@ -86,12 +85,11 @@ internal fun SettingsHomePage(
                 onClick = { onNavigate(SettingsPage.OPEN_SOURCE_LICENSES) }
             )
 
-            Fleuron()
 
             Text(
                 text = "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                 style = MaterialTheme.pocketPilot.monoSmall,
-                color = MaterialTheme.pocketPilot.inkFaint,
+                color = MaterialTheme.pocketPilot.mutedText,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )

@@ -27,8 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import id.steveimm.pocketpilot.ui.theme.Fleuron
-import id.steveimm.pocketpilot.ui.theme.PageMastheadDrillDown
+import id.steveimm.pocketpilot.ui.theme.DetailPageHeader
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -91,7 +90,7 @@ internal fun OpenSourceLicensesPage(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PageMastheadDrillDown(title = "Open Source Licenses", onBack = onBack, onClose = onClose)
+        DetailPageHeader(title = "Open Source Licenses", onBack = onBack, onClose = onClose)
         when (val state = loadState) {
             LicenseLoadState.Loading -> LoadingNotice()
             is LicenseLoadState.Error -> ErrorNotice(
@@ -178,7 +177,6 @@ private fun LicenseList(rows: List<LicenseEntry>, onOpenUrl: (String) -> Unit) {
         items(rows, key = { entry -> entry.dependency ?: entry.project ?: entry.hashCode().toString() }) { entry ->
             LicenseCard(entry = entry, onOpenUrl = onOpenUrl)
         }
-        item { Fleuron() }
         item { Spacer(modifier = Modifier.height(24.dp)) }
     }
 }

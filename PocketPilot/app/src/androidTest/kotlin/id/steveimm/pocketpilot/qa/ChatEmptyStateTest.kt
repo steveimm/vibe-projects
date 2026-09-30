@@ -18,13 +18,11 @@ class ChatEmptyStateTest {
 
     @get:Rule val compose = createComposeRule()
 
-    // Production renders each suggestion as verb + gloss in two adjacent Text
-    // nodes (MarginaliaSuggestion). Matching the verb is sufficient + unique.
-    private val verbs = listOf("Check", "Turn on", "Search")
+    private val verbs = listOf("Open an app", "Find a contact", "Change a setting")
     private val fullSuggestions = listOf(
-        "Check my unread emails",
-        "Turn on Do Not Disturb",
-        "Search for nearby restaurants",
+        "Open Android Settings",
+        "Find a contact named ",
+        "Help me change a setting on my phone.",
     )
 
     @Test fun shows_three_suggestion_chips() {

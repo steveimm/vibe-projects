@@ -30,7 +30,6 @@ import id.steveimm.pocketpilot.protocol.PlatformMode
 import id.steveimm.pocketpilot.tool.AppClassifier
 import id.steveimm.pocketpilot.tool.AppClassifierHolder
 import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
-import id.steveimm.pocketpilot.ui.theme.paperGrain
 
 enum class SettingsPage {
     HOME,
@@ -75,7 +74,6 @@ fun SettingsSheet(
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        Box(modifier = Modifier.matchParentSize().paperGrain())
         Column(
             modifier = Modifier
                 .fillMaxWidth()

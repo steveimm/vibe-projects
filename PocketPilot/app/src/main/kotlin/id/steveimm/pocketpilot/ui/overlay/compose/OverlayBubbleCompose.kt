@@ -24,7 +24,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
-import id.steveimm.pocketpilot.ui.capsule.surface.StatusPawGlyph
+import id.steveimm.pocketpilot.ui.common.PilotMark
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -50,7 +50,7 @@ internal fun OverlayBubbleCompose(
     ) {
         Box(contentAlignment = Alignment.Center) {
             if (expanded) Icon(Icons.Rounded.Close, contentDescription = null, tint = statusColor)
-            else StatusPawGlyph(color = statusColor, size = 26.dp)
+            else PilotMark(color = statusColor, size = 26.dp)
         }
     }
 }

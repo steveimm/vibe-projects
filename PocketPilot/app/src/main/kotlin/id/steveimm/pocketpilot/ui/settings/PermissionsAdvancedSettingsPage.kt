@@ -40,8 +40,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.BuildConfig
-import id.steveimm.pocketpilot.ui.theme.Fleuron
-import id.steveimm.pocketpilot.ui.theme.PageMastheadDrillDown
+import id.steveimm.pocketpilot.ui.theme.DetailPageHeader
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -62,7 +61,7 @@ internal fun PermissionsAdvancedSettingsPage(
     onClose: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        PageMastheadDrillDown(title = "System & Debug", onBack = onBack, onClose = onClose)
+        DetailPageHeader(title = "System & Debug", onBack = onBack, onClose = onClose)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -138,7 +137,6 @@ internal fun PermissionsAdvancedSettingsPage(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
-            Fleuron()
             Spacer(modifier = Modifier.height(32.dp))
         }
     }

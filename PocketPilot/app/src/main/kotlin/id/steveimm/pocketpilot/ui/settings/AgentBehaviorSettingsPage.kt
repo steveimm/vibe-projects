@@ -17,8 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.protocol.ApprovalMode
 import id.steveimm.pocketpilot.protocol.PlatformMode
-import id.steveimm.pocketpilot.ui.theme.Fleuron
-import id.steveimm.pocketpilot.ui.theme.PageMastheadDrillDown
+import id.steveimm.pocketpilot.ui.theme.DetailPageHeader
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
 @Composable
@@ -33,7 +32,7 @@ internal fun AgentBehaviorSettingsPage(
     onClose: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        PageMastheadDrillDown(title = "Agent Behavior", onBack = onBack, onClose = onClose)
+        DetailPageHeader(title = "Agent Behavior", onBack = onBack, onClose = onClose)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -52,7 +51,6 @@ internal fun AgentBehaviorSettingsPage(
                 onPlatformModeChange = onPlatformModeChange,
             )
             Spacer(modifier = Modifier.height(20.dp))
-            Fleuron()
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
@@ -108,7 +106,7 @@ private fun ApprovalSection(
                 Text(
                     text = desc,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.pocketPilot.inkFaint,
+                    color = MaterialTheme.pocketPilot.mutedText,
                 )
                 if (approvalMode == ApprovalMode.SMART) {
                     Spacer(modifier = Modifier.height(MaterialTheme.pocketPilot.spacing.md))

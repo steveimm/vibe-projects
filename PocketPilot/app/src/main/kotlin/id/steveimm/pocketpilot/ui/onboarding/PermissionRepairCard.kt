@@ -98,7 +98,7 @@ private fun RepairRow(
             Text(
                 text = detail,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.pocketPilot.inkFaint,
+                color = MaterialTheme.pocketPilot.mutedText,
             )
         }
         OutlinedButton(

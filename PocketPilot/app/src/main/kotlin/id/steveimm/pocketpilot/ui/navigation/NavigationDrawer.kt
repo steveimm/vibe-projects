@@ -57,7 +57,7 @@ import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.history.model.SessionInfo
 import id.steveimm.pocketpilot.ui.session.TimeUtils
 import id.steveimm.pocketpilot.ui.theme.AppWindowInsets
-import id.steveimm.pocketpilot.ui.theme.PageMastheadIdentity
+import id.steveimm.pocketpilot.ui.theme.RootPageHeader
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
 /** NavigationDrawer - Side drawer containing session history and settings access. */
@@ -148,19 +148,19 @@ fun NavigationDrawerContent(
     }
 }
 
-/** Drawer header — Bound Edition running head + close affordance. */
+/** History drawer header. */
 @Composable
 private fun DrawerHeader(
     onClose: () -> Unit
 ) {
-    PageMastheadIdentity(
+    RootPageHeader(
         title = "Sessions",
         onClose = onClose,
         modifier = Modifier.padding(top = 12.dp, bottom = 12.dp),
     )
 }
 
-/** New session button — D1 §6.6: the one Claw-accented new-entry affordance. */
+/** Start a new conversation. */
 @Composable
 private fun NewSessionButton(
     onClick: () -> Unit,
@@ -320,7 +320,6 @@ private fun DrawerSessionItem(
                             .background(MaterialTheme.colorScheme.onSurfaceVariant)
                     )
 
-                    // D1 §6.6: ledger treatment — mono dates.
                     Text(
                         text = TimeUtils.formatRelativeTime(session.lastUpdated),
                         style = MaterialTheme.pocketPilot.monoSmall,
@@ -343,7 +342,7 @@ private fun DrawerSessionItem(
                         imageVector = Icons.Rounded.Delete,
                         contentDescription = "Delete session",
                         modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.pocketPilot.inkFaint
+                        tint = MaterialTheme.pocketPilot.mutedText
                     )
                 }
             }
@@ -405,7 +404,6 @@ private fun SettingsEntry(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            // D1 §6.6: machine-text ledger — current model in mono.
             Text(
                 text = currentModel,
                 style = MaterialTheme.pocketPilot.monoSmall,

@@ -30,9 +30,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.ChevronRight
 import com.composables.icons.lucide.Lucide
-import id.steveimm.pocketpilot.ui.theme.Fraunces
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
-import id.steveimm.pocketpilot.ui.theme.foldedPaper
 
 @Composable
 internal fun SettingsSection(
@@ -40,10 +38,9 @@ internal fun SettingsSection(
     content: @Composable () -> Unit
 ) {
     Column {
-        // D1 §6.3: serif section heads in settings.
         Text(
             text = title,
-            style = MaterialTheme.typography.titleMedium.copy(fontFamily = Fraunces),
+            style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(bottom = MaterialTheme.pocketPilot.spacing.md)
         )
@@ -63,8 +60,8 @@ internal fun SettingsRow(
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
             .clickable(onClick = onClick)
-            .foldedPaper(MaterialTheme.shapes.medium),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+            ,
+        color = MaterialTheme.colorScheme.surface,
         shape = MaterialTheme.shapes.medium
     ) {
         Row(
@@ -122,8 +119,8 @@ internal fun SettingsNavigationRow(
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
             .clickable(onClick = onClick)
-            .foldedPaper(MaterialTheme.shapes.medium),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+            ,
+        color = MaterialTheme.colorScheme.surface,
         shape = MaterialTheme.shapes.medium
     ) {
         Row(
@@ -145,7 +142,7 @@ internal fun SettingsNavigationRow(
                 imageVector = Lucide.ChevronRight,
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.pocketPilot.inkFaint,
+                tint = MaterialTheme.pocketPilot.mutedText,
             )
         }
     }
@@ -177,8 +174,8 @@ internal fun SettingsNoticeCard(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .foldedPaper(MaterialTheme.shapes.medium),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+            ,
+        color = MaterialTheme.colorScheme.surface,
         shape = MaterialTheme.shapes.medium,
     ) {
         Row(

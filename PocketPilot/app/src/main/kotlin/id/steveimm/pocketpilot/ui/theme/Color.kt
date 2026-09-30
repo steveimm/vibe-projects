@@ -2,40 +2,36 @@ package id.steveimm.pocketpilot.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// D1 palette.
+internal val BackgroundLight = Color(0xFFF5F7FC)
+internal val SurfaceLight = Color(0xFFFFFFFF)
+internal val SurfaceLowLight = Color(0xFFEEF2F9)
+internal val SurfaceHighLight = Color(0xFFE5ECF7)
+internal val TextLight = Color(0xFF14213A)
+internal val TextMutedLight = Color(0xFF53627A)
+internal val BlueLight = Color(0xFF245FDF)
+internal val BlueContainerLight = Color(0xFFE3ECFF)
+internal val SuccessLight = Color(0xFF147650)
+internal val SuccessContainerLight = Color(0xFFDDF4E9)
+internal val WarningLight = Color(0xFF8A580C)
+internal val WarningContainerLight = Color(0xFFFFECCC)
+internal val ErrorLight = Color(0xFFB52D45)
+internal val ErrorContainerLight = Color(0xFFFFE8ED)
+internal val OutlineLight = Color(0xFFB4C0D3)
+internal val DividerLight = Color(0xFFDCE3EF)
 
-// Light ("Paper")
-val Paper = Color(0xFFF5F1EA)
-val PaperInset = Color(0xFFEDE7DC)
-val Ink = Color(0xFF14110F)
-val InkMuted = Color(0xFF5C554C)
-val InkFaint = Color(0xFF8B8278)
-val Claw = Color(0xFFC44528)
-val Moss = Color(0xFF4A5D3A)
-val Amber = Color(0xFFE8A33D)
-val Rust = Color(0xFF8B2E1F)
-val Hairline = Ink.copy(alpha = 0.12f)
-val InkGhost = Ink.copy(alpha = 0.08f)
-
-// Material *Container slots — Paper warm-tinted to keep editorial palette consistent across FilledTonalButton / FilterChip(selected) /
-// error cards. Avoids Material 3's default lavender leak. See QA report I-1.
-val PrimaryContainerLight = Color(0xFFEBCFC3)   // Claw-tinted Paper
-val TertiaryContainerLight = Color(0xFFF2E2C7)  // Amber-tinted Paper
-val ErrorContainerLight = Color(0xFFE0CAC1)     // Rust-tinted Paper
-
-// Dark ("Lantern") — separate, not inverted.
-val PaperDark = Color(0xFF0F0D0B)
-val PaperInsetDark = Color(0xFF1A1612)
-val InkDark = Color(0xFFF0EAE0)
-val InkMutedDark = Color(0xFFB9B0A3)
-val InkFaintDark = Color(0xFF7A7268)
-val ClawDark = Color(0xFFE56B4A)
-val MossDark = Color(0xFF7A9466)
-val AmberDark = Color(0xFFF2B960)
-val RustDark = Color(0xFFD55A42)
-val HairlineDark = InkDark.copy(alpha = 0.12f)
-val InkGhostDark = InkDark.copy(alpha = 0.08f)
-
-val PrimaryContainerDark = Color(0xFF3A2018)
-val TertiaryContainerDark = Color(0xFF3C2F1C)
-val ErrorContainerDark = Color(0xFF361C16)
+internal val BackgroundDark = Color(0xFF0C1220)
+internal val SurfaceDark = Color(0xFF151E2E)
+internal val SurfaceLowDark = Color(0xFF101928)
+internal val SurfaceHighDark = Color(0xFF202C40)
+internal val TextDark = Color(0xFFEDF2FC)
+internal val TextMutedDark = Color(0xFFA9B6CB)
+internal val BlueDark = Color(0xFF9BBBFF)
+internal val BlueContainerDark = Color(0xFF203A68)
+internal val SuccessDark = Color(0xFF7BD6AC)
+internal val SuccessContainerDark = Color(0xFF123A2C)
+internal val WarningDark = Color(0xFFF3C67D)
+internal val WarningContainerDark = Color(0xFF3D2D13)
+internal val ErrorDark = Color(0xFFFFA8B8)
+internal val ErrorContainerDark = Color(0xFF4A2230)
+internal val OutlineDark = Color(0xFF52627B)
+internal val DividerDark = Color(0xFF2C3950)

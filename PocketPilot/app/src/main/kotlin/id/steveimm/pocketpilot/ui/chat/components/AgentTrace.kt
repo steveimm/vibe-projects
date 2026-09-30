@@ -93,7 +93,7 @@ internal fun ActionRow(
     val statusColor = when (data.state) {
         ActionState.Success -> MaterialTheme.colorScheme.secondary
         ActionState.Failed -> MaterialTheme.colorScheme.error
-        ActionState.Skipped -> MaterialTheme.pocketPilot.inkFaint
+        ActionState.Skipped -> MaterialTheme.pocketPilot.mutedText
         ActionState.Proposed, ActionState.Executing -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -103,7 +103,7 @@ internal fun ActionRow(
                 imageVector = Lucide.ArrowRight,
                 contentDescription = null,
                 modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.pocketPilot.inkFaint,
+                tint = MaterialTheme.pocketPilot.mutedText,
             )
             Spacer(Modifier.width(spacing.sm))
             Column(modifier = Modifier.weight(1f)) {

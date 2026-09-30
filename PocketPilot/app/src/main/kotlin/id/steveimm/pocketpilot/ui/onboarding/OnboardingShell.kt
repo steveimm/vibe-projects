@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
@@ -24,12 +25,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.R
 import id.steveimm.pocketpilot.ui.theme.AppWindowInsets
-import id.steveimm.pocketpilot.ui.theme.Fraunces
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
 /** Shared scaffold for every onboarding step. */
@@ -77,20 +75,16 @@ fun OnboardingShell(
 
             Spacer(modifier = Modifier.height(spacing.sm))
 
-            // D1 §6.4: five-paw progress treatment — filled paws for completed
-            // steps, ghosted for upcoming. Reuses ic_paw at small size.
-            FivePawProgress(stepIndex = stepIndex, totalSteps = totalSteps)
+            androidx.compose.material3.LinearProgressIndicator(
+                progress = { (stepIndex.toFloat() / totalSteps.coerceAtLeast(1)).coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth().height(4.dp),
+            )
 
             Spacer(modifier = Modifier.height(spacing.xl))
 
-            // Step title — D1 §4.2 identity surface (Fraunces).
             Text(
                 text = title,
-                style = MaterialTheme.typography.displaySmall.copy(
-                    fontFamily = Fraunces,
-                    fontStyle = FontStyle.Italic,
-                    fontWeight = FontWeight.Normal,
-                ),
+                style = MaterialTheme.typography.displaySmall,
                 color = MaterialTheme.colorScheme.onBackground
             )
 
@@ -98,27 +92,6 @@ fun OnboardingShell(
 
             // Step content
             content()
-        }
-    }
-}
-
-@Composable
-private fun FivePawProgress(stepIndex: Int, totalSteps: Int) {
-    val spacing = MaterialTheme.pocketPilot.spacing
-    val pawCount = 5
-    // Map progress onto five paws regardless of totalSteps (spec is fixed at 5).
-    val filled = ((stepIndex.toFloat() / totalSteps) * pawCount)
-        .toInt()
-        .coerceIn(0, pawCount)
-    Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-        repeat(pawCount) { i ->
-            Icon(
-                painter = painterResource(R.drawable.ic_paw),
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = if (i < filled) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.pocketPilot.inkFaint
-            )
         }
     }
 }

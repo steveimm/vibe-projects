@@ -1,7 +1,6 @@
 package id.steveimm.pocketpilot.ui.settings
 
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
-import id.steveimm.pocketpilot.ui.theme.foldedPaper
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -16,14 +15,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 
-// Canonical Settings card primitive. Settings sub-pages live as folded leaves in the bound book; any card that represents a navigable or
-// tappable page-of-the-book uses this surface so the chrome (color, shape, padding, folded-paper shadow) stays unified.
 @Composable
 internal fun SettingsCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     shape: Shape = MaterialTheme.shapes.medium,
-    color: Color = MaterialTheme.colorScheme.surfaceVariant,
+    color: Color = MaterialTheme.colorScheme.surface,
     contentPadding: PaddingValues = PaddingValues(
         horizontal = MaterialTheme.pocketPilot.spacing.cardPadding,
         vertical = MaterialTheme.pocketPilot.spacing.md,
@@ -33,7 +30,7 @@ internal fun SettingsCard(
     val base = modifier.fillMaxWidth().clip(shape)
     val interactive = if (onClick != null) base.clickable(onClick = onClick) else base
     Surface(
-        modifier = interactive.foldedPaper(shape),
+        modifier = interactive,
         color = color,
         shape = shape,
     ) {
