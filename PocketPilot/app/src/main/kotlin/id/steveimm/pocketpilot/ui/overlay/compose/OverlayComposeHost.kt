@@ -2,6 +2,7 @@ package id.steveimm.pocketpilot.ui.overlay.compose
 
 import android.animation.ValueAnimator
 import android.content.Context
+import android.graphics.Rect
 import android.util.Log
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
@@ -51,10 +52,10 @@ class OverlayComposeHost(
                 view.alpha = 0f
                 view.translationY = 12 * context.resources.displayMetrics.density
             }
-            windowManager.addView(container, layoutParams)
             root = container
             composeView = view
             params = layoutParams
+            windowManager.addView(container, layoutParams)
             if (animate) view.animate().alpha(1f).translationY(0f)
                 .setDuration(PocketPilotMotion.Standard.toLong()).setInterpolator(DecelerateInterpolator()).start()
         } catch (e: Exception) {
@@ -74,6 +75,15 @@ class OverlayComposeHost(
                 root?.alpha = if (screenshotDepth > 0) 0f else 1f
             }
         }
+    }
+
+    fun suppressRendering(): AutoCloseable = suppressForScreenshot()
+
+    fun boundsOnScreen(): Rect? {
+        val view = root?.takeIf { it.width > 0 && it.height > 0 } ?: return null
+        val position = IntArray(2)
+        view.getLocationOnScreen(position)
+        return Rect(position[0], position[1], position[0] + view.width, position[1] + view.height)
     }
 
     fun hideImmediately() { remove() }
@@ -99,6 +109,7 @@ class OverlayComposeHost(
             try { windowManager.removeViewImmediate(view) }
             catch (e: Exception) { Log.w(tag, "Failed to remove Compose overlay", e) }
         }
+        composeView?.disposeComposition()
         root = null
         composeView = null
         params = null

@@ -38,7 +38,8 @@ internal class AgentTurnRunner(
                         config = config,
                         services = services,
                         eventDispatcher = eventDispatcher,
-                        trace = trace
+                        trace = trace,
+                        isInterrupted = { isPauseRequested() || isTurnCancelled() },
                 )
         }
         private val planningPhaseRunner by lazy {
@@ -111,7 +112,10 @@ internal class AgentTurnRunner(
                                                                 planningResult.toolCalls
                                                 )
 
-                                        decideTurnOutcome(
+                                        if (isPauseRequested()) {
+                                                nextState = nextState.copy(observeScreen = true)
+                                                TurnOutcome.Continue
+                                        } else decideTurnOutcome(
                                                 turnNumber = turnNumber,
                                                 result = planningResult,
                                                 execution = executionResult

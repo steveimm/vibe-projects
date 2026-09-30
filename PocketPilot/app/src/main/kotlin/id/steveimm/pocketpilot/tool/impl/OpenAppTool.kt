@@ -156,13 +156,15 @@ private class OpenAppInvocation(
             )
         }
 
+        if (context.isCancelled()) return ToolExecutionResult.Cancelled("Cancelled before execution")
         val result = context.platform.launchApp(targetPackage)
 
         return when (result) {
             is ActionResult.Success -> {
+                if (context.isCancelled()) return ToolExecutionResult.Success("Launched ${match.label} ($targetPackage)")
                 delay(UI_SETTLE_DELAY_MS)
 
-                val snapshot = try {
+                val snapshot = if (context.isCancelled()) null else try {
                     context.platform.captureScreen()
                 } catch (e: CancellationException) {
                     throw e
@@ -183,7 +185,7 @@ private class OpenAppInvocation(
             is ActionResult.Failure -> ToolExecutionResult.Failure(
                 "Failed to launch '${match.label}': ${result.reason}"
             )
-            else -> ToolExecutionResult.Failure("Unexpected result: $result")
+            is ActionResult.Cancelled -> ToolExecutionResult.Cancelled(result.reason)
         }
     }
 

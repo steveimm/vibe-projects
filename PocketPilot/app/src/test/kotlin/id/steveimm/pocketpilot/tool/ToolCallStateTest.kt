@@ -4,12 +4,23 @@ import id.steveimm.pocketpilot.protocol.ApprovalDecision
 import id.steveimm.pocketpilot.protocol.ApprovalMode
 import id.steveimm.pocketpilot.protocol.AppTier
 import id.steveimm.pocketpilot.test.FakeAndroidPlatform
+import id.steveimm.pocketpilot.platform.AndroidPlatform
+import id.steveimm.pocketpilot.platform.AppInfo
+import id.steveimm.pocketpilot.tool.impl.OpenAppTool
 import com.google.common.truth.Truth.assertThat
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.spyk
+import io.mockk.verify
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Test
@@ -319,21 +330,76 @@ class ToolCallStateTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun `Scheduled to Cancelled - context cancelled before exec`() = runTest {
-        val registry = ToolRegistry().apply { register(SuccessToolSpec()) }
-        val router = ToolRouter(registry, PolicyEngine(ApprovalMode.AUTO_APPROVE, AppClassifier(emptyMap())))
-        val context = SimpleToolRouterContext(FakeAndroidPlatform())
+    fun `already cancelled request reports terminal cancellation without preparing or executing the tool`() = runTest {
+        val tool = spyk(OpenAppTool())
+        val policy = mockk<PolicyEngine>()
+        val platform = mockk<AndroidPlatform>()
+        val registry = ToolRegistry().apply { register(tool) }
+        val router = ToolRouter(registry, policy)
+        val context = SimpleToolRouterContext(platform)
         context.cancel()
         val states = mutableListOf<ToolCallState>()
 
-        router.execute("success_tool", JSONObject(), context, onStateChange = { states.add(it) })
+        val result = router.execute(
+            toolName = "open_app",
+            params = JSONObject("""{"app_name":"Contacts"}"""),
+            context = context,
+            callId = "already-cancelled",
+            onStateChange = { states.add(it) },
+            onApprovalRequired = { error("Cancelled request must not ask for approval") },
+        )
 
-        assertThat(states.map { it::class }).containsExactly(
-            ToolCallState.Validating::class,
-            ToolCallState.Scheduled::class,
-            ToolCallState.Cancelled::class
-        ).inOrder()
-        assertThat((states.last() as ToolCallState.Cancelled).reason).isEqualTo("Cancelled before execution")
+        assertThat(states.map { it::class }).containsExactly(ToolCallState.Cancelled::class)
+        val terminal = states.single() as ToolCallState.Cancelled
+        assertThat(result).isEqualTo(ToolCallResult.Cancelled("already-cancelled", terminal.reason))
+        assertThat(terminal.callId).isEqualTo("already-cancelled")
+        verify(exactly = 0) { tool.validate(any()); tool.createInvocation(any()); policy.check(any(), any(), any(), any()) }
+        coVerify(exactly = 0) { platform.getInstalledApps(); platform.launchApp(any()) }
+        assertThat(router.getActiveCallIds()).isEmpty()
+        assertThat(router.hasPendingApprovals()).isFalse()
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `cancellation while resolving an app reports cancellation before policy or execution`() = runTest {
+        for (cancelContext in listOf(true, false)) {
+            val apps = CompletableDeferred<List<AppInfo>>()
+            val platform = mockk<AndroidPlatform>()
+            coEvery { platform.getInstalledApps() } coAnswers { apps.await() }
+            val invocation = mockk<ToolInvocation>()
+            val tool = spyk(OpenAppTool())
+            every { tool.createInvocation(any()) } returns invocation
+            val policy = mockk<PolicyEngine>()
+            val router = ToolRouter(ToolRegistry().apply { register(tool) }, policy)
+            val context = SimpleToolRouterContext(platform)
+            val states = mutableListOf<ToolCallState>()
+            val callId = if (cancelContext) "cancel-context-during-resolution" else "cancel-call-during-resolution"
+
+            val request = async {
+                router.execute(
+                    toolName = "open_app",
+                    params = JSONObject("""{"app_name":"Contacts"}"""),
+                    context = context,
+                    callId = callId,
+                    onStateChange = { states.add(it) },
+                    onApprovalRequired = { error("Cancelled request must not ask for approval") },
+                )
+            }
+            runCurrent()
+            coVerify(exactly = 1) { platform.getInstalledApps() }
+            if (cancelContext) context.cancel() else router.cancel(callId)
+            apps.complete(listOf(AppInfo("com.android.contacts", "Contacts")))
+
+            val result = request.await()
+            assertThat(states.map { it::class }).containsExactly(ToolCallState.Validating::class, ToolCallState.Cancelled::class).inOrder()
+            val terminal = states.last() as ToolCallState.Cancelled
+            assertThat(result).isEqualTo(ToolCallResult.Cancelled(callId, terminal.reason))
+            assertThat(terminal.callId).isEqualTo(callId)
+            verify(exactly = 0) { policy.check(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { invocation.execute(any()); platform.launchApp(any()) }
+            assertThat(router.getActiveCallIds()).isEmpty()
+            assertThat(router.hasPendingApprovals()).isFalse()
+        }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

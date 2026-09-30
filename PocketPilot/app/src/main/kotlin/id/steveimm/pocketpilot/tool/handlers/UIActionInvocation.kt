@@ -52,7 +52,9 @@ class UIActionInvocation(
         context: ToolExecutionContext
     ): ToolObservation? {
         return try {
+            if (context.isCancelled()) return null
             delay(UI_SETTLE_DELAY_MS)
+            if (context.isCancelled()) return null
             val snapshot = context.platform.captureScreen()
             buildObservation(snapshot, context.platform, context.appClassifier)
         } catch (e: CancellationException) {

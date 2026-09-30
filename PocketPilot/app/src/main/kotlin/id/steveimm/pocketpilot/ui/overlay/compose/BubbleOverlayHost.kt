@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.LifecycleOwner
 import androidx.savedstate.SavedStateRegistryOwner
 import id.steveimm.pocketpilot.ui.capsule.surface.toStatusColor
+import id.steveimm.pocketpilot.platform.GestureCoordinates
 import id.steveimm.pocketpilot.ui.overlay.CapsuleStateHolder
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
 import id.steveimm.pocketpilot.ui.overlay.model.deriveGlowState
@@ -33,6 +34,8 @@ class BubbleOverlayHost(
     savedStateRegistryOwner: SavedStateRegistryOwner,
     private val onToggleCapsule: () -> Unit,
     private val onDismiss: () -> Unit,
+    private val onDragStarted: () -> Unit,
+    private val onDragFinished: (completed: Boolean) -> Unit,
 ) {
     private val windowManager = service.getSystemService(WindowManager::class.java)
     private val composeHost = OverlayComposeHost(service, lifecycleOwner, savedStateRegistryOwner, windowManager, "BubbleOverlayHost")
@@ -52,7 +55,7 @@ class BubbleOverlayHost(
     private var startY = 0f
     private var dragging = false
     private var dockAnimation: ValueAnimator? = null
-    private var passThroughDepth = 0
+    private val injectedGestures = mutableListOf<GestureCoordinates>()
     private var panelTop: Int? = null
     private val configurationCallback = object : ComponentCallbacks {
         override fun onConfigurationChanged(newConfig: Configuration) { cancelDrag(); placeAtEdge() }
@@ -63,25 +66,30 @@ class BubbleOverlayHost(
     fun setPanelTop(top: Int?) {
         if (panelTop == top) return
         panelTop = top
-        if (isShowing() && !dragging) placeAtEdge()
+        if (isShowing() && !gestureActive) placeAtEdge()
     }
     fun setExpanded(value: Boolean) { expanded.value = value }
     fun isShowing(): Boolean = composeHost.isShowing()
+    fun isDragging(): Boolean = dragging
     fun suppressForScreenshot(): AutoCloseable {
         val bubble = composeHost.suppressForScreenshot()
         val target = dismissTarget.suppressForScreenshot()
         return AutoCloseable { target.close(); bubble.close() }
     }
 
-    fun beginGesturePassThrough(): AutoCloseable {
-        passThroughDepth++
-        updateTouchability()
+    fun isUserTouchActive(): Boolean = gestureActive
+    fun isGesturePathClear(): Boolean = !isShowing() || isClearOfGestures(x, y)
+
+    fun beginGesturePassThrough(gesture: GestureCoordinates): AutoCloseable {
+        injectedGestures.add(gesture)
+        dockAnimation?.cancel()
+        if (isShowing() && !gestureActive) moveClearOfGestures()
         var closed = false
         return AutoCloseable {
             if (!closed) {
                 closed = true
-                passThroughDepth--
-                updateTouchability()
+                injectedGestures.remove(gesture)
+                if (isShowing() && !gestureActive) placeAtEdge(animate = injectedGestures.isEmpty())
             }
         }
     }
@@ -140,6 +148,7 @@ class BubbleOverlayHost(
                 val slop = ViewConfiguration.get(service).scaledTouchSlop
                 if (!dragging && (abs(dx) > slop || abs(dy) > slop)) {
                     dragging = true
+                    onDragStarted()
                     dismissTarget.show()
                 }
                 if (dragging) {
@@ -160,13 +169,17 @@ class BubbleOverlayHost(
                     dragging = false
                     dismissTarget.hide()
                     overDismissTarget.value = false
-                    if (dismiss) { onDismiss(); return true }
+                    if (dismiss) { onDragFinished(false); onDismiss(); return true }
                     val bounds = movementBounds(avoidPanel = false)
                     rightEdge = x >= (bounds.left + bounds.right) / 2f
                     heightFraction = ((y - bounds.top) / bounds.height().coerceAtLeast(1)).coerceIn(0f, 1f)
                     preferences.edit().putBoolean("right_edge", rightEdge).putFloat("height_fraction", heightFraction).apply()
                     placeAtEdge(animate = true)
-                } else onToggleCapsule()
+                    onDragFinished(true)
+                } else {
+                    placeAtEdge(animate = injectedGestures.isEmpty())
+                    onToggleCapsule()
+                }
             }
             MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_POINTER_DOWN -> { cancelDrag(); placeAtEdge() }
         }
@@ -174,10 +187,12 @@ class BubbleOverlayHost(
     }
 
     private fun cancelDrag() {
+        val wasDragging = dragging
         gestureActive = false
         dragging = false
         overDismissTarget.value = false
         dismissTarget.hide()
+        if (wasDragging) onDragFinished(false)
     }
 
     private fun movementBounds(avoidPanel: Boolean = true): Rect {
@@ -191,10 +206,16 @@ class BubbleOverlayHost(
     }
 
     private fun placeAtEdge(animate: Boolean = false) {
+        if (gestureActive) return
         dockAnimation?.cancel()
         val bounds = movementBounds()
         val targetX = if (rightEdge) bounds.right.toFloat() else bounds.left.toFloat()
         val targetY = (bounds.top + movementBounds(avoidPanel = false).height() * heightFraction).coerceAtMost(bounds.bottom.toFloat())
+        if (injectedGestures.isNotEmpty()) {
+            if (isClearOfGestures(targetX, targetY)) moveTo(targetX, targetY)
+            else moveClearOfGestures()
+            return
+        }
         if (!animate || !ValueAnimator.areAnimatorsEnabled()) {
             moveTo(targetX, targetY)
             return
@@ -212,25 +233,43 @@ class BubbleOverlayHost(
         }
     }
 
-    private fun moveTo(nextX: Float, nextY: Float) {
-        val bounds = movementBounds(avoidPanel = !dragging)
+    private fun moveTo(nextX: Float, nextY: Float, avoidPanel: Boolean = !dragging) {
+        val bounds = movementBounds(avoidPanel)
         x = nextX.coerceIn(bounds.left.toFloat(), bounds.right.toFloat())
         y = nextY.coerceIn(bounds.top.toFloat(), bounds.bottom.toFloat())
         composeHost.updateLayoutParams { it.x = x.roundToInt(); it.y = y.roundToInt() }
     }
 
-    private fun updateTouchability() {
-        composeHost.updateLayoutParams {
-            it.flags = if (passThroughDepth > 0) it.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-            else it.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+    private fun isClearOfGestures(left: Float, top: Float): Boolean {
+        val margin = dp(2)
+        return injectedGestures.none { it.intersects(left - margin, top - margin, left + dp(60) + margin, top + dp(60) + margin) }
+    }
+
+    private fun moveClearOfGestures() {
+        if (gestureActive || isClearOfGestures(x, y)) return
+        val bounds = movementBounds(avoidPanel = false)
+        val candidates = buildList {
+            for (edge in listOf(bounds.left.toFloat(), bounds.right.toFloat())) {
+                add(edge to y)
+                add(edge to bounds.top.toFloat())
+                add(edge to bounds.bottom.toFloat())
+                for (gesture in injectedGestures) {
+                    val above = minOf(gesture.startY, gesture.endY) - dp(60) - dp(4)
+                    val below = maxOf(gesture.startY, gesture.endY) + dp(4)
+                    add(edge to above.coerceIn(bounds.top.toFloat(), bounds.bottom.toFloat()))
+                    add(edge to below.coerceIn(bounds.top.toFloat(), bounds.bottom.toFloat()))
+                }
+            }
         }
+        val position = candidates.filter { (left, top) -> isClearOfGestures(left, top) }
+            .minByOrNull { (left, top) -> (left - x) * (left - x) + (top - y) * (top - y) } ?: return
+        moveTo(position.first, position.second, avoidPanel = false)
     }
 
     @SuppressLint("RtlHardcoded")
     private fun createLayoutParams() = WindowManager.LayoutParams(
         dp(60), dp(60), WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-            (if (passThroughDepth > 0) WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE else 0),
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
         PixelFormat.TRANSLUCENT,
     ).apply {
         title = "PocketPilot bubble"

@@ -12,6 +12,10 @@ import id.steveimm.pocketpilot.llm.LLMClient
 import id.steveimm.pocketpilot.llm.LLMClientFactory
 import id.steveimm.pocketpilot.llm.LLMStreamEvent
 import id.steveimm.pocketpilot.llm.ResponsesResult
+import id.steveimm.pocketpilot.model.ScreenImage
+import id.steveimm.pocketpilot.model.ScreenImageSource
+import id.steveimm.pocketpilot.model.ScreenSnapshot
+import id.steveimm.pocketpilot.platform.AndroidPlatform
 import id.steveimm.pocketpilot.protocol.*
 import id.steveimm.pocketpilot.test.FakeAndroidPlatform
 import id.steveimm.pocketpilot.tool.AppClassifier
@@ -22,9 +26,12 @@ import id.steveimm.pocketpilot.trace.NoopTraceRecorder
 import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.ResponseInputItem
 import io.mockk.mockk
+import io.mockk.every
 import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
@@ -42,17 +49,51 @@ import org.junit.Test
 class AgentSessionTest {
 
         @Test
-        fun `overlay request observes the current screen before the model responds`() = runTest {
-                val session = buildSession(scope = this, captureDelayMs = 0, llmDelayMs = 0)
-                val events = mutableListOf<AgentEvent>()
-                val observer = launch { session.events.collect { events.add(it) } }
+        fun `overlay request sends the current app screenshot in its first model request`() = runTest {
+                val image = spyk(ScreenImage(460, 1024, "image/jpeg", byteArrayOf(1, 2), ScreenImageSource.ACCESSIBILITY_SCREENSHOT))
+                every { image.toDataUrl() } returns "data:image/jpeg;base64,AQI="
+                val platform = object : AndroidPlatform by FakeAndroidPlatform(currentPackageName = "com.android.contacts") {
+                        override suspend fun captureScreen(): ScreenSnapshot {
+                                delay(1_000)
+                                return ScreenSnapshot(1, emptyList(), image)
+                        }
+                }
+                val llm = SessionTestLLMClient(0)
+                val session = buildSessionWith(scope = this, platform = platform, llmClient = llm)
                 session.submit(Op.UserInput("Describe this screen", observeScreen = true))
-                advanceUntilIdle()
-                val screen = events.indexOfFirst { it is ScreenCaptured }
-                val completed = events.indexOfFirst { it is TaskCompleted }
-                assertThat(screen).isAtLeast(0)
-                assertThat(completed).isGreaterThan(screen)
-                observer.cancel()
+                runCurrent()
+                assertThat(llm.requests).isEmpty()
+
+                advanceTimeBy(1_000)
+                runCurrent()
+                val items = llm.requests.single()
+                assertThat(items.first().asEasyInputMessage().content().asTextInput()).isEqualTo("Describe this screen")
+                val observation = items.last().asEasyInputMessage().content().asResponseInputMessageContentList()
+                assertThat(observation[0].asInputText().text()).contains("com.android.contacts")
+                assertThat(observation[1].asInputImage().imageUrl().get()).isEqualTo("data:image/jpeg;base64,AQI=")
+                assertThat(session.state.value).isEqualTo(SessionState.Idle)
+                session.submit(Op.Shutdown)
+        }
+
+        @Test
+        fun `main chat request does not capture or send the screen without an observation request`() = runTest {
+                var captures = 0
+                val platform = object : AndroidPlatform by FakeAndroidPlatform() {
+                        override suspend fun captureScreen(): ScreenSnapshot {
+                                captures++
+                                return ScreenSnapshot(1, emptyList())
+                        }
+                }
+                val llm = SessionTestLLMClient(0)
+                val session = buildSessionWith(scope = this, platform = platform, llmClient = llm)
+                session.submit(Op.UserInput("Hello"))
+                runCurrent()
+
+                assertThat(captures).isEqualTo(0)
+                val input = llm.requests.single().single().asEasyInputMessage()
+                assertThat(input.content().asTextInput()).isEqualTo("Hello")
+                assertThat(session.state.value).isEqualTo(SessionState.Idle)
+                session.submit(Op.Shutdown)
         }
 
         @Test
@@ -1020,6 +1061,73 @@ class AgentSessionTest {
         }
 
         @Test
+        fun `cancelling platform initialization does not start a task or report a failure`() = runTest {
+                val platform = StartGatedPlatform()
+                val llm = SessionTestLLMClient(0)
+                val session = buildSessionWith(scope = this, platform = platform, llmClient = llm)
+                val events = mutableListOf<AgentEvent>()
+                val observer = backgroundScope.launch { session.events.collect { events.add(it) } }
+
+                val request = launch { session.submit(Op.UserInput("cancelled request")) }
+                runCurrent()
+                request.cancelAndJoin()
+                runCurrent()
+                assertThat(session.state.value).isEqualTo(SessionState.Created)
+                assertThat(llm.requests).isEmpty()
+                assertThat(events.filterIsInstance<TaskStarted>()).isEmpty()
+                assertThat(events.filterIsInstance<SessionError>()).isEmpty()
+
+                platform.startGate.complete(Unit)
+                session.submit(Op.UserInput("retry"))
+                runCurrent()
+                assertThat(llm.requests).hasSize(1)
+                assertThat(events.filterIsInstance<TaskStarted>().map { it.input }).containsExactly("retry")
+                assertThat(session.state.value).isEqualTo(SessionState.Idle)
+                session.submit(Op.Shutdown)
+                observer.cancel()
+        }
+
+        @Test
+        fun `cancelled follow-ups do not count as failures and idle sessions still expire`() = runTest {
+                val platform = StartGatedPlatform().apply { startGate.complete(Unit) }
+                val llm = SessionTestLLMClient(0)
+                val session = buildSessionWith(scope = this, platform = platform, llmClient = llm)
+                val events = mutableListOf<AgentEvent>()
+                val observer = backgroundScope.launch { session.events.collect { events.add(it) } }
+                session.submit(Op.UserInput("first"))
+                runCurrent()
+                assertThat(session.state.value).isEqualTo(SessionState.Idle)
+
+                repeat(3) {
+                        platform.startGate = CompletableDeferred()
+                        val request = launch { session.submit(Op.UserInput("cancelled follow-up")) }
+                        runCurrent()
+                        request.cancelAndJoin()
+                        runCurrent()
+                        assertThat(session.state.value).isEqualTo(SessionState.Idle)
+                }
+                assertThat(llm.requests).hasSize(1)
+                assertThat(events.filterIsInstance<TaskStarted>().map { it.input }).containsExactly("first")
+                assertThat(events.filterIsInstance<SessionError>()).isEmpty()
+
+                platform.startGate.complete(Unit)
+                session.submit(Op.UserInput("retry"))
+                runCurrent()
+                assertThat(llm.requests).hasSize(2)
+                assertThat(session.state.value).isEqualTo(SessionState.Idle)
+
+                platform.startGate = CompletableDeferred()
+                val finalRequest = launch { session.submit(Op.UserInput("cancelled before timeout")) }
+                runCurrent()
+                finalRequest.cancelAndJoin()
+                advanceTimeBy(300_000)
+                runCurrent()
+                assertThat(session.state.value).isEqualTo(SessionState.Shutdown)
+                assertThat(events.filterIsInstance<SessionCompleted>().single().reason).isEqualTo(SessionEndReason.IDLE_TIMEOUT)
+                observer.cancel()
+        }
+
+        @Test
         fun `repeated reacquire failure from idle forces shutdown`() = runTest {
                 // Platform succeeds on first start (Created -> Running) but throws on every subsequent start (reacquire from Idle),
                 // simulating a broken VirtualDisplay.
@@ -1123,7 +1231,14 @@ private class ReacquireFailingPlatform : id.steveimm.pocketpilot.platform.Androi
                 id.steveimm.pocketpilot.platform.ActionResult.Success()
 }
 
+private class StartGatedPlatform : AndroidPlatform by FakeAndroidPlatform() {
+        var startGate = CompletableDeferred<Unit>()
+        override suspend fun start() = startGate.await()
+}
+
 private class SessionTestLLMClient(private val delayMs: Long) : LLMClient() {
+        val requests = mutableListOf<List<ResponseInputItem>>()
+
         override suspend fun chatWithTools(
                 systemPrompt: String,
                 inputItems: List<ResponseInputItem>,
@@ -1144,6 +1259,7 @@ private class SessionTestLLMClient(private val delayMs: Long) : LLMClient() {
                 tools: List<FunctionTool>,
                 model: String
         ): Flow<LLMStreamEvent> = flow {
+                requests.add(inputItems.toList())
                 if (delayMs > 0) {
                         delay(delayMs)
                 }

@@ -36,7 +36,9 @@ class AccessibilityGestureInjector(
             val stroke = GestureDescription.StrokeDescription(path, 0, tapDuration)
             val gesture = buildGesture(stroke)
 
-            dispatchGesture(gesture) { visualizer?.showClick(x.toFloat(), y.toFloat(), durationMs = tapDuration) }
+            dispatchGesture(gesture, GestureCoordinates(x.toFloat(), y.toFloat())) {
+                visualizer?.showClick(x.toFloat(), y.toFloat(), durationMs = tapDuration)
+            }
         }
     }
 
@@ -55,7 +57,9 @@ class AccessibilityGestureInjector(
                     }
             val stroke = GestureDescription.StrokeDescription(path, 0, durationMs)
             val gesture = buildGesture(stroke)
-            dispatchGesture(gesture) { visualizer?.showSwipe(startX, startY, endX, endY, durationMs) }
+            dispatchGesture(gesture, GestureCoordinates(startX, startY, endX, endY)) {
+                visualizer?.showSwipe(startX, startY, endX, endY, durationMs)
+            }
         }
     }
 
@@ -64,7 +68,9 @@ class AccessibilityGestureInjector(
             val path = Path().apply { moveTo(x, y) }
             val stroke = GestureDescription.StrokeDescription(path, 0, durationMs)
             val gesture = buildGesture(stroke)
-            dispatchGesture(gesture) { visualizer?.showClick(x, y, longPress = true, durationMs = durationMs) }
+            dispatchGesture(gesture, GestureCoordinates(x, y)) {
+                visualizer?.showClick(x, y, longPress = true, durationMs = durationMs)
+            }
         }
     }
 
@@ -90,16 +96,24 @@ class AccessibilityGestureInjector(
         }
     }
 
-    private suspend fun dispatchGesture(gesture: GestureDescription, visualize: () -> Unit): ActionResult {
+    private suspend fun dispatchGesture(
+        gesture: GestureDescription,
+        coordinates: GestureCoordinates,
+        visualize: () -> Unit,
+    ): ActionResult {
         val gate = overlayTouchGate
-        val token = gate?.beginGesturePassThrough()
+        if (gate?.awaitGestureAccess() == false) return ActionResult.Cancelled("User is interacting with PocketPilot controls")
+        var token = gate?.beginGesturePassThrough(coordinates)
         var completed = false
+        var interrupted = false
         try {
             if (token != null) delay(FLAG_SETTLE_MS)
+            if (gate?.awaitGestureAccess() == false) return ActionResult.Cancelled("User is interacting with PocketPilot controls")
             if (!isScreenAvailable(service)) return ActionResult.Failure("Unlock the phone to continue.")
+            if (gate?.isGesturePathClear() == false) return ActionResult.Failure("Move the PocketPilot bubble clear of the target and try again.")
             visualize()
-            return withTimeoutOrNull(GESTURE_TIMEOUT_MS) {
-                suspendCancellableCoroutine { continuation ->
+            val result = withTimeoutOrNull(GESTURE_TIMEOUT_MS) {
+                suspendCancellableCoroutine<ActionResult> { continuation ->
                     val callback =
                             object : AccessibilityService.GestureResultCallback() {
                                 override fun onCompleted(gestureDescription: GestureDescription?) {
@@ -111,8 +125,9 @@ class AccessibilityGestureInjector(
 
                                 override fun onCancelled(gestureDescription: GestureDescription?) {
                                     Log.w(TAG, "dispatchGesture cancelled")
+                                    interrupted = true
                                     if (continuation.isActive) {
-                                        continuation.resume(ActionResult.Cancelled("Gesture cancelled"))
+                                        continuation.resume(ActionResult.Failure("Gesture interrupted. Observe the screen before retrying."))
                                     }
                                 }
                             }
@@ -124,8 +139,16 @@ class AccessibilityGestureInjector(
                     }
                 }
             }
-                .also { completed = it is ActionResult.Success }
                 ?: ActionResult.Failure("Gesture timed out after ${GESTURE_TIMEOUT_MS}ms")
+            completed = result is ActionResult.Success
+            if (interrupted) {
+                visualizer?.hide()
+                val released = token
+                token = null
+                released?.close()
+                if (gate?.awaitGestureAccess() == false) return ActionResult.Cancelled("User took control during the gesture")
+            }
+            return result
         } finally {
             if (!completed) visualizer?.hide()
             token?.close()

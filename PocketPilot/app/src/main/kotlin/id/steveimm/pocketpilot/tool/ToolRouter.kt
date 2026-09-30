@@ -52,8 +52,15 @@ class ToolRouter(
         val token = CancellationToken()
         cancellationTokens[resolvedCallId] = token
 
+        fun cancelledBeforeExecution(): ToolCallResult.Cancelled {
+            val reason = "Cancelled before execution"
+            updateState(ToolCallState.Cancelled(resolvedCallId, toolName, params, reason), onStateChange)
+            return ToolCallResult.Cancelled(resolvedCallId, reason)
+        }
+
         try {
             Log.d(TAG, "Starting tool call: $resolvedCallId ($toolName)")
+            if (context.isCancelled() || token.isCancelled()) return cancelledBeforeExecution()
 
             var state: ToolCallState = ToolCallState.Validating(resolvedCallId, toolName, params)
             updateState(state, onStateChange)
@@ -89,6 +96,7 @@ class ToolRouter(
             val destinationPackage = if (toolName == "open_app") {
                 resolveOpenAppDestination(params, context.platform)
             } else null
+            if (context.isCancelled() || token.isCancelled()) return cancelledBeforeExecution()
             val approvalPackageName = destinationPackage ?: packageName
             val policyDecision = policyEngine.check(toolName, params, packageName, destinationPackage)
             Log.d(TAG, "Policy decision for $toolName: $policyDecision")
@@ -241,10 +249,7 @@ class ToolRouter(
 
             // Check for cancellation before execution
             if (context.isCancelled() || token.isCancelled()) {
-                val cancelledState = ToolCallState.Cancelled(resolvedCallId, toolName, params, "Cancelled before execution")
-                updateState(cancelledState, onStateChange)
-
-                return ToolCallResult.Cancelled(resolvedCallId, "Cancelled before execution")
+                return cancelledBeforeExecution()
             }
 
             state = ToolCallState.Executing(resolvedCallId, toolName, params, invocation)
@@ -380,9 +385,10 @@ interface ToolRouterContext {
 class SimpleToolRouterContext(
     override val platform: AndroidPlatform,
     override val currentSnapshot: ScreenSnapshot? = null,
-    private val cancellationFlag: AtomicBoolean = AtomicBoolean(false)
+    private val cancellationFlag: AtomicBoolean = AtomicBoolean(false),
+    private val cancellationCheck: () -> Boolean = { false },
 ) : ToolRouterContext {
-    override fun isCancelled(): Boolean = cancellationFlag.get()
+    override fun isCancelled(): Boolean = cancellationFlag.get() || cancellationCheck()
 
     fun cancel() {
         cancellationFlag.set(true)

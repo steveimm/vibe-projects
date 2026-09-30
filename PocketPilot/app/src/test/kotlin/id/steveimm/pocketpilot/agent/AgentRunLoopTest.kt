@@ -37,6 +37,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
@@ -295,6 +297,54 @@ class AgentRunLoopTest {
     }
 
     @Test
+    fun `taking control before dispatch discards the planned action and observes again on resume`() = runTest {
+        var foregroundPackage = "com.example.fake"
+        var captures = 0
+        val launches = mutableListOf<String>()
+        val platform = object : AndroidPlatform by FakeAndroidPlatform(
+            installedApps = listOf(AppInfo("com.android.contacts", "Contacts", false))
+        ) {
+            override fun getCurrentPackageName(): String = foregroundPackage
+            override suspend fun launchApp(packageName: String): ActionResult {
+                launches += packageName
+                return ActionResult.Success()
+            }
+            override suspend fun captureScreen(): ScreenSnapshot {
+                captures++
+                return ScreenSnapshot(captures.toLong(), emptyList())
+            }
+        }
+        val classifier = AppClassifier(mapOf(
+            "com.example.fake" to id.steveimm.pocketpilot.protocol.AppTier.NORMAL,
+            "com.android.contacts" to id.steveimm.pocketpilot.protocol.AppTier.NORMAL,
+            "com.android.settings" to id.steveimm.pocketpilot.protocol.AppTier.NORMAL,
+        ))
+        val llm = GatedLLMClient()
+        val agent = newAgent(llm, platform = platform, appClassifier = classifier)
+        val runJob = async { agent.run() }
+        llm.awaitTurnCalled()
+        llm.completeTurn(LLMBehavior.ToolCall("open_app", """{"app_name":"Contacts"}"""))
+        runCurrent()
+
+        val paused = agent.pause()
+        advanceTimeBy(200)
+        runCurrent()
+        paused.await()
+        assertThat(launches).isEmpty()
+        assertThat(captures).isEqualTo(0)
+        assertThat(llm.requests).hasSize(1)
+
+        foregroundPackage = "com.android.settings"
+        agent.resume()
+        llm.awaitTurnCalled()
+        assertThat(captures).isEqualTo(1)
+        assertThat(llm.requests.last().last().asEasyInputMessage().content().asTextInput()).contains("com.android.settings")
+        llm.completeTurn(LLMBehavior.TextOnly("Continuing from the current screen."))
+        assertThat(runJob.await()).isEqualTo(AgentStopReason.Finished("Continuing from the current screen."))
+        assertThat(launches).isEmpty()
+    }
+
+    @Test
     fun `stop while paused unblocks the loop and exits with UserRequested`() = runTest(
         UnconfinedTestDispatcher()
     ) {
@@ -522,6 +572,7 @@ private class ProgrammableLLMClient(
 /** Like [ProgrammableLLMClient] but each call parks until the test calls [completeTurn]. Lets tests interleave pause/resume/stop
  * deterministically. */
 private class GatedLLMClient : LLMClient() {
+    val requests = mutableListOf<List<ResponseInputItem>>()
     private val turnEntered = Channel<Unit>(capacity = Channel.UNLIMITED)
     private val turnRelease = Channel<LLMBehavior>(capacity = Channel.UNLIMITED)
 
@@ -547,6 +598,7 @@ private class GatedLLMClient : LLMClient() {
         tools: List<FunctionTool>,
         model: String
     ): Flow<LLMStreamEvent> = flow {
+        requests += inputItems
         turnEntered.send(Unit)
         val behavior = turnRelease.receive()
         emit(LLMStreamEvent.Created("gated"))

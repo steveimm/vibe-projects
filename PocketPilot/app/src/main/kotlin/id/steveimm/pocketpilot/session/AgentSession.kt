@@ -16,9 +16,12 @@ import id.steveimm.pocketpilot.tool.AppClassifierHolder
 import id.steveimm.pocketpilot.trace.TraceRecorderFactory
 import id.steveimm.pocketpilot.ui.overlay.visualizer.ActionVisualizerManager
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -313,6 +316,8 @@ private constructor(
         }
         try {
             services.platform.start()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Platform start failed", e)
             emitStatus("⚠️ Platform initialization failed: ${e.message}")
@@ -326,6 +331,9 @@ private constructor(
         cancelIdleTimeout()
         try {
             services.platform.start() // Idempotent — no-op if already running
+        } catch (e: CancellationException) {
+            scheduleIdleTimeout()
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Platform start failed on follow-up", e)
             emitStatus("⚠️ Platform start failed: ${e.message}")
@@ -339,6 +347,7 @@ private constructor(
     }
 
     private suspend fun startTask(text: String, observeScreen: Boolean) {
+        currentCoroutineContext().ensureActive()
         val taskId = "task-${System.currentTimeMillis()}"
         currentTaskId = taskId
         _state.value = SessionState.Running
@@ -629,6 +638,8 @@ private constructor(
         try {
             _events.emit(event)
             Log.d(TAG, "Emitted event: ${event::class.simpleName}")
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Failed to emit event: $event", e)
         }

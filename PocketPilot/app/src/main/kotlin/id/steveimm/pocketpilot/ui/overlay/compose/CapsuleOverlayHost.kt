@@ -43,6 +43,7 @@ import id.steveimm.pocketpilot.ui.capsule.surface.VoiceMicDeps
 import id.steveimm.pocketpilot.ui.capsule.surface.smartCapsuleHostPadding
 import id.steveimm.pocketpilot.ui.capsule.voice.AndroidRecognizerFactory
 import id.steveimm.pocketpilot.platform.OverlayTouchGate
+import id.steveimm.pocketpilot.platform.GestureCoordinates
 import id.steveimm.pocketpilot.ui.overlay.CapsuleStateHolder
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
 import kotlinx.coroutines.CoroutineScope
@@ -95,7 +96,8 @@ class CapsuleOverlayHost(
     private var transientThoughtJob: Job? = null
     private var lastButtonClickTime = 0L
     private var isFocusable = false
-    private var passThroughDepth = 0
+    private val gestureLeases = mutableListOf<GestureCoordinates>()
+    private var gestureSuppression: AutoCloseable? = null
     private val configurationCallback = object : ComponentCallbacks {
         override fun onConfigurationChanged(newConfig: Configuration) { updateWindowBounds() }
         override fun onLowMemory() = Unit
@@ -103,19 +105,16 @@ class CapsuleOverlayHost(
 
     /** Gate for [AccessibilityGestureInjector] to temporarily pass touches through. */
     val touchGate: OverlayTouchGate = object : OverlayTouchGate {
-        override fun beginGesturePassThrough(): AutoCloseable {
-            passThroughDepth++
-            Log.d(TAG, "beginGesturePassThrough: depth=$passThroughDepth, isShowing=${composeHost.isShowing()}")
-            applyNotTouchableFlag(forceNotTouchable = true)
+        override fun beginGesturePassThrough(gesture: GestureCoordinates): AutoCloseable {
+            gestureLeases.add(gesture)
+            if (!composeHost.isShowing()) composeHost.hideImmediately()
+            updateGesturePassThrough()
             var closed = false
             return AutoCloseable {
                 if (closed) return@AutoCloseable
                 closed = true
-                passThroughDepth = (passThroughDepth - 1).coerceAtLeast(0)
-                Log.d(TAG, "endGesturePassThrough: depth=$passThroughDepth")
-                if (passThroughDepth == 0) {
-                    applyNotTouchableFlag(false)
-                }
+                gestureLeases.remove(gesture)
+                updateGesturePassThrough()
             }
         }
     }
@@ -126,6 +125,7 @@ class CapsuleOverlayHost(
 
     fun show() {
         if (composeHost.isShowing()) return
+        setGesturePassThrough(gestureLeases.isNotEmpty())
         composeHost.show(createLayoutParams(interactionLocked.value)) {
             val mode by stateHolder.mode.collectAsState(initial = CapsuleMode.Hidden)
             val stopPending by stateHolder.isStopPending.collectAsState(initial = false)
@@ -163,6 +163,7 @@ class CapsuleOverlayHost(
                     SmartCapsuleSurface(
                         modifier = Modifier.onGloballyPositioned { coordinates ->
                             onPanelTopChanged?.invoke(composeHost.topOnScreen() + coordinates.positionInWindow().y.toInt())
+                            updateGesturePassThrough()
                         },
                         mode = mode,
                         inputDraft = if (mode is CapsuleMode.WaitingForInput) stateHolder.responseDraft else stateHolder.inputDraft,
@@ -246,6 +247,7 @@ class CapsuleOverlayHost(
                 }
             }
         }
+        updateGesturePassThrough()
         if (composeHost.isShowing()) service.registerComponentCallbacks(configurationCallback)
         startFocusObserver()
         Log.i(TAG, "Capsule overlay shown")
@@ -256,7 +258,8 @@ class CapsuleOverlayHost(
         stopFocusObserver()
         inputFocused.value = false
         setOverlayFocusable(false)
-        if (immediate) composeHost.hideImmediately() else composeHost.hide()
+        if (immediate || gestureLeases.isNotEmpty()) composeHost.hideImmediately() else composeHost.hide()
+        setGesturePassThrough(false)
         onPanelTopChanged?.invoke(null)
     }
 
@@ -265,6 +268,7 @@ class CapsuleOverlayHost(
         transientThoughtJob = null
         hide()
         composeHost.dispose()
+        gestureLeases.clear()
     }
 
     fun setInteractionLocked(locked: Boolean) {
@@ -275,6 +279,7 @@ class CapsuleOverlayHost(
 
     private fun updateWindowBounds() {
         composeHost.updateLayoutParams { configureBounds(it, interactionLocked.value) }
+        updateGesturePassThrough()
     }
 
     private fun configureBounds(params: WindowManager.LayoutParams, locked: Boolean) {
@@ -351,21 +356,35 @@ class CapsuleOverlayHost(
             },
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                (if (gestureSuppression != null) WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE else 0),
             PixelFormat.TRANSLUCENT
         ).apply {
             title = "PocketPilot controls"
             configureBounds(this, locked)
         }
 
-    private fun applyNotTouchableFlag(forceNotTouchable: Boolean) {
-        if (!composeHost.isShowing()) return
-        composeHost.updateLayoutParams { params ->
-            params.flags = if (forceNotTouchable) {
-                params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-            } else {
-                params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+    private fun updateGesturePassThrough() {
+        val bounds = composeHost.boundsOnScreen()
+        val passThrough = composeHost.isShowing() && gestureLeases.isNotEmpty() &&
+            (interactionLocked.value || bounds == null || gestureLeases.any {
+                it.intersects(bounds.left.toFloat(), bounds.top.toFloat(), bounds.right.toFloat(), bounds.bottom.toFloat())
+            })
+        setGesturePassThrough(passThrough)
+    }
+
+    private fun setGesturePassThrough(enabled: Boolean) {
+        if (enabled == (gestureSuppression != null)) return
+        if (enabled) gestureSuppression = composeHost.suppressRendering()
+        if (composeHost.isShowing()) {
+            composeHost.updateLayoutParams { params ->
+                params.flags = if (enabled) params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                    else params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
             }
+        }
+        if (!enabled) {
+            gestureSuppression?.close()
+            gestureSuppression = null
         }
     }
 

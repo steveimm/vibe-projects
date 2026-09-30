@@ -21,6 +21,7 @@ import id.steveimm.pocketpilot.ui.overlay.compose.BubbleOverlayHost
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
 import id.steveimm.pocketpilot.platform.isScreenAvailable
 import id.steveimm.pocketpilot.platform.OverlayTouchGate
+import id.steveimm.pocketpilot.platform.GestureCoordinates
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -43,13 +44,14 @@ class ServiceOverlayController(
     private val onUserResponse: (String, String) -> Unit, // (callId, response)
     private val onApprovalResponse: (String, ApprovalDecision, ApprovalScope, String) -> Unit, // (callId, decision, scope, packageName)
     private val onOpenApp: () -> Unit,
-    private val onIndicatorsDismissed: () -> Unit = {},
+    private val onIndicatorsVisibilityChanged: (Boolean) -> Unit = {},
     private val onOpenViewer: (() -> Unit)? = null,
     private val onFinishViewer: (() -> Unit)? = null,
     private val bubbleManager: BubbleOverlayHost? = null
 ) {
 
     val stateHolder = CapsuleStateHolder()
+    private val dragTakeover = BubbleDragTakeover()
 
     /** Package manager for resolving app labels. */
     private val packageManager = context.packageManager
@@ -57,9 +59,16 @@ class ServiceOverlayController(
     /** Touch gate for gesture injection pass-through. */
     val overlayTouchGate: OverlayTouchGate
         get() = object : OverlayTouchGate {
-            override fun beginGesturePassThrough(): AutoCloseable {
-                val capsule = capsuleManager.touchGate.beginGesturePassThrough()
-                val bubble = bubbleManager?.beginGesturePassThrough()
+            override fun canInjectGesture(): Boolean = screenAvailable && !overlaysDismissed &&
+                !stateHolder.isStopPending.value && stateHolder.mode.value !is CapsuleMode.TakeoverPending &&
+                stateHolder.mode.value !is CapsuleMode.Takeover
+
+            override fun isUserTouchActive(): Boolean = bubbleManager?.isUserTouchActive() == true
+            override fun isGesturePathClear(): Boolean = bubbleManager?.isGesturePathClear() != false
+
+            override fun beginGesturePassThrough(gesture: GestureCoordinates): AutoCloseable {
+                val capsule = capsuleManager.touchGate.beginGesturePassThrough(gesture)
+                val bubble = bubbleManager?.beginGesturePassThrough(gesture)
                 return AutoCloseable { bubble?.close(); capsule.close() }
             }
         }
@@ -75,17 +84,20 @@ class ServiceOverlayController(
         this.onPanelTopChanged = { bubbleManager?.setPanelTop(it) }
         this.onSend = this@ServiceOverlayController.onSend
         this.onStop = {
+            dragTakeover.cancel()
             if (stateHolder.onStopRequested()) {
                 this@ServiceOverlayController.onStop()
             }
         }
         this.onTakeover = {
+            dragTakeover.cancel()
             stateHolder.onTakeoverRequested()   // immediate visual feedback
             this@ServiceOverlayController.onTakeover()
         }
-        this.onResume = this@ServiceOverlayController.onResume
+        this.onResume = { dragTakeover.cancel(); this@ServiceOverlayController.onResume() }
         this.onSupplement = { text -> this@ServiceOverlayController.onSupplement(text) }
         this.onSupplementAndResume = { text ->
+            dragTakeover.cancel()
             this@ServiceOverlayController.onSupplementAndResume(text)
         }
         this.onUserResponse = { callId, response ->
@@ -125,6 +137,7 @@ class ServiceOverlayController(
     fun setScreenAvailable(available: Boolean) {
         screenAvailable = available
         if (!available) {
+            dragTakeover.cancel()
             openAppAfterTakeover = false
             if (stateHolder.mode.value is CapsuleMode.Running) {
                 stateHolder.onTakeoverRequested()
@@ -172,6 +185,7 @@ class ServiceOverlayController(
     /** The ONE function that decides which overlay windows are visible. Called after every state change and context change. */
     private fun applyVisibility() {
         if (overlaysDismissed || !screenAvailable) {
+            onIndicatorsVisibilityChanged(false)
             capsuleManager.hide(immediate = !screenAvailable)
             bubbleManager?.hide()
             edgeGlowManager.hideImmediately()
@@ -192,6 +206,7 @@ class ServiceOverlayController(
                 "showPreference=$showPreference => showCapsule=${decision.showCapsule}, " +
                 "showBubble=${decision.showBubble}, showGlow=${decision.showGlow}"
         )
+        onIndicatorsVisibilityChanged(decision.showGlow)
         val lockInteraction = !compactOverlaysEnabled && shouldLockUserInteraction(
             platformMode = platformMode,
             location = userLocation,
@@ -237,18 +252,45 @@ class ServiceOverlayController(
         }
     }
 
+    fun clearConversation() {
+        dragTakeover.cancel()
+        openAppAfterTakeover = false
+        showPreference = ShowPreference.BUBBLE
+        stateHolder.clearConversation()
+        applyVisibility()
+    }
+
     fun dismissOverlays() {
+        dragTakeover.cancel()
         showPreference = ShowPreference.BUBBLE
         openAppAfterTakeover = false
         overlaysDismissed = true
         if (stateHolder.onStopRequested()) onStop()
-        onIndicatorsDismissed()
         applyVisibility()
     }
 
     fun onBubbleTapped() {
         showPreference = if (showPreference == ShowPreference.CAPSULE) ShowPreference.BUBBLE else ShowPreference.CAPSULE
         applyVisibility()
+    }
+
+    fun onBubbleDragStarted() {
+        val running = screenAvailable && !overlaysDismissed && !stateHolder.isStopPending.value &&
+            stateHolder.mode.value is CapsuleMode.Running
+        if (dragTakeover.begin(running)) {
+            stateHolder.onTakeoverRequested()
+            onTakeover()
+        }
+    }
+
+    fun onBubbleDragFinished(completed: Boolean) {
+        if (!completed) dragTakeover.cancel()
+        else if (dragTakeover.finish()) resumeAfterDrag()
+    }
+
+    private fun resumeAfterDrag() {
+        if (screenAvailable && !overlaysDismissed && !stateHolder.isStopPending.value &&
+            stateHolder.mode.value is CapsuleMode.Takeover) onResume()
     }
 
     fun onViewerOpened() {
@@ -277,12 +319,14 @@ class ServiceOverlayController(
 
 
     fun hideAll() {
+        dragTakeover.cancel()
         capsuleManager.hide()
         edgeGlowManager.hideImmediately()
         bubbleManager?.hide()
     }
 
     fun dispose() {
+        dragTakeover.cancel()
         edgeGlowManager.dispose()
         capsuleManager.dispose()
         bubbleManager?.dispose()
@@ -294,6 +338,7 @@ class ServiceOverlayController(
 
     /** MainActivity foreground callback. */
     fun onMainAppVisible() {
+        dragTakeover.cancel()
         overlaysDismissed = false
         isMainAppResumed = true
         if (userLocation != OverlayUserLocation.MAIN_APP) {
@@ -316,10 +361,11 @@ class ServiceOverlayController(
     }
 
     fun onTaskStarted(taskId: String, input: String) {
-        overlaysDismissed = false
+        dragTakeover.cancel()
         stateHolder.onTaskStarted(taskId, input)
         showPreference = ShowPreference.BUBBLE
         setScreenAvailable(screenAvailable)
+        if (bubbleManager?.isDragging() == true) onBubbleDragStarted()
     }
 
     fun onTurnPhaseChanged(phase: TurnPhase) {
@@ -334,18 +380,21 @@ class ServiceOverlayController(
     }
 
     fun onTaskCompleted(outcome: TaskOutcome, message: String?) {
+        dragTakeover.cancel()
         stateHolder.onTaskCompleted(outcome, message)
         refreshGlowState()
         // applyVisibility triggered by mode observer (Done/Error)
     }
 
     fun onSessionCompleted(reason: SessionEndReason) {
+        dragTakeover.cancel()
         stateHolder.onSessionEnded(reason)
         refreshGlowState()
         applyVisibility()
     }
 
     fun onSessionError(message: String) {
+        dragTakeover.cancel()
         stateHolder.onError(message)
         refreshGlowState()
         showPreference = ShowPreference.CAPSULE
@@ -354,14 +403,16 @@ class ServiceOverlayController(
 
     fun onSessionTakeover() {
         stateHolder.onTakeoverConfirmed()
+        if (dragTakeover.onPaused()) resumeAfterDrag()
         refreshGlowState()
         applyVisibility()
     }
 
     fun onSessionResumed() {
         stateHolder.onResumed()
+        if (bubbleManager?.isDragging() == true) onBubbleDragStarted()
         refreshGlowState()
-        applyVisibility()
+        setScreenAvailable(screenAvailable)
     }
 
     fun onSupplementReceived(@Suppress("UNUSED_PARAMETER") text: String) {
@@ -453,6 +504,7 @@ class ServiceOverlayController(
     }
 
     private fun openMainAppAndHideOverlays() {
+        dragTakeover.cancel()
         val mode = stateHolder.mode.value
         if (mode is CapsuleMode.Running || mode is CapsuleMode.TakeoverPending) {
             openAppAfterTakeover = true

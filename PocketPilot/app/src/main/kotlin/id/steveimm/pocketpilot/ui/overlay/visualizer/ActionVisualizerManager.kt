@@ -22,6 +22,9 @@ class ActionVisualizerManager(
             if (!value) overlayHost.hide()
         }
 
+    var overlayVisible: Boolean = false
+        set(value) { field = value; if (!value) overlayHost.hide() }
+
     var screenAvailable: Boolean = true
         set(value) { field = value; if (!value) overlayHost.hide() }
 
@@ -56,5 +59,5 @@ class ActionVisualizerManager(
     }
 
     private fun shouldRender(): Boolean =
-        enabled && screenAvailable && renderContext.value == CapsuleContext.SCREEN_VIEWING
+        enabled && screenAvailable && overlayVisible && renderContext.value == CapsuleContext.SCREEN_VIEWING
 }

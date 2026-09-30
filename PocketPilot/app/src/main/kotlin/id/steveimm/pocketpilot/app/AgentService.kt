@@ -19,6 +19,7 @@ import id.steveimm.pocketpilot.ui.overlay.compose.BubbleOverlayHost
 import id.steveimm.pocketpilot.ui.overlay.compose.ServiceLifecycleOwner
 import id.steveimm.pocketpilot.ui.overlay.visualizer.ActionVisualizerManager
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -116,7 +117,11 @@ class AgentService : AccessibilityService() {
     internal fun getOverlayTouchGate(): id.steveimm.pocketpilot.platform.OverlayTouchGate? {
         val controller = overlayController ?: return null
         return object : id.steveimm.pocketpilot.platform.OverlayTouchGate {
-            override fun beginGesturePassThrough(): AutoCloseable = controller.overlayTouchGate.beginGesturePassThrough()
+            override fun canInjectGesture(): Boolean = controller.overlayTouchGate.canInjectGesture()
+            override fun isUserTouchActive(): Boolean = controller.overlayTouchGate.isUserTouchActive()
+            override fun isGesturePathClear(): Boolean = controller.overlayTouchGate.isGesturePathClear()
+            override fun beginGesturePassThrough(gesture: id.steveimm.pocketpilot.platform.GestureCoordinates): AutoCloseable =
+                controller.overlayTouchGate.beginGesturePassThrough(gesture)
             override fun beginScreenshotCapture(): AutoCloseable {
                 val controls = controller.suppressForScreenshot()
                 val gestures = actionVisualizer?.suppressForScreenshot()
@@ -211,7 +216,7 @@ class AgentService : AccessibilityService() {
                             submitOp(Op.Approve(callId, decision, scope, packageName))
                         },
                         onOpenApp = ::openMainActivity,
-                        onIndicatorsDismissed = { actionVisualizer?.hide() },
+                        onIndicatorsVisibilityChanged = { actionVisualizer?.overlayVisible = it },
                         onOpenViewer = { viewerBridge.openViewer() },
                         onFinishViewer = { viewerBridge.finishViewer() },
                         bubbleManager =
@@ -220,6 +225,8 @@ class AgentService : AccessibilityService() {
                                         lifecycleOwner = serviceLifecycleOwner,
                                         savedStateRegistryOwner = serviceLifecycleOwner,
                                         onDismiss = { overlayController?.dismissOverlays() },
+                                        onDragStarted = { overlayController?.onBubbleDragStarted() },
+                                        onDragFinished = { completed -> overlayController?.onBubbleDragFinished(completed) },
                                         onToggleCapsule = {
                                             overlayController?.onBubbleTapped()
                                         }
@@ -397,7 +404,7 @@ class AgentService : AccessibilityService() {
             return
         }
 
-        serviceScope.launch {
+        serviceScope.launch(start = if (ops.any { it is Op.Takeover }) CoroutineStart.UNDISPATCHED else CoroutineStart.DEFAULT) {
             ops.forEach { op -> currentSession.submit(op) }
         }
     }

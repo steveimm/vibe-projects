@@ -270,9 +270,12 @@ class AccessibilityPlatform(
         }
     }
 
-    override suspend fun performAction(action: UIAction): ActionResult {
-        if (!isScreenAvailable(service)) return ActionResult.Failure("Unlock the phone to continue.")
-        return when (action) {
+    override suspend fun performAction(action: UIAction): ActionResult = withContext(Dispatchers.Main) {
+        if (overlayTouchGate?.awaitGestureAccess() == false) {
+            return@withContext ActionResult.Cancelled("User is interacting with PocketPilot controls")
+        }
+        if (!isScreenAvailable(service)) return@withContext ActionResult.Failure("Unlock the phone to continue.")
+        when (action) {
             is UIAction.ClickNodeAt -> {
                 recordOutOfBoundsActionTarget("click_node", action.x, action.y)
                 visualizer?.showClick(action.x.toFloat(), action.y.toFloat())
@@ -519,8 +522,11 @@ class AccessibilityPlatform(
 
     /** Launch an app by package name. */
     override suspend fun launchApp(packageName: String): ActionResult {
-        if (!isScreenAvailable(service)) return ActionResult.Failure("Unlock the phone to continue.")
         return withContext(Dispatchers.Main) {
+            if (overlayTouchGate?.awaitGestureAccess() == false) {
+                return@withContext ActionResult.Cancelled("User is interacting with PocketPilot controls")
+            }
+            if (!isScreenAvailable(service)) return@withContext ActionResult.Failure("Unlock the phone to continue.")
             try {
                 val pm = service.packageManager
                 val launchIntent = pm.getLaunchIntentForPackage(packageName)

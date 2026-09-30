@@ -18,7 +18,8 @@ internal class TurnExecutionPhaseRunner(
         private val config: AgentExecutionConfig,
         private val services: SessionServices,
         private val eventDispatcher: AgentEventDispatcher,
-        private val trace: AgentTrace
+        private val trace: AgentTrace,
+        private val isInterrupted: () -> Boolean = { false },
 ) {
         companion object {
                 private const val TAG = "TurnExecutionPhase"
@@ -111,7 +112,8 @@ internal class TurnExecutionPhaseRunner(
                                 context =
                                         SimpleToolRouterContext(
                                                 platform = services.platform,
-                                                currentSnapshot = currentSnapshot
+                                                currentSnapshot = currentSnapshot,
+                                                cancellationCheck = isInterrupted,
                                         ),
                                 packageName = services.platform.getCurrentPackageName(),
                                 callId = toolCall.id,
@@ -188,6 +190,9 @@ internal class TurnExecutionPhaseRunner(
                 toolCall: ToolCallRequest,
                 toolResult: ToolCallResult
         ): ObservationCapture {
+                if (isInterrupted() || toolResult is ToolCallResult.Cancelled) {
+                        return ObservationCapture(ToolObservation.TextOutput(formatToolResult(toolResult)), null)
+                }
                 if (toolResult is ToolCallResult.Success && toolResult.observation != null) {
                         val observation = toolResult.observation
                         return when (observation) {
