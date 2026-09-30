@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -35,6 +36,7 @@ fun CollapsePill(
     expanded: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
+    active: Boolean = false,
 ) {
     val spacing = MaterialTheme.pocketPilot.spacing
     val rotation by animateFloatAsState(
@@ -69,6 +71,10 @@ fun CollapsePill(
                     .rotate(rotation),
             )
             Spacer(Modifier.width(spacing.sm))
+            if (active && !PocketPilotMotion.reducedMotion()) {
+                CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(spacing.sm))
+            }
             Text(
                 text = summary,
                 style = MaterialTheme.typography.labelMedium,

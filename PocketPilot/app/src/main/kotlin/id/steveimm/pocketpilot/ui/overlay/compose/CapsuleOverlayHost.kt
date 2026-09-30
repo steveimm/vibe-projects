@@ -78,6 +78,7 @@ class CapsuleOverlayHost(
         savedStateRegistryOwner = savedStateRegistryOwner,
         windowManager = windowManager,
         tag = TAG,
+        animateVisibility = true,
     )
 
     private val inputDraft = mutableStateOf("")

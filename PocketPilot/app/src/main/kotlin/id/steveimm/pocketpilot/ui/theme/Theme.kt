@@ -83,7 +83,11 @@ fun PocketPilotTheme(
         }
     }
 
-    CompositionLocalProvider(LocalPocketPilotTokens provides tokens, LocalContentColor provides colorScheme.onBackground) {
+    CompositionLocalProvider(
+        LocalPocketPilotTokens provides tokens,
+        LocalContentColor provides colorScheme.onBackground,
+        LocalReducedMotion provides observeReducedMotion(),
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = PocketPilotTypography,

@@ -43,6 +43,8 @@ import androidx.compose.ui.res.painterResource
 import id.steveimm.pocketpilot.R
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -113,6 +115,13 @@ fun ChatScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHost = remember { SnackbarHostState() }
+    LaunchedEffect(uiState.historyError) {
+        uiState.historyError?.let {
+            snackbarHost.showSnackbar(it)
+            viewModel.dismissHistoryError()
+        }
+    }
     val messages = viewModel.messages
     val pendingInput by viewModel.pendingInput.collectAsStateWithLifecycle()
     val startupError by viewModel.startupError.collectAsStateWithLifecycle()
@@ -200,6 +209,7 @@ fun ChatScreen(
                 .background(MaterialTheme.colorScheme.background),
         ) {
             Scaffold(
+                snackbarHost = { SnackbarHost(snackbarHost) },
                 modifier = Modifier.fillMaxSize(),
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 containerColor = Color.Transparent,

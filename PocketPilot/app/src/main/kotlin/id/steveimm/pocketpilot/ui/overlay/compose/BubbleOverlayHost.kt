@@ -1,6 +1,9 @@
 package id.steveimm.pocketpilot.ui.overlay.compose
 
 import android.accessibilityservice.AccessibilityService
+import android.animation.ValueAnimator
+import android.view.animation.DecelerateInterpolator
+import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
 import android.annotation.SuppressLint
 import android.content.ComponentCallbacks
 import android.content.Context
@@ -44,6 +47,7 @@ class BubbleOverlayHost(
     private var startX = 0f
     private var startY = 0f
     private var dragging = false
+    private var dockAnimation: ValueAnimator? = null
     private var passThroughDepth = 0
     private val configurationCallback = object : ComponentCallbacks {
         override fun onConfigurationChanged(newConfig: Configuration) { placeAtEdge() }
@@ -95,6 +99,7 @@ class BubbleOverlayHost(
 
     fun hide() {
         if (!isShowing()) return
+        dockAnimation?.cancel()
         service.unregisterComponentCallbacks(configurationCallback)
         composeHost.hide()
     }
@@ -104,6 +109,7 @@ class BubbleOverlayHost(
     private fun onTouch(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                dockAnimation?.cancel()
                 downX = event.rawX
                 downY = event.rawY
                 startX = x
@@ -123,7 +129,7 @@ class BubbleOverlayHost(
                     rightEdge = x >= (bounds.left + bounds.right) / 2f
                     heightFraction = if (bounds.height() == 0) 0f else (y - bounds.top) / bounds.height()
                     preferences.edit().putBoolean("right_edge", rightEdge).putFloat("height_fraction", heightFraction).apply()
-                    placeAtEdge()
+                    placeAtEdge(animate = true)
                 } else onToggleCapsule()
             }
             MotionEvent.ACTION_CANCEL -> placeAtEdge()
@@ -141,9 +147,26 @@ class BubbleOverlayHost(
             (metrics.bounds.height() - insets.bottom - margin - dp(60)).coerceAtLeast(top))
     }
 
-    private fun placeAtEdge() {
+    private fun placeAtEdge(animate: Boolean = false) {
+        dockAnimation?.cancel()
         val bounds = movementBounds()
-        moveTo(if (rightEdge) bounds.right.toFloat() else bounds.left.toFloat(), bounds.top + bounds.height() * heightFraction)
+        val targetX = if (rightEdge) bounds.right.toFloat() else bounds.left.toFloat()
+        val targetY = bounds.top + bounds.height() * heightFraction
+        if (!animate || !ValueAnimator.areAnimatorsEnabled()) {
+            moveTo(targetX, targetY)
+            return
+        }
+        val originX = x
+        val originY = y
+        dockAnimation = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = PocketPilotMotion.Standard.toLong()
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { animator ->
+                val fraction = animator.animatedValue as Float
+                moveTo(originX + (targetX - originX) * fraction, originY + (targetY - originY) * fraction)
+            }
+            start()
+        }
     }
 
     private fun moveTo(nextX: Float, nextY: Float) {

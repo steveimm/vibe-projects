@@ -73,5 +73,6 @@ enum class ActionState {
 
 /** ChatUiState - Overall UI state for the chat screen. */
 data class ChatUiState(
-    val showEmptyState: Boolean = true
+    val showEmptyState: Boolean = true,
+    val historyError: String? = null,
 )

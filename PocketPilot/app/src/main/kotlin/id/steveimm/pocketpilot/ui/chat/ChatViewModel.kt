@@ -303,6 +303,8 @@ class ChatViewModel(
         }
     }
 
+    fun dismissHistoryError() { _uiState.update { it.copy(historyError = null) } }
+
     fun dismissError() {
         AgentService.instance?.dismissError()
     }

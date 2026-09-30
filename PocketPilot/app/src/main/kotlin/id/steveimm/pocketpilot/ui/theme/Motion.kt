@@ -1,14 +1,38 @@
 package id.steveimm.pocketpilot.ui.theme
 
 import android.provider.Settings
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 
-// D1 §5: four durations, two easings, no springs. Every motion call site picks
-// one of these primitives — no ad-hoc timing constants in feature code.
+internal val LocalReducedMotion = staticCompositionLocalOf { false }
+
+@Composable
+internal fun observeReducedMotion(): Boolean {
+    val resolver = LocalContext.current.contentResolver
+    fun read(): Boolean = Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    var reduced by remember(resolver) { mutableStateOf(read()) }
+    DisposableEffect(resolver) {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) { reduced = read() }
+        }
+        resolver.registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, observer)
+        reduced = read()
+        onDispose { resolver.unregisterContentObserver(observer) }
+    }
+    return reduced
+}
+
 object PocketPilotMotion {
 
     // Durations (ms)
@@ -21,8 +45,7 @@ object PocketPilotMotion {
     val EaseInOutSine: Easing = CubicBezierEasing(0.37f, 0f, 0.63f, 1f)
     val EaseOutCubic: Easing = CubicBezierEasing(0.33f, 1f, 0.68f, 1f)
 
-    // Named primitives — one per real surface need.
-    // Map directly onto the contract in design_aligned.md §2.
+    // Shared durations keep related transitions consistent.
     const val StatusFlip: Int = Quick           // 120ms status/glyph flip
     const val TraceEnter: Int = Standard        // 240ms trace-item enter
     const val RowExpand: Int = Standard         // 240ms row expand/collapse
@@ -34,17 +57,6 @@ object PocketPilotMotion {
     const val CapsuleBreath: Int = Breath       // 900ms capsule breath in running mode
     const val GlowPulse: Int = Breath           // 900ms glow pulse
 
-    // D1 §8 reduced-motion contract: - trace enter → instant + 120ms fade - collapse/expand → instant - capsule breath → static paw at
-    // full alpha - looping decorative motion (glow, thinking pulse) → paused - streaming cursor → keeps blinking (liveness signal)
     @Composable
-    fun reducedMotion(): Boolean {
-        val context = LocalContext.current
-        return remember(context) {
-            Settings.Global.getFloat(
-                context.contentResolver,
-                Settings.Global.ANIMATOR_DURATION_SCALE,
-                1f,
-            ) == 0f
-        }
-    }
+    fun reducedMotion(): Boolean = LocalReducedMotion.current
 }

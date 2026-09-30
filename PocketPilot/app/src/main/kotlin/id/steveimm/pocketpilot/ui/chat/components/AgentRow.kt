@@ -66,6 +66,7 @@ internal fun AgentRow(
         if (traceBlocks.isNotEmpty()) {
             CollapsePill(
                 summary = outcomeFooter(message),
+                active = message.rowState == RowState.Live,
                 expanded = expanded,
                 onToggle = {
                     if (!expanded) onInspect()

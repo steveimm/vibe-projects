@@ -33,12 +33,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,7 +56,6 @@ import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.TriangleAlert
-import kotlinx.coroutines.delay
 
 /** SmartCapsuleSurface — orchestrator composable for the Smart Capsule. */
 @Composable
@@ -110,18 +105,9 @@ fun SmartCapsuleSurface(
     val shape = MaterialTheme.shapes.large
     val spacing = MaterialTheme.pocketPilot.spacing
 
-    // N1 ledger: latch a stable start timestamp the first composition we see Running, drop it on transition out.
-    val isRunning = mode is CapsuleMode.Running
-    var runningStartedAtMs by remember { mutableStateOf<Long?>(null) }
-    LaunchedEffect(isRunning) {
-        runningStartedAtMs = if (isRunning) System.currentTimeMillis() else null
-    }
-    val elapsedLabel = produceElapsedLabel(runningStartedAtMs)
 
     Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            ,
+        modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = shape,
     ) {
@@ -131,7 +117,7 @@ fun SmartCapsuleSurface(
                 .padding(top = spacing.sm, bottom = 6.dp),
         ) {
             if (isTaskActive) {
-                CapsuleStatusLine(spec = renderSpec, elapsedLabel = elapsedLabel, onClick = onStatusClick)
+                CapsuleStatusLine(spec = renderSpec, onClick = onStatusClick)
                 if (mode !is CapsuleMode.Done || context != CapsuleContext.MAIN_APP) {
                     if (renderSpec.expandedBody != null) {
                         CapsuleDivider()
@@ -280,7 +266,6 @@ private fun StartupErrorBanner(
 @Composable
 private fun CapsuleStatusLine(
     spec: CapsuleRenderSpec,
-    elapsedLabel: String?,
     onClick: (() -> Unit)?,
 ) {
     val rowModifier = if (onClick != null) {
@@ -319,18 +304,6 @@ private fun CapsuleStatusLine(
             Spacer(Modifier.width(8.dp))
         }
 
-        // N1 ledger: a SIBLING of the marqueed thought Text below — fixed,
-        // not scrolling. The basicMarquee modifier is only on the thought.
-        if (elapsedLabel != null) {
-            Text(
-                text = elapsedLabel,
-                style = MaterialTheme.pocketPilot.monoSmall,
-                color = MaterialTheme.pocketPilot.mutedText,
-                maxLines = 1,
-            )
-            Spacer(Modifier.width(8.dp))
-        }
-
         val textColor = MaterialTheme.colorScheme.onSurface.copy(
             alpha = if (spec.thought.dimmed) 0.6f else 1f,
         )
@@ -360,20 +333,3 @@ private fun CapsuleStatusLine(
         }
     }
 }
-
-// 1Hz ticker producing "[t+12s]" for as long as startedAtMs is non-null.
-// Returns null when not Running so the ledger Text is not composed at all.
-@Composable
-private fun produceElapsedLabel(startedAtMs: Long?): String? {
-    if (startedAtMs == null) return null
-    val elapsed by produceState(initialValue = elapsedSecondsFrom(startedAtMs), startedAtMs) {
-        while (true) {
-            value = elapsedSecondsFrom(startedAtMs)
-            delay(1000L)
-        }
-    }
-    return "[t+${elapsed}s]"
-}
-
-private fun elapsedSecondsFrom(startedAtMs: Long): Long =
-    ((System.currentTimeMillis() - startedAtMs) / 1000L).coerceAtLeast(0L)

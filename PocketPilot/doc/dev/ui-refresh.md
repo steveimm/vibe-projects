@@ -61,3 +61,11 @@ Settings now keeps a back stack, including App access opened from Automation. Ch
 Stopping preserves partial response text and records an explicit stopped state for history. Errors use the themed alert treatment. Permission repair distinguishes a selected accessibility service that is connecting from a permission that is disabled, and observes reconnection while Main remains open.
 
 Emulator verification: long streamed fixture and completed Markdown, scroll up and Latest visibility, reasoning expansion without losing position, New chat reset, nested Android Back, and Stop with retained partial text. Unit coverage verifies interruption persistence and connection-versus-permission state. All 901 release unit tests and release lint passed, device UI tests compiled, and the signed ARM64 APK passed signature/ABI/alignment checks. This stage also gives Latest a 48 dp target and labels the duration as Activity after visual review.
+
+## Motion and feedback
+
+The floating panel now fades and moves a short distance on opening/closing. Its animation runs on the content view, while screenshot suppression owns the outer window container. Closing immediately releases touch interception. Bubble dragging still follows raw touch coordinates and now animates the final edge docking. Android's reduced-motion preference is observed while the UI is open. Removed the panel-local elapsed timer, which reset whenever the panel reopened.
+
+Model discovery and saving have separate progress labels. The server form validates after leaving a field, supports showing/hiding an optional key, opens the discovered-model menu, and explains that saved settings apply to new chats. History failures now produce visible feedback. Live activity has a progress indicator.
+
+Validation: 901 release unit tests, release lint, and device UI test compilation passed. On the signed ARM64 emulator build, verified drag/dock, repeated panel toggles, disabled animations, 150% text, landscape chat and question/reply completion, model discovery/selection/save feedback, and the screenshot tool. The captured model screenshot excludes the bubble while the emulator retains it afterward. Full first-run onboarding, additional failure states, dark active controls, and final configuration restoration remain to check.

@@ -7,6 +7,7 @@ import id.steveimm.pocketpilot.history.model.MessageConverter
 import id.steveimm.pocketpilot.history.model.SessionInfo
 import id.steveimm.pocketpilot.ui.chat.model.ChatMessage
 import id.steveimm.pocketpilot.ui.chat.model.ChatUiState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,8 +39,14 @@ class ChatSessionHistoryController(
     fun loadSessions() {
         val manager = sessionHistoryManager ?: return
         scope.launch {
-            _sessions.value = manager.listSessions()
-            Log.d(TAG, "Loaded ${_sessions.value.size} sessions")
+            try {
+                _sessions.value = manager.listSessions()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to list chats", e)
+                uiState.update { it.copy(historyError = "Could not load your chats. Try opening history again.") }
+            }
         }
     }
 
@@ -62,6 +69,7 @@ class ChatSessionHistoryController(
                 }
                 .onFailure { error ->
                     Log.e(TAG, "Failed to resume session", error)
+                    uiState.update { it.copy(historyError = "Could not open this chat.") }
                 }
         }
     }
@@ -83,6 +91,7 @@ class ChatSessionHistoryController(
                 }
                 .onFailure { error ->
                     Log.e(TAG, "Failed to delete session", error)
+                    uiState.update { it.copy(historyError = "Could not delete this chat. Try again.") }
                 }
         }
     }
