@@ -11,7 +11,7 @@ import id.steveimm.pocketpilot.session.SessionServices
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -51,10 +51,12 @@ class Agent(
                     cancellationSignal = cancellationSignal,
                     stopRequested = stopRequested,
                     trace = trace,
-                    compactor = compactor
+                    compactor = compactor,
+                    isPauseRequested = { pauseState.value },
             )
 
     suspend fun run(): AgentStopReason {
+        services.llmClientFactory.setPaused(false)
         Log.i(TAG, "Starting agent for goal: ${config.goal}")
         eventDispatcher.status("🚀 Starting agent...")
         trace.sessionStarted(config)
@@ -86,7 +88,9 @@ class Agent(
             }
 
             // Auto-compact before each turn.
-            when (val outcome = compactor.maybeCompact(config.goal, services.historyManager)) {
+            val compaction = compactor.maybeCompact(config.goal, services.historyManager)
+            if (pauseState.value) continue
+            when (val outcome = compaction) {
                 is CompactionOutcome.Compacted -> {
                     consecutiveCompactionFailures = 0
                     eventDispatcher.status(
@@ -132,7 +136,7 @@ class Agent(
             when (val result = turnExecution.outcome) {
                 is TurnOutcome.Continue -> {
                     recoverableRetryCount = 0
-                    delay(config.uiSettleDelayMs)
+                    withTimeoutOrNull(config.uiSettleDelayMs) { pauseState.first { it } }
                 }
                 is TurnOutcome.ToolFailed -> {
                     recoverableRetryCount = 0
@@ -141,7 +145,7 @@ class Agent(
                         finalResponseReason = "Tool recovery limit reached: $toolFailureTurns turns with tool errors in this request."
                         eventDispatcher.status("Summarizing the blocker")
                     }
-                    delay(config.uiSettleDelayMs)
+                    withTimeoutOrNull(config.uiSettleDelayMs) { pauseState.first { it } }
                 }
                 is TurnOutcome.Complete -> {
                     eventDispatcher.status("Finished")
@@ -168,7 +172,7 @@ class Agent(
                     eventDispatcher.status(
                             "⚠️ Error (retry $recoverableRetryCount/$retryLimit): ${result.message}"
                     )
-                    delay(config.uiSettleDelayMs)
+                    withTimeoutOrNull(config.uiSettleDelayMs) { pauseState.first { it } }
                 }
                 TurnOutcome.Cancelled -> {
                     eventDispatcher.status("🛑 Cancelled")
@@ -203,11 +207,13 @@ class Agent(
             pauseState.value = true
             pauseConfirmed = confirmed
         }
+        services.llmClientFactory.setPaused(true)
         eventDispatcher.status("⏸️ Paused")
         return confirmed
     }
 
     suspend fun resume() {
+        services.llmClientFactory.setPaused(false)
         lifecycleMutex.withLock {
             pauseConfirmed?.complete(Unit)
             pauseConfirmed = null

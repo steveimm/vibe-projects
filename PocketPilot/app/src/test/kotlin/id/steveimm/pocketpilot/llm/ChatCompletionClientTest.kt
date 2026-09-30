@@ -127,7 +127,7 @@ class ChatCompletionClientTest {
     }
 
     @Test
-    fun `provider SocketTimeoutException triggers retry loop`() {
+    fun `provider timeout fails without another generation attempt`() {
         val client = ChatCompletionClient(baseUrl = "http://localhost:8000/v1", apiKey = apiKey)
         val attempts = java.util.concurrent.atomic.AtomicInteger(0)
         installFailingOpenAIClient(client) {
@@ -153,7 +153,7 @@ class ChatCompletionClientTest {
             }
         }
 
-        assertThat(attempts.get()).isAtLeast(2)
+        assertThat(attempts.get()).isEqualTo(1)
     }
 
     @Suppress("UNCHECKED_CAST")

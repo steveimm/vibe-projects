@@ -508,8 +508,8 @@ private constructor(
     }
 
     private suspend fun handleInterrupt() {
-        if (_state.value != SessionState.Running && _state.value != SessionState.TakeoverPending) {
-            Log.w(TAG, "Cannot interrupt: not running (state: ${_state.value})")
+        if (_state.value !in setOf(SessionState.Running, SessionState.TakeoverPending, SessionState.Paused)) {
+            Log.w(TAG, "Cannot interrupt: no active task (state: ${_state.value})")
             return
         }
 

@@ -83,21 +83,6 @@ class StreamRetryPolicyTest {
         assertThat((action as StreamRetryAction.Retry).nextBackoffMs).isEqualTo(2000L)
     }
 
-    @Test
-    fun `nextBackoffMs is capped at MAX_BACKOFF_MS`() {
-        val action = StreamRetryPolicy.decide(
-            tag = tag,
-            classified = TransientException("error"),
-            attempt = 1,
-            emittedEvent = false,
-            backoffMs = 50_000L
-        )
-        assertThat(action).isInstanceOf(StreamRetryAction.Retry::class.java)
-        assertThat((action as StreamRetryAction.Retry).nextBackoffMs)
-            .isEqualTo(LLMClient.MAX_BACKOFF_MS)
-    }
-
-    // Boundary: this file characterizes ONLY the pure decision matrix in StreamRetryPolicy.decide.
 
     @Test
     fun `policy guard - retryable plus emittedEvent always returns FailAndStop`() {
@@ -292,18 +277,6 @@ class StreamRetryPolicyTest {
         assertThat((action as StreamRetryAction.Retry).nextBackoffMs).isEqualTo(expected)
     }
 
-    @Test
-    fun `nextBackoffMs at exact cap stays at MAX_BACKOFF_MS`() {
-        val action = StreamRetryPolicy.decide(
-            tag = tag,
-            classified = TransientException("error"),
-            attempt = 1,
-            emittedEvent = false,
-            backoffMs = LLMClient.MAX_BACKOFF_MS
-        )
-        assertThat((action as StreamRetryAction.Retry).nextBackoffMs)
-            .isEqualTo(LLMClient.MAX_BACKOFF_MS)
-    }
 
     @Test
     fun `RateLimit retryAfterMs of zero is honored over backoff`() {
@@ -318,4 +291,10 @@ class StreamRetryPolicyTest {
         )
         assertThat((action as StreamRetryAction.Retry).waitMs).isEqualTo(0L)
     }
+    @Test
+    fun `long retry-after fails promptly rather than waiting silently`() {
+        val action = StreamRetryPolicy.decide(tag, RateLimitException("busy", 60_000), 1, false, 1_000)
+        assertThat(action).isEqualTo(StreamRetryAction.Stop)
+    }
+
 }

@@ -177,9 +177,10 @@ class OpenAIErrorClassifierTest {
     }
 
     @Test
-    fun `SocketTimeoutException is TransientException`() {
+    fun `SocketTimeoutException surfaces a terminal server timeout`() {
         val result = OpenAIErrorClassifier.classify(SocketTimeoutException("connect timed out"))
-        assertThat(result).isInstanceOf(TransientException::class.java)
+        assertThat(result).isNotInstanceOf(TransientException::class.java)
+        assertThat(result.message).contains("stopped responding")
     }
 
     @Test

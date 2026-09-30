@@ -3,7 +3,9 @@ package id.steveimm.pocketpilot.llm
 import android.util.Log
 import kotlinx.coroutines.CancellationException
 import java.io.IOException
-import java.net.SocketTimeoutException
+import java.net.ConnectException
+import java.io.InterruptedIOException
+import javax.net.ssl.SSLException
 import java.net.UnknownHostException
 
 internal object OpenAIErrorClassifier {
@@ -11,6 +13,7 @@ internal object OpenAIErrorClassifier {
 
     fun classify(e: Exception): Exception = when (e) {
         is CancellationException -> throw e
+        is ModelRequestPausedException -> e
         // Fast-path: preserve existing domain exceptions
         is RateLimitException, is TransientException -> e
 
@@ -30,17 +33,22 @@ internal object OpenAIErrorClassifier {
     private fun classifyByMessage(e: Exception): Exception {
         val message = e.message.orEmpty()
         val cause = e.cause?.message.orEmpty()
+        val causes = generateSequence<Throwable>(e) { it.cause }.take(12).toList()
+        causes.filterIsInstance<ModelRequestPausedException>().firstOrNull()?.let { return it }
+        if (causes.any { it is InterruptedIOException }) {
+            return RuntimeException("The model server stopped responding. Check the server and try again.", e)
+        }
+        if (causes.any { it is ConnectException || it is UnknownHostException }) {
+            return RuntimeException("Cannot reach the model server. Check that it is running and the address is correct.", e)
+        }
+        if (causes.any { it is SSLException }) return RuntimeException("The model server's TLS connection failed.", e)
+
 
         return when {
             isRateLimit(message, cause) -> {
                 val retryAfter = extractRetryAfter(message) ?: extractRetryAfter(cause)
                 Log.w(TAG, "Rate limit detected: ${e.message}")
                 RateLimitException("The model server is rate limiting requests.", retryAfter)
-            }
-
-            e is SocketTimeoutException -> {
-                Log.w(TAG, "Request timeout", e)
-                TransientException("Request timeout - try again", e)
             }
 
             isUnknownHost(e, message, cause) -> {

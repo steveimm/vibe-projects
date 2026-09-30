@@ -2,7 +2,6 @@ package id.steveimm.pocketpilot.llm
 
 import com.google.common.truth.Truth.assertThat
 import java.io.IOException
-import java.net.SocketTimeoutException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
@@ -45,7 +44,7 @@ class StreamRetryRunnerTest {
         ) { attempt, emitter ->
             attempts++
             emitter.emit(LLMStreamEvent.Created("resp-$attempt"))
-            if (attempts < 3) throw SocketTimeoutException("connection reset")
+            if (attempts < 3) throw TransientException("connection reset")
         }
 
         // Fixed: retries through Created events, succeeds on attempt 3
@@ -65,8 +64,8 @@ class StreamRetryRunnerTest {
             initialBackoffMs = 10L
         ) { _, _ ->
             attempts++
-            // SocketTimeoutException survives classify() as TransientException
-            if (attempts < 3) throw SocketTimeoutException("timeout")
+            // A retryable server failure retains its retry classification.
+            if (attempts < 3) throw TransientException("timeout")
             // Success on attempt 3
         }
 
@@ -87,7 +86,7 @@ class StreamRetryRunnerTest {
         ) { _, emitter ->
             attempts++
             emitter.emit(LLMStreamEvent.TextDelta("partial"))
-            throw SocketTimeoutException("stream interrupted")
+            throw TransientException("stream interrupted")
         }
 
         assertThat(attempts).isEqualTo(1)
@@ -162,7 +161,7 @@ class StreamRetryRunnerTest {
             initialBackoffMs = 10L
         ) { _, emitter ->
             emitter.emit(LLMStreamEvent.TextDelta("data"))
-            throw SocketTimeoutException("error after output")
+            throw TransientException("error after output")
         }
 
         assertThat(result.failureEmitted).isTrue()
@@ -214,7 +213,7 @@ class StreamRetryRunnerTest {
         ) { _, emitter ->
             attempts++
             emitter.emit(LLMStreamEvent.Failed("upstream failure"))
-            throw SocketTimeoutException("retryable error after Failed")
+            throw TransientException("retryable error after Failed")
         }
 
         // Must NOT retry — caller already saw Failed
@@ -235,7 +234,7 @@ class StreamRetryRunnerTest {
             initialBackoffMs = 10L
         ) { _, _ ->
             attempts++
-            throw SocketTimeoutException("always fails")
+            throw TransientException("always fails")
         }
 
         assertThat(attempts).isEqualTo(3)
@@ -307,7 +306,7 @@ class StreamRetryRunnerTest {
             initialBackoffMs = 10L
         ) { _, _ ->
             attempts++
-            if (attempts < 4) throw SocketTimeoutException("retry me")
+            if (attempts < 4) throw TransientException("retry me")
         }
 
         assertThat(attempts).isEqualTo(4)
@@ -330,7 +329,7 @@ class StreamRetryRunnerTest {
         ) { _, emitter ->
             attempts++
             emitter.emit(LLMStreamEvent.ToolCallDone(LLMToolCall("c1", "f", "{}")))
-            throw SocketTimeoutException("after tool call")
+            throw TransientException("after tool call")
         }
 
         assertThat(attempts).isEqualTo(1)
@@ -354,7 +353,7 @@ class StreamRetryRunnerTest {
             initialBackoffMs = 10L
         ) { _, emitter ->
             emitter.emit(LLMStreamEvent.Failed("explicit"))
-            throw SocketTimeoutException("after explicit failure")
+            throw TransientException("after explicit failure")
         }
 
         assertThat(result.completed).isFalse()
@@ -382,7 +381,7 @@ class StreamRetryRunnerTest {
 
     @Test
     fun `lastError surfaces classified exception after FailAndStop`() = runTest {
-        val original = SocketTimeoutException("late timeout")
+        val original = TransientException("late timeout")
         val result = streamWithRetry(
             tag = "test",
             emitToFlow = {},
@@ -432,7 +431,7 @@ class StreamRetryRunnerTest {
             initialBackoffMs = 10L
         ) { _, _ ->
             attempts++
-            throw SocketTimeoutException("always")
+            throw TransientException("always")
         }
 
         assertThat(attempts).isEqualTo(LLMClient.MAX_RETRIES)
@@ -479,7 +478,7 @@ class StreamRetryRunnerTest {
         StreamRetryRunResult(
             completed = false,
             failureEmitted = true,
-            lastError = SocketTimeoutException("x")
+            lastError = TransientException("x")
         ).closeFlow(emitted::add) { closed = true }
 
         assertThat(emitted).isEmpty()

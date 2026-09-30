@@ -17,7 +17,10 @@ internal object TurnErrorClassifier {
         "Conversation too long for model context window. Start a new task or reduce the number of turns."
 
     fun classify(error: Throwable): TurnErrorClassification {
-        val causes = generateSequence(error) { it.cause }.toList()
+        val causes = generateSequence(error) { it.cause }.take(12).toList()
+        if (causes.any { it is id.steveimm.pocketpilot.llm.ModelRequestException }) {
+            return TurnErrorClassification(error.message ?: "Model request failed", recoverable = false)
+        }
 
         fun anyMessageContains(keyword: String): Boolean {
             return causes.any { cause ->

@@ -779,6 +779,29 @@ class AgentSessionTest {
         }
 
         @Test
+        fun `interrupt while paused completes the task as stopped`() = runTest {
+                val llm = GatedStreamingLLMClient()
+                val session = buildSession(scope = this, captureDelayMs = 0L, llmDelayMs = 0L, llmClient = llm)
+                val events = mutableListOf<AgentEvent>()
+                val collector = launch { session.events.collect { events.add(it) } }
+                session.submit(Op.UserInput("goal"))
+                llm.streamStarted.await()
+                val takeover = launch { session.submit(Op.Takeover) }
+                yield()
+                llm.release(0)
+                runCurrent()
+                takeover.join()
+                assertThat(session.state.value).isEqualTo(SessionState.Paused)
+                session.submit(Op.Interrupt)
+                runCurrent()
+                assertThat(session.state.value).isEqualTo(SessionState.Idle)
+                assertThat(events.filterIsInstance<TaskCompleted>().single().outcome).isEqualTo(TaskOutcome.USER_STOPPED)
+                session.submit(Op.Shutdown)
+                advanceUntilIdle()
+                collector.cancel()
+        }
+
+        @Test
         fun `interrupt rejected in created`() = runTest {
                 val session = buildSession(scope = this, captureDelayMs = 0L, llmDelayMs = 0L)
                 val job = launch { session.events.collect { } }

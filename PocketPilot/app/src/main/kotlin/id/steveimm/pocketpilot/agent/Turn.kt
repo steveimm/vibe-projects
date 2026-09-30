@@ -180,6 +180,7 @@ class Turn(
                 )
                 .collect { event ->
                     when (event) {
+                        LLMStreamEvent.Progress -> Unit
                         is LLMStreamEvent.Created -> {
                             Log.d(TAG, "Response created with ID: ${event.responseId}")
                         }
@@ -209,7 +210,7 @@ class Turn(
                         is LLMStreamEvent.Failed -> {
                             Log.e(TAG, event.error)
                             classifyContextWindowExceeded(event.error)?.let { throw it }
-                            throw RuntimeException(event.error)
+                            throw id.steveimm.pocketpilot.llm.ModelRequestException(event.error)
                         }
                     }
                 }

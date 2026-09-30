@@ -35,6 +35,7 @@ internal object StreamRetryPolicy {
                         is RateLimitException -> classified.retryAfterMs ?: backoffMs
                         else -> backoffMs
                     }
+            if (waitMs > 5_000) return StreamRetryAction.Stop
             Log.w(
                     tag,
                     "Retryable stream error (attempt $attempt/$maxRetries), waiting ${waitMs}ms"

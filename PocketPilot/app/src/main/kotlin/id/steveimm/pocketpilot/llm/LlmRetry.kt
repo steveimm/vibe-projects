@@ -12,35 +12,37 @@ internal object LlmRetry {
     suspend fun <T> executeWithRetry(
             tag: String,
             operationName: String,
+            maxAttempts: Int = LLMClient.MAX_RETRIES,
             block: suspend () -> T
     ): T {
         var lastException: Exception? = null
         var backoffMs = LLMClient.INITIAL_BACKOFF_MS
 
-        for (attempt in 1..LLMClient.MAX_RETRIES) {
+        for (attempt in 1..maxAttempts) {
             try {
                 return block()
             } catch (e: RateLimitException) {
                 lastException = e
-                if (attempt == LLMClient.MAX_RETRIES) {
-                    Log.e(tag, "Max retries (${LLMClient.MAX_RETRIES}) exceeded for $operationName (rate limit)")
+                if (attempt == maxAttempts) {
+                    Log.e(tag, "Max retries ($maxAttempts) exceeded for $operationName (rate limit)")
                     throw e
                 }
 
                 val waitMs = e.retryAfterMs ?: backoffMs
-                Log.w(tag, "Rate limited (attempt $attempt/${LLMClient.MAX_RETRIES}), waiting ${waitMs}ms")
+                if (waitMs > 5_000) throw e
+                Log.w(tag, "Rate limited (attempt $attempt/$maxAttempts), waiting ${waitMs}ms")
                 delay(waitMs)
                 backoffMs = advanceBackoff(backoffMs)
             } catch (e: TransientException) {
                 lastException = e
-                if (attempt == LLMClient.MAX_RETRIES) {
-                    Log.e(tag, "Max retries (${LLMClient.MAX_RETRIES}) exceeded for $operationName (transient error)")
+                if (attempt == maxAttempts) {
+                    Log.e(tag, "Max retries ($maxAttempts) exceeded for $operationName (transient error)")
                     throw e.cause ?: e
                 }
 
                 Log.w(
                         tag,
-                        "Transient error (attempt $attempt/${LLMClient.MAX_RETRIES}): ${e.message}, retrying in ${backoffMs}ms"
+                        "Transient error (attempt $attempt/$maxAttempts): ${e.message}, retrying in ${backoffMs}ms"
                 )
                 delay(backoffMs)
                 backoffMs = advanceBackoff(backoffMs)

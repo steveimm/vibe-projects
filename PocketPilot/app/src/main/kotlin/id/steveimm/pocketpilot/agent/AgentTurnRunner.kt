@@ -21,6 +21,7 @@ internal class AgentTurnRunner(
         private val cancellationSignal: CompletableDeferred<AgentStopReason>,
         private val stopRequested: AtomicBoolean,
         private val trace: AgentTrace,
+        private val isPauseRequested: () -> Boolean = { false },
         private val compactor: Compactor? = null
 ) {
         companion object {
@@ -67,6 +68,9 @@ internal class AgentTurnRunner(
                                 val snapshot = preTurnContext.snapshot
                                 if (isTurnCancelled()) {
                                         TurnOutcome.Cancelled
+                                } else if (isPauseRequested()) {
+                                        nextState = nextState.copy(observeScreen = true)
+                                        TurnOutcome.Continue
                                 } else {
                                         val preparedTurn =
                                                 if (snapshot != null) prepareTurn(turnNumber, nextState, snapshot) else PreparedTurn(nextState, emptyList())
@@ -83,6 +87,15 @@ internal class AgentTurnRunner(
                                                         finalResponseReason = finalResponseReason,
                                                 )
 
+                                        if (isPauseRequested()) {
+                                                planningResult.toolCalls.forEach { call ->
+                                                        services.historyManager.addItem(id.steveimm.pocketpilot.history.ResponseItem.FunctionCallOutput(
+                                                                call.id, "Not executed: user took control. Observe the screen again before continuing."
+                                                        ))
+                                                }
+                                                nextState = nextState.copy(observeScreen = true)
+                                                TurnOutcome.Continue
+                                        } else {
                                         check(finalResponseReason == null || planningResult.isComplete) {
                                                 "The model did not return a final answer after the tool recovery limit."
                                         }
@@ -103,11 +116,15 @@ internal class AgentTurnRunner(
                                                 result = planningResult,
                                                 execution = executionResult
                                         )
+                                        }
                                 }
                         } catch (e: CancellationException) {
                                 throw e // Don't treat coroutine cancellation as a turn error
                         } catch (e: Exception) {
-                                handleTurnFailure(turnId, turnNumber, e)
+                                if (e is id.steveimm.pocketpilot.llm.ModelRequestPausedException || isPauseRequested()) {
+                                        nextState = nextState.copy(observeScreen = true)
+                                        TurnOutcome.Continue
+                                } else handleTurnFailure(turnId, turnNumber, e)
                         } finally {
                                 eventDispatcher.turnCompleted(turnId, turnNumber)
                                 trace.turnCompleted(turnId, turnNumber)

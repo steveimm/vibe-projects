@@ -7,7 +7,6 @@ import com.openai.core.ClientOptions
 import com.openai.core.RequestOptions
 import com.openai.core.http.HttpClient
 import com.openai.core.http.HttpRequest
-import com.openai.client.okhttp.OkHttpClient
 import com.openai.models.ChatModel
 import com.openai.models.chat.completions.ChatCompletionCreateParams
 import com.openai.models.chat.completions.ChatCompletionToolChoiceOption
@@ -18,28 +17,32 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.timeout
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.concurrent.atomic.AtomicReference
+import java.time.Duration
 
 /** LLM client using OpenAI Chat Completions API. */
 class ChatCompletionClient(
     baseUrl: String,
     apiKey: String = "",
+    private val idleTimeout: Duration = Duration.ofSeconds(30),
 ) : LLMClient() {
     companion object {
         private const val TAG = "ChatCompletionClient"
     }
 
+    private val transport = CancellableModelTransport(idleTimeout)
     private val client: OpenAIClient = createClient(ServerBaseUrlValidator.validate(baseUrl).getOrThrow(), apiKey)
 
     private fun createClient(baseUrl: String, apiKey: String): OpenAIClient {
-        val transport = OkHttpClient.builder().apply {
-            InsecureSslConfig.sslSocketFactory?.let { sslSocketFactory(it) }
-            InsecureSslConfig.trustManager?.let { trustManager(it) }
-        }.build()
         val serverTransport = if (apiKey.isNotBlank()) transport else object : HttpClient by transport {
             override fun execute(request: HttpRequest, requestOptions: RequestOptions) =
                 transport.execute(request.toBuilder().removeHeaders("Authorization").build(), requestOptions)
@@ -47,7 +50,7 @@ class ChatCompletionClient(
             override fun executeAsync(request: HttpRequest, requestOptions: RequestOptions) =
                 transport.executeAsync(request.toBuilder().removeHeaders("Authorization").build(), requestOptions)
         }
-        return OpenAIClientImpl(ClientOptions.builder().httpClient(serverTransport).baseUrl(baseUrl).apiKey(apiKey).build())
+        return OpenAIClientImpl(ClientOptions.builder().httpClient(serverTransport).baseUrl(baseUrl).apiKey(apiKey).maxRetries(0).build())
     }
 
     override suspend fun chatWithTools(
@@ -56,10 +59,11 @@ class ChatCompletionClient(
         tools: List<FunctionTool>,
         model: String,
         maxOutputTokens: Long?,
-    ): ResponsesResult = withContext(Dispatchers.IO) {
+    ): ResponsesResult = transport.request {
         LlmRetry.executeWithRetry(
                 tag = TAG,
-                operationName = "chat-completions chatWithTools"
+                operationName = "chat-completions chatWithTools",
+                maxAttempts = 2
         ) {
             executeChatWithTools(systemPrompt, inputItems, tools, model, maxOutputTokens)
         }
@@ -112,6 +116,7 @@ class ChatCompletionClient(
         }
     }
 
+    @OptIn(FlowPreview::class)
     override fun chatWithToolsStreaming(
         systemPrompt: String,
         inputItems: List<ResponseInputItem>,
@@ -121,12 +126,13 @@ class ChatCompletionClient(
         Log.d(TAG, "Starting streaming Chat Completions with ${inputItems.size} input items")
         LlmLogger.logInput(TAG, systemPrompt, inputItems, tools)
 
-        val activeStream = AtomicReference<AutoCloseable?>(null)
+        val requests = transport.newScope()
 
-        val job = launch(Dispatchers.IO) {
+        val job = launch(Dispatchers.IO + transport.context(requests)) {
             val retryResult =
                 streamWithRetry(
                     tag = TAG,
+                    maxRetries = 2,
                     emitToFlow = { event -> trySendBlocking(event).getOrThrow() }
                 ) { attempt, emitter ->
                 val verbose = LlmLogger.isVerboseEnabled
@@ -142,7 +148,6 @@ class ChatCompletionClient(
 
                 withContext(Dispatchers.IO) {
                     val streamResponse = client.chat().completions().createStreaming(params)
-                    activeStream.set(streamResponse)
                     try {
                         streamResponse.use { stream ->
                                 currentCoroutineContext().ensureActive()
@@ -169,6 +174,7 @@ class ChatCompletionClient(
 
                                 // Tool call deltas (streamed incrementally)
                                 delta.toolCalls().ifPresent { calls ->
+                                    if (calls.isNotEmpty()) emitter.emit(LLMStreamEvent.Progress)
                                     for (tcDelta in calls) {
                                         val idx = tcDelta.index()
 
@@ -237,7 +243,7 @@ class ChatCompletionClient(
                         }
                             }
                         } finally {
-                            activeStream.set(null)
+                            streamResponse.close()
                         }
                     }
 
@@ -258,6 +264,10 @@ class ChatCompletionClient(
                     emitter.emit(LLMStreamEvent.Completed(finishReason))
                 }
 
+            if (retryResult.lastError is ModelRequestPausedException) {
+                close(retryResult.lastError)
+                return@launch
+            }
             retryResult.closeFlow(
                 emitToFlow = { trySendBlocking(it).getOrThrow() },
                 closeFlow = { close() }
@@ -265,11 +275,15 @@ class ChatCompletionClient(
         }
 
         awaitClose {
-            activeStream.getAndSet(null)?.runCatching { close() }
+            transport.finish(requests)
             job.cancel()
             Log.d(TAG, "Streaming flow closed")
         }
-    }
+    }.timeout(idleTimeout.toMillis().milliseconds).catch { error ->
+        if (error is TimeoutCancellationException) {
+            emit(LLMStreamEvent.Failed("The model server stopped responding. Check the server and try again."))
+        } else throw error
+    }.flowOn(Dispatchers.IO)
 
     private fun buildParams(
         systemPrompt: String,
@@ -297,6 +311,8 @@ class ChatCompletionClient(
 
         return builder.build()
     }
+
+    override fun setPaused(paused: Boolean) { transport.setPaused(paused) }
 
     override suspend fun cleanup() {
         withContext(Dispatchers.IO) { client.close() }

@@ -37,12 +37,16 @@ abstract class LLMClient {
     /** Check if the client is ready to process requests. */
     open fun isReady(): Boolean = true
 
+    open fun setPaused(paused: Boolean) {}
+
     /** Cleanup resources held by the client. */
     open suspend fun cleanup() {}
 }
 
 /** Unified streaming events for LLM responses. */
 sealed interface LLMStreamEvent {
+    data object Progress : LLMStreamEvent
+
     /** Response creation started, contains response ID */
     data class Created(val responseId: String) : LLMStreamEvent
 
@@ -94,3 +98,8 @@ class TransientException(
     message: String,
     cause: Throwable? = null
 ) : Exception(message, cause)
+
+/** The client already exhausted its bounded attempts; the agent must surface this failure. */
+class ModelRequestException(message: String) : RuntimeException(message)
+
+internal class ModelRequestPausedException : RuntimeException("Generation interrupted for takeover")

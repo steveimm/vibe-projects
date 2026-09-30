@@ -27,6 +27,7 @@ class LLMClientFactory(
     private val clientCache = mutableMapOf<String, Entry>()
     private val ownedClients = mutableListOf<LLMClient>()
     private var closed = false
+    private var paused = false
 
     /** Create or reuse a client. Superseded clients remain usable until session teardown. */
     fun create(modelName: String): LLMClient = synchronized(lock) {
@@ -40,11 +41,16 @@ class LLMClientFactory(
             return@synchronized existing.client
         }
 
-        val client = build()
+        val client = build().also { it.setPaused(paused) }
         ownedClients += client
         clientCache[modelName] = Entry(currentGeneration, client)
         Log.d(TAG, "Created ${client.javaClass.simpleName} for '$modelName' (gen=$currentGeneration)")
         client
+    }
+
+    fun setPaused(value: Boolean) {
+        val clients = synchronized(lock) { paused = value; (ownedClients + listOfNotNull(clientOverride)).distinct() }
+        clients.forEach { it.setPaused(value) }
     }
 
     internal fun owns(client: LLMClient): Boolean = synchronized(lock) {
