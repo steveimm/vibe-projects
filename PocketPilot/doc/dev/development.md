@@ -108,7 +108,7 @@ What is and isn't covered:
 
 - `app/src/test/` — fast JVM unit tests (logic, state, formatting).
 - `app/src/androidTest/kotlin/id/steveimm/pocketpilot/qa/` — Compose UI behavior guards across Chat, SmartCapsule, Settings (45 tests as of 2026-04-17). Layout is flat, files grouped by area (`ChatHeaderTest`, `CapsuleInputTest`, `SettingsNavTest`, ...). No Robot pattern, no annotations, no base classes.
-- `eval/` — AndroidWorld-style agent benchmarks (separate Python harness, see `/autotune`).
+- `eval/` — AndroidWorld-style agent benchmarks (separate Python harness).
 
 Design rule: add tests when adding behavior or fixing bugs — don't wait for bugs to grow guards.
 

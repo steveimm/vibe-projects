@@ -269,4 +269,4 @@ For long-running eval batches, a headless emulator can run on a remote machine (
 - `scripts/remote/proxy_tunnel.sh install` writes `~/.config/pocketpilot/proxy-tunnel.env` from
   `POCKETPILOT_PROXY_HOST` / `POCKETPILOT_PROXY_USER` / `POCKETPILOT_PROXY_PORT` in `.pocketpilot-local.env`.
 
--> See: `/autotune` skill Step 3 for remote eval operational details.
+

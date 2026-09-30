@@ -136,14 +136,6 @@ Good first contributions: model-server compatibility, perception improvements, a
 
 - **[`doc/`](doc/)** — docs hub. [`doc/main/`](doc/main/) for architecture (start at the [README](doc/main/README.md), then drill into `agent/`, `infra/`, `ui/`); [`doc/dev/`](doc/dev/) for build / debug / test workflow; [`doc/release/`](doc/release/) for signing, Play Store, and privacy materials.
 - **[`eval/`](eval/) and [`inspection_tool/`](inspection_tool/)** — Python eval harness (AndroidWorld bridge) and FastAPI replay viewer for `debug-output/` traces. See each folder's README.
-- **Project agent skills** in [`.claude/skills/`](.claude/skills/) — PocketPilot-specific workflows for AI coding agents. The improvement pipeline nests three layers by scope of evidence:
-  - **`/cog-tune`** — *one session*. Analyze a single trace, classify the root cause as cognition or execution, propose fixes.
-  - **`/autotune`** — *one batch*. Run a curated AndroidWorld task set, apply the same diagnose-and-fix across all failures in the batch.
-  - **`/autotune-loop`** — *many batches*. Orchestrate `/autotune` rounds unattended until convergence.
-
-  Two fix paths fork off the diagnosis: **`/prompt-tune`** applies cognition-class fixes across prompts and tool descriptions (respecting layer ownership); **`/action-debug`** isolates execution-class failures at the action layer (baseline vs accessibility-service path). **`/ux-visual-debug`** is orthogonal — end-to-end UX QA via ADB, when the question is interaction quality rather than agent reasoning.
-
-  Both [`CLAUDE.md`](CLAUDE.md) and [`.claude/`](.claude/) are symlinked to their `AGENTS.md` / `GEMINI.md` / `.cursorrules` / `.codex/` / `.agents/` counterparts — the same project-local skills and conventions work for most AI coding agents.
 
 ## 🛡️ Security
 
