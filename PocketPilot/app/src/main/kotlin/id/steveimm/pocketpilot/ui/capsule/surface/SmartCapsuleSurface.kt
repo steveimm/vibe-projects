@@ -133,19 +133,21 @@ fun SmartCapsuleSurface(
             }
             if (isTaskActive) {
                 if (mode !is CapsuleMode.Done || context != CapsuleContext.MAIN_APP) {
-                    if (renderSpec.expandedBody != null) {
-                        CapsuleDivider()
-                        CapsuleDetailBody(text = renderSpec.expandedBody, modifier = Modifier.weight(1f, fill = false))
+                    Column(Modifier.weight(1f, fill = false).heightIn(max = 240.dp).verticalScroll(rememberScrollState())) {
+                        if (renderSpec.expandedBody != null) {
+                            CapsuleDivider()
+                            CapsuleDetailBody(text = renderSpec.expandedBody)
+                        }
+                        if (renderSpec.buttons.primary != null || renderSpec.buttons.stop != null) CapsuleControlBar(
+                            spec = renderSpec,
+                            mode = mode,
+                            onTakeover = onTakeover,
+                            onResume = onResume,
+                            onStop = onStop,
+                            onDone = { callId -> onUserResponse(callId, "done") },
+                            onApprovalResponse = onApprovalResponse,
+                        )
                     }
-                    if (renderSpec.buttons.primary != null || renderSpec.buttons.stop != null) CapsuleControlBar(
-                        spec = renderSpec,
-                        mode = mode,
-                        onTakeover = onTakeover,
-                        onResume = onResume,
-                        onStop = onStop,
-                        onDone = { callId -> onUserResponse(callId, "done") },
-                        onApprovalResponse = onApprovalResponse,
-                    )
                 }
             }
 
@@ -196,12 +198,12 @@ private fun CapsuleDivider() {
 }
 
 @Composable
-private fun CapsuleDetailBody(text: String, modifier: Modifier) {
+private fun CapsuleDetailBody(text: String) {
     ChatMarkdown(
         text = text,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.fillMaxWidth().heightIn(max = 240.dp).verticalScroll(rememberScrollState()).padding(horizontal = 2.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
     )
 }
 

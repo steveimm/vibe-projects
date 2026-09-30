@@ -1,24 +1,24 @@
 # Overlay and connection reliability
 
-Status: in progress. This continues the UI review with user feedback received after the initial refresh.
+Status: completed and verified on the Android 15 emulator. This continues the UI review with user feedback received after the initial refresh.
 
 ## Requirements and feedback
 
-- [ ] Replace screenshot-time overlay hiding where supported. Keep controls and action indicators visible without contaminating model screenshots.
-- [ ] Preserve full-display coordinates, keyboard/dialog content, orientation handling, protected-content behavior, and cancellation/resource cleanup.
-- [ ] Restore a restrained red control border and aligned tap/swipe feedback without large transparent overlay windows.
-- [ ] Keep a safe fallback for devices such as the OPPO Find X8. Emulator success alone does not verify OEM compatibility.
-- [ ] Provide an obvious return to PocketPilot from every expanded overlay state, including idle, running, questions, approvals, completion, and errors.
-- [ ] Let the user dismiss the bubble/panel without force-stopping the app. Distinguish minimize from close, stop active work when closing, and keep it dismissed until deliberately reopened.
-- [ ] Audit adjacent cases beyond reported examples: returning to chat during execution, pending approval/input, rapid toggles, rotation, permission loss, and a fresh task after failure/cancellation.
-- [ ] Bring Takeover and navigation controls into the app's blue theme.
-- [ ] A missing/disconnected/stalled model server must end in an actionable error, not indefinite Thinking.
-- [ ] Stop must promptly cancel connection setup, stream reading, retries, and paused/user-input states. It must not stay at Stopping.
-- [ ] Review controls together for size, spacing, hierarchy, contrast, keyboard behavior, dragging, clipping, and animation. Fix rough interactions before handing back for review.
-- [ ] Preserve the earlier minimalism direction: one logo, no decorative filler, no repeated explanations or redundant controls.
-- [ ] Keep Test connection and model selection working, preserve native reasoning, and remove replaced/dead code.
-- [ ] Validate behavior on the emulator using real app flows and controlled failure fixtures. Do not rely solely on builds or static inspection.
-- [ ] Restore original emulator configuration/chats, verify the signed ARM64 APK, and commit reviewed milestones.
+- [x] Replace screenshot-time overlay hiding where supported. Keep controls and action indicators visible without contaminating model screenshots.
+- [x] Preserve full-display coordinates, keyboard/dialog content, orientation handling, protected-content behavior, and cancellation/resource cleanup.
+- [x] Restore a restrained red control border and aligned tap/swipe feedback without large transparent overlay windows.
+- [x] Keep a safe fallback for devices such as the OPPO Find X8. Emulator success alone does not verify OEM compatibility.
+- [x] Provide an obvious return to PocketPilot from every expanded overlay state, including idle, running, questions, approvals, completion, and errors.
+- [x] Let the user dismiss the bubble/panel without force-stopping the app. Distinguish minimize from close, stop active work when closing, and keep it dismissed until deliberately reopened.
+- [x] Audit adjacent cases beyond reported examples: returning to chat during execution, pending approval/input, rapid toggles, rotation, permission loss, and a fresh task after failure/cancellation.
+- [x] Bring Takeover and navigation controls into the app's blue theme.
+- [x] A missing/disconnected/stalled model server must end in an actionable error, not indefinite Thinking.
+- [x] Stop must promptly cancel connection setup, stream reading, retries, and paused/user-input states. It must not stay at Stopping.
+- [x] Review controls together for size, spacing, hierarchy, contrast, keyboard behavior, dragging, clipping, and animation. Fix rough interactions before handing back for review.
+- [x] Preserve the earlier minimalism direction: one logo, no decorative filler, no repeated explanations or redundant controls.
+- [x] Keep Test connection and model selection working, preserve native reasoning, and remove replaced/dead code.
+- [x] Validate behavior on the emulator using real app flows and controlled failure fixtures. Do not rely solely on builds or static inspection.
+- [x] Restore original emulator configuration/chats, verify the signed ARM64 APK, and commit reviewed milestones.
 
 ## Working constraints
 
@@ -26,7 +26,7 @@ Work without subagents. Build only the signed ARM64 release when device verifica
 
 The model server may be offline. Deterministic local fixtures can test transport failures, tools, and UI transitions, but do not establish model capability. Keep private captures, traces, and device backups outside the repository.
 
-## Findings
+## Initial findings
 
 - The current display capture hides all overlays and waits 80 ms. Android 14's public `takeScreenshotOfWindow` excludes accessibility overlays, but it captures individual window surfaces. A prototype composes them in screen coordinates and falls back when geometry cannot be verified. Keyboard, system windows, dialogs, and transparent surfaces still need emulator verification.
 - Border and gesture visualizers currently use display-sized WindowManager windows. Non-compact mode also adds a full-screen touch blocker. Both must be considered when addressing the OPPO failure.
@@ -46,7 +46,7 @@ The model server may be offline. Deterministic local fixtures can test transport
 Other checklist items remain under review.
 
 
-### Overlay verification in progress
+### Overlay verification
 
 - Release checks: 897 JVM tests passed, release lint passed, and the device test sources compiled. UI checks use the signed ARM64 release on Android 15.
 - A 2500 ms long press at normalized `[500, 450]` mapped to display `(540, 1080)`. WindowManager reported the 168 × 168 px marker at `[456, 996]–[624, 1164]`, centered exactly on that target. The underlying Settings row received the gesture.
@@ -66,3 +66,19 @@ Other checklist items remain under review.
 - Gesture feedback now starts after the touch pass-through settling delay. Cancellation during that delay restores touchability, and cancelled/failed gestures remove their marker.
 - Accessibility loss during a stalled request stopped the task and showed the permission-repair control. Re-enabling accessibility removed that prompt and restored the composer.
 - An unreachable endpoint failed promptly with “Cannot reach the model server” and retained a usable composer.
+
+
+### Keyboard refinement
+
+A docked keyboard plus landscape and 1.3× text exposed input clipping. The panel now reserves room for the header and composer, and scrolls details and task buttons in the remaining space. Verified in portrait/landscape, light/dark themes, with the hardware keyboard toolbar, floating keyboard, and docked phone keyboard. Session approval now uses the same blue theme with lower visual emphasis than persistent approval.
+
+Completed validation: 897 release JVM tests, release lint, device-test source compilation, signed ARM64 release installation, unreachable/stalled/heartbeat-only server failures, active/paused Stop, active and idle Close, persistent dismissal through service reconnects, pending question/approval/handoff navigation, draft preservation, rotation, dragging, rapid toggles, and permission loss/recovery.
+
+The test server supplied deterministic responses. This validates the harness and interface, not local-model task competence. OPPO behavior remains a physical-device backlog item. Window capture intentionally retains display fallback for scenes that cannot be reconstructed faithfully, so those captures may still flicker.
+
+Commits: `417f363` (model cancellation/timeouts), `aaa80c0` (floating controls and bounded indicators), `d5c216d` (window capture and gesture cleanup). The keyboard refinement follows separately.
+
+Final tested APK SHA-256: `4c41c2c3151b11734ca241e233e9522bd6d73fb6663e7e4f84ccc807edd7cb4f`. Existing signing key, ARM64 only, non-debuggable, 16 KB ZIP alignment verified.
+
+
+Restoration completed: four original preference files and 84 original session/context files were restored byte-for-byte. The 36 owned QA files and their traces were archived outside the repository and removed from the app. The original hardware-keyboard configuration and system settings were restored. The fixture server and ADB forwarding were stopped. The installed APK matches the final release hash above. Unrelated workspace changes were left intact.

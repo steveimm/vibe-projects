@@ -167,8 +167,8 @@ private fun ApprovalScopeButton(
         enabled = btn.enabled,
         shape = MaterialTheme.shapes.large,
         colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.primary,
         ),
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
     ) {

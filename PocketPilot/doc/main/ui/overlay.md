@@ -16,7 +16,7 @@ The service state holder owns shared task/note and question-answer drafts. They 
 
 The panel header always provides Open chat and Close outside MainActivity. Open chat pauses active generation before opening the app. Close stops active work and dismisses all overlays. The dismissed state survives service reconnects and resets when the user opens MainActivity or starts another task. Tapping the bubble only minimizes/expands the panel.
 
-Controls have a 420 dp maximum width and fit above system bars and the keyboard. Long detail text scrolls within the remaining height. The bubble moves clear of the panel without replacing its saved position.
+Controls have a 420 dp maximum width and fit above system bars and the keyboard. Details and task buttons scroll within the remaining height, preserving the header and composer above a landscape keyboard. The bubble moves clear of the panel without replacing its saved position.
 
 ## Capture and touch handling
 
