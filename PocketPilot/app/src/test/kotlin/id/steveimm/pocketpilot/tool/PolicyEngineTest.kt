@@ -272,4 +272,63 @@ class PolicyEngineTest {
     }
 
     private fun clickParams() = JSONObject().put("action", "click").put("index", 5)
+
+    @Test
+    fun `opening an approved destination asks about the cautious foreground app`() {
+        val engine = engineWith(tiers = mapOf("com.example.target" to AppTier.NORMAL))
+        val decision = engine.check("open_app", JSONObject(), "com.example.source", "com.example.target")
+        assertThat((decision as PolicyDecision.AskUser).packageName).isEqualTo("com.example.source")
+    }
+
+    @Test
+    fun `session approval for one cautious app does not cover the other`() {
+        val engine = engineWith()
+        engine.allowPackageForSession("com.example.target")
+        val decision = engine.check("open_app", JSONObject(), "com.example.source", "com.example.target")
+        assertThat((decision as PolicyDecision.AskUser).packageName).isEqualTo("com.example.source")
+        engine.allowPackageForSession("com.example.source")
+        assertThat(engine.check("open_app", JSONObject(), "com.example.source", "com.example.target")).isEqualTo(PolicyDecision.Allow)
+    }
+
+    @Test
+    fun `always consent updates the actual restrictive app`() = runBlocking {
+        val classifier = AppClassifier(emptyMap(), mapOf("com.example.target" to AppTier.NORMAL))
+        val engine = PolicyEngine(appClassifier = classifier)
+        val approval = engine.check("open_app", JSONObject(), "com.example.source", "com.example.target") as PolicyDecision.AskUser
+        classifier.setOverride(requireNotNull(approval.packageName), AppTier.NORMAL)
+        assertThat(classifier.classify("com.example.source")).isEqualTo(AppTier.NORMAL)
+        assertThat(engine.check("open_app", JSONObject(), "com.example.source", "com.example.target")).isEqualTo(PolicyDecision.Allow)
+    }
+
+    @Test
+    fun `always ask ignores saved consent but consumes each one-call approval once`() {
+        val engine = engineWith(mode = ApprovalMode.ALWAYS_ASK)
+        engine.allowPackageForSession("com.example.source")
+        engine.allowPackageForSession("com.example.target")
+        val first = engine.check("open_app", JSONObject(), "com.example.source", "com.example.target")
+        assertThat((first as PolicyDecision.AskUser).packageName).isEqualTo("com.example.source")
+        val second = engine.check("open_app", JSONObject(), "com.example.source", "com.example.target", setOf("com.example.source"))
+        assertThat((second as PolicyDecision.AskUser).packageName).isEqualTo("com.example.target")
+        assertThat(engine.check("open_app", JSONObject(), "com.example.source", "com.example.target",
+            setOf("com.example.source", "com.example.target"))).isEqualTo(PolicyDecision.Allow)
+        assertThat(engine.check("open_app", JSONObject(), "com.example.source", "com.example.target")).isInstanceOf(PolicyDecision.AskUser::class.java)
+    }
+
+    @Test
+    fun `one-call consent never bypasses blocked apps while escape actions remain allowed`() {
+        for (mode in ApprovalMode.entries) {
+            val engine = engineWith(mode, mapOf("com.example.source" to AppTier.BLOCKED, "com.example.target" to AppTier.NORMAL))
+            val approved = setOf("com.example.source", "com.example.target")
+            assertThat(engine.check("open_app", JSONObject(), "com.example.source", "com.example.target", approved))
+                .isInstanceOf(PolicyDecision.Deny::class.java)
+            val blockedDestination = engineWith(mode,
+                mapOf("com.example.source" to AppTier.NORMAL, "com.example.target" to AppTier.BLOCKED))
+            assertThat(blockedDestination.check("open_app", JSONObject(), "com.example.source", "com.example.target", approved))
+                .isInstanceOf(PolicyDecision.Deny::class.java)
+            for (button in listOf("back", "home")) {
+                assertThat(engine.check("system_button", JSONObject().put("button", button), "com.example.source",
+                    approvedForCall = approved)).isEqualTo(PolicyDecision.Allow)
+            }
+        }
+    }
 }

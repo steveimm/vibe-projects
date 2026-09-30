@@ -32,15 +32,15 @@
 | `Validating` | `Cancelled` | Context or per-call token canceled during destination resolution | Stops before policy checks, approval, or execution |
 | `Validating` | `Cancelled` | `policyDecision is Deny` | reason carries policy reason (ToolRouter.kt:115-123) |
 | `Validating` | `Cancelled` | `policyDecision is AskUser` but no valid approval package exists | fails closed before `onApprovalRequired` |
-| `Validating` | `AwaitingApproval` | `policyDecision is AskUser` and `destinationPackage ?: packageName` is valid | creates `pendingApprovals[callId]` deferred BEFORE invoking `onApprovalRequired` |
+| `Validating` | `AwaitingApproval` | `policyDecision is AskUser` with a valid subject package | Registers a fresh approval ID before invoking `onApprovalRequired` |
 | `Validating` | `Scheduled` | `policyDecision is Allow` | (ToolRouter.kt:243-247) |
 | `AwaitingApproval` | `Error` | `onApprovalRequired` callback throws | clears pending, emits `"Approval request failed: …"` (ToolRouter.kt:152-164) |
 | `AwaitingApproval` | `Cancelled` | approval deferred not completed within `APPROVAL_TIMEOUT_MS = 60_000` | reason `"Approval timed out"`, decision = null (ToolRouter.kt:168-184) |
 | `AwaitingApproval` | `Cancelled` | decision == `DENIED` | reason `"User denied"` (ToolRouter.kt:189-196) |
 | `AwaitingApproval` | `Cancelled` | decision == `ABORT` | reason `"User aborted"` — also raised by `cancel`/`cancelAll` (ToolRouter.kt:197-204, 359-374) |
 | `AwaitingApproval` | `Cancelled` | TOCTOU: foreground package changed during approval wait | `"App changed during approval wait"` (ToolRouter.kt:206-219) |
-| `AwaitingApproval` | `Cancelled` | TOCTOU: original package unknown but current foreground is BLOCKED | `"Blocked app detected after approval"` (ToolRouter.kt:220-235) |
-| `AwaitingApproval` | (continue → Executing) | decision == `APPROVED` AND TOCTOU checks pass | sets `approvalWasRequired = true` so snapshot is re-captured before exec (ToolRouter.kt:216-239, 263-270) |
+| `AwaitingApproval` | `AwaitingApproval` | Approved subject, but another affected app still requires consent | Rechecks policy and prompts for the remaining package with a new approval ID |
+| `AwaitingApproval` | (continue → Executing) | All required subjects approved and foreground unchanged | Re-captures the snapshot before execution |
 | `Scheduled` / (post-approval) | `Cancelled` | `context.isCancelled() || token.isCancelled()` checked before exec | `"Cancelled before execution"` (ToolRouter.kt:251-256) |
 | `Scheduled` / (post-approval) | `Executing` | passes pre-exec cancel check | (ToolRouter.kt:259-260) |
 | `Executing` | `Success` | `invocation.execute(...) is ToolExecutionResult.Success` | (ToolRouter.kt:289-303) |
@@ -84,8 +84,9 @@ stateDiagram-v2
 
 ## Invariants
 
-- Approval prompts are package-scoped. `ToolRouter` sends `destinationPackage ?: packageName` in `ApprovalDetails.packageName`; `open_app` uses the destination app when it can be resolved.
-- `pendingApprovals[callId]` is set **before** `onApprovalRequired` is invoked, eliminating the race where a fast approval responder calls `resolveApproval` before the deferred exists (ToolRouter.kt:147-148 comment).
+- Approval prompts identify the restrictive package returned by `PolicyDecision.AskUser`. Opening an approved app from a cautious foreground app asks about the foreground app. Two cautious apps require consent for each; session consent for one does not cover the other.
+- Each prompt has a fresh UUID independent of the model tool-call ID. `pendingApprovals[approvalId]` is registered before notifying the UI and retains the original tool ID for cancellation. Stale or mismatched-package responses cannot grant consent.
+- Approved subjects are remembered for that call, preventing repeated prompts while persistent consent is being saved. `ALWAYS_ASK` still asks on the next action. Unknown restrictive packages fail closed without opening a prompt, and blocked apps remain blocked.
 - `activeToolCalls` only ever holds non-terminal states (`updateState` checks `!isTerminal()` before insertion, ToolRouter.kt:393-399).
 - Exactly one cancellation token per `callId` (ToolRouter.kt:74-75).
 - `approvalWasRequired` triggers a fresh snapshot capture **with** perception-gate masking before execution (ToolRouter.kt:263-270).

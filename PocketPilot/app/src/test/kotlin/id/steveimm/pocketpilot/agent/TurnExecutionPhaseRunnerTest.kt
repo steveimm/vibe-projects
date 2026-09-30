@@ -100,8 +100,11 @@ class TurnExecutionPhaseRunnerTest {
         assertThat(tool.executionCount).isEqualTo(1)
 
         val approval = harness.events.filterIsInstance<ApprovalRequired>().single()
-        assertThat(approval.details.callId).isEqualTo("call-1")
+        assertThat(approval.details.callId).isNotEmpty()
+        assertThat(approval.details.packageName).isEqualTo(platform.getCurrentPackageName())
         val executed = harness.events.filterIsInstance<ActionExecuted>().single()
+        assertThat(executed.actionId).isEqualTo("call-1")
+        assertThat(approval.details.callId).isNotEqualTo(executed.actionId)
         assertThat(executed.outcome).isEqualTo(ActionOutcome.SUCCESS)
     }
 
@@ -204,7 +207,9 @@ private class TestHarness(
             val dispatcher = AgentEventDispatcher(sessionId) { event ->
                 events += event
                 if (event is ApprovalRequired) {
-                    autoApproval?.let { toolRouter.resolveApproval(event.details.callId, it) }
+                    autoApproval?.let {
+                        assertThat(toolRouter.resolveApproval(event.details.callId, it, event.details.packageName)).isTrue()
+                    }
                 }
             }
             val execConfig = AgentExecutionConfig(

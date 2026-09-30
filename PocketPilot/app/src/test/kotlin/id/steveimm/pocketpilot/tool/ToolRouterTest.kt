@@ -5,9 +5,13 @@ import id.steveimm.pocketpilot.agent.toActionOutcome
 import id.steveimm.pocketpilot.protocol.ActionOutcome
 import id.steveimm.pocketpilot.protocol.ApprovalMode
 import id.steveimm.pocketpilot.protocol.ApprovalDecision
+import id.steveimm.pocketpilot.protocol.ApprovalDetails
 import id.steveimm.pocketpilot.protocol.AppTier
 import id.steveimm.pocketpilot.platform.AppInfo
 import id.steveimm.pocketpilot.test.FakeAndroidPlatform
+import id.steveimm.pocketpilot.tool.impl.OpenAppTool
+import io.mockk.coVerify
+import io.mockk.spyk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -108,31 +112,120 @@ class ToolRouterTest {
     }
 
     @Test
-    fun `open app approval uses destination package as approval subject`() = runTest {
-        val registry = ToolRegistry().apply { register(id.steveimm.pocketpilot.tool.impl.OpenAppTool()) }
-        val router = ToolRouter(registry, PolicyEngine(ApprovalMode.SMART, defaultClassifier()))
-        val context = SimpleToolRouterContext(
-            FakeAndroidPlatform(
-                currentPackageName = "com.example.fake",
-                installedApps = listOf(AppInfo("com.google.android.contacts", "Contacts")),
-            )
+    fun `open app asks only the actual cautious subjects before launching`() = runTest {
+        val cases = listOf(
+            mapOf("com.example.target" to AppTier.NORMAL) to listOf("com.example.source"),
+            mapOf("com.example.source" to AppTier.NORMAL) to listOf("com.example.target"),
+            emptyMap<String, AppTier>() to listOf("com.example.source", "com.example.target"),
         )
-        var approvalPackageName: String? = null
-
-        val result = router.execute(
-            toolName = "open_app",
-            params = JSONObject().put("app_name", "Contacts"),
-            context = context,
-            packageName = "com.example.fake",
-            onApprovalRequired = { details ->
-                approvalPackageName = details.packageName
-                router.resolveApproval(details.callId, ApprovalDecision.APPROVED)
+        for ((tiers, expected) in cases) {
+            val router = appRouter(PolicyEngine(appClassifier = AppClassifier(tiers)))
+            val context = appContext()
+            val approvals = mutableListOf<ApprovalDetails>()
+            val result = router.openTarget(context) { details ->
+                coVerify(exactly = 0) { context.platform.launchApp(any()) }
+                approvals.lastOrNull()?.let { previous ->
+                    assertThat(router.resolveApproval(previous.callId, ApprovalDecision.APPROVED, previous.packageName)).isFalse()
+                    assertThat(router.resolveApproval(details.callId, ApprovalDecision.APPROVED, previous.packageName)).isFalse()
+                }
+                approvals += details
+                assertThat(router.resolveApproval(details.callId, ApprovalDecision.APPROVED, details.packageName)).isTrue()
             }
-        )
-
-        assertThat(result).isInstanceOf(ToolCallResult.Success::class.java)
-        assertThat(approvalPackageName).isEqualTo("com.google.android.contacts")
+            assertThat(result).isInstanceOf(ToolCallResult.Success::class.java)
+            assertThat(approvals.map { it.packageName }).containsExactlyElementsIn(expected).inOrder()
+            assertThat(approvals.map { it.callId }.distinct()).hasSize(expected.size)
+            coVerify(exactly = 1) { context.platform.launchApp("com.example.target") }
+            assertThat(router.hasPendingApprovals()).isFalse()
+        }
     }
+
+    @Test
+    fun `destination session consent still requires foreground approval`() = runTest {
+        val policy = PolicyEngine(appClassifier = defaultClassifier())
+        policy.allowPackageForSession("com.example.target")
+        val router = appRouter(policy)
+        val approvals = mutableListOf<String>()
+        val result = router.openTarget(appContext()) { details ->
+            approvals += details.packageName
+            router.resolveApproval(details.callId, ApprovalDecision.APPROVED, details.packageName)
+        }
+        assertThat(result).isInstanceOf(ToolCallResult.Success::class.java)
+        assertThat(approvals).containsExactly("com.example.source")
+    }
+
+    @Test
+    fun `rejecting or canceling the second app approval prevents launch`() = runTest {
+        for (cancellation in listOf("reject", "tool", "context")) {
+            val router = appRouter(PolicyEngine(appClassifier = defaultClassifier()))
+            val context = appContext()
+            val approvals = mutableListOf<String>()
+            val result = router.openTarget(context) { details ->
+                approvals += details.packageName
+                if (approvals.size == 1) {
+                    router.resolveApproval(details.callId, ApprovalDecision.APPROVED, details.packageName)
+                } else when (cancellation) {
+                    "reject" -> router.resolveApproval(details.callId, ApprovalDecision.DENIED, details.packageName)
+                    "tool" -> router.cancel("launch-target")
+                    else -> {
+                        context.cancel()
+                        router.resolveApproval(details.callId, ApprovalDecision.APPROVED, details.packageName)
+                    }
+                }
+            }
+            assertThat(result).isInstanceOf(ToolCallResult.Cancelled::class.java)
+            assertThat(approvals).containsExactly("com.example.source", "com.example.target").inOrder()
+            coVerify(exactly = 0) { context.platform.launchApp(any()) }
+            assertThat(router.hasPendingApprovals()).isFalse()
+            assertThat(router.getActiveCallIds()).isEmpty()
+        }
+    }
+
+    @Test
+    fun `always ask consumes consent for one action without looping or retaining it`() = runTest {
+        val policy = PolicyEngine(ApprovalMode.ALWAYS_ASK,
+            AppClassifier(mapOf("com.example.source" to AppTier.NORMAL, "com.example.target" to AppTier.NORMAL)))
+        policy.allowPackageForSession("com.example.target")
+        val router = appRouter(policy)
+        val approvals = mutableListOf<String>()
+        var previousApprovalId: String? = null
+        repeat(2) {
+            val result = router.openTarget(appContext()) { details ->
+                previousApprovalId?.let { oldId ->
+                    assertThat(router.resolveApproval(oldId, ApprovalDecision.APPROVED, details.packageName)).isFalse()
+                    assertThat(details.callId).isNotEqualTo(oldId)
+                }
+                previousApprovalId = details.callId
+                approvals += details.packageName
+                router.resolveApproval(details.callId, ApprovalDecision.APPROVED, details.packageName)
+            }
+            assertThat(result).isInstanceOf(ToolCallResult.Success::class.java)
+        }
+        assertThat(approvals).containsExactly("com.example.target", "com.example.target")
+    }
+
+    @Test
+    fun `unknown restrictive foreground fails closed even when destination is known`() = runTest {
+        val router = appRouter(PolicyEngine(appClassifier = AppClassifier(mapOf("com.example.target" to AppTier.NORMAL))))
+        val context = appContext(currentPackage = null)
+        var approvalCount = 0
+        val result = router.openTarget(context) { approvalCount++ }
+        assertThat(result).isInstanceOf(ToolCallResult.Cancelled::class.java)
+        assertThat(approvalCount).isEqualTo(0)
+        coVerify(exactly = 0) { context.platform.launchApp(any()) }
+        assertThat(router.hasPendingApprovals()).isFalse()
+    }
+
+    private fun appRouter(policy: PolicyEngine) = ToolRouter(ToolRegistry().apply { register(OpenAppTool()) }, policy)
+
+    private fun appContext(currentPackage: String? = "com.example.source") = SimpleToolRouterContext(spyk(FakeAndroidPlatform(
+        currentPackageName = currentPackage, installedApps = listOf(AppInfo("com.example.target", "Target")),
+    )))
+
+    private suspend fun ToolRouter.openTarget(
+        context: SimpleToolRouterContext,
+        onApproval: suspend (ApprovalDetails) -> Unit,
+    ): ToolCallResult = execute("open_app", JSONObject().put("app_name", "Target"), context,
+        packageName = context.platform.getCurrentPackageName(), callId = "launch-target", onApprovalRequired = onApproval)
 
     @Test
     fun `approval emitter exception returns error not timeout`() = runTest {

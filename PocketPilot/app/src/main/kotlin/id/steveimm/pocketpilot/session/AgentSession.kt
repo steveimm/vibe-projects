@@ -608,7 +608,7 @@ private constructor(
             return
         }
 
-        val resolved = services.toolRouter.resolveApproval(op.actionId, op.decision)
+        val resolved = services.toolRouter.resolveApproval(op.actionId, op.decision, op.packageName)
         if (!resolved) {
             Log.w(TAG, "Discarding approval with no pending match: ${op.actionId}")
             return

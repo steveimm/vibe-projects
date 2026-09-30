@@ -26,51 +26,49 @@ class PolicyEngine(
         toolName: String,
         params: JSONObject = JSONObject(),
         packageName: String? = null,
-        destinationPackage: String? = null
+        destinationPackage: String? = null,
+        approvedForCall: Set<String> = emptySet(),
     ): PolicyDecision {
         val currentMode = approvalMode.get()
         val currentTier = appClassifier.classify(packageName)
         val destTier = destinationPackage?.let { appClassifier.classify(it) }
         // Effective tier = stricter of the two (lower ordinal = stricter)
         val effectiveTier = if (destTier != null) minOf(currentTier, destTier) else currentTier
-        val approvalSubject = destinationPackage ?: packageName
+        val subjects = buildList {
+            add(packageName to currentTier)
+            if (destinationPackage != null && destinationPackage != packageName) add(destinationPackage to requireNotNull(destTier))
+        }
         Log.d(TAG, "Policy check: tool=$toolName, pkg=$packageName, dest=$destinationPackage, tier=$effectiveTier, mode=$currentMode")
 
         val tool = ToolName.from(toolName)
 
-        // 1. Non-screen-changing tools → always allow.
+        // Non-screen-changing tools do not need app-access approval.
         if (!tool.isScreenChanging) return PolicyDecision.Allow
 
-        // 2. Escape actions (back/home) → always allow (agent must not be trapped).
+        // Back and Home remain available even in blocked apps.
         if (isEscape(tool, params)) return PolicyDecision.Allow
 
-        // 3.
         if (effectiveTier == AppTier.BLOCKED) {
-            return PolicyDecision.Deny("Blocked: financial/auth app ($packageName)")
+            val blockedPackage = subjects.first { it.second == AppTier.BLOCKED }.first
+            return PolicyDecision.Deny("Blocked: financial/auth app ($blockedPackage)")
         }
 
-        // 5. Session allow-list — capsule "Session" button writes here. Gated by ALWAYS_ASK so
-        //    the user's "ask me everything" pref always wins over a prior session approval.
-        if (currentMode != ApprovalMode.ALWAYS_ASK && isSessionAllowed(approvalSubject)) {
-            return PolicyDecision.Allow
-        }
-
-        // 6.
-        return when (currentMode) {
-            ApprovalMode.ALWAYS_ASK -> PolicyDecision.AskUser(
-                reason = "User requested approval for all actions",
-                appTier = effectiveTier
+        if (currentMode == ApprovalMode.AUTO_APPROVE) return PolicyDecision.Allow
+        val cautiousSubjects = subjects.filter { it.second == AppTier.CAUTIOUS }
+        val requiredSubjects = if (currentMode == ApprovalMode.ALWAYS_ASK && cautiousSubjects.isEmpty()) {
+            listOf((destinationPackage ?: packageName) to effectiveTier)
+        } else cautiousSubjects
+        for ((subject, tier) in requiredSubjects) {
+            if (subject != null && subject in approvedForCall) continue
+            if (currentMode != ApprovalMode.ALWAYS_ASK && isSessionAllowed(subject)) continue
+            return PolicyDecision.AskUser(
+                reason = if (currentMode == ApprovalMode.ALWAYS_ASK) "User requested approval for all actions"
+                    else "This app requires approval",
+                appTier = tier,
+                packageName = subject,
             )
-            ApprovalMode.AUTO_APPROVE -> PolicyDecision.Allow
-            ApprovalMode.SMART -> when (effectiveTier) {
-                AppTier.CAUTIOUS -> PolicyDecision.AskUser(
-                    reason = "Unknown app — action requires approval",
-                    appTier = effectiveTier
-                )
-                AppTier.NORMAL -> PolicyDecision.Allow
-                AppTier.BLOCKED -> PolicyDecision.Deny("unreachable")  // handled in step 3
-            }
         }
+        return PolicyDecision.Allow
     }
 
     fun setApprovalMode(mode: ApprovalMode) {
@@ -121,6 +119,7 @@ sealed interface PolicyDecision {
     /** Tool call requires user approval */
     data class AskUser(
         val reason: String,
-        val appTier: AppTier? = null
+        val appTier: AppTier? = null,
+        val packageName: String? = null,
     ) : PolicyDecision
 }

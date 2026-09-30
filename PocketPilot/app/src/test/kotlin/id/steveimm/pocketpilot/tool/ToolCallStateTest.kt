@@ -353,7 +353,7 @@ class ToolCallStateTest {
         val terminal = states.single() as ToolCallState.Cancelled
         assertThat(result).isEqualTo(ToolCallResult.Cancelled("already-cancelled", terminal.reason))
         assertThat(terminal.callId).isEqualTo("already-cancelled")
-        verify(exactly = 0) { tool.validate(any()); tool.createInvocation(any()); policy.check(any(), any(), any(), any()) }
+        verify(exactly = 0) { tool.validate(any()); tool.createInvocation(any()); policy.check(any(), any(), any(), any(), any()) }
         coVerify(exactly = 0) { platform.getInstalledApps(); platform.launchApp(any()) }
         assertThat(router.getActiveCallIds()).isEmpty()
         assertThat(router.hasPendingApprovals()).isFalse()
@@ -395,7 +395,7 @@ class ToolCallStateTest {
             val terminal = states.last() as ToolCallState.Cancelled
             assertThat(result).isEqualTo(ToolCallResult.Cancelled(callId, terminal.reason))
             assertThat(terminal.callId).isEqualTo(callId)
-            verify(exactly = 0) { policy.check(any(), any(), any(), any()) }
+            verify(exactly = 0) { policy.check(any(), any(), any(), any(), any()) }
             coVerify(exactly = 0) { invocation.execute(any()); platform.launchApp(any()) }
             assertThat(router.getActiveCallIds()).isEmpty()
             assertThat(router.hasPendingApprovals()).isFalse()
