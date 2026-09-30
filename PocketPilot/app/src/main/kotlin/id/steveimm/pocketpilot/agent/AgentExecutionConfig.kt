@@ -7,6 +7,7 @@ data class AgentExecutionConfig(
     val goal: String,
     val sessionId: SessionId,
     val taskId: String = sessionId.value,
+    val observeInitialScreen: Boolean = false,
     val uiSettleDelayMs: Long = 3000,
     val debugMode: Boolean = false,
     val systemPrompt: String? = null,

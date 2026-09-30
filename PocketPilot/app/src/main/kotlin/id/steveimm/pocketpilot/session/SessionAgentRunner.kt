@@ -53,7 +53,7 @@ internal class SessionAgentRunner(
      * mutates session state directly. */
     val completions = Channel<AgentStopReason>(capacity = Channel.BUFFERED)
 
-    fun start(taskInput: String, taskId: String) {
+    fun start(taskInput: String, taskId: String, observeScreen: Boolean = false) {
         val agentDef = DefaultAgentDefinition
         val resolvedAgentDef: ResolvedAgentDefinition = agentDef.resolve(
             excludedTools = services.config.excludedTools.toToolNames()
@@ -67,6 +67,7 @@ internal class SessionAgentRunner(
 
         val agentConfig = AgentExecutionConfig(
             goal = taskInput,
+            observeInitialScreen = observeScreen,
             sessionId = sessionId,
             taskId = taskId,
             uiSettleDelayMs = config.actionDelayMs,

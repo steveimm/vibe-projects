@@ -1,6 +1,13 @@
 package id.steveimm.pocketpilot.ui.overlay.compose
 
 import android.view.MotionEvent
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,17 +37,22 @@ import id.steveimm.pocketpilot.ui.common.PilotMark
 @Composable
 internal fun OverlayBubbleCompose(
     expanded: Boolean,
+    capturedForDismissal: Boolean,
+    onDismiss: () -> Unit,
     status: String,
     statusColor: Color,
     onToggle: () -> Unit,
     onTouch: (MotionEvent) -> Boolean,
 ) {
     val action = if (expanded) "Minimize PocketPilot controls" else "Expand PocketPilot controls"
+    val scale by animateFloatAsState(if (capturedForDismissal) 0.65f else 1f,
+        tween(if (PocketPilotMotion.reducedMotion()) 0 else PocketPilotMotion.Quick), label = "Dismiss bubble")
     Surface(
-        modifier = Modifier.fillMaxSize().padding(4.dp).semantics {
+        modifier = Modifier.fillMaxSize().padding(4.dp).graphicsLayer { scaleX = scale; scaleY = scale }.semantics {
             role = Role.Button
             contentDescription = action
             stateDescription = status
+            customActions = listOf(CustomAccessibilityAction("Dismiss") { onDismiss(); true })
             onClick(action) { onToggle(); true }
         }.pointerInteropFilter(onTouchEvent = onTouch),
         shape = CircleShape,

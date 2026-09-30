@@ -22,6 +22,9 @@ class ActionVisualizerManager(
             if (!value) overlayHost.hide()
         }
 
+    var screenAvailable: Boolean = true
+        set(value) { field = value; if (!value) overlayHost.hide() }
+
     fun suppressForScreenshot(): AutoCloseable = overlayHost.suppressForScreenshot()
 
     fun showClick(x: Float, y: Float, longPress: Boolean = false, durationMs: Long = if (longPress) 1000 else 100) {
@@ -53,5 +56,5 @@ class ActionVisualizerManager(
     }
 
     private fun shouldRender(): Boolean =
-        enabled && renderContext.value == CapsuleContext.SCREEN_VIEWING
+        enabled && screenAvailable && renderContext.value == CapsuleContext.SCREEN_VIEWING
 }

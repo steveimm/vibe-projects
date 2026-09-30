@@ -19,6 +19,7 @@ import id.steveimm.pocketpilot.ui.overlay.compose.CapsuleOverlayHost
 import id.steveimm.pocketpilot.ui.overlay.compose.GlowOverlayHost
 import id.steveimm.pocketpilot.ui.overlay.compose.BubbleOverlayHost
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
+import id.steveimm.pocketpilot.platform.isScreenAvailable
 import id.steveimm.pocketpilot.platform.OverlayTouchGate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -119,6 +120,19 @@ class ServiceOverlayController(
             overlayPreferences.edit().putBoolean("dismissed", value).apply()
         }
     private var openAppAfterTakeover = false
+    private var screenAvailable = isScreenAvailable(context)
+
+    fun setScreenAvailable(available: Boolean) {
+        screenAvailable = available
+        if (!available) {
+            openAppAfterTakeover = false
+            if (stateHolder.mode.value is CapsuleMode.Running) {
+                stateHolder.onTakeoverRequested()
+                onTakeover()
+            }
+        }
+        applyVisibility()
+    }
 
     fun setActionIndicatorsEnabled(enabled: Boolean) {
         actionIndicatorsEnabled = enabled
@@ -157,8 +171,8 @@ class ServiceOverlayController(
 
     /** The ONE function that decides which overlay windows are visible. Called after every state change and context change. */
     private fun applyVisibility() {
-        if (overlaysDismissed) {
-            capsuleManager.hide()
+        if (overlaysDismissed || !screenAvailable) {
+            capsuleManager.hide(immediate = !screenAvailable)
             bubbleManager?.hide()
             edgeGlowManager.hideImmediately()
             return
@@ -305,7 +319,7 @@ class ServiceOverlayController(
         overlaysDismissed = false
         stateHolder.onTaskStarted(taskId, input)
         showPreference = ShowPreference.BUBBLE
-        applyVisibility()
+        setScreenAvailable(screenAvailable)
     }
 
     fun onTurnPhaseChanged(phase: TurnPhase) {

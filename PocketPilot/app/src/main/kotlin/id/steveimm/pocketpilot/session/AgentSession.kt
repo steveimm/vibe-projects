@@ -278,7 +278,7 @@ private constructor(
                 }
             }
         }
-        startTask(op.text)
+        startTask(op.text, op.observeScreen)
     }
 
     /** Surface a bootstrap failure as chat-visible events: a [TaskStarted] so the user's input is preserved in the conversation,
@@ -338,7 +338,7 @@ private constructor(
         return true
     }
 
-    private suspend fun startTask(text: String) {
+    private suspend fun startTask(text: String, observeScreen: Boolean) {
         val taskId = "task-${System.currentTimeMillis()}"
         currentTaskId = taskId
         _state.value = SessionState.Running
@@ -352,7 +352,7 @@ private constructor(
                 )
         )
 
-        agentRunner.start(text, taskId)
+        agentRunner.start(text, taskId, observeScreen)
 
         Log.i(TAG, "Task started: $taskId, input: $text")
     }

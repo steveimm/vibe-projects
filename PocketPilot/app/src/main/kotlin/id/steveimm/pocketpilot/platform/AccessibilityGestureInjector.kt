@@ -96,6 +96,7 @@ class AccessibilityGestureInjector(
         var completed = false
         try {
             if (token != null) delay(FLAG_SETTLE_MS)
+            if (!isScreenAvailable(service)) return ActionResult.Failure("Unlock the phone to continue.")
             visualize()
             return withTimeoutOrNull(GESTURE_TIMEOUT_MS) {
                 suspendCancellableCoroutine { continuation ->

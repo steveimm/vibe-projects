@@ -17,7 +17,8 @@ sealed interface Op {
 
     /** User provides input to the agent. */
     data class UserInput(
-        val text: String
+        val text: String,
+        val observeScreen: Boolean = false,
     ) : Op
 
     /** User injects a mid-task message into the agent's conversation history. */

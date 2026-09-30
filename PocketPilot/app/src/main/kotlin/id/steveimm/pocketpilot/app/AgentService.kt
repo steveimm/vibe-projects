@@ -10,6 +10,7 @@ import android.view.Display
 import android.view.SurfaceView
 import android.view.accessibility.AccessibilityEvent
 import id.steveimm.pocketpilot.debug.ActionDebugReceiver
+import id.steveimm.pocketpilot.platform.DeviceScreenState
 import id.steveimm.pocketpilot.protocol.SessionState
 import id.steveimm.pocketpilot.protocol.Op
 import id.steveimm.pocketpilot.protocol.PlatformMode
@@ -32,6 +33,13 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.NonCancellable
+import id.steveimm.pocketpilot.platform.isScreenAvailable
+import id.steveimm.pocketpilot.protocol.SessionConfig
+import id.steveimm.pocketpilot.protocol.SessionLlmConfig
+import id.steveimm.pocketpilot.protocol.TaskOutcome
+import id.steveimm.pocketpilot.ui.overlay.model.CapsuleContext
 import java.lang.ref.WeakReference
 
 class AgentService : AccessibilityService() {
@@ -121,6 +129,14 @@ class AgentService : AccessibilityService() {
     }
 
 
+    private val screenState by lazy {
+        DeviceScreenState(this) { available ->
+            actionVisualizer?.screenAvailable = available
+            if (!available) overlayStartJob?.cancel()
+            overlayController?.setScreenAvailable(available)
+        }
+    }
+
     private var eventCollectorJob: Job? = null
 
     fun observeExternalSession(
@@ -182,7 +198,7 @@ class AgentService : AccessibilityService() {
                         logTag = TAG,
                         compactOverlaysEnabled = compactOverlays,
                         actionIndicatorsEnabled = AppSettingsStore(this).loadActionIndicators(),
-                        onStop = { submitOp(Op.Shutdown) },
+                        onStop = ::stopFromOverlay,
                         onSend = ::sendOverlayInput,
                         onTakeover = { submitOp(Op.Takeover) },
                         onResume = { submitOp(Op.Resume) },
@@ -203,6 +219,7 @@ class AgentService : AccessibilityService() {
                                         service = this,
                                         lifecycleOwner = serviceLifecycleOwner,
                                         savedStateRegistryOwner = serviceLifecycleOwner,
+                                        onDismiss = { overlayController?.dismissOverlays() },
                                         onToggleCapsule = {
                                             overlayController?.onBubbleTapped()
                                         }
@@ -219,6 +236,7 @@ class AgentService : AccessibilityService() {
 
         registerDebugStopReceiverIfNeeded(this, stopReceiver)
         registerDebugExecReceiverIfNeeded(this, debugExecReceiver)
+        screenState.start()
         _connected.value = true
     }
 
@@ -233,6 +251,7 @@ class AgentService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            screenState.refresh()
             val eventDisplayId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 event.displayId
             } else {
@@ -251,6 +270,7 @@ class AgentService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        screenState.stop()
         isServiceActive = false
         if (instance === this) {
             instance = null
@@ -299,15 +319,59 @@ class AgentService : AccessibilityService() {
         serviceLifecycleOwner.onCreate()
     }
 
-    private var pendingOverlayInput: String? = null
+    private var overlayStartJob: Job? = null
 
-    internal fun consumePendingOverlayInput(): String? = pendingOverlayInput.also { pendingOverlayInput = null }
+    private fun stopFromOverlay() {
+        overlayStartJob?.cancel()
+        overlayStartJob = null
+        if (session != null) submitOp(Op.Shutdown)
+        else overlayController?.onTaskCompleted(TaskOutcome.USER_STOPPED, "Stopped")
+    }
 
     private fun sendOverlayInput(text: String) {
-        if (session == null || session?.state?.value == SessionState.Shutdown) {
-            pendingOverlayInput = text
-            openMainActivity()
-        } else submitOp(Op.UserInput(text))
+        if (overlayStartJob?.isActive == true) return
+        val controller = overlayController ?: return
+        controller.onTaskStarted("overlay-start", text)
+        overlayStartJob = serviceScope.launch {
+            var created: AgentSession? = null
+            var attached = false
+            try {
+                check(isScreenAvailable(this@AgentService)) { "Unlock the phone to continue." }
+                val targetMode = if (currentPlatformMode == PlatformMode.VIRTUAL_DISPLAY &&
+                    controller.stateHolder.context.value == CapsuleContext.SCREEN_VIEWING) PlatformMode.VIRTUAL_DISPLAY
+                    else PlatformMode.ACCESSIBILITY
+                var target = session
+                if (target?.state?.value == SessionState.Shutdown || target?.getServices()?.platform?.mode != targetMode) {
+                    target?.submit(Op.Shutdown)
+                    target = null
+                }
+                if (target == null) {
+                    val settings = AppSettingsStore(this@AgentService).load()
+                    val baseUrl = id.steveimm.pocketpilot.llm.ServerBaseUrlValidator.validate(settings.serverBaseUrl).getOrThrow()
+                    val model = id.steveimm.pocketpilot.llm.ModelIdValidator.validate(settings.serverModelId).getOrThrow()
+                    val config = SessionConfig(mainModel = model, llm = SessionLlmConfig(baseUrl = baseUrl),
+                        approvalMode = settings.approvalMode, debugMode = settings.debugMode,
+                        traceEnabled = settings.traceEnabled, platformMode = targetMode)
+                    target = withContext(Dispatchers.Default) {
+                        AgentSession.create(config, this@AgentService, serviceScope, ServerCredentialStoreHolder.get(this@AgentService),
+                            actionVisualizer, getOverlayTouchGate()).also { created = it }
+                    }
+                    check(isScreenAvailable(this@AgentService)) { "Unlock the phone to continue." }
+                    observeExternalSession(target, targetMode)
+                    attached = true
+                }
+                target.submit(Op.UserInput(text, observeScreen = true))
+            } catch (e: CancellationException) {
+                if (controller.stateHolder.inputDraft.value.isBlank()) controller.stateHolder.inputDraft.value = text
+                controller.onTaskCompleted(TaskOutcome.USER_STOPPED, "Stopped")
+                throw e
+            } catch (e: Exception) {
+                if (controller.stateHolder.inputDraft.value.isBlank()) controller.stateHolder.inputDraft.value = text
+                controller.onSessionError(e.message ?: "Could not start the task. Check the model server in PocketPilot.")
+            } finally {
+                if (!attached && created != null) withContext(NonCancellable) { created?.submit(Op.Shutdown) }
+            }
+        }
     }
 
     private fun openMainActivity() {

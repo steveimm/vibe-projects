@@ -251,12 +251,12 @@ class CapsuleOverlayHost(
         Log.i(TAG, "Capsule overlay shown")
     }
 
-    fun hide() {
+    fun hide(immediate: Boolean = false) {
         if (composeHost.isShowing()) service.unregisterComponentCallbacks(configurationCallback)
         stopFocusObserver()
         inputFocused.value = false
         setOverlayFocusable(false)
-        composeHost.hide()
+        if (immediate) composeHost.hideImmediately() else composeHost.hide()
         onPanelTopChanged?.invoke(null)
     }
 

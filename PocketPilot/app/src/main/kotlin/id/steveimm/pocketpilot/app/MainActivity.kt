@@ -312,7 +312,6 @@ class MainActivity : ComponentActivity() {
         AgentService.instance?.onMainAppVisible()
         onboardingViewModel?.onHostResumed()
         retryPendingAutoStartGoalIfReady()
-        AgentService.instance?.consumePendingOverlayInput()?.let { scheduleGoalDispatch(it) }
     }
 
     override fun onStop() {

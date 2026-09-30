@@ -70,3 +70,10 @@ Overlay-start requirement: a user can manually open an app, then start a task fr
 
 
 Second-review evidence so far: the composer renders as one compact row, grows for entered newlines, and exposes a Return key. Opening history hides the keyboard without losing the draft. The unsaved Test request fails after a three-second deadline, and a subsequent request succeeds. Test and Save use concise labels, and HTTP warning filler is removed. The HTTP deadline runs on IO so it remains a real elapsed-time bound, including DNS stalls, and leaving the form cancels it.
+
+
+Overlay evidence: dragging onto the bottom-center × directly dismissed all windows. Exact video frames show the drag target and snap feedback. Screen-off delivery removed windows in about 0.6 seconds on the emulator, and the visible keyguard had no overlays. Locking an active stalled request paused it, with explicit Resume required after unlock. Locking during drag removed the target and cancelled the gesture cleanly.
+
+A fresh task submitted from the floating panel kept manually opened Settings in front. Its first HTTP request contained the unobstructed current-screen image and no prior tool call. Opening PocketPilot afterward restored the same recorded conversation. A regression test verifies initial observation occurs for overlay requests, while ordinary main-chat requests retain their existing behavior.
+
+Automatic approval review rejected a QA script that changed Auto approve. The audit leaves the current approval policy intact and inspects the controls and navigation without changing security settings. The user's local model endpoint was unreachable during this review, so a loopback fixture verifies request contents, transport behavior, and UI transitions.

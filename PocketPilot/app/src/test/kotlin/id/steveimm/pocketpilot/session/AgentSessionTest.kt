@@ -42,6 +42,20 @@ import org.junit.Test
 class AgentSessionTest {
 
         @Test
+        fun `overlay request observes the current screen before the model responds`() = runTest {
+                val session = buildSession(scope = this, captureDelayMs = 0, llmDelayMs = 0)
+                val events = mutableListOf<AgentEvent>()
+                val observer = launch { session.events.collect { events.add(it) } }
+                session.submit(Op.UserInput("Describe this screen", observeScreen = true))
+                advanceUntilIdle()
+                val screen = events.indexOfFirst { it is ScreenCaptured }
+                val completed = events.indexOfFirst { it is TaskCompleted }
+                assertThat(screen).isAtLeast(0)
+                assertThat(completed).isGreaterThan(screen)
+                observer.cancel()
+        }
+
+        @Test
         fun `shutdown from running emits session completed user stopped`() = runTest {
                 val session = buildSession(scope = this, captureDelayMs = 1_000L, llmDelayMs = 0L)
                 val events = mutableListOf<AgentEvent>()

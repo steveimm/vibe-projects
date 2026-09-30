@@ -34,6 +34,7 @@ class AccessibilityScreenshotCapturer(
     data class ScreenshotCapture(val image: ScreenImage, val tracePath: String?)
 
     suspend fun capture(): ScreenshotCapture? {
+        if (!isScreenAvailable(service)) return null
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             return null
         }
@@ -89,6 +90,7 @@ class AccessibilityScreenshotCapturer(
     }
 
     private suspend fun compressBitmap(bitmap: Bitmap): ScreenshotCapture? = withContext(Dispatchers.Default) {
+        if (!isScreenAvailable(service)) return@withContext null
         val scaled = BitmapUtils.scaleBitmapIfNeeded(bitmap, config.perceptionConfig.screenshotMaxDimension)
         try {
             val bytes = BitmapUtils.compressJpeg(scaled, config.perceptionConfig.screenshotJpegQuality) ?: return@withContext null

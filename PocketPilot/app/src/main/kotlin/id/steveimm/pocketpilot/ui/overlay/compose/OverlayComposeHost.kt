@@ -76,6 +76,8 @@ class OverlayComposeHost(
         }
     }
 
+    fun hideImmediately() { remove() }
+
     fun hide() {
         if (!isShowing()) return
         if (!animateVisibility || !ValueAnimator.areAnimatorsEnabled()) {
@@ -121,6 +123,8 @@ class OverlayComposeHost(
         it.getLocationOnScreen(position)
         position[1]
     } ?: 0
+
+    fun hapticFeedback() { root?.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK) }
 
     fun getWindowToken() = root?.windowToken
     fun dispose() { remove() }

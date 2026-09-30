@@ -53,6 +53,7 @@ class AccessibilityPlatform(
     private val outOfBoundsActionTargetCount = AtomicInteger(0)
 
     override suspend fun captureScreen(): ScreenSnapshot {
+        if (!isScreenAvailable(service)) return ScreenSnapshot(System.currentTimeMillis(), emptyList(), null)
         val currentPkg = getCurrentPackageName()
 
         // Privacy gate: BLOCKED apps get masked snapshot — no artifacts created
@@ -270,6 +271,7 @@ class AccessibilityPlatform(
     }
 
     override suspend fun performAction(action: UIAction): ActionResult {
+        if (!isScreenAvailable(service)) return ActionResult.Failure("Unlock the phone to continue.")
         return when (action) {
             is UIAction.ClickNodeAt -> {
                 recordOutOfBoundsActionTarget("click_node", action.x, action.y)
@@ -517,6 +519,7 @@ class AccessibilityPlatform(
 
     /** Launch an app by package name. */
     override suspend fun launchApp(packageName: String): ActionResult {
+        if (!isScreenAvailable(service)) return ActionResult.Failure("Unlock the phone to continue.")
         return withContext(Dispatchers.Main) {
             try {
                 val pm = service.packageManager

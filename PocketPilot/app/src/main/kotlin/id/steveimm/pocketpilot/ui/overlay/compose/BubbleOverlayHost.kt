@@ -32,9 +32,13 @@ class BubbleOverlayHost(
     lifecycleOwner: LifecycleOwner,
     savedStateRegistryOwner: SavedStateRegistryOwner,
     private val onToggleCapsule: () -> Unit,
+    private val onDismiss: () -> Unit,
 ) {
     private val windowManager = service.getSystemService(WindowManager::class.java)
     private val composeHost = OverlayComposeHost(service, lifecycleOwner, savedStateRegistryOwner, windowManager, "BubbleOverlayHost")
+    private val dismissTarget = DismissTargetOverlay(service, lifecycleOwner, savedStateRegistryOwner)
+    private val overDismissTarget = MutableStateFlow(false)
+    private var gestureActive = false
     private val preferences = service.getSharedPreferences("overlay_bubble", Context.MODE_PRIVATE)
     private val expanded = MutableStateFlow(false)
     private var stateHolder: CapsuleStateHolder? = null
@@ -51,7 +55,7 @@ class BubbleOverlayHost(
     private var passThroughDepth = 0
     private var panelTop: Int? = null
     private val configurationCallback = object : ComponentCallbacks {
-        override fun onConfigurationChanged(newConfig: Configuration) { placeAtEdge() }
+        override fun onConfigurationChanged(newConfig: Configuration) { cancelDrag(); placeAtEdge() }
         override fun onLowMemory() = Unit
     }
 
@@ -59,11 +63,15 @@ class BubbleOverlayHost(
     fun setPanelTop(top: Int?) {
         if (panelTop == top) return
         panelTop = top
-        if (isShowing()) placeAtEdge()
+        if (isShowing() && !dragging) placeAtEdge()
     }
     fun setExpanded(value: Boolean) { expanded.value = value }
     fun isShowing(): Boolean = composeHost.isShowing()
-    fun suppressForScreenshot(): AutoCloseable = composeHost.suppressForScreenshot()
+    fun suppressForScreenshot(): AutoCloseable {
+        val bubble = composeHost.suppressForScreenshot()
+        val target = dismissTarget.suppressForScreenshot()
+        return AutoCloseable { target.close(); bubble.close() }
+    }
 
     fun beginGesturePassThrough(): AutoCloseable {
         passThroughDepth++
@@ -86,8 +94,11 @@ class BubbleOverlayHost(
             val mode by holder.mode.collectAsState()
             val phase by holder.turnPhase.collectAsState()
             val isExpanded by expanded.collectAsState()
+            val captured by overDismissTarget.collectAsState()
             OverlayBubbleCompose(
                 expanded = isExpanded,
+                capturedForDismissal = captured,
+                onDismiss = onDismiss,
                 status = when (mode) {
                     is CapsuleMode.Done -> if ((mode as CapsuleMode.Done).stopped) "Stopped" else "Task finished"
                     is CapsuleMode.Error -> "Error"
@@ -104,6 +115,7 @@ class BubbleOverlayHost(
     }
 
     fun hide() {
+        cancelDrag()
         if (!isShowing()) return
         dockAnimation?.cancel()
         service.unregisterComponentCallbacks(configurationCallback)
@@ -116,31 +128,56 @@ class BubbleOverlayHost(
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 dockAnimation?.cancel()
-                downX = event.rawX
-                downY = event.rawY
-                startX = x
-                startY = y
+                downX = event.rawX; downY = event.rawY
+                startX = x; startY = y
                 dragging = false
+                gestureActive = true
             }
             MotionEvent.ACTION_MOVE -> {
+                if (!gestureActive) return true
                 val dx = event.rawX - downX
                 val dy = event.rawY - downY
                 val slop = ViewConfiguration.get(service).scaledTouchSlop
-                if (abs(dx) > slop || abs(dy) > slop) dragging = true
-                if (dragging) moveTo(startX + dx, startY + dy)
+                if (!dragging && (abs(dx) > slop || abs(dy) > slop)) {
+                    dragging = true
+                    dismissTarget.show()
+                }
+                if (dragging) {
+                    val nextX = startX + dx; val nextY = startY + dy
+                    val captured = dismissTarget.contains(nextX + dp(30), nextY + dp(30))
+                    if (captured && !overDismissTarget.value) composeHost.hapticFeedback()
+                    overDismissTarget.value = captured
+                    dismissTarget.highlight(captured)
+                    if (captured) moveTo(dismissTarget.center.x - dp(30), dismissTarget.center.y - dp(30))
+                    else moveTo(nextX, nextY)
+                }
             }
             MotionEvent.ACTION_UP -> {
+                if (!gestureActive) return true
+                gestureActive = false
                 if (dragging) {
-                    val bounds = movementBounds()
+                    val dismiss = overDismissTarget.value
+                    dragging = false
+                    dismissTarget.hide()
+                    overDismissTarget.value = false
+                    if (dismiss) { onDismiss(); return true }
+                    val bounds = movementBounds(avoidPanel = false)
                     rightEdge = x >= (bounds.left + bounds.right) / 2f
-                    heightFraction = (y - bounds.top) / movementBounds(avoidPanel = false).height().coerceAtLeast(1)
+                    heightFraction = ((y - bounds.top) / bounds.height().coerceAtLeast(1)).coerceIn(0f, 1f)
                     preferences.edit().putBoolean("right_edge", rightEdge).putFloat("height_fraction", heightFraction).apply()
                     placeAtEdge(animate = true)
                 } else onToggleCapsule()
             }
-            MotionEvent.ACTION_CANCEL -> placeAtEdge()
+            MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_POINTER_DOWN -> { cancelDrag(); placeAtEdge() }
         }
         return true
+    }
+
+    private fun cancelDrag() {
+        gestureActive = false
+        dragging = false
+        overDismissTarget.value = false
+        dismissTarget.hide()
     }
 
     private fun movementBounds(avoidPanel: Boolean = true): Rect {
@@ -176,7 +213,7 @@ class BubbleOverlayHost(
     }
 
     private fun moveTo(nextX: Float, nextY: Float) {
-        val bounds = movementBounds()
+        val bounds = movementBounds(avoidPanel = !dragging)
         x = nextX.coerceIn(bounds.left.toFloat(), bounds.right.toFloat())
         y = nextY.coerceIn(bounds.top.toFloat(), bounds.bottom.toFloat())
         composeHost.updateLayoutParams { it.x = x.roundToInt(); it.y = y.roundToInt() }

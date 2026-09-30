@@ -66,7 +66,7 @@ class Agent(
         )
 
         var stopReason: AgentStopReason? = null
-        var turnRunnerState = TurnRunnerState()
+        var turnRunnerState = TurnRunnerState(observeScreen = config.observeInitialScreen)
         var recoverableRetryCount = 0
         var consecutiveCompactionFailures = 0
         var toolFailureTurns = 0
