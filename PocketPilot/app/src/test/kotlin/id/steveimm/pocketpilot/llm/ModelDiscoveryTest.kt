@@ -1,27 +1,9 @@
 package id.steveimm.pocketpilot.llm
 
 import com.google.common.truth.Truth.assertThat
-import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertThrows
-import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
-import org.junit.After
-import org.junit.Before
 import org.junit.Test
 
 class ModelDiscoveryTest {
-
-    private lateinit var server: MockWebServer
-
-    @Before
-    fun setUp() {
-        server = MockWebServer().apply { start() }
-    }
-
-    @After
-    fun tearDown() {
-        server.shutdown()
-    }
 
     @Test
     fun `Metadata-rich fixture parses name + context_length + image modality + tool support`() {
@@ -183,47 +165,4 @@ class ModelDiscoveryTest {
         assertThat(entries["vendor/b"]?.length).isEqualTo(80)
     }
 
-    @Test
-    fun `discover hits baseUrl slash models with bearer auth`() = runTest {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"data":[{"id":"vendor/x"}]}"""
-            )
-        )
-        val base = server.url("/v1").toString().trimEnd('/')
-        val out = ModelDiscovery.discover(base, "sk-test")
-        val req = server.takeRequest()
-        assertThat(req.path).isEqualTo("/v1/models")
-        assertThat(req.getHeader("Authorization")).isEqualTo("Bearer sk-test")
-        assertThat(out.single().modelId).isEqualTo("vendor/x")
-    }
-
-    @Test
-    fun `non-2xx error message contains host only, never URL secrets (Codex r2)`() {
-        // The validator would normally block user-info / query / fragment base URLs (covered by ServerBaseUrlValidatorTest).
-        server.enqueue(MockResponse().setResponseCode(503).setBody("upstream is down"))
-
-        val sentinel = "SUPERSECRET-do-not-leak"
-        val base = server.url("/v1/$sentinel").toString().trimEnd('/')
-        val expectedHost = server.url("/").host
-
-        val error = assertThrows(java.io.IOException::class.java) {
-            kotlinx.coroutines.runBlocking {
-                ModelDiscovery.discover(base, "sk-test")
-            }
-        }
-        val msg = error.message.orEmpty()
-
-        assertThat(msg).doesNotContain(sentinel)
-        assertThat(msg).doesNotContain("/v1/$sentinel")
-        // Host (or a host-only identifier) IS allowed — the user needs SOME
-        // anchor to know which endpoint failed.
-        assertThat(msg).contains(expectedHost)
-        // Status code should be present so the user has a clue.
-        assertThat(msg).contains("503")
-    }
-
-    companion object {
-        private const val BASE = "https://api.example.com/v1"
-    }
 }

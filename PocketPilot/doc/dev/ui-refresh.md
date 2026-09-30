@@ -1,83 +1,50 @@
 # PocketPilot UI refresh
 
-Status: in progress. This document records the scope and verification of the redesign requested on 2026-09-30.
+Status: ready for review, 2026-09-30.
 
-## Intended result
+## Result
 
-PocketPilot should have its own identity, readable chat and reasoning, consistent controls, and smooth transitions. Replace the warm paper, serif typography, and paw branding with cool neutral surfaces, blue accents, sans-serif typography, and a navigation-inspired vector mark. Use the same identity in the launcher, onboarding, chat, settings, and floating controls.
+PocketPilot now uses a cool light/dark palette, Geist typography, and a vector navigation mark. The empty chat has one logo in the header and compact editable suggestions above the composer. Removed the paper texture, serif identity, paw assets, decorative hero, repeated branding, filler copy, duplicate progress/error displays, and obsolete code/tests.
 
-Termux is outside the phone-automation workflow and will be removed, including its tool, bridge, permission, settings, startup probes, and obsolete tests and documentation. Native phone actions and the configured local model remain the core workflow.
+The model-server page has **Test connection**. It checks the current unsaved URL and optional key with a cancellable `/models` request. It reports reachability, authentication failures, HTTP errors, and network failures without generating a response or saving configuration. Advertised models appear in the Model ID selector. Manual IDs remain supported. Redirects are disabled, and the connection check has a ten-second deadline.
 
-## Completion checks
+Termux was unnecessary for native Android automation. Removed its tool, bridge, permission, settings, startup probes, generated resource, and associated tests/docs. Removed the unused SnakeYAML dependency as well.
 
-- [x] New vector logo and launcher icon, with no old app-brand assets left in use.
-- [ ] Consistent light and dark palettes, typography, spacing, shapes, contrast, and system bars.
-- [ ] Clear chat entry, history browsing, reasoning disclosure, action results, Markdown, and conversation controls.
-- [ ] Coherent onboarding, local-server configuration, permission repair, settings navigation, and failure states.
-- [ ] Persistent bubble and expanded controls use the new design and retain drag, input, screenshot, and gesture behavior.
-- [ ] Fluid screen transitions, disclosure changes, input/keyboard behavior, and bubble interactions. Reduced motion remains usable.
-- [ ] No clipping or inaccessible controls with a keyboard, larger font scale, or landscape layout.
-- [x] Termux and related dead code removed, with native tool registration verified.
-- [ ] Release checks pass and the signed ARM64 build is inspected on the emulator.
-- [ ] Emulator configuration is restored after QA, and the user is notified when the result is ready for feedback.
+## Interaction fixes
 
-## Verification approach
+- Settings has a back stack. Android Back handles the drawer, nested settings, and setup.
+- New chats and history changes reset drafts and startup feedback. Font/display-size changes retain the interface, and activity state retains the draft.
+- One activity disclosure contains native reasoning and tools. The answer stays visible independently. Inspecting reasoning stops automatic following, including when expanding a short response into a long trace.
+- Stopping preserves partial output and remains distinct from completion in chat, history, and the floating controls.
+- A task error leaves the composer available. A startup error preserves unsent input without adding duplicate synthetic messages.
+- Permission repair distinguishes disabled accessibility from an enabled service reconnecting. Main observes reconnection while open.
+- The persistent bubble retains drag, docking, input, and completion behavior. Docking and panel transitions animate. Screenshot hiding owns a separate outer container so animation cannot restore an overlay during capture.
+- Reduced motion updates while the app is open. Removed the panel-local timer that reset when reopening the controls.
+- Setup does not become complete merely because a server was saved. Privacy text reflects persistent floating controls.
 
-The user's model server is offline. Use saved sessions for existing conversation states and a temporary, deterministic local fixture server for streaming, questions, approvals, completion, and connection-failure UI. This validates presentation and interaction, not model capability. Preserve the user's emulator configuration and saved sessions. Screenshots, recordings, and private device backups stay outside the repository.
+## Verification
 
-Review the actual screens and interaction outcomes before marking each check complete. Record findings and final evidence below as work progresses.
+The actual LLM server remained offline. A temporary loopback fixture drove real app requests and tool execution for UI checks. These checks validate interaction and presentation, not model capability. No physical OPPO verification was performed in this pass.
 
-## Termux removal
+| Area | Verified |
+|---|---|
+| Main and settings | Minimal home, one header logo, light/dark colors, server form, app access, diagnostics, licenses |
+| Navigation | Drawer Back, nested Settings Back, new chat, rotation with drawer closed |
+| Chat | Streaming, Markdown, scroll up/Latest, long reasoning disclosure, stopped partial answer, error recovery |
+| User interaction | Question/reply, action-needed/Done, app approval opening Clock |
+| Floating controls | Drag/dock, repeated expand/minimize, draft persistence, completed and stopped panels |
+| Screenshots | Model screenshot excludes the bubble while the bubble remains on the emulator afterward |
+| Layout | Portrait, landscape, 150% text, keyboard input, draft retention across rotation/text-size changes |
+| Motion | Panel transitions, docking, disclosure, disabled system animations |
+| Setup | Granted permission pages, keyless server configuration, demo failure detection, optional demo skip, completion |
+| Connection test | Reachable and unreachable endpoints, missing/valid key, model selector, unchanged saved settings after testing |
 
-The Termux integration exposed an optional Linux shell, workspace prompt, localhost bridge, and external command permission. Native phone tools use Android directly and have no dependency on it. Removed the integration, bridge source and generated resource task, settings entry, capability snapshot, and associated tests. Also removed the unused SnakeYAML dependency left behind by runtime skills, and regenerated the license inventory.
+All **902 release JVM tests** passed, release lint passed, and Compose instrumentation sources compiled. Emulator QA used the signed release APK. Network tests cover endpoint normalization, keyless/authenticated requests, catalog isolation, rejected authentication, redirects, missing model routes, cancellation, and timeout.
 
-Validation: no Termux references remain in application source, active architecture docs, runtime scripts, or tool registration. All 907 remaining release unit tests pass, release lint passes, and device UI tests compile. No model server was used.
+The final APK is `app/build/outputs/apk/release/app-arm64-v8a-release.apk`, signed with the existing key, ARM64-only, non-debuggable, and verified for 16 KB ZIP alignment. SHA-256: `2bbf531f9f8775c17186fd60aa3fcb0e4c7386c7f4a59586e8195dca54ac6361`.
 
-## Audit findings to finish
+## Cleanup and remaining scope
 
-- The history drawer did not consume Android Back. Fixed and verified on the rebuilt emulator app.
-- Header content inherited black in dark mode outside a Surface. Fixed with an explicit theme foreground and verified on the emulator.
-- Nested settings navigation always returns to Settings home, including App access opened from Automation.
-- New-chat, history switching, startup errors, and composer drafts need one consistent reset behavior.
-- Streaming auto-scroll uses a cancellable effect with a mutable programmatic-scroll flag. Review interruption and manual reasoning expansion.
-- The jump-to-bottom control says “live” even for completed history. Tool rows repeat their title inside a function-like label.
-- Settings and permission copy mix implementation terms, capitalization, and redundant navigation controls.
-- Overlay show/hide and edge docking are immediate. Animate them while keeping screenshot suppression independent of visual transitions.
-- Reduced-motion settings are read only once. Update the preference reactively and verify disabled animations.
-- Exercise streaming, interruption, questions, approvals, and errors with the local fixture server, then restore the original device configuration.
+Restored the emulator's original server/preferences and display settings. All 84 original session/context files were verified against their backups. Removed only identified QA chats, fixture traces, and fixture catalog entries. Stopped the temporary server and removed its ADB port mapping. Private screenshots, traces, and backups remain outside the repository.
 
-## Visual foundation
-
-Replaced the paper texture, warm palette, serif identity, paw artwork, and density-specific launcher bitmaps with cool light/dark palettes, Geist typography, a shared navigation mark, and adaptive vector icons. Updated the home layout, editable suggestions, headers, message surfaces, settings cards, and floating mark. Removed the old paw animation and its implementation-only tests. Ordinary response completion no longer displays a success checkmark on the activity disclosure.
-
-The first emulator review caught black header text in dark mode and Android Back exiting an open history drawer. Both were corrected and rechecked. The new logo is visible in the launcher, home, settings, and bubble. Light and dark home/settings screens were inspected, and tapping a suggestion was verified to fill the composer without creating a task. Main text, secondary text, primary buttons, and message-container foreground pairs have contrast ratios above 4.5:1 in both palettes.
-
-Validation: 901 release unit tests, release lint, and device UI test compilation passed. Signed ARM64 release, existing certificate, non-debuggable flag, 16 KB alignment, and absence of Termux packaging checked. Foundation APK SHA-256: `cee420bb1b3573781fa1d0eb3971497825dc338772195aaa6cb30b0a75bce5aa`. Navigation depth, streaming behavior, motion, input focus, and the full state matrix remain in progress.
-
-## Conversation and navigation
-
-Settings now keeps a back stack, including App access opened from Automation. Chat drafts and startup feedback clear when opening a new chat or loading history. Activity has one disclosure containing native reasoning and actions, while the current answer stays visible. Removed the unused prompt-derived summary and its state. Tool titles no longer repeat inside function-like wrappers. Manual scrolling and expanding activity suspend automatic scrolling, and a labeled Latest control returns to the bottom.
-
-Stopping preserves partial response text and records an explicit stopped state for history. Errors use the themed alert treatment. Permission repair distinguishes a selected accessibility service that is connecting from a permission that is disabled, and observes reconnection while Main remains open.
-
-Emulator verification: long streamed fixture and completed Markdown, scroll up and Latest visibility, reasoning expansion without losing position, New chat reset, nested Android Back, and Stop with retained partial text. Unit coverage verifies interruption persistence and connection-versus-permission state. All 901 release unit tests and release lint passed, device UI tests compiled, and the signed ARM64 APK passed signature/ABI/alignment checks. This stage also gives Latest a 48 dp target and labels the duration as Activity after visual review.
-
-## Motion and feedback
-
-The floating panel now fades and moves a short distance on opening/closing. Its animation runs on the content view, while screenshot suppression owns the outer window container. Closing immediately releases touch interception. Bubble dragging still follows raw touch coordinates and now animates the final edge docking. Android's reduced-motion preference is observed while the UI is open. Removed the panel-local elapsed timer, which reset whenever the panel reopened.
-
-Model discovery and saving have separate progress labels. The server form validates after leaving a field, supports showing/hiding an optional key, opens the discovered-model menu, and explains that saved settings apply to new chats. History failures now produce visible feedback. Live activity has a progress indicator.
-
-Validation: 901 release unit tests, release lint, and device UI test compilation passed. On the signed ARM64 emulator build, verified drag/dock, repeated panel toggles, disabled animations, 150% text, landscape chat and question/reply completion, model discovery/selection/save feedback, and the screenshot tool. The captured model screenshot excludes the bubble while the emulator retains it afterward. Full first-run onboarding, additional failure states, dark active controls, and final configuration restoration remain to check.
-
-## Final interaction checks
-
-Verified dark approval, session approval opening Clock, persistent completed controls, overlay draft retention, user-action handoff and Done, server-error presentation, onboarding permission pages, manual local-server setup without a key, demo failure when Settings does not open, demo skipping, and setup completion. Diagnostics and license pages were inspected in portrait and landscape.
-
-Corrected the stopped overlay state, main-chat error recovery, inconsistent chat/settings terminology, and setup's Android Back handling. Saving a model server no longer silently completes unfinished onboarding when the activity is recreated. A text-size change exposed a lost draft: font/display-size changes now use the existing configuration handling, and activity state also retains the draft. The rebuilt app retained the draft at 150% text size. All 901 unit tests and release lint pass, and device UI tests compile. Signed ARM64 APK SHA-256 before the minimalism pass: `8592c96205cef5a84aaa3ace934bb5907cf30b81e51cb667e462eacfd95ac2fc`.
-
-## Minimalism refinement
-
-User feedback: do not add text to fill space, keep the UI minimal, and remove redundant components such as the second logo in the empty chat. Remove the empty-state hero, explanatory filler, duplicate branding, repeated form hints, and redundant navigation descriptions. Keep text that explains a setting's actual behavior, errors, permission needs, and model-server compatibility. Recheck the simplified screens on the emulator before completion.
-
-The minimalism pass removes the empty-state hero, repeated logos, explanatory filler, redundant progress indicators, duplicate startup-error messages, and unnecessary setup graphics. Suggestions are compact controls above the composer. Settings subtitles now describe useful current state. The drawer has a stable maximum width and stays closed during rotation. Long reasoning expansion was verified from a short completed response: its beginning remains visible rather than jumping to the bottom. Compact suggestions and draft retention were rechecked using screenshots rather than UI-dump coordinates, because UI automation temporarily reconnects accessibility and shifts bottom-anchored controls.
+Compact overlays remain the default. The previously requested bounded border/gesture-marker redesign stays in the backlog. README promotional artwork remains outside this change.

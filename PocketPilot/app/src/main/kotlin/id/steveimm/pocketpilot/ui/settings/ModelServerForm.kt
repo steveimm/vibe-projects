@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,9 +58,9 @@ fun ModelServerForm(settings: AppSettingsState, onSaved: () -> Unit = {}) {
     var keyEdited by remember { mutableStateOf(false) }
     var keyLoading by remember { mutableStateOf(false) }
     var keyRequest by remember { mutableStateOf(0) }
-    var loadingModels by remember { mutableStateOf(false) }
+    var testing by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
-    val busy = loadingModels || saving
+    val busy = testing || saving
     var showKey by remember { mutableStateOf(false) }
     var urlTouched by remember { mutableStateOf(false) }
     var modelTouched by remember { mutableStateOf(false) }
@@ -93,14 +94,14 @@ fun ModelServerForm(settings: AppSettingsState, onSaved: () -> Unit = {}) {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Connect to an OpenAI-compatible Chat Completions server you run.")
+        Text("OpenAI-compatible Chat Completions", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedTextField(
             value = url,
             onValueChange = { url = it; urlTouched = false; error = null; message = null },
             label = { Text("Server URL") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             placeholder = { Text("http://192.168.1.10:8000/v1") },
-            supportingText = { Text(if (urlTouched && url.isNotBlank() && normalizedUrl == null) "Enter a valid HTTP or HTTPS URL." else "API base URL, for example http://192.168.1.10:8000/v1") },
+            supportingText = { Text(if (urlTouched && url.isNotBlank() && normalizedUrl == null) "Enter a valid HTTP or HTTPS URL." else "API base URL") },
             singleLine = true,
             enabled = !busy,
             isError = urlTouched && url.isNotBlank() && normalizedUrl == null,
@@ -108,9 +109,8 @@ fun ModelServerForm(settings: AppSettingsState, onSaved: () -> Unit = {}) {
         )
         OutlinedTextField(
             value = key,
-            onValueChange = { keyEdited = true; key = it; message = null },
+            onValueChange = { keyEdited = true; key = it; message = null; error = null; models = emptyList() },
             label = { Text("API key (optional)") },
-            supportingText = { Text("Leave blank if your server does not require authentication.") },
             visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
                 IconButton(onClick = { showKey = !showKey }) {
@@ -128,45 +128,61 @@ fun ModelServerForm(settings: AppSettingsState, onSaved: () -> Unit = {}) {
             onClick = {
                 val endpoint = normalizedUrl ?: return@OutlinedButton
                 val token = key
-                loadingModels = true
+                testing = true
                 error = null
+                message = null
+                models = emptyList()
                 scope.launch {
                     try {
-                        models = repository.refresh(endpoint, token)
-                        menuOpen = models.isNotEmpty()
-                        message = if (models.isEmpty()) "No models listed. You can enter a model ID manually." else null
+                        val result = repository.testConnection(endpoint, token)
+                        models = result.models
+                        when (result.statusCode) {
+                            in 200..299 -> message = "Server reachable."
+                            401, 403 -> error = "Server reachable. Check the API key (HTTP ${result.statusCode})."
+                            404, 405 -> message = "Server reachable. Model listing unavailable (HTTP ${result.statusCode})."
+                            in 300..399 -> error = "Server returned HTTP ${result.statusCode}. Check the URL."
+                            else -> error = "Server returned HTTP ${result.statusCode}."
+                        }
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
-                        error = "Could not list models. Enter the model ID manually, or check the server."
+                        error = when (e) {
+                            is java.net.UnknownHostException -> "Host not found."
+                            is java.io.InterruptedIOException -> "Connection timed out."
+                            is javax.net.ssl.SSLException -> "TLS connection failed."
+                            is IllegalArgumentException -> "Invalid server address or API key."
+                            else -> "Could not reach the server."
+                        }
                     } finally {
-                        loadingModels = false
+                        testing = false
                     }
                 }
             },
-            modifier = Modifier.testTag("load-server-models"),
-        ) { Text(if (loadingModels) "Loading models…" else "Load models") }
-        if (models.isNotEmpty()) {
-            Box {
-                OutlinedButton(onClick = { menuOpen = true }) { Text("Choose a listed model") }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, modifier = Modifier.heightIn(max = 280.dp)) {
-                    models.forEach { entry ->
-                        DropdownMenuItem(text = { Text(entry.displayName) }, onClick = { model = entry.modelId; menuOpen = false })
-                    }
+            modifier = Modifier.testTag("test-model-server"),
+        ) { Text(if (testing) "Testing…" else "Test connection") }
+        Box {
+            OutlinedTextField(
+                value = model,
+                onValueChange = { model = it; modelTouched = false; message = null; error = null },
+                label = { Text("Model ID") },
+                trailingIcon = if (models.isEmpty()) null else {
+                    { IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.ArrowDropDown, "Choose model") } }
+                },
+                singleLine = true,
+                enabled = !busy,
+                isError = modelTouched && model.isNotBlank() && validatedModel == null,
+                modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) modelTouched = true }.testTag("server-model-id"),
+            )
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, modifier = Modifier.heightIn(max = 280.dp)) {
+                models.forEach { entry ->
+                    DropdownMenuItem(text = { Text(entry.displayName) }, onClick = {
+                        model = entry.modelId
+                        menuOpen = false
+                    })
                 }
             }
         }
-        OutlinedTextField(
-            value = model,
-            onValueChange = { model = it; modelTouched = false; message = null; error = null },
-            label = { Text("Model ID") },
-            supportingText = { Text("Use the exact model ID served by your endpoint.") },
-            singleLine = true,
-            enabled = !busy,
-            isError = modelTouched && model.isNotBlank() && validatedModel == null,
-            modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) modelTouched = true }.testTag("server-model-id"),
-        )
-        if (normalizedUrl?.startsWith("http://") == true) Text("HTTP sends requests without encryption. Use a trusted network.")
+        if (normalizedUrl?.startsWith("http://") == true) Text("HTTP is unencrypted.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         error?.let { SettingsAlertCard(message = it, tone = AlertTone.Error) }
         message?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         Button(
@@ -181,7 +197,7 @@ fun ModelServerForm(settings: AppSettingsState, onSaved: () -> Unit = {}) {
                     try {
                         withContext(Dispatchers.IO) { credentials.setApiKey(endpoint, token) }
                         settings.updateServer(endpoint, id)
-                        message = "Saved. New chats will use this server."
+                        message = "Saved. Applies to new chats."
                         onSaved()
                     } catch (e: CancellationException) {
                         throw e

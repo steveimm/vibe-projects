@@ -34,7 +34,7 @@ class CustomServerHttpTest {
             server.start()
             server.enqueue(MockResponse().setBody("""{"data":[{"id":"local-model"}]}"""))
             val base = server.url("/v1").toString()
-            val models = ModelDiscovery.discover(base, "")
+            val models = ModelDiscovery.parse(ModelServerHttp.getModels(base, "").body)
             val discovery = server.takeRequest(5, TimeUnit.SECONDS)!!
             assertThat(discovery.path).isEqualTo("/v1/models")
             assertThat(discovery.getHeader("Authorization")).isNull()

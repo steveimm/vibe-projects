@@ -1,19 +1,26 @@
 package id.steveimm.pocketpilot.llm
 
 import android.content.Context
+import android.util.Log
+import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+data class ServerConnectionResult(val statusCode: Int, val models: List<ModelEntry>)
+
 class ModelCatalogRepository(
     private val discoveryCache: ModelDiscoveryCache,
-    private val discover: suspend (String, String) -> List<ModelEntry> = ModelDiscovery::discover,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
-    suspend fun refresh(baseUrl: String, apiKey: String = ""): List<ModelEntry> = withContext(Dispatchers.IO) {
+    suspend fun testConnection(baseUrl: String, apiKey: String = ""): ServerConnectionResult = withContext(Dispatchers.IO) {
         val url = ServerBaseUrlValidator.validate(baseUrl).getOrThrow()
-        val models = discover(url, apiKey)
-        discoveryCache.write(url, clock(), models)
-        models
+        val response = ModelServerHttp.getModels(url, apiKey, timeoutSeconds = 10)
+        val models = if (response.statusCode in 200..299) ModelDiscovery.parse(response.body) else emptyList()
+        if (response.statusCode in 200..299) {
+            try { discoveryCache.write(url, clock(), models) }
+            catch (e: IOException) { Log.w("ModelCatalog", "Could not cache model list", e) }
+        }
+        ServerConnectionResult(response.statusCode, models)
     }
 
     fun forServer(baseUrl: String, selectedId: String): ModelCatalog {

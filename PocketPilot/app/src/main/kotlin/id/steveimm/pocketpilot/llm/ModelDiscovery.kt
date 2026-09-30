@@ -1,8 +1,6 @@
 package id.steveimm.pocketpilot.llm
 
 import android.util.Log
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -11,9 +9,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 
 /** Fetches model metadata from the configured server and filters out models that explicitly lack chat or tool support. */
 object ModelDiscovery {
@@ -21,8 +16,6 @@ object ModelDiscovery {
     private const val TAG = "ModelDiscovery"
     private const val MAX_DISPLAY_NAME_LEN = 80
     private const val DEFAULT_CONTEXT_WINDOW = 128_000
-    private const val CONNECT_TIMEOUT_MS = 10_000
-    private const val READ_TIMEOUT_MS = 30_000
 
     /** Heuristic fallback for upstreams whose schema doesn't declare model type. Used only when no structured signal (`model_type`,
      * `endpoints`, `modality`) is available — structured signals always win. */
@@ -31,18 +24,7 @@ object ModelDiscovery {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** Fetch and parse `{baseUrl}/models`, adding bearer authentication only when [apiKey] is nonblank. Returns the surviving discovered models
-     * after CHAT-only, tool-calling, and non-chat filters. */
-    suspend fun discover(
-        baseUrl: String,
-        apiKey: String,
-    ): List<ModelEntry> = withContext(Dispatchers.IO) {
-        val normalizedBaseUrl = ServerBaseUrlValidator.validate(baseUrl).getOrThrow()
-        val raw = fetch(normalizedBaseUrl, apiKey)
-        parse(raw)
-    }
-
-    /** Parse a `/models` response body into [ModelEntry]s. Exposed for fixture tests; HTTP is handled by [discover]. */
+    /** Parse a `/models` response body into [ModelEntry]s. */
     fun parse(
         body: String,
     ): List<ModelEntry> {
@@ -162,31 +144,7 @@ object ModelDiscovery {
 
     private val CHAT_MODEL_TYPES = setOf("chat", "llm", "language", "completion")
 
-    private fun fetch(baseUrl: String, apiKey: String): String {
-        val url = URL("$baseUrl/models")
-        var connection: HttpURLConnection? = null
-        try {
-            connection = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                instanceFollowRedirects = false
-                connectTimeout = CONNECT_TIMEOUT_MS
-                readTimeout = READ_TIMEOUT_MS
-                if (apiKey.isNotBlank()) setRequestProperty("Authorization", "Bearer $apiKey")
-                setRequestProperty("Accept", "application/json")
-            }
-            val code = connection.responseCode
-            if (code !in 200..299) {
-                val err = (connection.errorStream ?: connection.inputStream)
-                    ?.bufferedReader()?.use { it.readText() }.orEmpty()
-                // Surface a host-only identifier so a misconfigured URL with embedded credentials or query secrets never reaches the UI
-                // banner or log sink.
-                throw IOException("HTTP $code from ${url.host}: ${err.take(200)}")
-            }
-            return connection.inputStream.bufferedReader().use { it.readText() }
-        } finally {
-            connection?.disconnect()
-        }
-    }
+
 }
 
 private fun JsonObject.stringOrNull(key: String): String? =
