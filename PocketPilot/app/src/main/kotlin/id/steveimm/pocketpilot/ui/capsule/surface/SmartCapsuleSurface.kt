@@ -78,6 +78,7 @@ fun SmartCapsuleSurface(
     onInputFocusChanged: (Boolean) -> Unit = {},
     onInputSubmitted: () -> Unit = {},
     autoFocusInput: Boolean = false,
+    inputActive: Boolean = true,
     inputDraft: MutableState<String>? = null,
     pendingInputText: String = "",
     onPendingInputConsumed: () -> Unit = {},
@@ -164,6 +165,7 @@ fun SmartCapsuleSurface(
                 }
                 CapsuleInputBar(
                     spec = input,
+                    active = inputActive,
                     mode = mode,
                     platformMode = platformMode,
                     context = context,

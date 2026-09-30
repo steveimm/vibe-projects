@@ -29,6 +29,29 @@ class VoiceInputControllerTest {
         )
 
     @Test
+    fun `cancel releases the old recognizer before dictation restarts`() {
+        val factory = FakeRecognizerFactory()
+        val text = mutableListOf<String>()
+        val controller = VoiceInputController(factory, "en-US", { text += it })
+        controller.start("draft")
+        val first = factory.created.single()
+        first.callbacks.onPartial("words")
+        controller.cancel()
+        assertThat(first.cancelCount).isEqualTo(1)
+        assertThat(first.destroyCount).isEqualTo(1)
+
+        controller.start("draft words")
+        first.callbacks.onFinal("stale result")
+        assertThat(text).containsExactly("draft words")
+        assertThat(factory.created).hasSize(2)
+        val second = factory.created.last()
+        controller.cancel()
+        controller.dispose()
+        assertThat(first.destroyCount).isEqualTo(1)
+        assertThat(second.destroyCount).isEqualTo(1)
+    }
+
+    @Test
     fun `partial-after-cancel — late onPartial dropped, no onText`() {
         val factory = FakeRecognizerFactory()
         val (c, onText, _) = newController(factory)

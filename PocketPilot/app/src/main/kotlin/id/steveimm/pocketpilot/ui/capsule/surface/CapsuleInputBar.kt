@@ -74,6 +74,7 @@ internal val LocalVoiceFeedback = staticCompositionLocalOf<(String) -> Unit> { {
 @Composable
 internal fun CapsuleInputBar(
     spec: CapsuleRenderSpec.InputSpec,
+    active: Boolean = true,
     mode: CapsuleMode,
     platformMode: PlatformMode,
     context: CapsuleContext,
@@ -98,7 +99,7 @@ internal fun CapsuleInputBar(
             keyboard?.show()
         }
     }
-    val inputEnabled = when {
+    val inputEnabled = active && when {
         context == CapsuleContext.MAIN_APP -> true
         mode is CapsuleMode.Running && platformMode == PlatformMode.ACCESSIBILITY -> false
         mode is CapsuleMode.TakeoverPending && platformMode == PlatformMode.ACCESSIBILITY -> false
@@ -130,9 +131,9 @@ internal fun CapsuleInputBar(
 
     val gate = if (voice?.activity != null) {
         rememberVoicePermissionGate(activity = voice.activity!!) { granted ->
-            if (granted) {
+            if (granted && inputEnabled) {
                 voiceController?.start(baseText = inputText)
-            } else {
+            } else if (!granted) {
                 reportVoiceFeedback("Microphone permission denied")
             }
         }
@@ -167,9 +168,7 @@ internal fun CapsuleInputBar(
 
     val canSend = inputEnabled && inputText.isNotBlank() &&
         voiceState != VoiceState.Listening && voiceState != VoiceState.Stopping
-    LaunchedEffect(inputEnabled) {
-        if (!inputEnabled) voiceController?.cancel()
-    }
+    LaunchedEffect(inputEnabled, draftState) { voiceController?.cancel() }
 
     val onMicTap: () -> Unit = mic@{
         val v = voice ?: return@mic

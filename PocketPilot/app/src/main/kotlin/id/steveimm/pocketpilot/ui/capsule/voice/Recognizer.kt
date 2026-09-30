@@ -43,7 +43,7 @@ interface RecognizerFactory {
 /** Production [RecognizerFactory] backed by [android.speech.SpeechRecognizer]. */
 class AndroidRecognizerFactory(private val context: Context) : RecognizerFactory {
     override fun isAvailable(): Boolean =
-        SpeechRecognizer.isRecognitionAvailable(context)
+        SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
 
     override fun create(): Recognizer? =
         if (isAvailable()) AndroidRecognizer(context) else null
@@ -53,7 +53,7 @@ class AndroidRecognizerFactory(private val context: Context) : RecognizerFactory
  * [VoiceError] so the framework dependency stays pinned to this file. */
 internal class AndroidRecognizer(context: Context) : Recognizer {
     private val recognizer: SpeechRecognizer =
-        SpeechRecognizer.createSpeechRecognizer(context)
+        SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
 
     private var callbacks: RecognizerCallbacks? = null
 

@@ -4,6 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import java.util.Locale
@@ -95,16 +99,15 @@ class VoiceInputController(
     }
 
     fun cancel() {
-        if (state == VoiceState.Idle || state == VoiceState.Unavailable) {
-            // Even from Idle, bump generation so any late stale callback from a previous
-            // session is dropped.
-            generation++
-            recognizer?.cancel()
-            return
-        }
         generation++
-        recognizer?.cancel()
-        state = VoiceState.Idle
+        val current = recognizer
+        recognizer = null
+        if (state != VoiceState.Unavailable) state = VoiceState.Idle
+        try {
+            current?.cancel()
+        } finally {
+            current?.destroy()
+        }
     }
 
     fun dispose() {
@@ -175,11 +178,18 @@ fun rememberVoiceInputController(
     onText: (String) -> Unit,
     onToast: (String) -> Unit = {},
 ): VoiceInputController {
+    val latestText by rememberUpdatedState(onText)
+    val latestToast by rememberUpdatedState(onToast)
     val controller = remember(factory, languageTag) {
-        VoiceInputController(factory, languageTag, onText, onToast)
+        VoiceInputController(factory, languageTag, { latestText(it) }, { latestToast(it) })
     }
-    DisposableEffect(controller) {
-        onDispose { controller.dispose() }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(controller, lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) controller.cancel()
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer); controller.dispose() }
     }
     return controller
 }

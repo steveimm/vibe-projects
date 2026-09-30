@@ -1,83 +1,53 @@
-# Voice Input
+# Voice input
 
-> Microphone `leadingIcon` on `CapsuleInputBar`. Streams partial speech results into the draft field; works in MAIN_APP and overlay contexts.
-> Last updated: 2026-05-17
+The microphone button in `CapsuleInputBar` streams partial speech into the editable draft in Main and floating controls. Text is sent to the model only on submission.
 
 ## Components
 
-All in `app/src/main/kotlin/id/steveimm/pocketpilot/ui/capsule/voice/`.
+All voice components are in `ui/capsule/voice/`.
 
-- **Recognizer.kt** — JVM-clean interfaces (`Recognizer`, `RecognizerCallbacks`, `VoiceError`, `RecognizerFactory`) plus `AndroidRecognizerFactory` / `AndroidRecognizer`. **The only file in the app that may import `android.speech.*`** — this isolation lets the controller stay JVM-testable. `AndroidRecognizer` translates `RecognitionListener` + `Bundle` payloads + raw error ints into the framework-free callback surface.
-- **VoiceInputController.kt** — plain Kotlin class wrapping a `Recognizer`. States: `Idle`, `Listening`, `Stopping`, `Unavailable`. Exposes `state`/`lastPartial`/`partialAtStop` as Compose `mutableStateOf`. `@Composable fun rememberVoiceInputController(...)` wraps with `DisposableEffect { onDispose { dispose() } }`. Plain class never imports `androidx.compose.*` outside that one factory.
-- **VoicePermissionGate.kt** — mirrors `RunCommandPermissionGate` shape. Disposition: `Granted` / `Request` / `OpenAppSettings`. The `pending` flag prevents rapid-tap launcher stacking. `@Composable rememberVoicePermissionGate(activity, onResult)` attaches a `RequestPermission` launcher.
-- **VoiceMicDeps** (in `ui/capsule/surface/CapsuleInputBar.kt`) — value type the bar takes as `voice: VoiceMicDeps?`. Fields: `factory: RecognizerFactory`, `activity: Activity?` (null in overlay), `fun isPermissionGranted(): Boolean`, `fun requestOverlayPermission()`. Null `voice` ⇒ mic icon hidden.
+- `Recognizer.kt` defines the recognition interfaces and Android adapter. It is the only source file importing `android.speech.*`.
+- `VoiceInputController` owns recognition state, partial text, callback generation, and resource cleanup. Its Compose wrapper keeps callbacks current and observes the host lifecycle.
+- `VoicePermissionGate` classifies permission as Granted, Request, or OpenAppSettings. Its pending flag prevents duplicate permission launches.
+- `VoiceMicDeps`, declared in `CapsuleInputBar.kt`, supplies the factory and permission access. A null dependency hides the microphone.
 
-## State machine
+## Availability and language
 
-```
-Idle ──tap mic──▶ Listening ──tap stop──▶ Stopping ──onResults / onError──▶ Idle
-                       │                       │
-                       ├ onPartialResults ─▶ Listening (inputText updated, lastPartial cached)
-                       ├ onResults  ───────▶ Idle (commit final)
-                       ├ onError ──────────▶ Idle OR Unavailable (see below)
-                       └ user types  ──────▶ Idle (cancel recognizer, keep visible text)
-```
+The Android factory uses `isOnDeviceRecognitionAvailable` and `createOnDeviceSpeechRecognizer` exclusively. If on-device recognition is unavailable, the mic is hidden. There is no fallback to the potentially remote default recognizer. See [Android's speech API](https://developer.android.com/reference/android/speech/SpeechRecognizer#createOnDeviceSpeechRecognizer(android.content.Context)).
 
-**Commit policy on exit:**
+Availability is checked at initialization and before starting an available controller. The language defaults to `Locale.getDefault().toLanguageTag()`.
 
-| Transition | Action |
+## Recognition state
+
+`Idle` starts listening on a microphone tap. Stop changes `Listening` to `Stopping` while waiting for a final result or error. Send is disabled during Listening and Stopping. An unavailable recognizer hides the mic.
+
+| Event | Draft and state |
 |---|---|
-| `Listening → onResults(final)` | `inputText = join(baseText, final)` |
-| `Stopping → onResults(final)` | final wins over `partialAtStop` |
-| `Stopping → ERROR_NO_MATCH \| SPEECH_TIMEOUT` | commit `partialAtStop` if non-empty, else restore `baseText` silently |
-| `Listening → ERROR_NO_MATCH \| SPEECH_TIMEOUT` | restore `baseText` silently (common case, no toast) |
-| `Listening → ERROR_LANGUAGE_*` | toast, transition to `Unavailable` for the session |
-| `Listening → ERROR_NETWORK*` | toast, restore `baseText` |
-| `Listening → ERROR_BUSY \| SERVICE_DIED \| UNKNOWN` (first session, no callbacks yet) | **terminal `Unavailable`** — mic icon hides |
-| `Listening → ERROR_BUSY \| SERVICE_DIED \| UNKNOWN` (after partial/final seen) | toast, restore `baseText` (transient) |
-| typing during `Listening` | cancel recognizer, keep visible text |
+| Partial result while Listening | Append recognized text to the draft captured at start |
+| Final result | Commit final text and return to Idle |
+| Stop, then final result | Final text replaces the partial captured at Stop |
+| Stop, then NoMatch or SpeechTimeout | Keep the partial captured at Stop, or restore the starting draft |
+| NoMatch or SpeechTimeout while Listening | Restore the starting draft without an alert |
+| Language unavailable | Restore the draft, report failure, hide the mic |
+| Network error | Restore the draft, report failure, return to Idle |
+| Busy, service died, or unknown error before any result | Report failure and hide the mic |
+| Those errors after a partial result | Restore the draft, report failure, return to Idle |
+| User types while Listening | Cancel recognition and keep the visible text |
 
-**Generation rule (Codex round 3).** A `generation: Int` counter is captured per session and checked in every callback. Bump on `cancel()`, `dispose()`, and **after** processing any terminal callback (`Listening→Idle` natural, `Stopping→Idle`, error→Idle/Unavailable). **Don't** bump on `Listening→Stopping` — the terminal callback we're waiting for must match the current generation.
+A generation counter rejects callbacks from canceled or completed attempts. Stop keeps the generation unchanged because its terminal callback is still needed. Partials received during Stopping do not alter the frozen `partialAtStop` value.
 
-**`partialAtStop`.** Snapshot of `lastPartial` taken at user-stop. Frozen during `Stopping` — partials arriving between `stopListening()` and the terminal callback do not mutate it.
+## Lifecycle and cleanup
 
-**Session-callback gate for terminal `Unavailable`.** A `sessionGotAnyCallback: Boolean` flag is set true on the first `onPartial`/`onFinal`. If `Busy`/`ServiceDied`/`Unknown` fires before any callback, the recognizer is unusable on this hardware/config and we promote to `VoiceState.Unavailable` (icon hides) instead of toasting on every tap.
+Opening the drawer or Settings disables the Main composer and cancels recognition. Changing the bound draft, disabling input, and host `ON_PAUSE` also cancel it. Cancellation preserves visible text, invalidates callbacks, and cancels and destroys the recognizer. A later start creates a new instance. Terminal results and composition disposal also destroy the recognizer.
+
+`rememberUpdatedState` directs callbacks to the current draft and feedback handler. Main displays feedback beside the composer; the floating panel uses a toast.
 
 ## Permission flow
 
-Reuses the `RunCommandPermissionGate` classifier shape:
+Main uses an Android `RequestPermission` launcher. A granted result starts dictation only if the input is still enabled. A denied result reports feedback. Repeated denial routes the user to Android app settings.
 
-```
-tap mic:
-  isPermissionGranted? ─yes─▶ controller.start(baseText)
-                       ─no──▶ classify(isGranted, hasAttempted, shouldShowRationale)
-                                Granted         → controller.start(baseText)
-                                Request         → MAIN_APP: launcher.launch(RECORD_AUDIO)
-                                                  overlay : route via AgentService → MainActivity
-                                OpenAppSettings → openAppSettings()
-```
-
-**MAIN_APP path.** `ChatScreen` builds `VoiceMicDeps(factory = AndroidRecognizerFactory(appCtx), activity = current activity, isPermissionGranted = ContextCompat.checkSelfPermission(...))`. The launcher is `rememberLauncherForActivityResult(RequestPermission())`.
-
-**Overlay path.** `CapsuleOverlayHost` builds `VoiceMicDeps(activity = null, isPermissionGranted = ContextCompat.checkSelfPermission(appCtx, RECORD_AUDIO) == GRANTED, requestOverlayPermission = { AgentService.instance?.requestVoicePermissionViaMainActivity() })`. If permission is already granted, `onMicTap` short-circuits to `controller.start(...)` and listening begins **in the overlay** without bouncing through MainActivity. If not granted, the overlay routes via `AgentService.requestVoicePermissionViaMainActivity()` which fires a `MainActivity` intent with the internal extra `EXTRA_REQUEST_VOICE_PERMISSION = true`. See [overlay.md § Voice permission cold-start](../overlay.md#voice-permission-cold-start) for the cold-start race detail.
-
-## Recognizer error mapping
-
-`AndroidRecognizer` maps `SpeechRecognizer.ERROR_*` ints to the framework-free `VoiceError` enum. The mapping table lives in `Recognizer.kt` and the controller's `handleError(VoiceError)` decides UI behavior per the state-machine commit-policy table above.
-
-## Availability
-
-`RecognizerFactory.isAvailable()` is re-checked on every `start()` (not just at construction) because availability can flap mid-session (user disables Google App, recognition service dies). `AndroidRecognizerFactory.isAvailable()` wraps `SpeechRecognizer.isRecognitionAvailable(context)` — note this returns `true` whenever any `RecognitionService` is registered, even if no default is selected or the service is unbindable. The hard-error → terminal-`Unavailable` rule above is the runtime corrective for that gap.
-
-## Language
-
-`languageTag` defaults to `Locale.getDefault().toLanguageTag()`. Override at `rememberVoiceInputController` site if needed.
-
-## Out of scope
-
-TTS, hot-word activation, multi-language switching from UI, custom acoustic models.
+The overlay starts recognition directly when microphone permission is already granted. Otherwise it asks `AgentService` to open MainActivity with `EXTRA_REQUEST_VOICE_PERMISSION`. `MainActivityContent` registers the permission launcher before consuming that request, including on a cold start. Granting permission through this route does not automatically start hidden overlay dictation.
 
 ## Tests
 
-- **JVM** — `app/src/test/kotlin/id/steveimm/pocketpilot/ui/capsule/voice/VoiceInputControllerTest.kt`: 12 cases against `FakeRecognizer` covering generation rule, `partialAtStop`, double-start, dispose-mid-listen, availability flip, hard-error-before-callback Unavailable promotion.
-- **Instrumented** — `app/src/androidTest/kotlin/id/steveimm/pocketpilot/qa/CapsuleVoiceInputTest.kt`: Compose UI tests with `FakeRecognizerFactory` injected covering mic visibility, overlay permission routing, partial streaming, typing-cancel, Send-disabled-during-listening.
+`VoiceInputControllerTest` covers partial/final handling, stale callbacks, cancellation and restart cleanup, duplicate starts, disposal, availability changes, and service errors. `CapsuleVoiceInputTest` checks microphone visibility, permission routing, streaming drafts, typing cancellation, and Send gating with a fake recognizer.
