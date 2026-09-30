@@ -19,13 +19,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import id.steveimm.pocketpilot.ui.common.PilotMark
 
 @Composable
 fun ScreenHeader(
     title: String,
     modifier: Modifier = Modifier,
-    leadingSlot: @Composable RowScope.() -> Unit = { PilotMark(size = 28.dp) },
+    leadingSlot: @Composable RowScope.() -> Unit = {},
     rightSlot: @Composable RowScope.() -> Unit = {},
     trailingSlot: @Composable RowScope.() -> Unit = {},
 ) {

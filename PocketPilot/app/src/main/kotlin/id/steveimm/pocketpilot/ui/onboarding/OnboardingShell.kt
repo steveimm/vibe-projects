@@ -25,7 +25,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import id.steveimm.pocketpilot.ui.common.PilotMark
 import id.steveimm.pocketpilot.ui.theme.AppWindowInsets
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
@@ -65,8 +64,6 @@ fun OnboardingShell(
                     }
                     Spacer(modifier = Modifier.width(spacing.xs))
                 }
-                PilotMark(size = 24.dp)
-                Spacer(Modifier.width(12.dp))
                 Text(
                     text = "Step $stepIndex of $totalSteps",
                     style = MaterialTheme.typography.labelMedium,
@@ -76,12 +73,7 @@ fun OnboardingShell(
 
             Spacer(modifier = Modifier.height(spacing.sm))
 
-            androidx.compose.material3.LinearProgressIndicator(
-                progress = { (stepIndex.toFloat() / totalSteps.coerceAtLeast(1)).coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth().height(4.dp),
-            )
-
-            Spacer(modifier = Modifier.height(spacing.xl))
+            Spacer(modifier = Modifier.height(spacing.lg))
 
             Text(
                 text = title,

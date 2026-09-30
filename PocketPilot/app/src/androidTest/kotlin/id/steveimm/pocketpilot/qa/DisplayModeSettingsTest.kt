@@ -6,7 +6,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.remember
 
 import id.steveimm.pocketpilot.protocol.PlatformMode
-import id.steveimm.pocketpilot.tool.AppClassifier
 import id.steveimm.pocketpilot.ui.settings.DisplaySection
 import id.steveimm.pocketpilot.ui.settings.SettingsHomePage
 import id.steveimm.pocketpilot.ui.theme.PocketPilotTheme
@@ -79,8 +78,6 @@ class DisplayModeSettingsTest {
         ).assertExists()
     }
 
-    // (c) Home Agent Behavior subtitle pulls a "VD" chip from effectivePlatformMode. The old combined "Setup required · Debug off · VD"
-    // string is gone — that subtitle was split: permissions row keeps the "· Debug" half, agent-behavior row owns "· VD".
     @Test fun home_subtitle_reflects_effective_platform_mode() {
         var current: PlatformMode? by mutableStateOf<PlatformMode?>(null)
         compose.setContent {
@@ -90,13 +87,11 @@ class DisplayModeSettingsTest {
             )
         }
 
-        // null effective → perception-only subtitle "Transcript", no VD chip on screen.
-        compose.onNodeWithText("Transcript").assertExists()
-        compose.onAllNodesWithText("VD", substring = true).assertCountEquals(0)
+        compose.onNodeWithText("Per app").assertExists()
+        compose.onAllNodesWithText("Virtual display", substring = true).assertCountEquals(0)
 
-        // effective=VIRTUAL_DISPLAY, persisted=ACCESSIBILITY → chip "VD (this session)".
         current = PlatformMode.VIRTUAL_DISPLAY
-        compose.onNodeWithText("Transcript · VD (this session)", substring = true).assertExists()
+        compose.onNodeWithText("Per app · Virtual display (this session)", substring = true).assertExists()
     }
 }
 
@@ -111,10 +106,8 @@ private fun HomeUnderTest(
             settings = remember { AppSettingsState(AppSettingsStore(contextForSettings)) },
             isAccessibilityEnabled = false,
             isOverlayEnabled = false,
-            debugMode = false,
             platformMode = persistedPlatformMode,
             effectivePlatformMode = effectivePlatformMode,
-            appClassifier = AppClassifier(appTiers = emptyMap()),
             approvalMode = id.steveimm.pocketpilot.protocol.ApprovalMode.SMART,
             onNavigate = {},
             onDismiss = {},

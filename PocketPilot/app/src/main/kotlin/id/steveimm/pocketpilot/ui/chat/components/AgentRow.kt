@@ -58,15 +58,9 @@ internal fun AgentRow(
             .semantics { stateDescription = rowDescription },
         verticalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
-        if (message.state == AgentMessageState.Thinking && message.contentBlocks.isEmpty()) {
-            ThinkingIndicator()
-            return@Column
-        }
-
         if (traceBlocks.isNotEmpty()) {
             CollapsePill(
                 summary = outcomeFooter(message),
-                active = message.rowState == RowState.Live,
                 expanded = expanded,
                 onToggle = {
                     if (!expanded) onInspect()

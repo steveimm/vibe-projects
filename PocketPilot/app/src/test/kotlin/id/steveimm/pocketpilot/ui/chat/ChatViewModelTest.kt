@@ -86,6 +86,7 @@ class ChatViewModelTest {
         vm.reportStartupFailure("Open Settings", "boot failed")
         assertThat(vm.pendingInput.value).isEqualTo("Open Settings")
         assertThat(vm.startupError.value).isEqualTo("boot failed")
+        assertThat(vm.messages).isEmpty()
 
         val preserved = vm.consumePendingInput()
         assertThat(preserved).isEqualTo("Open Settings")

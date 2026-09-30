@@ -11,17 +11,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.outlined.BatteryChargingFull
-import androidx.compose.material.icons.outlined.Layers
-import androidx.compose.material.icons.outlined.RocketLaunch
-import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import id.steveimm.pocketpilot.ui.settings.SettingsAlertCard
+import id.steveimm.pocketpilot.ui.settings.AlertTone
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,7 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.onboarding.DemoStepState
 import id.steveimm.pocketpilot.onboarding.PermissionStepState
@@ -48,19 +44,10 @@ fun PermissionStepContent(
     onContinue: () -> Unit = {}
 ) {
     val copy = permissionStepCopy(step)
+    val uriHandler = LocalUriHandler.current
     var detailsExpanded by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Icon
-        Icon(
-            imageVector = copy.icon,
-            contentDescription = null,
-            modifier = Modifier.size(48.dp),
-            tint = MaterialTheme.colorScheme.secondary
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         // Description
         Text(
             text = copy.description,
@@ -79,13 +66,17 @@ fun PermissionStepContent(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                TextButton(onClick = {
+                    uriHandler.openUri("https://github.com/steveimm/vibe-projects/blob/main/PocketPilot/PRIVACY_POLICY.md")
+                }) { Text("Privacy policy") }
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Status card
-        StatusCard(state = state, consequence = copy.consequence)
+        if (state == PermissionStepState.Unsatisfied) {
+            SettingsAlertCard(message = copy.consequence, tone = AlertTone.Error)
+        }
 
         Spacer(modifier = Modifier.weight(1f))
 
@@ -143,15 +134,6 @@ fun DemoStepContent(
     onGoToServerStep: () -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Icon(
-            imageVector = Icons.Outlined.RocketLaunch,
-            contentDescription = null,
-            modifier = Modifier.size(48.dp),
-            tint = MaterialTheme.colorScheme.secondary
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         when (state) {
             DemoStepState.Ready, DemoStepState.Preflight -> {
                 Text(
@@ -238,15 +220,6 @@ fun CompleteStepContent(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            imageVector = Icons.Filled.Check,
-            contentDescription = null,
-            modifier = Modifier.size(72.dp),
-            tint = MaterialTheme.colorScheme.secondary
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
         // Checklist — permission rows reflect live state (auto-skipped steps
         // never write StepOutcome.Done, so reading `outcomes` here would lie).
         LiveStatusRow("Accessibility service", accessibilityGranted)
@@ -265,39 +238,6 @@ fun CompleteStepContent(
         }
 
         Spacer(modifier = Modifier.height(32.dp))
-    }
-}
-
-@Composable
-private fun StatusCard(state: PermissionStepState, consequence: String) {
-    val (label, color) = when (state) {
-        PermissionStepState.Checking -> "Checking..." to MaterialTheme.colorScheme.onSurfaceVariant
-        PermissionStepState.Ready -> "Not enabled" to MaterialTheme.colorScheme.error
-        PermissionStepState.OpeningSettings -> "Waiting..." to MaterialTheme.colorScheme.onSurfaceVariant
-        PermissionStepState.Satisfied -> "Enabled" to MaterialTheme.colorScheme.secondary
-        PermissionStepState.Unsatisfied -> "Not enabled" to MaterialTheme.colorScheme.error
-        PermissionStepState.Skipped -> "Skipped" to MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Status: $label",
-                style = MaterialTheme.typography.bodyMedium,
-                color = color
-            )
-            if (state == PermissionStepState.Unsatisfied) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = consequence,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
     }
 }
 
@@ -409,7 +349,6 @@ private fun OutcomeRow(label: String, outcome: StepOutcome) {
 }
 
 private data class PermissionCopy(
-    val icon: ImageVector,
     val description: String,
     val consequence: String,
     val ctaLabel: String,
@@ -418,22 +357,18 @@ private data class PermissionCopy(
 
 private fun permissionStepCopy(step: WizardStep): PermissionCopy = when (step) {
     WizardStep.Accessibility -> PermissionCopy(
-        icon = Icons.Outlined.Security,
         description = "Allow PocketPilot to read the screen and perform taps for the tasks you request.",
         consequence = "Without Accessibility, PocketPilot cannot automate tasks.",
         ctaLabel = "Open accessibility settings",
         extendedDescription = "During a task, screenshots and screen text are sent to your configured model server. " +
-            "Floating controls remain available between tasks. Privacy policy: " +
-            "https://github.com/steveimm/vibe-projects/blob/main/PocketPilot/PRIVACY_POLICY.md"
+            "Floating controls remain available between tasks."
     )
     WizardStep.Overlay -> PermissionCopy(
-        icon = Icons.Outlined.Layers,
         description = "The floating controls show progress and let you stop, take over, or return to PocketPilot.",
         consequence = "Without Overlay, you won't see controls while the agent works in other apps.",
         ctaLabel = "Grant Overlay permission"
     )
     WizardStep.Battery -> PermissionCopy(
-        icon = Icons.Outlined.BatteryChargingFull,
         description = "Some phones aggressively stop background work. Allowing unrestricted battery use makes long tasks reliable.\n\nThis is optional but recommended.",
         consequence = "Long tasks may stop when the app is backgrounded.",
         ctaLabel = "Allow background activity"

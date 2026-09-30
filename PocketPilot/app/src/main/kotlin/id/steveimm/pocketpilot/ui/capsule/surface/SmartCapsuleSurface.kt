@@ -8,17 +8,16 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import id.steveimm.pocketpilot.ui.chat.components.ChatMarkdown
-import id.steveimm.pocketpilot.ui.common.PilotMark
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -210,7 +209,7 @@ private fun StartupErrorBanner(
                     .minimumInteractiveComponentSize()
                     .clickable(
                         role = Role.Button,
-                        onClickLabel = "Open startup error",
+                        onClickLabel = "Open settings",
                     ) {
                         onClick()
                     }
@@ -227,17 +226,9 @@ private fun StartupErrorBanner(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min)
                 .padding(end = 4.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .width(2.dp)
-                    .fillMaxHeight()
-                    .background(MaterialTheme.colorScheme.error),
-            )
-            Spacer(Modifier.width(12.dp))
             Icon(
                 imageVector = Lucide.TriangleAlert,
                 contentDescription = null,
@@ -297,10 +288,11 @@ private fun CapsuleStatusLine(
                 animationSpec = tween(PocketPilotMotion.StatusFlip, easing = PocketPilotMotion.EaseInOutSine),
                 label = "dotColor",
             )
-            PilotMark(
-                color = dotColor,
-                size = 14.dp,
-            )
+            if (spec.dot.pulsing && !reducedMotion) {
+                CircularProgressIndicator(Modifier.size(14.dp), color = dotColor, strokeWidth = 2.dp)
+            } else {
+                Box(Modifier.size(6.dp).background(dotColor, CircleShape))
+            }
             Spacer(Modifier.width(8.dp))
         }
 

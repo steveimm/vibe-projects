@@ -117,32 +117,6 @@ internal fun updateActionBlockForExecution(
     return updated to true
 }
 
-internal fun appendStartupFailureMessages(
-        messages: MutableList<ChatMessage>,
-        inputText: String,
-        errorMessage: String,
-        timestamp: Long
-) {
-    messages.add(
-            ChatMessage.User(
-                    id = "startup-user-$timestamp",
-                    timestamp = timestamp,
-                    text = inputText
-            )
-    )
-    messages.add(
-            ChatMessage.Agent(
-                    id = "startup-error-$timestamp",
-                    timestamp = timestamp,
-                    contentBlocks =
-                            listOf(ContentBlock.Text("Failed to start: $errorMessage")),
-                    state = AgentMessageState.Complete,
-                    rowState = RowState.Error,
-                    completedTimestamp = timestamp
-            )
-    )
-}
-
 /** Responsibilities: - Collect events from AgentSession.events - Maintain message list with mutableStateListOf<ChatMessage>() - Handle
  * streaming text accumulation - Manage input state (Idle/Working) - Manage session history (list, resume, delete) */
 class ChatViewModel(
@@ -309,22 +283,12 @@ class ChatViewModel(
         AgentService.instance?.dismissError()
     }
 
-    /** Surface a bootstrap failure (session creation threw before any events reached the chat). Preserves the user's input so they can
-     * retry, and appends a visible error message to the chat history. */
+    /** Keep unsent input available for retry and show the failure beside the composer. */
     fun reportStartupFailure(
         inputText: String,
         errorMessage: String,
         deepLink: SettingsDeepLink? = null,
     ) {
-        synchronized(chatStateLock) {
-            appendStartupFailureMessages(
-                    messages = _messages,
-                    inputText = inputText,
-                    errorMessage = errorMessage,
-                    timestamp = System.currentTimeMillis()
-            )
-            _uiState.update { it.copy(showEmptyState = false) }
-        }
         _pendingInput.value = inputText
         _startupError.value = errorMessage
         _startupErrorDeepLink.value = deepLink

@@ -192,8 +192,7 @@ private fun LicensesPreamble() {
     ) {
         Column(modifier = Modifier.padding(MaterialTheme.pocketPilot.spacing.cardPadding), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                text = "PocketPilot is licensed under the Apache License 2.0. The list below " +
-                    "is generated at build time from every runtime dependency.",
+                text = "PocketPilot is licensed under Apache 2.0.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )

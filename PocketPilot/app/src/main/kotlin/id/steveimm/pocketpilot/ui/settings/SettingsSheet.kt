@@ -120,10 +120,8 @@ fun SettingsSheet(
                         settings = settings,
                         isAccessibilityEnabled = isAccessibilityEnabled,
                         isOverlayEnabled = isOverlayEnabled,
-                        debugMode = debugMode,
                         platformMode = platformMode,
                         effectivePlatformMode = effectivePlatformMode,
-                        appClassifier = appClassifier,
                         approvalMode = approvalMode,
                         onNavigate = navigate,
                         onDismiss = onDismiss

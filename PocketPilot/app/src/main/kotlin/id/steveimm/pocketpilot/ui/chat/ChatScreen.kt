@@ -182,7 +182,6 @@ fun ChatScreen(
         drawerContent = {
             NavigationDrawerContent(
                 sessions = sessions,
-                currentModel = currentModel,
                 onSessionSelect = { session ->
                     scope.launch { drawerState.close() }
                     onSessionSelect(session)
@@ -331,11 +330,15 @@ private fun MessageList(
     val scope = rememberCoroutineScope()
 
     var followMode by remember { mutableStateOf(true) }
+    var userScrolled by remember { mutableStateOf(false) }
     val messageCount by rememberUpdatedState(messages.size)
     val scrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source == NestedScrollSource.UserInput && available.y > 0) followMode = false
+                if (source == NestedScrollSource.UserInput) {
+                    userScrolled = true
+                    if (available.y > 0) followMode = false
+                }
                 return Offset.Zero
             }
         }
@@ -343,7 +346,10 @@ private fun MessageList(
     LaunchedEffect(listState) {
         snapshotFlow { Triple(listState.layoutInfo, followMode, listState.isScrollInProgress) }
             .collectLatest { (_, following, scrolling) ->
-                if (!following && !scrolling && !listState.canScrollForward) followMode = true
+                if (!scrolling && userScrolled) {
+                    if (!listState.canScrollForward) followMode = true
+                    userScrolled = false
+                }
                 if (following && listState.canScrollForward) {
                     withFrameNanos { }
                     if (followMode) listState.scrollToItem(messageCount)
@@ -365,7 +371,7 @@ private fun MessageList(
                 MessageBubble(
                     message = message,
                     onOpenApp = onOpenApp,
-                    onInspect = { followMode = false },
+                    onInspect = { followMode = false; userScrolled = false },
                     modifier = Modifier.fillMaxWidth()
                 )
             }

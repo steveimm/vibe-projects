@@ -108,7 +108,7 @@ internal fun SettingsRow(
 @Composable
 internal fun SettingsNavigationRow(
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -130,11 +130,13 @@ internal fun SettingsNavigationRow(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge
                 )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (!subtitle.isNullOrBlank()) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             Icon(
                 imageVector = Lucide.ChevronRight,

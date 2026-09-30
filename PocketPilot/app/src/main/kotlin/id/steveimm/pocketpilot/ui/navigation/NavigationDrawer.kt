@@ -64,7 +64,6 @@ import id.steveimm.pocketpilot.ui.theme.pocketPilot
 @Composable
 fun NavigationDrawerContent(
     sessions: List<SessionInfo>,
-    currentModel: String,
     onSessionSelect: (SessionInfo) -> Unit,
     onNewSession: () -> Unit,
     onDeleteSession: (SessionInfo) -> Unit,
@@ -72,10 +71,8 @@ fun NavigationDrawerContent(
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Use ModalDrawerSheet's built-in windowInsets parameter for proper system bar handling This ensures consistent inset behavior at the
-    // component level Width: 85% of screen width, max 320dp (responsive design)
     ModalDrawerSheet(
-        modifier = modifier.fillMaxWidth(0.85f).widthIn(max = 320.dp),
+        modifier = modifier.widthIn(max = 320.dp).fillMaxWidth(),
         drawerContainerColor = MaterialTheme.colorScheme.surface,
         windowInsets = AppWindowInsets.statusBars  // Handle status bar at container level
     ) {
@@ -93,21 +90,6 @@ fun NavigationDrawerContent(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Recent sessions header
-            if (sessions.isNotEmpty()) {
-                Text(
-                    text = "Recent",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant
-                )
-            }
 
             // Session list (scrollable, takes remaining space)
             Box(modifier = Modifier.weight(1f)) {
@@ -138,7 +120,6 @@ fun NavigationDrawerContent(
 
             // Settings entry at bottom - no divider, uses surface background to distinguish
             SettingsEntry(
-                currentModel = currentModel,
                 onClick = onSettingsClick,
                 modifier = Modifier
                     .padding(bottom = spacing.sm)  // Consistent bottom spacing
@@ -364,19 +345,13 @@ private fun EmptySessionsMessage(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "Your chat history will appear here",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+
     }
 }
 
 /** Settings entry at bottom of drawer. Uses surface color (no fill) to distinguish from session items above. */
 @Composable
 private fun SettingsEntry(
-    currentModel: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -404,11 +379,7 @@ private fun SettingsEntry(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            Text(
-                text = currentModel,
-                style = MaterialTheme.pocketPilot.monoSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+
         }
     }
 }

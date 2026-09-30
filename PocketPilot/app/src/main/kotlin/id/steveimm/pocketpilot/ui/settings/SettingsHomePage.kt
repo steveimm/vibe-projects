@@ -11,35 +11,23 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.BuildConfig
 import id.steveimm.pocketpilot.app.AppSettingsState
-import id.steveimm.pocketpilot.platform.AppManager
-import id.steveimm.pocketpilot.protocol.AppTier
 import id.steveimm.pocketpilot.protocol.ApprovalMode
 import id.steveimm.pocketpilot.protocol.PlatformMode
-import id.steveimm.pocketpilot.tool.AppClassifier
 import id.steveimm.pocketpilot.ui.theme.RootPageHeader
-import id.steveimm.pocketpilot.ui.theme.SectionHeader
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @Composable
 internal fun SettingsHomePage(
     settings: AppSettingsState,
     isAccessibilityEnabled: Boolean,
     isOverlayEnabled: Boolean,
-    debugMode: Boolean,
     platformMode: PlatformMode,
     effectivePlatformMode: PlatformMode?,
-    appClassifier: AppClassifier,
     approvalMode: ApprovalMode,
     onNavigate: (SettingsPage) -> Unit,
     onDismiss: () -> Unit
@@ -54,7 +42,6 @@ internal fun SettingsHomePage(
                 .padding(horizontal = MaterialTheme.pocketPilot.spacing.lg),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.sm)
         ) {
-            SectionHeader("Behavior")
             SettingsNavigationRow(
                 title = "Model server",
                 subtitle = settings.serverModelId.ifBlank { "Configure your local server" },
@@ -66,22 +53,18 @@ internal fun SettingsHomePage(
                 onClick = { onNavigate(SettingsPage.AGENT_BEHAVIOR) }
             )
 
-            SectionHeader("Access")
             SettingsNavigationRow(
                 title = "App access",
-                subtitle = appAccessSubtitle(appClassifier, approvalMode),
                 onClick = { onNavigate(SettingsPage.APP_ACCESS) }
             )
             SettingsNavigationRow(
                 title = "Permissions & diagnostics",
-                subtitle = permissionsSubtitle(isAccessibilityEnabled, isOverlayEnabled, debugMode),
+                subtitle = permissionsSubtitle(isAccessibilityEnabled, isOverlayEnabled),
                 onClick = { onNavigate(SettingsPage.PERMISSIONS_ADVANCED) }
             )
 
-            SectionHeader("About")
             SettingsNavigationRow(
                 title = "Open-source licenses",
-                subtitle = "PocketPilot is Apache 2.0 · view third-party notices",
                 onClick = { onNavigate(SettingsPage.OPEN_SOURCE_LICENSES) }
             )
 
@@ -119,13 +102,12 @@ private fun agentBehaviorSubtitle(
             else -> " · Virtual display"
         }
     }
-    return "$approvalChip · Screenshots$displayChip"
+    return "$approvalChip$displayChip"
 }
 
 private fun permissionsSubtitle(
     isAccessibilityEnabled: Boolean,
     isOverlayEnabled: Boolean,
-    debugMode: Boolean,
 ): String {
     val grantedCount = listOf(isAccessibilityEnabled, isOverlayEnabled).count { it }
     val permSummary = when (grantedCount) {
@@ -133,36 +115,5 @@ private fun permissionsSubtitle(
         1 -> "1 of 2 granted"
         else -> "Setup required"
     }
-    return "$permSummary · Debug ${if (debugMode) "on" else "off"}"
-}
-
-/** Subtitle for the App Access entry on the Settings home page. */
-@Composable
-private fun appAccessSubtitle(classifier: AppClassifier, approvalMode: ApprovalMode): String {
-    val context = LocalContext.current
-    val overrides by classifier.userOverrides.collectAsStateWithLifecycle()
-    val counts by produceState<Triple<Int, Int, Int>?>(
-        initialValue = null, context, classifier, overrides,
-    ) {
-        value = withContext(Dispatchers.IO) {
-            var allow = 0
-            var ask = 0
-            var reject = 0
-            AppManager.getInstalledApps(context.packageManager).forEach { info ->
-                when (classifier.classify(info.packageName)) {
-                    AppTier.NORMAL -> allow++
-                    AppTier.CAUTIOUS -> ask++
-                    AppTier.BLOCKED -> reject++
-                }
-            }
-            Triple(allow, ask, reject)
-        }
-    }
-    val modeLabel = when (approvalMode) {
-        ApprovalMode.SMART -> "Per app"
-        ApprovalMode.AUTO_APPROVE -> "Auto approve"
-        ApprovalMode.ALWAYS_ASK -> "Always ask"
-    }
-    return counts?.let { (a, k, r) -> "$modeLabel · $a Allow · $k Ask · $r Reject" }
-        ?: "$modeLabel · …"
+    return permSummary
 }
