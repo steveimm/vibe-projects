@@ -20,7 +20,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
-/** Display Mode section for Agent Behavior settings. Renders a single [ToolSettingsCard] "Virtual Display" toggle driven by
+/** Display mode section for Agent Behavior settings. Renders a single [ToolSettingsCard] "Virtual display" toggle driven by
  * [virtualDisplayCardState]. */
 @Composable
 internal fun DisplaySection(
@@ -73,15 +73,15 @@ internal fun DisplaySection(
     }
 
     val rowClickLabel = if (rowAction == null) null else when (cardState.rowAction) {
-        VirtualDisplayRowAction.RetryEnable -> "Retry Virtual Display setup"
+        VirtualDisplayRowAction.RetryEnable -> "Retry Virtual display setup"
         VirtualDisplayRowAction.RequestPermission -> "Grant Shizuku permission"
         null -> null
     }
 
-    SettingsSection(title = "Display Mode") {
+    SettingsSection(title = "Display mode") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             ToolSettingsCard(
-                title = "Virtual Display",
+                title = "Virtual display",
                 status = cardState.status,
                 switchChecked = cardState.switchChecked,
                 switchEnabled = cardState.switchEnabled,

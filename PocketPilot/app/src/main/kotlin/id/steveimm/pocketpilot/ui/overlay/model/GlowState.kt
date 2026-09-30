@@ -14,7 +14,7 @@ enum class GlowState {
 /** Derive GlowState from CapsuleMode + TurnPhase. */
 fun deriveGlowState(mode: CapsuleMode, turnPhase: TurnPhase?): GlowState = when {
     mode is CapsuleMode.Error -> GlowState.Error
-    mode is CapsuleMode.Done -> GlowState.Success
+    mode is CapsuleMode.Done -> if (mode.stopped) GlowState.Paused else GlowState.Success
     mode is CapsuleMode.TakeoverPending || mode is CapsuleMode.Takeover -> GlowState.Paused
     mode is CapsuleMode.WaitingForInput || mode is CapsuleMode.WaitingForAction ||
         mode is CapsuleMode.WaitingForApproval -> GlowState.Paused

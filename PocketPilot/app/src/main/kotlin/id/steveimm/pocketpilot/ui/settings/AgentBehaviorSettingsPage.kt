@@ -65,12 +65,12 @@ private data class ApprovalModeOption(
 private val APPROVAL_MODE_OPTIONS = listOf(
     ApprovalModeOption(
         mode = ApprovalMode.SMART,
-        label = "Per-App",
+        label = "Per app",
         description = "Ask before risky actions, based on each app's access rules",
     ),
     ApprovalModeOption(
         mode = ApprovalMode.AUTO_APPROVE,
-        label = "Auto-Approve",
+        label = "Auto approve",
         description = "Run allowed actions without asking. Rejected apps stay blocked.",
     ),
 )

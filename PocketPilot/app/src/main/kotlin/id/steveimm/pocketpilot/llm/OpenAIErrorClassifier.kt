@@ -21,7 +21,7 @@ internal object OpenAIErrorClassifier {
             RateLimitException(e.message ?: "Rate limited", retryAfterMs)
         }
         is com.openai.errors.InternalServerException ->
-            TransientException("Server error", e)
+            TransientException("The model server returned an error. Try again.", e)
 
         // Everything else goes through message-based fallback
         else -> classifyByMessage(e)
@@ -35,7 +35,7 @@ internal object OpenAIErrorClassifier {
             isRateLimit(message, cause) -> {
                 val retryAfter = extractRetryAfter(message) ?: extractRetryAfter(cause)
                 Log.w(TAG, "Rate limit detected: ${e.message}")
-                RateLimitException("Rate limited by OpenAI", retryAfter)
+                RateLimitException("The model server is rate limiting requests.", retryAfter)
             }
 
             e is SocketTimeoutException -> {
@@ -44,20 +44,20 @@ internal object OpenAIErrorClassifier {
             }
 
             isUnknownHost(e, message, cause) -> {
-                Log.e(TAG, "Network error - cannot reach OpenAI: ${e.message}", e)
-                RuntimeException("No internet connection. Please check your network settings.", e)
+                Log.e(TAG, "Network error - cannot reach model server: ${e.message}", e)
+                RuntimeException("Cannot reach the model server. Check its address and your network connection.", e)
             }
 
             isServerError(message) || isServerError(cause) -> {
                 Log.w(TAG, "Server error (transient): ${e.message}")
-                TransientException("OpenAI server error", e)
+                TransientException("The model server returned an error. Try again.", e)
             }
 
             e is IOException -> {
                 val connectivityIssue = isConnectivityIssue(message) || isConnectivityIssue(cause)
                 if (connectivityIssue) {
                     Log.e(TAG, "Network connectivity error: ${e.message}", e)
-                    RuntimeException("Network error: Check your internet connection", e)
+                    RuntimeException("Cannot reach the model server. Check your network connection.", e)
                 } else {
                     Log.w(TAG, "Network/IO error: ${e.message}", e)
                     TransientException("Network error: ${e.message}", e)
@@ -65,7 +65,7 @@ internal object OpenAIErrorClassifier {
             }
 
             else -> {
-                Log.e(TAG, "Responses API call failed: ${e.javaClass.name}: ${e.message}")
+                Log.e(TAG, "Chat Completions request failed: ${e.javaClass.name}: ${e.message}")
                 RuntimeException("LLM error: ${e.javaClass.simpleName} - ${e.message}", e)
             }
         }

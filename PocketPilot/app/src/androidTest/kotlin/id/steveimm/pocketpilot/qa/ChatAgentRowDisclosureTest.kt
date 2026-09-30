@@ -24,7 +24,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** D2/D3 row disclosure: pill owns the toggle; row root is not clickable; the final-answer region stays visible across collapse. */
+/** Activity disclosure preserves access to reasoning and keeps the answer visible. */
 @RunWith(AndroidJUnit4::class)
 class ChatAgentRowDisclosureTest {
 
@@ -69,23 +69,18 @@ class ChatAgentRowDisclosureTest {
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "collapsed"))
     }
 
-    @Test fun live_row_is_expanded_and_locked_open() {
+    @Test fun live_reasoning_is_available_through_one_disclosure() {
         compose.setContent {
-            PocketPilotTheme {
-                MessageBubble(
-                    agent(RowState.Live, AgentMessageState.Streaming, withFinal = false)
-                )
-            }
+            PocketPilotTheme { MessageBubble(agent(RowState.Live, AgentMessageState.Streaming, withFinal = false)) }
         }
-
-        compose.onNodeWithTag("qa-agent-bubble")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "live"))
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithText("opening Settings").assertDoesNotExist()
+        compose.onNodeWithTag("qa-collapse-pill").performClick()
+        compose.mainClock.advanceTimeBy(300)
         compose.onNodeWithText("opening Settings").assertIsDisplayed()
-        // No pill on locked-open rows.
-        compose.onNodeWithTag("qa-collapse-pill").assertDoesNotExist()
     }
 
-    @Test fun row_default_collapses_when_transitioning_live_to_complete() {
+    @Test fun disclosure_remains_open_when_response_completes() {
         var rowState by mutableStateOf(RowState.Live)
         compose.setContent {
             val agentState = if (rowState == RowState.Live) AgentMessageState.Streaming
@@ -95,14 +90,14 @@ class ChatAgentRowDisclosureTest {
             }
         }
 
-        // Precondition: Live rows report "live" (locked-open), not "expanded".
-        compose.onNodeWithTag("qa-agent-bubble")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "live"))
-
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithTag("qa-collapse-pill").performClick()
+        compose.mainClock.advanceTimeBy(300)
         rowState = RowState.Complete
-        compose.waitForIdle()
-
-        assertCollapsed()
+        compose.mainClock.advanceTimeBy(300)
+        assertExpanded()
+        compose.onNodeWithText("opening Settings").assertIsDisplayed()
+        compose.onNodeWithTag("qa-final-answer").assertIsDisplayed()
     }
 
     @Test fun pill_toggles_trace_visibility() {

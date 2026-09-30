@@ -211,13 +211,13 @@ private fun DrawerSessionItem(
         else -> null
     }
     val rowStateDescription = when {
-        isCorrupted -> "Unreadable session file. Cannot open."
-        session.isActive -> "Active session"
+        isCorrupted -> "Unreadable chat. Cannot open."
+        session.isActive -> "Current chat"
         else -> null
     }
     val statusText = when {
-        isCorrupted -> "Unreadable session file"
-        session.isActive -> "Active session"
+        isCorrupted -> "Unreadable chat"
+        session.isActive -> "Current chat"
         else -> null
     }
     val statusColor = when {
@@ -229,8 +229,8 @@ private fun DrawerSessionItem(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete Session") },
-            text = { Text("This session and its messages will be permanently deleted.") },
+            title = { Text("Delete chat") },
+            text = { Text("This chat and its messages will be permanently deleted.") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -257,7 +257,7 @@ private fun DrawerSessionItem(
                     Modifier
                 } else {
                     Modifier.clickable(
-                        onClickLabel = "Open session",
+                        onClickLabel = "Open chat",
                         role = Role.Button,
                         onClick = onClick
                     )
@@ -360,7 +360,7 @@ private fun EmptySessionsMessage(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "No saved sessions",
+            text = "No saved chats",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

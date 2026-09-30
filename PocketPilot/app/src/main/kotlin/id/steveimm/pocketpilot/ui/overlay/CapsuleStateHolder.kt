@@ -213,7 +213,7 @@ class CapsuleStateHolder {
                 val completionMessage = message?.takeIf { it.isNotBlank() } ?: "Task completed"
                 CapsuleMode.Done(completionMessage)
             }
-            TaskOutcome.USER_STOPPED -> CapsuleMode.Done("Stopped")
+            TaskOutcome.USER_STOPPED -> CapsuleMode.Done("Stopped", stopped = true)
             TaskOutcome.ERROR -> CapsuleMode.Error(
                 message?.takeIf { it.isNotBlank() }?.let(::compactThought) ?: "Error occurred"
             )
@@ -227,7 +227,7 @@ class CapsuleStateHolder {
             SessionEndReason.USER_STOPPED,
             SessionEndReason.INTERRUPTED,
             SessionEndReason.IDLE_TIMEOUT -> {
-                if (hasActiveTask) setMode(CapsuleMode.Done("Stopped"))
+                if (hasActiveTask) setMode(CapsuleMode.Done("Stopped", stopped = true))
             }
         }
     }

@@ -89,10 +89,7 @@ class OnboardingStore(private val context: Context) {
             Log.d(TAG, "Migrated onboarding schema $existing → $CURRENT_SCHEMA_VERSION")
         }
 
-        if (!p.getBoolean(KEY_COMPLETED, false) && hasLegacyUsageEvidence()) {
-            p.edit().putBoolean(KEY_COMPLETED, true).apply()
-            Log.d(TAG, "Reconciled: credential exists but onboarding flag was cleared — marked complete")
-        }
+
     }
 
     private fun SharedPreferences.readOutcome(key: String): StepOutcome =

@@ -28,7 +28,7 @@ sealed interface CapsuleMode {
     ) : CapsuleMode
 
     /** Task completed successfully. Auto-hides after 3s. */
-    data class Done(val message: String) : CapsuleMode
+    data class Done(val message: String, val stopped: Boolean = false) : CapsuleMode
 
     /** Error occurred. Stays until dismissed. */
     data class Error(val message: String) : CapsuleMode

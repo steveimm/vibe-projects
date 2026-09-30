@@ -33,7 +33,7 @@ class SettingsNavTest {
         // Sub-page unique markers must be absent on home.
         compose.onAllNodesWithText("Server URL").assertCountEquals(0)
         compose.onAllNodesWithText("Approval").assertCountEquals(0)
-        compose.onAllNodesWithText("Session Traces").assertCountEquals(0)
+        compose.onAllNodesWithText("Session traces").assertCountEquals(0)
     }
 
     // S2: Clicking the close icon fires onDismiss.

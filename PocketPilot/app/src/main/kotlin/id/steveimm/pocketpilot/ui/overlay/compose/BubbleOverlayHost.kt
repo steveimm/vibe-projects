@@ -83,7 +83,7 @@ class BubbleOverlayHost(
             OverlayBubbleCompose(
                 expanded = isExpanded,
                 status = when (mode) {
-                    is CapsuleMode.Done -> "Task finished"
+                    is CapsuleMode.Done -> if ((mode as CapsuleMode.Done).stopped) "Stopped" else "Task finished"
                     is CapsuleMode.Error -> "Error"
                     is CapsuleMode.Hidden -> "Ready"
                     is CapsuleMode.Running -> "Working"

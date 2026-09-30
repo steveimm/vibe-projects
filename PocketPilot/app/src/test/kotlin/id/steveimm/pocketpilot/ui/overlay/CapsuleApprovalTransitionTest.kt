@@ -190,7 +190,7 @@ class CapsuleApprovalTransitionTest {
     fun `interrupted session retains a stopped result`() {
         holder.onTaskStarted("task1", "input")
         holder.onSessionEnded(SessionEndReason.INTERRUPTED)
-        assertThat(holder.mode.value).isEqualTo(CapsuleMode.Done("Stopped"))
+        assertThat(holder.mode.value).isEqualTo(CapsuleMode.Done("Stopped", stopped = true))
     }
 
     @Test

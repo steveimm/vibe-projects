@@ -88,8 +88,6 @@ internal fun SettingsRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 val dotColor = if (isEnabled) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary
-                // Contrast-matrix.md §issues: Amber (tertiary) on PaperInset (surfaceVariant) is 1.77:1 — hard fail.
-                // Keep Amber as the dot fill; the label uses an AA-safe foreground (onSurface).
                 val labelColor = if (isEnabled) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface
                 Box(
                     modifier = Modifier

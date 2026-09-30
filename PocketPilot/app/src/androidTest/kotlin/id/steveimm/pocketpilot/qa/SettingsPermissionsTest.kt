@@ -53,7 +53,7 @@ class SettingsPermissionsTest {
         compose.onAllNodesWithText(bannerFragment, substring = true).assertCountEquals(0)
     }
 
-    // S11: clicking Clear Traces opens the confirmation dialog with the
+    // S11: clicking Clear traces opens the confirmation dialog with the
     // expected confirm button present and enabled.
     @Test fun clear_traces_shows_confirm_dialog() {
         compose.setContent { TestPermissionsPage(traceEnabled = false) }
@@ -61,7 +61,7 @@ class SettingsPermissionsTest {
         // No dialog rendered initially.
         compose.onAllNodesWithText(CLEAR_TRACES_DIALOG_BODY).assertCountEquals(0)
 
-        compose.onNodeWithText("Clear Traces").performClick()
+        compose.onNodeWithText("Clear traces").performClick()
 
         // Dialog semantics anchor: onNode(isDialog()) — proves it's actually a dialog node.
         compose.onNode(isDialog()).assertExists()
@@ -73,20 +73,20 @@ class SettingsPermissionsTest {
             .assertIsEnabled()
     }
 
-    // S12: confirming the dialog closes it and disables the Clear Traces button.
+    // S12: confirming the dialog closes it and disables the Clear traces button.
     @Test fun clear_traces_confirm_disables_button() {
         compose.setContent { TestPermissionsPage(traceEnabled = false) }
 
-        compose.onNodeWithText("Clear Traces").performClick()
+        compose.onNodeWithText("Clear traces").performClick()
         // Click the dialog's confirm button specifically (anchored to dialog ancestor).
         compose.onNode(hasAnyAncestor(isDialog()) and hasText("Clear"))
             .performClick()
 
         // Dialog dismissed, main button relabeled and disabled.
         compose.waitUntil(timeoutMillis = 3000) {
-            compose.onAllNodesWithText("Traces Cleared").fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodesWithText("Traces cleared").fetchSemanticsNodes().isNotEmpty()
         }
-        compose.onNodeWithText("Traces Cleared").assertIsNotEnabled()
+        compose.onNodeWithText("Traces cleared").assertIsNotEnabled()
         compose.onAllNodesWithText(CLEAR_TRACES_DIALOG_BODY).assertCountEquals(0)
     }
 }

@@ -69,3 +69,13 @@ The floating panel now fades and moves a short distance on opening/closing. Its 
 Model discovery and saving have separate progress labels. The server form validates after leaving a field, supports showing/hiding an optional key, opens the discovered-model menu, and explains that saved settings apply to new chats. History failures now produce visible feedback. Live activity has a progress indicator.
 
 Validation: 901 release unit tests, release lint, and device UI test compilation passed. On the signed ARM64 emulator build, verified drag/dock, repeated panel toggles, disabled animations, 150% text, landscape chat and question/reply completion, model discovery/selection/save feedback, and the screenshot tool. The captured model screenshot excludes the bubble while the emulator retains it afterward. Full first-run onboarding, additional failure states, dark active controls, and final configuration restoration remain to check.
+
+## Final interaction checks
+
+Verified dark approval, session approval opening Clock, persistent completed controls, overlay draft retention, user-action handoff and Done, server-error presentation, onboarding permission pages, manual local-server setup without a key, demo failure when Settings does not open, demo skipping, and setup completion. Diagnostics and license pages were inspected in portrait and landscape.
+
+Corrected the stopped overlay state, main-chat error recovery, inconsistent chat/settings terminology, and setup's Android Back handling. Saving a model server no longer silently completes unfinished onboarding when the activity is recreated. A text-size change exposed a lost draft: font/display-size changes now use the existing configuration handling, and activity state also retains the draft. The rebuilt app retained the draft at 150% text size. All 901 unit tests and release lint pass, and device UI tests compile. Signed ARM64 APK SHA-256 before the minimalism pass: `8592c96205cef5a84aaa3ace934bb5907cf30b81e51cb667e462eacfd95ac2fc`.
+
+## Minimalism refinement
+
+User feedback: do not add text to fill space, keep the UI minimal, and remove redundant components such as the second logo in the empty chat. Remove the empty-state hero, explanatory filler, duplicate branding, repeated form hints, and redundant navigation descriptions. Keep text that explains a setting's actual behavior, errors, permission needs, and model-server compatibility. Recheck the simplified screens on the emulator before completion.

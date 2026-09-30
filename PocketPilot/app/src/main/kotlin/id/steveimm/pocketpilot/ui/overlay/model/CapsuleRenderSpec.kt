@@ -127,9 +127,9 @@ data class CapsuleRenderSpec(
                 )
 
                 is CapsuleMode.Done -> CapsuleRenderSpec(
-                    dot = DotSpec(GlowState.Success, pulsing = false),
-                    thought = ThoughtSpec("Finished"),
-                    expandedBody = mode.message,
+                    dot = DotSpec(if (mode.stopped) GlowState.Paused else GlowState.Success, pulsing = false),
+                    thought = ThoughtSpec(if (mode.stopped) "Stopped" else "Finished"),
+                    expandedBody = if (mode.stopped) null else mode.message,
                     buttons = ButtonsSpec(primary = null, stop = null),
                     input = InputSpec("What can I help you with?", "Send"),
                 )

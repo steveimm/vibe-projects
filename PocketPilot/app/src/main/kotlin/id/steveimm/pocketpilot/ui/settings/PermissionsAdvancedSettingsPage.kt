@@ -72,13 +72,13 @@ internal fun PermissionsAdvancedSettingsPage(
                 Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.md)) {
                     SettingsRow(
                         icon = Icons.Outlined.Settings,
-                        title = "Accessibility Service",
+                        title = "Accessibility service",
                         isEnabled = isAccessibilityEnabled,
                         onClick = onAccessibilityClick
                     )
                     SettingsRow(
                         icon = Icons.Outlined.Layers,
-                        title = "Overlay Permission",
+                        title = "Overlay permission",
                         isEnabled = isOverlayEnabled,
                         onClick = onOverlayClick
                     )
@@ -104,7 +104,7 @@ internal fun PermissionsAdvancedSettingsPage(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Debug Mode",
+                                text = "Debug mode",
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
@@ -187,7 +187,7 @@ private fun DataStorageSection(
     if (showClearTracesConfirm) {
         AlertDialog(
             onDismissRequest = { showClearTracesConfirm = false },
-            title = { Text("Clear Traces") },
+            title = { Text("Clear traces") },
             text = { Text("All recorded execution traces will be permanently deleted. This cannot be undone.") },
             confirmButton = {
                 TextButton(
@@ -209,8 +209,8 @@ private fun DataStorageSection(
     if (showClearSessionsConfirm) {
         AlertDialog(
             onDismissRequest = { showClearSessionsConfirm = false },
-            title = { Text("Clear Session History") },
-            text = { Text("All saved sessions and chat history will be permanently deleted. This cannot be undone.") },
+            title = { Text("Clear chat history") },
+            text = { Text("All saved chats will be permanently deleted. This cannot be undone.") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -228,7 +228,7 @@ private fun DataStorageSection(
         )
     }
 
-    SettingsSection(title = "Data & Storage") {
+    SettingsSection(title = "Data and storage") {
         Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.md)) {
             // Trace toggle
             Surface(
@@ -247,7 +247,7 @@ private fun DataStorageSection(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Session Traces",
+                                text = "Session traces",
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
@@ -285,7 +285,7 @@ private fun DataStorageSection(
 
             // Clear traces button
             ClearDataButton(
-                label = clearDataButtonLabel(traceClearState, idle = "Clear Traces", clearing = "Clearing Traces", cleared = "Traces Cleared"),
+                label = clearDataButtonLabel(traceClearState, idle = "Clear traces", clearing = "Clearing traces", cleared = "Traces cleared"),
                 enabled = traceClearState !is ClearDataState.Clearing && traceClearState !is ClearDataState.Cleared,
                 onClick = { showClearTracesConfirm = true }
             )
@@ -293,7 +293,7 @@ private fun DataStorageSection(
 
             // Clear session history button
             ClearDataButton(
-                label = clearDataButtonLabel(sessionClearState, idle = "Clear Session History", clearing = "Clearing Sessions", cleared = "Sessions Cleared"),
+                label = clearDataButtonLabel(sessionClearState, idle = "Clear chat history", clearing = "Clearing chats", cleared = "Chats cleared"),
                 enabled = sessionClearState !is ClearDataState.Clearing && sessionClearState !is ClearDataState.Cleared,
                 onClick = { showClearSessionsConfirm = true }
             )

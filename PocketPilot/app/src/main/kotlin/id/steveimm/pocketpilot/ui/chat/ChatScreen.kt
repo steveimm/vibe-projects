@@ -248,7 +248,10 @@ fun ChatScreen(
                         }
                         CompositionLocalProvider(LocalVoiceFeedback provides reportVoiceFeedback) {
                             SmartCapsuleSurface(
-                                mode = if (capsuleMode is CapsuleMode.Done) CapsuleMode.Hidden else capsuleMode,
+                                mode = when (capsuleMode) {
+                                    is CapsuleMode.Done, is CapsuleMode.Error -> CapsuleMode.Hidden
+                                    else -> capsuleMode
+                                },
                                 isStopPending = isStopPending,
                                 platformMode = capsulePlatformMode,
                                 context = CapsuleContext.MAIN_APP,

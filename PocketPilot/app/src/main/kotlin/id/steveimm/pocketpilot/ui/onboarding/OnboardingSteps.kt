@@ -155,7 +155,7 @@ fun DemoStepContent(
         when (state) {
             DemoStepState.Ready, DemoStepState.Preflight -> {
                 Text(
-                    text = "We'll open the Settings app to prove everything works. This does not change any device setting.",
+                    text = "Ask your model to open Android Settings. This demo does not change any device setting.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -189,7 +189,7 @@ fun DemoStepContent(
         when (state) {
             DemoStepState.Ready -> {
                 Button(onClick = onRunDemo, modifier = Modifier.fillMaxWidth()) {
-                    Text("Run Demo")
+                    Text("Run demo")
                 }
                 TextButton(
                     onClick = onSkip,
@@ -205,7 +205,7 @@ fun DemoStepContent(
             }
             is DemoStepState.Failure -> {
                 Button(onClick = onRunDemo, modifier = Modifier.fillMaxWidth()) {
-                    Text("Try Again")
+                    Text("Try again")
                 }
                 TextButton(onClick = onGoToServerStep) { Text("Check model server") }
                 TextButton(
@@ -251,7 +251,7 @@ fun CompleteStepContent(
         // never write StepOutcome.Done, so reading `outcomes` here would lie).
         LiveStatusRow("Accessibility service", accessibilityGranted)
         LiveStatusRow("Display overlay", overlayGranted)
-        LiveStatusRow("Battery optimization", batteryGranted)
+        LiveStatusRow("Background activity", batteryGranted)
         OutcomeRow("Model server", outcomes.modelServer)
         OutcomeRow("Demo task", outcomes.demo)
 
@@ -261,7 +261,7 @@ fun CompleteStepContent(
             onClick = onFinish,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Start Using PocketPilot")
+            Text("Start using PocketPilot")
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -419,25 +419,24 @@ private data class PermissionCopy(
 private fun permissionStepCopy(step: WizardStep): PermissionCopy = when (step) {
     WizardStep.Accessibility -> PermissionCopy(
         icon = Icons.Outlined.Security,
-        description = "Android only allows trusted automation through Accessibility. " +
-            "PocketPilot uses it to read the screen and perform taps so it can complete the tasks you ask for.",
+        description = "Allow PocketPilot to read the screen and perform taps for the tasks you request.",
         consequence = "Without Accessibility, PocketPilot cannot automate tasks.",
-        ctaLabel = "Open Accessibility Settings",
-        extendedDescription = "Active only when you start a task — PocketPilot does not run in the background or " +
-            "monitor other apps. Screen content read during a task is sent to your configured model server " +
-            "so the agent can pick the next step. See our Privacy Policy: https://github.com/steveimm/vibe-projects/blob/main/PocketPilot/PRIVACY_POLICY.md"
+        ctaLabel = "Open accessibility settings",
+        extendedDescription = "During a task, screenshots and screen text are sent to your configured model server. " +
+            "Floating controls remain available between tasks. Privacy policy: " +
+            "https://github.com/steveimm/vibe-projects/blob/main/PocketPilot/PRIVACY_POLICY.md"
     )
     WizardStep.Overlay -> PermissionCopy(
         icon = Icons.Outlined.Layers,
-        description = "The floating capsule shows progress and lets you stop, take over, or return to PocketPilot.",
+        description = "The floating controls show progress and let you stop, take over, or return to PocketPilot.",
         consequence = "Without Overlay, you won't see controls while the agent works in other apps.",
-        ctaLabel = "Grant Overlay Permission"
+        ctaLabel = "Grant Overlay permission"
     )
     WizardStep.Battery -> PermissionCopy(
         icon = Icons.Outlined.BatteryChargingFull,
         description = "Some phones aggressively stop background work. Allowing unrestricted battery use makes long tasks reliable.\n\nThis is optional but recommended.",
         consequence = "Long tasks may stop when the app is backgrounded.",
-        ctaLabel = "Allow Background Running"
+        ctaLabel = "Allow background activity"
     )
     else -> error("Not a permission step: $step")
 }

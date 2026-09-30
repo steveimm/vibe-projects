@@ -252,7 +252,7 @@ class CapsuleStateHolderTest {
     fun `stopping the session keeps a stopped result`() {
         holder.onTaskStarted("task1", "input")
         holder.onSessionEnded(SessionEndReason.USER_STOPPED)
-        assertThat(holder.mode.value).isEqualTo(CapsuleMode.Done("Stopped"))
+        assertThat(holder.mode.value).isEqualTo(CapsuleMode.Done("Stopped", stopped = true))
     }
 
     @Test

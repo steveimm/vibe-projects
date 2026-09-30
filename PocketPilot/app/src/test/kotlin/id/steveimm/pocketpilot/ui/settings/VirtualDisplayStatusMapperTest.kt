@@ -4,7 +4,7 @@ import id.steveimm.pocketpilot.protocol.PlatformMode
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-/** Covers every row of the 12-row Virtual Display mapping table. First-match-wins ordering is critical: mis-ordering (e.g. surfacing a
+/** Covers every row of the 12-row Virtual display mapping table. First-match-wins ordering is critical: mis-ordering (e.g. surfacing a
  * stale gate error once persisted mode has already flipped to VD) is exactly the regression these tests guard. */
 class VirtualDisplayStatusMapperTest {
 
@@ -39,7 +39,7 @@ class VirtualDisplayStatusMapperTest {
         )
         assertThat(result.status.label).isEqualTo("Needs Setup")
         assertThat(result.status.subtitle).isEqualTo(
-            "Shizuku is not running. Install or start Shizuku, then turn on Virtual Display."
+            "Shizuku is not running. Install or start Shizuku, then turn on Virtual display."
         )
         assertThat(result.status.tone).isEqualTo(ToolStatusTone.Warning)
         assertThat(result.status.showSpinner).isFalse()
@@ -151,7 +151,7 @@ class VirtualDisplayStatusMapperTest {
             gateError = null,
         )
         assertThat(result.status.label).isEqualTo("Needs Setup")
-        assertThat(result.status.subtitle).isEqualTo("Grant Shizuku permission to use Virtual Display.")
+        assertThat(result.status.subtitle).isEqualTo("Grant Shizuku permission to use Virtual display.")
         assertThat(result.status.tone).isEqualTo(ToolStatusTone.Warning)
         assertThat(result.status.showSpinner).isFalse()
         assertThat(result.switchChecked).isTrue()

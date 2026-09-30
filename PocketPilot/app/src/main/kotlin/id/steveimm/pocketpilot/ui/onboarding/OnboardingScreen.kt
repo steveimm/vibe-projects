@@ -2,6 +2,13 @@ package id.steveimm.pocketpilot.ui.onboarding
 
 import id.steveimm.pocketpilot.app.AppSettingsState
 import id.steveimm.pocketpilot.ui.settings.ModelServerForm
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import id.steveimm.pocketpilot.onboarding.DemoStepState
@@ -42,93 +49,102 @@ fun OnboardingScreen(
     // Back arrow on all steps except the first
     val backAction: (() -> Unit)? = if (currentStep != WizardStep.Accessibility) onBack else null
 
-    when (currentStep) {
-        WizardStep.Accessibility -> {
-            OnboardingShell(
-                stepIndex = 1,
-                totalSteps = totalSteps,
-                title = "Let PocketPilot control your phone"
-            ) {
-                PermissionStepContent(
-                    step = WizardStep.Accessibility,
-                    state = stepState as? PermissionStepState ?: PermissionStepState.Checking,
-                    onOpenSettings = onOpenSettings,
-                    onSkip = {},
-                    onContinue = onContinue
-                )
+    BackHandler(enabled = backAction != null) { onBack() }
+    AnimatedContent(
+        targetState = currentStep,
+        transitionSpec = {
+            fadeIn(tween(PocketPilotMotion.Standard)) togetherWith fadeOut(tween(PocketPilotMotion.Quick))
+        },
+        label = "SetupStep",
+    ) { step ->
+        when (step) {
+            WizardStep.Accessibility -> {
+                OnboardingShell(
+                    stepIndex = 1,
+                    totalSteps = totalSteps,
+                    title = "Let PocketPilot control your phone"
+                ) {
+                    PermissionStepContent(
+                        step = WizardStep.Accessibility,
+                        state = stepState as? PermissionStepState ?: PermissionStepState.Checking,
+                        onOpenSettings = onOpenSettings,
+                        onSkip = {},
+                        onContinue = onContinue
+                    )
+                }
             }
-        }
 
-        WizardStep.Overlay -> {
-            OnboardingShell(
-                stepIndex = 2,
-                totalSteps = totalSteps,
-                title = "See controls while the agent works",
-                onBack = backAction
-            ) {
-                PermissionStepContent(
-                    step = WizardStep.Overlay,
-                    state = stepState as? PermissionStepState ?: PermissionStepState.Checking,
-                    onOpenSettings = onOpenSettings,
-                    onSkip = {},
-                    onContinue = onContinue
-                )
+            WizardStep.Overlay -> {
+                OnboardingShell(
+                    stepIndex = 2,
+                    totalSteps = totalSteps,
+                    title = "See controls while the agent works",
+                    onBack = backAction
+                ) {
+                    PermissionStepContent(
+                        step = WizardStep.Overlay,
+                        state = stepState as? PermissionStepState ?: PermissionStepState.Checking,
+                        onOpenSettings = onOpenSettings,
+                        onSkip = {},
+                        onContinue = onContinue
+                    )
+                }
             }
-        }
 
-        WizardStep.Battery -> {
-            OnboardingShell(
-                stepIndex = 3,
-                totalSteps = totalSteps,
-                title = "Keep long tasks alive",
-                onBack = backAction
-            ) {
-                PermissionStepContent(
-                    step = WizardStep.Battery,
-                    state = stepState as? PermissionStepState ?: PermissionStepState.Checking,
-                    onOpenSettings = onOpenSettings,
-                    onSkip = onSkipStep,
-                    onContinue = onContinue
-                )
+            WizardStep.Battery -> {
+                OnboardingShell(
+                    stepIndex = 3,
+                    totalSteps = totalSteps,
+                    title = "Keep long tasks alive",
+                    onBack = backAction
+                ) {
+                    PermissionStepContent(
+                        step = WizardStep.Battery,
+                        state = stepState as? PermissionStepState ?: PermissionStepState.Checking,
+                        onOpenSettings = onOpenSettings,
+                        onSkip = onSkipStep,
+                        onContinue = onContinue
+                    )
+                }
             }
-        }
 
-        WizardStep.ModelServer -> {
-            OnboardingShell(stepIndex = 4, totalSteps = totalSteps, title = "Connect your model server", onBack = backAction) {
-                ModelServerForm(settings, onSaved = onServerSaved)
+            WizardStep.ModelServer -> {
+                OnboardingShell(stepIndex = 4, totalSteps = totalSteps, title = "Connect your model server", onBack = backAction) {
+                    ModelServerForm(settings, onSaved = onServerSaved)
+                }
             }
-        }
 
-        WizardStep.Demo -> {
-            OnboardingShell(
-                stepIndex = 5,
-                totalSteps = totalSteps,
-                title = "Try a safe demo",
-                onBack = backAction
-            ) {
-                DemoStepContent(
-                    state = stepState as? DemoStepState ?: DemoStepState.Ready,
-                    onRunDemo = onStartDemo,
-                    onSkip = onSkipStep,
-                    onGoToServerStep = onGoToServerStep
-                )
+            WizardStep.Demo -> {
+                OnboardingShell(
+                    stepIndex = 5,
+                    totalSteps = totalSteps,
+                    title = "Try a safe demo",
+                    onBack = backAction
+                ) {
+                    DemoStepContent(
+                        state = stepState as? DemoStepState ?: DemoStepState.Ready,
+                        onRunDemo = onStartDemo,
+                        onSkip = onSkipStep,
+                        onGoToServerStep = onGoToServerStep
+                    )
+                }
             }
-        }
 
-        WizardStep.Complete -> {
-            OnboardingShell(
-                stepIndex = totalSteps,
-                totalSteps = totalSteps,
-                title = "You're All Set!",
-                onBack = backAction
-            ) {
-                CompleteStepContent(
-                    outcomes = outcomes,
-                    accessibilityGranted = accessibilityGranted,
-                    overlayGranted = overlayGranted,
-                    batteryGranted = batteryGranted,
-                    onFinish = onFinish
-                )
+            WizardStep.Complete -> {
+                OnboardingShell(
+                    stepIndex = totalSteps,
+                    totalSteps = totalSteps,
+                    title = "You're ready",
+                    onBack = backAction
+                ) {
+                    CompleteStepContent(
+                        outcomes = outcomes,
+                        accessibilityGranted = accessibilityGranted,
+                        overlayGranted = overlayGranted,
+                        batteryGranted = batteryGranted,
+                        onFinish = onFinish
+                    )
+                }
             }
         }
     }

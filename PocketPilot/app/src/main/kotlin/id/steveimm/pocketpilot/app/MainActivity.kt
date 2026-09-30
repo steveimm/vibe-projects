@@ -66,6 +66,8 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
         private const val KEY_INTENT_PAYLOAD_CONSUMED = "intent_payload_consumed"
         private const val KEY_PENDING_GOAL_CONFIRMATION = "pending_goal_confirmation"
+        private const val KEY_INPUT_DRAFT = "input_draft"
+        private const val KEY_SETTINGS_OPEN = "settings_open"
         const val EXTRA_SERVER_BASE_URL = "server_base_url"
         const val EXTRA_SERVER_MODEL_ID = "server_model_id"
         const val EXTRA_SERVER_API_KEY = "server_api_key"
@@ -164,6 +166,8 @@ class MainActivity : ComponentActivity() {
                         onSessionNeeded = { text -> ensureSessionAndSend(text) }
                 )
 
+        viewModel.inputDraft.value = savedInstanceState?.getString(KEY_INPUT_DRAFT).orEmpty()
+        showSettings = savedInstanceState?.getBoolean(KEY_SETTINGS_OPEN) ?: false
         setContent {
             val serviceConnected by AgentService.connected.collectAsStateWithLifecycle()
             if (onboardingRequired) {
@@ -323,6 +327,8 @@ class MainActivity : ComponentActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putBoolean(KEY_INTENT_PAYLOAD_CONSUMED, intentPayloadConsumed)
+        outState.putBoolean(KEY_SETTINGS_OPEN, showSettings)
+        if (::viewModel.isInitialized) outState.putString(KEY_INPUT_DRAFT, viewModel.inputDraft.value)
         pendingGoalForConfirmation?.let {
             outState.putString(KEY_PENDING_GOAL_CONFIRMATION, it)
         }

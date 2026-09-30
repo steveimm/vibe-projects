@@ -105,18 +105,18 @@ private fun agentBehaviorSubtitle(
     approvalMode: ApprovalMode,
 ): String {
     val approvalChip = when (approvalMode) {
-        ApprovalMode.SMART -> "Per-App"
-        ApprovalMode.AUTO_APPROVE -> "Auto-Approve"
-        ApprovalMode.ALWAYS_ASK -> "Always Ask"
+        ApprovalMode.SMART -> "Per app"
+        ApprovalMode.AUTO_APPROVE -> "Auto approve"
+        ApprovalMode.ALWAYS_ASK -> "Always ask"
     }
     val displayChip = when (platformMode) {
         PlatformMode.ACCESSIBILITY -> when (effectivePlatformMode) {
-            PlatformMode.VIRTUAL_DISPLAY -> " · Virtual Display (this session)"
+            PlatformMode.VIRTUAL_DISPLAY -> " · Virtual display (this session)"
             else -> ""
         }
         PlatformMode.VIRTUAL_DISPLAY -> when (effectivePlatformMode) {
-            PlatformMode.ACCESSIBILITY -> " · Virtual Display (next session)"
-            else -> " · Virtual Display"
+            PlatformMode.ACCESSIBILITY -> " · Virtual display (next session)"
+            else -> " · Virtual display"
         }
     }
     return "$approvalChip · Screenshots$displayChip"
@@ -159,9 +159,9 @@ private fun appAccessSubtitle(classifier: AppClassifier, approvalMode: ApprovalM
         }
     }
     val modeLabel = when (approvalMode) {
-        ApprovalMode.SMART -> "Per-App"
-        ApprovalMode.AUTO_APPROVE -> "Auto-Approve"
-        ApprovalMode.ALWAYS_ASK -> "Always Ask"
+        ApprovalMode.SMART -> "Per app"
+        ApprovalMode.AUTO_APPROVE -> "Auto approve"
+        ApprovalMode.ALWAYS_ASK -> "Always ask"
     }
     return counts?.let { (a, k, r) -> "$modeLabel · $a Allow · $k Ask · $r Reject" }
         ?: "$modeLabel · …"

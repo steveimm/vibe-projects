@@ -2,7 +2,7 @@ package id.steveimm.pocketpilot.ui.settings
 
 import id.steveimm.pocketpilot.protocol.PlatformMode
 
-/** Unified card state for the Display Mode toggle. Carries everything the composable needs to render — status pill, switch checked +
+/** Unified card state for the Display mode toggle. Carries everything the composable needs to render — status pill, switch checked +
  * enabled flags, and an optional row action — so the Compose layer never re-derives state from raw inputs. */
 internal data class VirtualDisplayCardState(
     val status: ToolStatusUi,
@@ -132,7 +132,7 @@ internal fun virtualDisplayCardState(
                 VirtualDisplayCardState(
                     status = ToolStatusUi(
                         label = "Needs Setup",
-                        subtitle = "Grant Shizuku permission to use Virtual Display.",
+                        subtitle = "Grant Shizuku permission to use Virtual display.",
                         tone = ToolStatusTone.Warning,
                         showSpinner = false,
                     ),

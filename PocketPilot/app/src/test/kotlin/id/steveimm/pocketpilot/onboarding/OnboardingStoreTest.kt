@@ -112,15 +112,13 @@ class OnboardingStoreTest {
     }
 
     @Test
-    fun `migrateIfNeeded reconciles current-schema incomplete user when evidence appears`() {
-        // Simulate: onboarding_prefs is at current schema but never marked complete
-        // (e.g. selective Auto Backup restore wiped this file but auth_store survived).
+    fun `saving a server during setup does not complete onboarding on recreation`() {
         plainBacking["schema_version"] = 2
         plainBacking["onboarding_completed"] = false
 
         OnboardingStore(context).migrateIfNeeded { true }
 
-        assertThat(plainBacking["onboarding_completed"]).isEqualTo(true)
+        assertThat(plainBacking["onboarding_completed"]).isEqualTo(false)
     }
 
     @Test

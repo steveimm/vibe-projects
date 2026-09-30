@@ -18,7 +18,7 @@ internal sealed interface VirtualDisplayToggleError {
 
 internal fun VirtualDisplayToggleError.message(): String = when (this) {
     VirtualDisplayToggleError.ShizukuUnavailable ->
-        "Shizuku is not running. Install or start Shizuku, then turn on Virtual Display."
+        "Shizuku is not running. Install or start Shizuku, then turn on Virtual display."
     VirtualDisplayToggleError.ShizukuPermissionDenied ->
         "Permission denied. Tap to retry, or grant in Shizuku Manager."
 }
