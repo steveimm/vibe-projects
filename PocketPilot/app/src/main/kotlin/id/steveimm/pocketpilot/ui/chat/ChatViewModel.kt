@@ -1,5 +1,8 @@
 package id.steveimm.pocketpilot.ui.chat
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
@@ -151,7 +154,14 @@ class ChatViewModel(
     val messages: List<ChatMessage>
         get() = _messages
 
-    val inputDraft = mutableStateOf("")
+    var inputDraft by mutableStateOf(mutableStateOf(""))
+        private set
+
+    fun bindComposerDraft(shared: MutableState<String>) {
+        if (inputDraft === shared) return
+        if (shared.value.isEmpty()) shared.value = inputDraft.value
+        inputDraft = shared
+    }
     private val chatStateLock = Any()
 
     // Active event collection job
@@ -279,9 +289,6 @@ class ChatViewModel(
 
     fun dismissHistoryError() { _uiState.update { it.copy(historyError = null) } }
 
-    fun dismissError() {
-        AgentService.instance?.dismissError()
-    }
 
     /** Keep unsent input available for retry and show the failure beside the composer. */
     fun reportStartupFailure(

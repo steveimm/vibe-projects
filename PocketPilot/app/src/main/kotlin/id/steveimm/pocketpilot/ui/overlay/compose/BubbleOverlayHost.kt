@@ -49,12 +49,18 @@ class BubbleOverlayHost(
     private var dragging = false
     private var dockAnimation: ValueAnimator? = null
     private var passThroughDepth = 0
+    private var panelTop: Int? = null
     private val configurationCallback = object : ComponentCallbacks {
         override fun onConfigurationChanged(newConfig: Configuration) { placeAtEdge() }
         override fun onLowMemory() = Unit
     }
 
     fun startObserving(holder: CapsuleStateHolder) { stateHolder = holder }
+    fun setPanelTop(top: Int?) {
+        if (panelTop == top) return
+        panelTop = top
+        if (isShowing()) placeAtEdge()
+    }
     fun setExpanded(value: Boolean) { expanded.value = value }
     fun isShowing(): Boolean = composeHost.isShowing()
     fun suppressForScreenshot(): AutoCloseable = composeHost.suppressForScreenshot()
@@ -127,7 +133,7 @@ class BubbleOverlayHost(
                 if (dragging) {
                     val bounds = movementBounds()
                     rightEdge = x >= (bounds.left + bounds.right) / 2f
-                    heightFraction = if (bounds.height() == 0) 0f else (y - bounds.top) / bounds.height()
+                    heightFraction = (y - bounds.top) / movementBounds(avoidPanel = false).height().coerceAtLeast(1)
                     preferences.edit().putBoolean("right_edge", rightEdge).putFloat("height_fraction", heightFraction).apply()
                     placeAtEdge(animate = true)
                 } else onToggleCapsule()
@@ -137,21 +143,21 @@ class BubbleOverlayHost(
         return true
     }
 
-    private fun movementBounds(): Rect {
+    private fun movementBounds(avoidPanel: Boolean = true): Rect {
         val metrics = windowManager.currentWindowMetrics
         val insets = metrics.windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
         val margin = dp(8)
         val left = insets.left + margin
         val top = insets.top + margin
-        return Rect(left, top, (metrics.bounds.width() - insets.right - margin - dp(60)).coerceAtLeast(left),
-            (metrics.bounds.height() - insets.bottom - margin - dp(60)).coerceAtLeast(top))
+        val bottom = minOf(metrics.bounds.height() - insets.bottom, if (avoidPanel) panelTop ?: Int.MAX_VALUE else Int.MAX_VALUE) - margin - dp(60)
+        return Rect(left, top, (metrics.bounds.width() - insets.right - margin - dp(60)).coerceAtLeast(left), bottom.coerceAtLeast(top))
     }
 
     private fun placeAtEdge(animate: Boolean = false) {
         dockAnimation?.cancel()
         val bounds = movementBounds()
         val targetX = if (rightEdge) bounds.right.toFloat() else bounds.left.toFloat()
-        val targetY = bounds.top + bounds.height() * heightFraction
+        val targetY = (bounds.top + movementBounds(avoidPanel = false).height() * heightFraction).coerceAtMost(bounds.bottom.toFloat())
         if (!animate || !ValueAnimator.areAnimatorsEnabled()) {
             moveTo(targetX, targetY)
             return

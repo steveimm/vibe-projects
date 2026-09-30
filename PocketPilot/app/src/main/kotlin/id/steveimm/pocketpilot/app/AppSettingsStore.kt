@@ -28,6 +28,7 @@ class AppSettingsStore(context: Context) {
         private const val KEY_USER_APP_OVERRIDES = "user_app_overrides"
         private const val KEY_TRACE_ENABLED = "trace_enabled"
         private const val KEY_APPROVAL_MODE = "approval_mode"
+        private const val KEY_ACTION_INDICATORS = "action_indicators"
         private const val KEY_COMPACT_OVERLAYS = "compact_overlays"
 
         const val DEFAULT_DEBUG_MODE = false
@@ -70,6 +71,9 @@ class AppSettingsStore(context: Context) {
     fun saveDebugMode(value: Boolean) {
         prefs.edit().putBoolean(KEY_DEBUG_MODE, value).apply()
     }
+
+    fun loadActionIndicators(): Boolean = prefs.getBoolean(KEY_ACTION_INDICATORS, true)
+    fun saveActionIndicators(enabled: Boolean) { prefs.edit().putBoolean(KEY_ACTION_INDICATORS, enabled).apply() }
 
     fun loadCompactOverlays(): Boolean = prefs.getBoolean(KEY_COMPACT_OVERLAYS, DEFAULT_COMPACT_OVERLAYS)
 

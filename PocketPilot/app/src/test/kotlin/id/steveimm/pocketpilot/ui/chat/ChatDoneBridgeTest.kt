@@ -17,7 +17,6 @@ class ChatDoneBridgeTest {
         mode = MutableStateFlow(CapsuleMode.Hidden),
         platformMode = MutableStateFlow(PlatformMode.ACCESSIBILITY),
         isStopPending = MutableStateFlow(false),
-        previousMode = { null },
         onStopRequested = { true },
         onApprovalResolved = { true },
         onUserResponseSent = accept,

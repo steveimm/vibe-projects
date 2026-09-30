@@ -25,18 +25,19 @@ class CapsuleLifecycleTest {
     @get:Rule val compose = createComposeRule()
 
     // K12
-    @Test fun error_dismiss_button_fires_callback() {
+    @Test fun error_overlay_can_be_closed() {
         var dismissed = false
         compose.setContent {
             TestCapsule(
                 mode = CapsuleMode.Error("Something broke"),
-                onDismissError = { dismissed = true },
+                context = CapsuleContext.SCREEN_VIEWING,
+                onNavigate = { if (it == NavAction.CLOSE_OVERLAY) dismissed = true },
             )
         }
 
         compose.onNodeWithText("Something broke").assertExists()
-        compose.onNodeWithText("Close").performClick()
-        assertTrue("onDismissError was not invoked", dismissed)
+        compose.onNodeWithContentDescription("Close overlay").performClick()
+        assertTrue("Close did not dispatch dismissal", dismissed)
     }
 
     // K13 — isStopPending replaces Stop with disabled "Stopping..."
@@ -70,17 +71,16 @@ class CapsuleLifecycleTest {
                 mode = CapsuleMode.Running(thought = "Working"),
                 context = CapsuleContext.BACKGROUND,
                 platformMode = PlatformMode.VIRTUAL_DISPLAY,
-                hasBubble = true,
                 onNavigate = { fired += it },
             )
         }
 
-        compose.onNodeWithContentDescription("Minimize").performClick()
-        compose.onNodeWithContentDescription("Open app").performClick()
+        compose.onNodeWithContentDescription("Stop and close").performClick()
+        compose.onNodeWithContentDescription("Open PocketPilot").performClick()
         compose.onNodeWithContentDescription("Open viewer").performClick()
 
         assertEquals(
-            listOf(NavAction.MINIMIZE, NavAction.OPEN_APP, NavAction.OPEN_VIEWER),
+            listOf(NavAction.CLOSE_OVERLAY, NavAction.OPEN_APP, NavAction.OPEN_VIEWER),
             fired,
         )
     }

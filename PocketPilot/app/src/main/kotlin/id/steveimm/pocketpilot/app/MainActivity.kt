@@ -1,6 +1,7 @@
 package id.steveimm.pocketpilot.app
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.LaunchedEffect
 
 import android.content.Intent
 import android.net.Uri
@@ -166,10 +167,15 @@ class MainActivity : ComponentActivity() {
                         onSessionNeeded = { text -> ensureSessionAndSend(text) }
                 )
 
-        viewModel.inputDraft.value = savedInstanceState?.getString(KEY_INPUT_DRAFT).orEmpty()
+        val serviceDraft = AgentService.instance?.capsuleStateHolder?.inputDraft
+        if (serviceDraft != null) viewModel.bindComposerDraft(serviceDraft)
+        else viewModel.inputDraft.value = savedInstanceState?.getString(KEY_INPUT_DRAFT).orEmpty()
         showSettings = savedInstanceState?.getBoolean(KEY_SETTINGS_OPEN) ?: false
         setContent {
             val serviceConnected by AgentService.connected.collectAsStateWithLifecycle()
+            LaunchedEffect(serviceConnected) {
+                AgentService.instance?.capsuleStateHolder?.inputDraft?.let(viewModel::bindComposerDraft)
+            }
             if (onboardingRequired) {
                 val vm = onboardingViewModel!!
                 PocketPilotTheme {

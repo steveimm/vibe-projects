@@ -41,6 +41,19 @@ The model server may be offline. Deterministic local fixtures can test transport
 - Release JVM suite passed, including real socket tests for cancellation before headers, stalled streams, nonstreaming requests, takeover/resume, heartbeat-only streams, and bounded retries.
 - Emulator: a silent server produced the actionable timeout error after 30 seconds. Open chat interrupted a stalled generation and opened the paused chat. Stop from that paused state completed immediately. Further device checks will use the final build.
 - A launcher capture correctly detected missing transparent coverage and used the display fallback. Settings used native window capture, with the red border and controls visible to the user and absent from the model image.
-- Close removed the error panel and bubble, which stayed dismissed. Completion currently collapses an open panel. The next UI milestone preserves the user's expanded state.
+- Close removed the error panel and bubble, which stayed dismissed. Completion now preserves the user's expanded state.
 
 Other checklist items remain under review.
+
+
+### Overlay verification in progress
+
+- Release checks: 897 JVM tests passed, release lint passed, and the device test sources compiled. UI checks use the signed ARM64 release on Android 15.
+- A 2500 ms long press at normalized `[500, 450]` mapped to display `(540, 1080)`. WindowManager reported the 168 × 168 px marker at `[456, 996]–[624, 1164]`, centered exactly on that target. The underlying Settings row received the gesture.
+- Four edge windows were 5 px thick on the test device. They adjusted to 2400 × 1080 after rotation. The controls stayed within 420 dp in landscape, and the bubble moved above an expanded panel after being dragged to the bottom.
+- Shared answers survived minimize/reopen and Open chat. Takeover interrupts pending generation before opening chat. Stop from Paused completed without waiting for the server.
+- Full-screen touch protection remains available and keeps its existing policy. Visual indicators are an independent setting, so restoring feedback does not require enabling the compatibility-sensitive touch shield.
+
+- Active Close removed all overlay windows immediately. A dismissed idle bubble stayed absent after accessibility was disabled/re-enabled and Settings opened. Explicitly opening Main restored it.
+- Heartbeat-only SSE traffic timed out after 30 seconds without model progress and retained the expanded error panel. Open chat and Close remained usable.
+- Approval prompts kept navigation in the header and preserved the pending decision when switching to chat.

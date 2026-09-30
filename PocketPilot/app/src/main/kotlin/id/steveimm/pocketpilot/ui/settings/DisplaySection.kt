@@ -90,6 +90,7 @@ internal fun DisplaySection(
                 onRowClickLabel = rowClickLabel,
                 switchModifier = Modifier.testTag("display-mode-switch"),
             )
+            ActionIndicatorsSettingsRow()
             CompactOverlaysSettingsRow()
         }
     }
@@ -102,18 +103,36 @@ private fun CompactOverlaysSettingsRow() {
     var enabled by remember(store) { mutableStateOf(store.loadCompactOverlays()) }
 
     ToolSettingsCard(
-        title = "Compact overlays",
+        title = "Touch protection",
         status = ToolStatusUi(
-            label = if (enabled) "On" else "Off",
-            subtitle = "Use if your phone turns off accessibility during automation. Keeps controls, without full-screen effects or touch blocking. Tap Takeover before using other apps.",
+            label = if (enabled) "Off" else "On",
+            subtitle = "Block other touches while controls are expanded. Leave off for device compatibility.",
             tone = ToolStatusTone.Neutral,
         ),
-        switchChecked = enabled,
+        switchChecked = !enabled,
         onSwitchChange = { value ->
-            store.saveCompactOverlays(value)
-            enabled = value
-            AgentService.instance?.setCompactOverlaysEnabled(value)
+            store.saveCompactOverlays(!value)
+            enabled = !value
+            AgentService.instance?.setCompactOverlaysEnabled(!value)
         },
         switchModifier = Modifier.testTag("compact-overlays-switch"),
+    )
+}
+
+@Composable
+private fun ActionIndicatorsSettingsRow() {
+    val appContext = LocalContext.current.applicationContext
+    val store = remember(appContext) { AppSettingsStore(appContext) }
+    var enabled by remember(store) { mutableStateOf(store.loadActionIndicators()) }
+    ToolSettingsCard(
+        title = "Action indicators",
+        status = ToolStatusUi(label = if (enabled) "On" else "Off",
+            subtitle = "Show a border and touch feedback while the agent works.", tone = ToolStatusTone.Neutral),
+        switchChecked = enabled,
+        onSwitchChange = {
+            store.saveActionIndicators(it)
+            enabled = it
+            AgentService.instance?.setActionIndicatorsEnabled(it)
+        },
     )
 }

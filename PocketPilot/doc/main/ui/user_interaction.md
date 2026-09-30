@@ -26,6 +26,6 @@ The demo asks the model to open Android Settings and checks the observed package
 
 The persistent bubble remains outside Main before, during, and after tasks. Drag it to reposition it. Release docks it to an edge. Tap toggles the panel. Drafts survive minimizing and reopening the panel.
 
-Questions expose a reply field. User-action requests expose Done. App approvals offer persistent approval, session approval, or rejection. A stopped task stays distinguishable from a finished task. Compact overlays retain controls while suppressing full-screen effects and touch blocking.
+Questions expose a reply field. User-action requests expose Done. App approvals offer persistent approval, session approval, or rejection. A stopped task stays distinguishable from a finished task. The panel always offers Open chat and Close. Close dismisses floating controls and stops active work. Touch protection is optional and off by default. Action indicators can be disabled independently.
 
 See [overlay behavior](overlay.md) and [capsule architecture](capsule/architecture.md) for implementation details.

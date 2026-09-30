@@ -116,6 +116,12 @@ class OverlayComposeHost(
         catch (e: Exception) { Log.w(tag, "Failed to update Compose overlay params", e) }
     }
 
+    fun topOnScreen(): Int = root?.let {
+        val position = IntArray(2)
+        it.getLocationOnScreen(position)
+        position[1]
+    } ?: 0
+
     fun getWindowToken() = root?.windowToken
     fun dispose() { remove() }
 }

@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -49,7 +49,7 @@ internal fun OverlayBubbleCompose(
         shadowElevation = 4.dp,
     ) {
         Box(contentAlignment = Alignment.Center) {
-            if (expanded) Icon(Icons.Rounded.Close, contentDescription = null, tint = statusColor)
+            if (expanded) Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, tint = statusColor)
             else PilotMark(color = statusColor, size = 26.dp)
         }
     }

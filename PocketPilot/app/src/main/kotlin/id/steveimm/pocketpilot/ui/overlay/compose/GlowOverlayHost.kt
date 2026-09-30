@@ -1,177 +1,61 @@
 package id.steveimm.pocketpilot.ui.overlay.compose
 
 import android.accessibilityservice.AccessibilityService
-import android.graphics.PixelFormat
-import android.os.Build
-import android.util.Log
+import android.content.ComponentCallbacks
+import android.content.res.Configuration
+import android.graphics.Color
+import android.graphics.Paint
 import android.view.WindowManager
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.lifecycle.LifecycleOwner
-import androidx.savedstate.SavedStateRegistryOwner
+import id.steveimm.pocketpilot.model.Bounds
 import id.steveimm.pocketpilot.ui.overlay.model.GlowState
-import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
 
-class GlowOverlayHost(
-    private val service: AccessibilityService,
-    private val scope: CoroutineScope,
-    lifecycleOwner: LifecycleOwner,
-    savedStateRegistryOwner: SavedStateRegistryOwner,
-) {
-    companion object {
-        private const val TAG = "GlowOverlayHost"
-        // Hold a Success glow before auto-hiding. UX dwell, not animation timing.
-        private const val SUCCESS_HIDE_DELAY_MS = 2000L
+class GlowOverlayHost(private val service: AccessibilityService) {
+    private val manager = service.getSystemService(WindowManager::class.java)
+    private val windows = listOf("top", "bottom", "left", "right").map { EffectWindow(service, "PocketPilot border $it") }
+    private val paint = Paint().apply { color = Color.rgb(224, 66, 78) }
+    private var visible = false
+    private val configuration = object : ComponentCallbacks {
+        override fun onConfigurationChanged(newConfig: Configuration) { if (visible) place() }
+        override fun onLowMemory() = Unit
     }
 
-    private val windowManager = service.getSystemService(WindowManager::class.java)
-    private val composeHost = OverlayComposeHost(
-        context = service,
-        lifecycleOwner = lifecycleOwner,
-        savedStateRegistryOwner = savedStateRegistryOwner,
-        windowManager = windowManager,
-        tag = TAG,
-    )
+    init {
+        windows.forEach { window -> window.draw = { canvas -> canvas.drawRect(0f, 0f, canvas.width.toFloat(), canvas.height.toFloat(), paint) } }
+    }
 
-    private val isVisible = MutableStateFlow(false)
-    private val glowState = MutableStateFlow(GlowState.Active)
-    private var pendingHideJob: Job? = null
-    private var pendingRemoveJob: Job? = null
-
-    fun suppressForScreenshot(): AutoCloseable = composeHost.suppressForScreenshot()
-
-    fun isShowing(): Boolean = composeHost.isShowing() && isVisible.value
-
+    fun isShowing(): Boolean = visible
     fun show(state: GlowState = GlowState.Active) {
-        pendingHideJob?.cancel()
-        pendingRemoveJob?.cancel()
-        glowState.value = state
-
-        if (!composeHost.isShowing()) {
-            composeHost.show(createLayoutParams()) {
-                val visible by isVisible.collectAsState(initial = false)
-                val currentState by glowState.collectAsState(initial = GlowState.Active)
-                val reduced = PocketPilotMotion.reducedMotion()
-                val staticAlpha by rememberUpdatedState(0.7f)
-                val alpha = if (reduced) {
-                    // D1 §8: looping decorative motion paused → hold steady alpha.
-                    staticAlpha
-                } else {
-                    val pulseTransition = rememberInfiniteTransition(label = "glowPulse")
-                    val pulseAlpha by pulseTransition.animateFloat(
-                        initialValue = 0.5f,
-                        targetValue = 0.85f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(PocketPilotMotion.GlowPulse, easing = PocketPilotMotion.EaseInOutSine),
-                            repeatMode = RepeatMode.Reverse,
-                        ),
-                        label = "pulseAlpha",
-                    )
-                    when (currentState) {
-                        GlowState.Active, GlowState.Executing -> pulseAlpha
-                        else -> staticAlpha
-                    }
-                }
-                val fadeMs = if (reduced) PocketPilotMotion.Quick else PocketPilotMotion.SurfaceSwap
-                val outMs = if (reduced) PocketPilotMotion.Quick else PocketPilotMotion.OverlayFadeOut
-
-                AnimatedVisibility(
-                    visible = visible,
-                    enter = fadeIn(animationSpec = tween(fadeMs)),
-                    exit = fadeOut(animationSpec = tween(outMs)),
-                ) {
-                    EdgeGlowCompose(
-                        state = currentState,
-                        alpha = alpha,
-                    )
-                }
-            }
-            Log.i(TAG, "Glow overlay shown")
-        }
-
-        isVisible.value = true
-        if (state == GlowState.Success) {
-            scheduleHideAfterDelay(SUCCESS_HIDE_DELAY_MS)
-        }
+        updateState(state)
+        if (!visible) { visible = true; service.registerComponentCallbacks(configuration) }
+        if (!place()) hideImmediately()
     }
 
-    fun hide() {
-        if (!composeHost.isShowing()) return
-        pendingHideJob?.cancel()
-        isVisible.value = false
-        pendingRemoveJob?.cancel()
-        pendingRemoveJob = scope.launch {
-            delay(PocketPilotMotion.OverlayFadeOut.toLong())
-            composeHost.hide()
-        }
-    }
-
-    fun hideImmediately() {
-        pendingHideJob?.cancel()
-        pendingRemoveJob?.cancel()
-        isVisible.value = false
-        composeHost.hide()
+    private fun place(): Boolean {
+        val bounds = manager.maximumWindowMetrics.bounds
+        val width = bounds.width(); val height = bounds.height()
+        val line = (2 * service.resources.displayMetrics.density).toInt().coerceAtLeast(2)
+        val edges = listOf(Bounds(0, 0, width, line), Bounds(0, height - line, width, height),
+            Bounds(0, line, line, height - line), Bounds(width - line, line, width, height - line))
+        return windows.zip(edges).all { (window, area) -> window.show(area) }
     }
 
     fun updateState(state: GlowState) {
-        if (!composeHost.isShowing()) {
-            Log.w(TAG, "updateState called while overlay hidden")
-            return
+        paint.color = when (state) {
+            GlowState.Paused -> Color.rgb(176, 127, 40)
+            GlowState.Success -> Color.rgb(27, 134, 91)
+            else -> Color.rgb(224, 66, 78)
         }
-        glowState.value = state
-        pendingHideJob?.cancel()
-        if (state == GlowState.Success) {
-            scheduleHideAfterDelay(SUCCESS_HIDE_DELAY_MS)
-        }
+        windows.forEach { it.invalidate() }
     }
 
-    fun dispose() {
-        hideImmediately()
-        composeHost.dispose()
+    fun hideImmediately() {
+        if (visible) service.unregisterComponentCallbacks(configuration)
+        visible = false
+        windows.forEach { it.hide() }
     }
-
-    private fun scheduleHideAfterDelay(delayMs: Long) {
-        pendingHideJob?.cancel()
-        pendingHideJob = scope.launch {
-            delay(delayMs)
-            hide()
-        }
-    }
-
-    private fun createLayoutParams(): WindowManager.LayoutParams {
-        return WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
-            } else {
-                @Suppress("DEPRECATION")
-                WindowManager.LayoutParams.TYPE_PHONE
-            },
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT,
-        ).apply {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                layoutInDisplayCutoutMode =
-                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-            }
-        }
+    fun dispose() { hideImmediately() }
+    fun suppressForScreenshot(): AutoCloseable {
+        val leases = windows.map { it.suppressForScreenshot() }
+        return AutoCloseable { leases.forEach { it.close() } }
     }
 }

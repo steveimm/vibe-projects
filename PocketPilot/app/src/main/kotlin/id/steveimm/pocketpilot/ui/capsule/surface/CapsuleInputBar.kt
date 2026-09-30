@@ -97,12 +97,6 @@ internal fun CapsuleInputBar(
             keyboard?.show()
         }
     }
-    LaunchedEffect(spec.clearDraft) {
-        if (spec.clearDraft && inputText.isNotEmpty()) {
-            inputText = ""
-        }
-    }
-
     val inputEnabled = when {
         context == CapsuleContext.MAIN_APP -> true
         mode is CapsuleMode.Running && platformMode == PlatformMode.ACCESSIBILITY -> false

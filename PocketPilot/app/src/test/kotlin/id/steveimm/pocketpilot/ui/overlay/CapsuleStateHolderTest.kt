@@ -29,11 +29,6 @@ class CapsuleStateHolderTest {
     }
 
     @Test
-    fun `initial previousMode is Hidden`() {
-        assertThat(holder.previousMode).isEqualTo(CapsuleMode.Hidden)
-    }
-
-    @Test
     fun `onTaskStarted sets Running mode with sanitized input`() {
         holder.onTaskStarted("task1", "Open Taobao and search")
         val mode = holder.mode.value
@@ -292,43 +287,6 @@ class CapsuleStateHolderTest {
     }
 
     @Test
-    fun `onDismissError transitions to Hidden`() {
-        holder.onError("Network error")
-        holder.onDismissError()
-        assertThat(holder.mode.value).isEqualTo(CapsuleMode.Hidden)
-    }
-
-    @Test
-    fun `onDismissError ignored when not in Error`() {
-        holder.onTaskStarted("task1", "input")
-        val modeBefore = holder.mode.value
-        holder.onDismissError()
-        assertThat(holder.mode.value).isEqualTo(modeBefore)
-    }
-
-    @Test
-    fun `previousMode tracks the mode before the current one`() {
-        holder.onTaskStarted("task1", "input")
-        assertThat(holder.previousMode).isEqualTo(CapsuleMode.Hidden)
-
-        holder.setTurnPhase(id.steveimm.pocketpilot.protocol.TurnPhase.PLANNING)
-        assertThat(holder.previousMode).isInstanceOf(CapsuleMode.Running::class.java)
-    }
-
-    @Test
-    fun `previousMode updates through full lifecycle`() {
-        holder.onTaskStarted("task1", "input")
-        val afterStart = holder.mode.value
-
-        holder.onTakeoverRequested()
-        assertThat(holder.previousMode).isEqualTo(afterStart)
-
-        val afterTakeoverReq = holder.mode.value
-        holder.onTakeoverConfirmed()
-        assertThat(holder.previousMode).isEqualTo(afterTakeoverReq)
-    }
-
-    @Test
     fun `hasActiveTask is false when Hidden`() {
         assertThat(holder.hasActiveTask).isFalse()
     }
@@ -351,4 +309,17 @@ class CapsuleStateHolderTest {
         holder.onError("error")
         assertThat(holder.hasActiveTask).isFalse()
     }
+    @Test
+    fun `reply draft survives repeated question updates without replacing the task draft`() {
+        holder.inputDraft.value = "Unsent note"
+        holder.onAskUser(id.steveimm.pocketpilot.protocol.AskUserType.QUESTION, "Question", "q1")
+        holder.responseDraft.value = "Partial reply"
+        holder.onAskUser(id.steveimm.pocketpilot.protocol.AskUserType.QUESTION, "Question", "q1")
+        assertThat(holder.responseDraft.value).isEqualTo("Partial reply")
+        assertThat(holder.inputDraft.value).isEqualTo("Unsent note")
+        holder.onAskUser(id.steveimm.pocketpilot.protocol.AskUserType.QUESTION, "Next question", "q2")
+        assertThat(holder.responseDraft.value).isEmpty()
+        assertThat(holder.inputDraft.value).isEqualTo("Unsent note")
+    }
+
 }

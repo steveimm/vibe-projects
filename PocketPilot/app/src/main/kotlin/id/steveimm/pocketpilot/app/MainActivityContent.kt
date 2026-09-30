@@ -40,10 +40,10 @@ private fun rememberCapsuleBinding(): CapsuleBinding {
             mode = holder.mode,
             platformMode = holder.platformMode,
             isStopPending = holder.isStopPending,
-            previousMode = { holder.previousMode },
             onStopRequested = { holder.onStopRequested() },
             onApprovalResolved = { callId -> holder.onApprovalResolved(callId) },
             onUserResponseSent = { callId -> holder.onUserResponseSent(callId) },
+            responseDraft = holder.responseDraft,
         )
     }
 }

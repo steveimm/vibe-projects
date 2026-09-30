@@ -19,32 +19,23 @@ data class CapsuleRenderSpec(
     /** A single button in the control bar. The Compose layer chooses the icon. */
     data class ButtonSpec(val text: String, val enabled: Boolean = true)
 
-    enum class ControlLayout {
-        SharedWithNav,
-        RequiredActionsOnly,
-    }
-
     /** Control-bar button configuration. null fields = button hidden. */
     data class ButtonsSpec(
         val primary: ButtonSpec?,
         val secondary: ButtonSpec? = null,
         val stop: ButtonSpec?,
-        val layout: ControlLayout = ControlLayout.SharedWithNav,
     )
 
     /** Input-bar specification. null = input bar hidden. */
     data class InputSpec(
         val hint: String,
         val submitLabel: String,
-        val clearDraft: Boolean = false,
     )
 
     companion object {
-        /** Derive the render spec from a CapsuleMode. [previousMode] is used to decide whether to clear the input-bar draft on
-         * transitions into WaitingForInput. */
+        /** Derive the rendering state from the current mode. */
         fun from(
             mode: CapsuleMode,
-            previousMode: CapsuleMode? = null,
             isStopPending: Boolean = false,
         ): CapsuleRenderSpec =
             when (mode) {
@@ -53,10 +44,10 @@ data class CapsuleRenderSpec(
                     thought = ThoughtSpec(mode.thought.ifEmpty { "Thinking..." }),
                     expandedBody = null,
                     buttons = ButtonsSpec(
-                        primary = ButtonSpec("Takeover"),
+                        primary = ButtonSpec("Takeover", enabled = !isStopPending),
                         stop = stopButtonSpec(isStopPending),
                     ),
-                    input = InputSpec("Got ideas? Add a note...", "Add note"),
+                    input = InputSpec("Add a note…", "Add note"),
                 )
 
                 is CapsuleMode.TakeoverPending -> CapsuleRenderSpec(
@@ -67,21 +58,21 @@ data class CapsuleRenderSpec(
                         primary = ButtonSpec("Handing over", enabled = false),
                         stop = stopButtonSpec(isStopPending),
                     ),
-                    input = InputSpec("Got ideas? Add a note...", "Add note"),
+                    input = InputSpec("Add a note…", "Add note"),
                 )
 
                 is CapsuleMode.Takeover -> CapsuleRenderSpec(
                     dot = DotSpec(GlowState.Paused, pulsing = false),
                     thought = ThoughtSpec(
-                        mode.lastThought.ifEmpty { "Paused" },
+                        "Paused",
                         dimmed = true,
                     ),
                     expandedBody = null,
                     buttons = ButtonsSpec(
-                        primary = ButtonSpec("Resume"),
+                        primary = ButtonSpec("Resume", enabled = !isStopPending),
                         stop = stopButtonSpec(isStopPending),
                     ),
-                    input = InputSpec("Got ideas? Add a note...", "Add note"),
+                    input = InputSpec("Add a note…", "Add note"),
                 )
 
                 is CapsuleMode.WaitingForInput -> CapsuleRenderSpec(
@@ -91,13 +82,10 @@ data class CapsuleRenderSpec(
                     buttons = ButtonsSpec(
                         primary = null,
                         stop = stopButtonSpec(isStopPending),
-                        layout = ControlLayout.RequiredActionsOnly,
                     ),
                     input = InputSpec(
                         hint = "Type your response...",
                         submitLabel = "Send",
-                        clearDraft = previousMode != null
-                            && previousMode !is CapsuleMode.WaitingForInput,
                     ),
                 )
 
@@ -106,22 +94,20 @@ data class CapsuleRenderSpec(
                     thought = ThoughtSpec("Action needed"),
                     expandedBody = mode.instruction,
                     buttons = ButtonsSpec(
-                        primary = ButtonSpec("Done"),
+                        primary = ButtonSpec("Done", enabled = !isStopPending),
                         stop = stopButtonSpec(isStopPending),
-                        layout = ControlLayout.RequiredActionsOnly,
                     ),
                     input = null,
                 )
 
                 is CapsuleMode.WaitingForApproval -> CapsuleRenderSpec(
                     dot = DotSpec(GlowState.Paused, pulsing = false),
-                    thought = ThoughtSpec("Allow PocketPilot to operate ${mode.appLabel}?"),
-                    expandedBody = null,
+                    thought = ThoughtSpec("App access"),
+                    expandedBody = "Allow PocketPilot to operate ${mode.appLabel}?",
                     buttons = ButtonsSpec(
                         primary = ButtonSpec("Always"),
                         secondary = ButtonSpec("Session"),
                         stop = ButtonSpec("Reject"),
-                        layout = ControlLayout.RequiredActionsOnly,
                     ),
                     input = null,
                 )
@@ -136,14 +122,10 @@ data class CapsuleRenderSpec(
 
                 is CapsuleMode.Error -> CapsuleRenderSpec(
                     dot = DotSpec(GlowState.Error, pulsing = false),
-                    thought = ThoughtSpec(mode.message),
-                    expandedBody = null,
-                    buttons = ButtonsSpec(
-                        primary = null,
-                        stop = ButtonSpec("Close"),
-                        layout = ControlLayout.RequiredActionsOnly,
-                    ),
-                    input = null,
+                    thought = ThoughtSpec("Error"),
+                    expandedBody = mode.message,
+                    buttons = ButtonsSpec(primary = null, stop = null),
+                    input = InputSpec("New request…", "Send"),
                 )
 
                 is CapsuleMode.Hidden -> CapsuleRenderSpec(
@@ -162,36 +144,13 @@ data class CapsuleRenderSpec(
 }
 
 /** NavSpec — navigation button visibility derived from context. */
-data class NavSpec(
-    val showMinimize: Boolean,
-    val showApp: Boolean,
-    val showWatch: Boolean,
-) {
+data class NavSpec(val showClose: Boolean, val showApp: Boolean, val showWatch: Boolean) {
     companion object {
-        fun from(
-            context: CapsuleContext,
-            platformMode: PlatformMode,
-            hasBubble: Boolean,
-            mode: CapsuleMode? = null,
-        ): NavSpec {
-            // Completed overlays retain navigation while the main chat owns its final answer.
-            val controlBarHidden = context == CapsuleContext.MAIN_APP && mode is CapsuleMode.Done
-
-            return NavSpec(
-                showMinimize = !controlBarHidden
-                    && hasBubble
-                    && context != CapsuleContext.MAIN_APP
-                    && mode !is CapsuleMode.WaitingForInput
-                    && mode !is CapsuleMode.WaitingForAction
-                    && mode !is CapsuleMode.WaitingForApproval
-                    && mode !is CapsuleMode.Error,
-                showApp = !controlBarHidden
-                    && context != CapsuleContext.MAIN_APP
-                    && (platformMode != PlatformMode.ACCESSIBILITY || mode is CapsuleMode.Done),
-                showWatch = !controlBarHidden
-                    && platformMode != PlatformMode.ACCESSIBILITY
-                    && context != CapsuleContext.SCREEN_VIEWING,
-            )
-        }
+        fun from(context: CapsuleContext, platformMode: PlatformMode, mode: CapsuleMode? = null): NavSpec = NavSpec(
+            showClose = context != CapsuleContext.MAIN_APP,
+            showApp = context != CapsuleContext.MAIN_APP,
+            showWatch = platformMode == PlatformMode.VIRTUAL_DISPLAY && context != CapsuleContext.SCREEN_VIEWING &&
+                !(context == CapsuleContext.MAIN_APP && mode is CapsuleMode.Done),
+        )
     }
 }

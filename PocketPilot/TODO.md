@@ -1,6 +1,7 @@
 # TODO
 
-- [ ] Investigate restoring the border and gesture markers without full-screen overlay windows. Use small moving windows around touch points and four narrow windows along the screen edges. Validate on the actual OPPO Find X8 that accessibility remains enabled, markers stay aligned, and effects remain excluded from model screenshots. Keep compact mode as the fallback until device testing confirms compatibility.
+- [x] Restore border and gesture feedback using four narrow edge windows and a small moving touch window. Validate coordinates and screenshot exclusion on the emulator.
+- [ ] Validate the bounded indicators on the actual OPPO Find X8, including accessibility persistence. Touch protection stays off by default. Action indicators can be disabled independently if the device rejects them.
 
 - [x] Remove the synthetic reasoning/step-heading mechanism: `agent_thought` tool arguments, their schema instructions, and generated thought-caption fallbacks. Focus on locally deployed models and allow inspection of their exposed reasoning instead.
 - [x] Remove subagent support, including `delegate_task`, delegation prompt instructions, child-agent execution, and related UI, tests, and documentation. Keep a single agent executing tasks directly.

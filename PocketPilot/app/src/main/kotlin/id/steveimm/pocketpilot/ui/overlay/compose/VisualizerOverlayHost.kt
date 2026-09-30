@@ -1,131 +1,93 @@
 package id.steveimm.pocketpilot.ui.overlay.compose
 
 import android.accessibilityservice.AccessibilityService
-import android.graphics.PixelFormat
-import android.os.SystemClock
-import android.util.Log
-import android.view.Gravity
+import android.animation.ValueAnimator
+import android.content.ComponentCallbacks
+import android.content.res.Configuration
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
 import android.view.WindowManager
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.LifecycleOwner
-import androidx.savedstate.SavedStateRegistryOwner
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicLong
+import android.view.animation.LinearInterpolator
+import kotlin.math.roundToInt
 
-class VisualizerOverlayHost(
-    private val service: AccessibilityService,
-    lifecycleOwner: LifecycleOwner,
-    savedStateRegistryOwner: SavedStateRegistryOwner,
-) {
-    companion object {
-        private const val TAG = "VisualizerOverlayHost"
-        private const val CLICK_DURATION_MS = 500L
-        private const val SWIPE_EXTRA_DURATION_MS = 400L
-    }
-
-    private val windowManager = service.getSystemService(WindowManager::class.java)
-    private val composeHost = OverlayComposeHost(
-        context = service,
-        lifecycleOwner = lifecycleOwner,
-        savedStateRegistryOwner = savedStateRegistryOwner,
-        windowManager = windowManager,
-        tag = TAG,
-    )
-    private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
-    private val items = MutableStateFlow<List<VisualizationItem>>(emptyList())
-    private val nextId = AtomicLong(1)
-
+class VisualizerOverlayHost(private val service: AccessibilityService) {
+    private val manager = service.getSystemService(WindowManager::class.java)
+    private val window = EffectWindow(service, "PocketPilot gesture")
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(224, 66, 78) }
+    private var animator: ValueAnimator? = null
+    private var observing = false
     private var disposed = false
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var pendingHide: Runnable? = null
+    private val configuration = object : ComponentCallbacks {
+        override fun onConfigurationChanged(newConfig: Configuration) { hide() }
+        override fun onLowMemory() = Unit
+    }
 
-    fun suppressForScreenshot(): AutoCloseable = composeHost.suppressForScreenshot()
+    fun showClick(x: Float, y: Float, longPress: Boolean, durationMs: Long = if (longPress) 1000 else 100) {
+        animate(x, y, x, y, durationMs, longPress)
+    }
+    fun showSwipe(startX: Float, startY: Float, endX: Float, endY: Float, durationMs: Long) {
+        animate(startX, startY, endX, endY, durationMs, false)
+    }
 
-    fun showClick(x: Float, y: Float, longPress: Boolean) {
+    private fun animate(startX: Float, startY: Float, endX: Float, endY: Float, durationMs: Long, hold: Boolean) {
         if (disposed) return
-        ensureOverlay()
-        val item = VisualizationItem.Click(
-            id = nextId.getAndIncrement(),
-            createdAtMs = SystemClock.uptimeMillis(),
-            durationMs = CLICK_DURATION_MS,
-            x = x,
-            y = y,
-            longPress = longPress,
-        )
-        addItem(item)
-    }
-
-    fun showSwipe(
-        startX: Float,
-        startY: Float,
-        endX: Float,
-        endY: Float,
-        durationMs: Long,
-    ) {
-        if (disposed) return
-        ensureOverlay()
-        val item = VisualizationItem.Swipe(
-            id = nextId.getAndIncrement(),
-            createdAtMs = SystemClock.uptimeMillis(),
-            durationMs = durationMs + SWIPE_EXTRA_DURATION_MS,
-            startX = startX,
-            startY = startY,
-            endX = endX,
-            endY = endY,
-        )
-        addItem(item)
-    }
-
-    fun hide() {
-        items.value = emptyList()
-        composeHost.hide()
-    }
-
-    fun dispose() {
-        disposed = true
         hide()
-        composeHost.dispose()
-        scope.cancel()
+        observing = true
+        service.registerComponentCallbacks(configuration)
+        val density = service.resources.displayMetrics.density
+        val screen = manager.maximumWindowMetrics.bounds
+        if (screen.isEmpty) { hide(); return }
+        val duration = durationMs.coerceAtLeast(1)
+        val total = duration + 250
+        val size = (64 * density).roundToInt()
+        fun frame(elapsed: Float) {
+            val progress = (elapsed / duration).coerceIn(0f, 1f)
+            val x = startX + (endX - startX) * progress
+            val y = startY + (endY - startY) * progress
+            val bounds = markerBounds(x, y, size, screen.width(), screen.height())
+            val fade = if (elapsed <= duration) 1f else (1f - (elapsed - duration) / 250).coerceIn(0f, 1f)
+            window.draw = { canvas ->
+                val cx = x - bounds.left; val cy = y - bounds.top
+                val radius = (if (hold) 22f else 10f + 12f * progress) * density
+                paint.style = Paint.Style.FILL; paint.alpha = (45 * fade).toInt()
+                canvas.drawCircle(cx, cy, radius, paint)
+                paint.style = Paint.Style.STROKE; paint.strokeWidth = 2 * density; paint.alpha = (230 * fade).toInt()
+                if (hold) canvas.drawArc(RectF(cx-radius, cy-radius, cx+radius, cy+radius), -90f, 360 * progress, false, paint)
+                else canvas.drawCircle(cx, cy, radius, paint)
+                paint.style = Paint.Style.FILL
+                canvas.drawCircle(cx, cy, 3 * density, paint)
+            }
+            window.show(bounds)
+        }
+        if (!ValueAnimator.areAnimatorsEnabled()) {
+            frame(duration.toFloat())
+            pendingHide = Runnable { hide() }.also { handler.postDelayed(it, total) }
+            return
+        }
+        animator = ValueAnimator.ofFloat(0f, total.toFloat()).apply {
+            this.duration = total
+            interpolator = LinearInterpolator()
+            addUpdateListener { frame(it.animatedValue as Float) }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) { if (animator === animation) hide() }
+            })
+            start()
+        }
     }
 
-    private fun ensureOverlay() {
-        if (composeHost.isShowing()) return
-        composeHost.show(createLayoutParams()) {
-            val renderItems by items.collectAsState(initial = emptyList())
-            ActionVisualizerCompose(items = renderItems)
-        }
-        Log.d(TAG, "Visualizer overlay shown")
+    fun suppressForScreenshot(): AutoCloseable = window.suppressForScreenshot()
+    fun hide() {
+        pendingHide?.let(handler::removeCallbacks)
+        pendingHide = null
+        val previous = animator
+        animator = null
+        previous?.cancel()
+        window.hide()
+        if (observing) service.unregisterComponentCallbacks(configuration)
+        observing = false
     }
-
-    private fun addItem(item: VisualizationItem) {
-        items.update { it + item }
-        scope.launch {
-            delay(item.durationMs)
-            items.update { list -> list.filterNot { it.id == item.id } }
-        }
-    }
-
-    private fun createLayoutParams(): WindowManager.LayoutParams {
-        return WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-            PixelFormat.TRANSLUCENT,
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-            setFitInsetsTypes(0)
-            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
-        }
-    }
+    fun dispose() { disposed = true; hide() }
 }

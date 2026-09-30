@@ -120,9 +120,6 @@ class AgentService : AccessibilityService() {
         }
     }
 
-    internal fun dismissError() {
-        overlayController?.dismissError()
-    }
 
     private var eventCollectorJob: Job? = null
 
@@ -184,6 +181,7 @@ class AgentService : AccessibilityService() {
                         appPackage = OUR_PACKAGE,
                         logTag = TAG,
                         compactOverlaysEnabled = compactOverlays,
+                        actionIndicatorsEnabled = AppSettingsStore(this).loadActionIndicators(),
                         onStop = { submitOp(Op.Shutdown) },
                         onSend = ::sendOverlayInput,
                         onTakeover = { submitOp(Op.Takeover) },
@@ -197,6 +195,7 @@ class AgentService : AccessibilityService() {
                             submitOp(Op.Approve(callId, decision, scope, packageName))
                         },
                         onOpenApp = ::openMainActivity,
+                        onIndicatorsDismissed = { actionVisualizer?.hide() },
                         onOpenViewer = { viewerBridge.openViewer() },
                         onFinishViewer = { viewerBridge.finishViewer() },
                         bubbleManager =
@@ -213,10 +212,8 @@ class AgentService : AccessibilityService() {
 
         actionVisualizer = ActionVisualizerManager(
                 context = this,
-                lifecycleOwner = serviceLifecycleOwner,
-                savedStateRegistryOwner = serviceLifecycleOwner,
                 renderContext = controller.stateHolder.context,
-                enabled = !compactOverlays,
+                enabled = AppSettingsStore(this).loadActionIndicators(),
         )
         Log.i(TAG, "ActionVisualizerManager initialized")
 
@@ -225,8 +222,12 @@ class AgentService : AccessibilityService() {
         _connected.value = true
     }
 
+    fun setActionIndicatorsEnabled(enabled: Boolean) {
+        actionVisualizer?.enabled = enabled
+        overlayController?.setActionIndicatorsEnabled(enabled)
+    }
+
     fun setCompactOverlaysEnabled(enabled: Boolean) {
-        actionVisualizer?.enabled = !enabled
         overlayController?.setCompactOverlaysEnabled(enabled)
     }
 

@@ -272,15 +272,16 @@ fun ChatScreen(
                                         viewModel.sendApprovalResponse(callId, decision, approvalScope, packageName)
                                     }
                                 },
-                                onDismissError = { viewModel.dismissError() },
                                 onNavigate = { action ->
                                     if (action == NavAction.OPEN_VIEWER) {
                                         onOpenViewer()
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                previousMode = capsuleBinding.previousMode(),
-                                inputDraft = viewModel.inputDraft,
+                                inputDraft = if (capsuleMode is CapsuleMode.WaitingForInput) {
+                                    capsuleBinding.responseDraft ?: viewModel.inputDraft
+                                } else viewModel.inputDraft,
+                                autoFocusInput = capsuleMode is CapsuleMode.WaitingForInput,
                                 pendingInputText = pendingInput,
                                 onPendingInputConsumed = { viewModel.consumePendingInput() },
                                 startupError = startupError,

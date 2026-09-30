@@ -27,15 +27,15 @@ there, and what the user sees.
 
 | State | Trigger | What user sees |
 |---|---|---|
-| `Hidden` | Initial / Error dismissed | No dot, no thought, no control bar; the input bar is still rendered with the idle prompt "What can I help you with?" so the main-app idle composer remains usable |
+| `Hidden` | Initial | No dot, no thought, no control bar; the input bar is still rendered with the idle prompt "What can I help you with?" so the main-app idle composer remains usable |
 | `Running(thought)` | Task started or resumed | Blue pulsing dot + thought; `[Takeover]` `[Stop]`; input row "Add note" |
 | `TakeoverPending(lastThought)` | User tapped Takeover while Running | Amber dot + "Handing over…"; takeover button disabled, stop available |
-| `Takeover(lastThought)` | Agent confirmed pause | Amber dot + dimmed last thought; `[Resume]` `[Stop]` |
+| `Takeover(lastThought)` | Agent confirmed pause | Amber dot + Paused; `[Resume]` `[Stop]` |
 | `WaitingForInput(question, callId)` | Agent asked a text question | Expanded body shows question; input row hint "Type your response…" |
 | `WaitingForAction(instruction, callId)` | Agent asked the user to do something on the phone | Expanded body shows instruction; `[Done]` button; input row hidden |
-| `WaitingForApproval(callId, …)` | Agent needs approval to operate an app | Status line asks `Allow PocketPilot to operate {AppName}?`; no expanded body; `[Always]` `[Session]` `[Reject]` |
+| `WaitingForApproval(callId, …)` | Agent needs approval to operate an app | App access status and expanded permission question; `[Always]` `[Session]` `[Reject]` |
 | `Done(message)` | Task completed (any non-ERROR outcome) | Finished status, scrollable result, navigation and new-request input; persists until the next task |
-| `Error(message)` | Task ended in ERROR / `onError()` called | Red dot + warning; `[Close]` button stays until dismissed |
+| `Error(message)` | Task ended in ERROR / `onError()` called | Red dot, error explanation, and new-request input |
 
 ### Sidecar state
 
@@ -46,8 +46,7 @@ orthogonal to the mode:
   Cleared by every terminal event and by `onTaskStarted`.
 - `isAgentMidTurn: StateFlow<Boolean>` — drives supplement-confirmation UI.
   Cleared on `onResumed`.
-- `previousMode: CapsuleMode` — last value of `mode`, used for transition animations
-  and to decide whether to clear the input field on entering `WaitingForInput`.
+- Separate task/note and answer drafts survive switching between chat and overlay.
 - `turnPhase: StateFlow<TurnPhase?>` — feeds glow derivation only, not capsule mode.
 
 ## Transition matrix
@@ -91,7 +90,6 @@ stateDiagram-v2
 
     Done --> Running: onTaskStarted
 
-    Error --> Hidden: onDismissError
     Error --> Running: onTaskStarted
 
     note right of Done: session expiry preserves the last result
@@ -119,32 +117,21 @@ allowed source state, the event is silently logged and ignored. This is enforced
 | `onApprovalResolved(callId)` | `WaitingForApproval` | callId must match |
 | `onStopRequested` | Active modes only (`Running`, `TakeoverPending`, `Takeover`, `WaitingFor*`) | Returns `false` from `Hidden`/`Done`/`Error`; idempotent (second call returns `false`) |
 | `onTaskCompleted` | Active modes only | Ignored from `Hidden`/`Done`/`Error` |
-| `onDismissError` | `Error` only | |
 
 ## Render derivation
 
-`CapsuleRenderSpec.from(mode, previousMode, isStopPending)` is a pure function that
+`CapsuleRenderSpec.from(mode, isStopPending)` is a pure function that
 maps `CapsuleMode → CapsuleRenderSpec`. Both the in-app composable and the overlay
 host read this spec — there is no second renderer with its own logic.
 
 The spec has five parts:
 - `dot` — status dot color + pulse
 - `thought` — status-line text + alpha
-- `expandedBody` — optional detail body (questions and instructions; approval prompts keep this empty)
+- `expandedBody` — optional detail body (questions, instructions, approvals, errors, and completed results)
 - `buttons` — control-bar button slots (`primary`, `secondary`, `stop`)
-- `input` — optional input-bar spec (`hint`, `submitLabel`, `clearDraft`)
+- `input` — optional input-bar spec (`hint`, `submitLabel`)
 
-`NavSpec.from(context, platformMode, hasBubble, mode)` separately derives navigation
-button visibility (minimize / open-app / open-watch). Nav visibility depends on
-context + platform **and** mode, but the mode-dependence is limited to a few
-narrow rules — that is why it lives in its own spec rather than inside
-`CapsuleRenderSpec`:
-
-- Completed overlays retain Minimize and Open app. MainActivity renders the idle composer after completion.
-- `showMinimize` additionally hides whenever the user is being asked to act or
-  decide (`WaitingForInput`, `WaitingForAction`, `WaitingForApproval`) or when
-  the capsule is in `Error`, so the user cannot dismiss a prompt by minimising.
-- `showApp` and `showWatch` depend only on context + platform.
+`NavSpec.from(context, platformMode, mode)` derives Close, Open chat, and Open viewer. Every panel outside MainActivity exposes Close and Open chat, including waiting and error states. The persistent bubble controls minimize/expand. Closing hides overlays without altering the stored result and stops active work.
 
 ## Input behavior
 
@@ -154,13 +141,13 @@ The input bar is rendered only when `renderSpec.input != null`. It is enabled wh
 - the device is *not* in `PlatformMode.ACCESSIBILITY` while `Running` /
   `TakeoverPending` (in accessibility mode the user must Takeover first to type).
 
-On entering `WaitingForInput` from any other mode, `clearDraft = true` resets the
-field so a stale draft doesn't leak into a Q&A response. Submitting routes to:
+A new question call clears only the answer draft. Reopening the same question preserves its answer and the separate task/note draft. Submitting routes to:
 
 | Mode | Routed callback |
 |---|---|
-| `Hidden` / `Done` | `onSend` (start a new task) |
+| `Hidden` / `Done` / `Error` | `onSend` (start a new task) |
 | `WaitingForInput` | `onUserResponse(callId, text)` |
+| `Takeover` | `onSupplementAndResume(text)` |
 | anything else | `onSupplement(text)` (mid-task amendment) |
 
 ## Sidecar lifecycle
@@ -170,7 +157,6 @@ field so a stale draft doesn't leak into a Q&A response. Submitting routes to:
 - `onTaskCompleted` (terminal)
 - `onError`
 - `onSessionEnded`
-- `onDismissError`
 
 There is no completion hide timer. Done and Error survive session expiry. An active session ending leaves a stopped result.
 
@@ -180,8 +166,7 @@ There is no completion hide timer. Done and Error survive session expiry. An act
    appearance. No view reaches into the holder for "secret" state.
 2. **All events are total.** Any event can be called in any state; invalid pairings
    are dropped, never crash.
-3. **previousMode tracks the last accepted mutation** — every `setMode` snapshots
-   the prior value first.
+3. **Drafts belong to the state holder.** Changing surfaces does not erase unsent text.
 4. **Approval is callId-scoped.** A stale `onApprovalResolved` for a closed approval
    leaves state untouched.
 5. **Positive approval is app-scoped.** `Always` writes the persistent allow-list,

@@ -30,7 +30,7 @@ The main activity already handles orientation and theme changes in place. Font a
 
 `BubbleOverlayHost` owns raw-coordinate dragging, edge docking, and position preferences. `OverlayComposeHost` owns WindowManager attachment, lifecycle owners, visibility animation, and screenshot suppression. Its outer container controls screenshot visibility. Its content view owns animation. Closing releases touch interception immediately.
 
-Compact overlays remain the default for devices that disable accessibility after full-screen overlays. The full-screen border/gesture-marker compatibility redesign remains in the backlog.
+Touch protection stays off by default. The independent Action indicators setting uses four narrow border windows and a small moving gesture window. Android 14+ window capture excludes overlays where the scene can be composed faithfully. See [overlay behavior](overlay.md) for fallback and OEM limits.
 
 ## Permissions and model connection
 

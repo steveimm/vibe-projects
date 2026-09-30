@@ -9,7 +9,6 @@ class CapsuleRenderSpecTest {
     fun `running mode shows stopping disabled when stop pending`() {
         val spec = CapsuleRenderSpec.from(
             mode = CapsuleMode.Running("thinking"),
-            previousMode = null,
             isStopPending = true,
         )
 
@@ -20,35 +19,15 @@ class CapsuleRenderSpecTest {
     }
 
     @Test
-    fun `error mode keeps close action even when stop pending`() {
+    fun `error mode retains its message and accepts a new request`() {
         val spec = CapsuleRenderSpec.from(
             mode = CapsuleMode.Error("oops"),
-            previousMode = null,
             isStopPending = true,
         )
 
-        val stop = spec.buttons.stop
-        assertThat(stop).isNotNull()
-        assertThat(stop?.text).isEqualTo("Close")
-        assertThat(stop?.enabled).isTrue()
-    }
-
-    @Test
-    fun `entering WaitingForInput from a different mode sets clearInput true`() {
-        val spec = CapsuleRenderSpec.from(
-            mode = CapsuleMode.WaitingForInput("question?", callId = "c1"),
-            previousMode = CapsuleMode.Running("thinking"),
-        )
-        assertThat(spec.input?.clearDraft).isTrue()
-    }
-
-    @Test
-    fun `re-entering WaitingForInput from itself leaves clearInput false`() {
-        val spec = CapsuleRenderSpec.from(
-            mode = CapsuleMode.WaitingForInput("another?", callId = "c2"),
-            previousMode = CapsuleMode.WaitingForInput("first?", callId = "c1"),
-        )
-        assertThat(spec.input?.clearDraft).isFalse()
+        assertThat(spec.buttons.stop).isNull()
+        assertThat(spec.expandedBody).isEqualTo("oops")
+        assertThat(spec.input).isNotNull()
     }
 
     @Test
@@ -63,8 +42,8 @@ class CapsuleRenderSpecTest {
             )
         )
 
-        assertThat(spec.thought.text).isEqualTo("Allow PocketPilot to operate Chrome?")
-        assertThat(spec.expandedBody).isNull()
+        assertThat(spec.thought.text).isEqualTo("App access")
+        assertThat(spec.expandedBody).isEqualTo("Allow PocketPilot to operate Chrome?")
         assertThat(spec.buttons.primary?.text).isEqualTo("Always")
         assertThat(spec.buttons.secondary?.text).isEqualTo("Session")
         assertThat(spec.buttons.stop?.text).isEqualTo("Reject")

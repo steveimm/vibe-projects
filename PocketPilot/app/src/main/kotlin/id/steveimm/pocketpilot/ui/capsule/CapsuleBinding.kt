@@ -1,5 +1,6 @@
 package id.steveimm.pocketpilot.ui.capsule
 
+import androidx.compose.runtime.MutableState
 import id.steveimm.pocketpilot.protocol.PlatformMode
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,10 +11,10 @@ data class CapsuleBinding(
     val mode: StateFlow<CapsuleMode>,
     val platformMode: StateFlow<PlatformMode>,
     val isStopPending: StateFlow<Boolean>,
-    val previousMode: () -> CapsuleMode?,
     val onStopRequested: () -> Boolean,
     val onApprovalResolved: (String) -> Boolean,
     val onUserResponseSent: (String) -> Boolean,
+    val responseDraft: MutableState<String>? = null,
 )
 
 /** No-op binding used when the agent runtime is unbound. */
@@ -21,7 +22,6 @@ val InertCapsuleBinding: CapsuleBinding = CapsuleBinding(
     mode = MutableStateFlow(CapsuleMode.Hidden),
     platformMode = MutableStateFlow(PlatformMode.ACCESSIBILITY),
     isStopPending = MutableStateFlow(false),
-    previousMode = { null },
     onStopRequested = { true },
     onApprovalResolved = { true },
     onUserResponseSent = { true },

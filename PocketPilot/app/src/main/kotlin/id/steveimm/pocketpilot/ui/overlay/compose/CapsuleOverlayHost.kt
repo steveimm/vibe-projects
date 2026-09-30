@@ -1,17 +1,24 @@
 package id.steveimm.pocketpilot.ui.overlay.compose
 
 import android.accessibilityservice.AccessibilityService
+import android.content.ComponentCallbacks
+import android.content.res.Configuration
 import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Build
 import android.util.Log
 import android.view.Gravity
 import android.view.View
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.fillMaxSize
+import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -20,8 +27,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.LifecycleOwner
 import androidx.savedstate.SavedStateRegistryOwner
@@ -38,7 +45,6 @@ import id.steveimm.pocketpilot.ui.capsule.voice.AndroidRecognizerFactory
 import id.steveimm.pocketpilot.platform.OverlayTouchGate
 import id.steveimm.pocketpilot.ui.overlay.CapsuleStateHolder
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
-import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -66,9 +72,9 @@ class CapsuleOverlayHost(
     var onApprovalResponse: ((String, ApprovalDecision, ApprovalScope, String) -> Unit)? = null
     var onStop: (() -> Unit)? = null
     var onOpenApp: (() -> Unit)? = null
-    var onDismissError: (() -> Unit)? = null
-    var onMinimize: (() -> Unit)? = null
+    var onCloseOverlay: (() -> Unit)? = null
     var onOpenViewer: (() -> Unit)? = null
+    var onPanelTopChanged: ((Int?) -> Unit)? = null
     var onSend: ((String) -> Unit)? = null
 
     private val windowManager = service.getSystemService(WindowManager::class.java)
@@ -81,16 +87,19 @@ class CapsuleOverlayHost(
         animateVisibility = true,
     )
 
-    private val inputDraft = mutableStateOf("")
     private val transientThought = MutableStateFlow<String?>(null)
-    private val inputFocused = MutableStateFlow(false)
     private val interactionLocked = MutableStateFlow(false)
+    private val inputFocused = MutableStateFlow(false)
 
     private var focusJob: Job? = null
     private var transientThoughtJob: Job? = null
     private var lastButtonClickTime = 0L
     private var isFocusable = false
     private var passThroughDepth = 0
+    private val configurationCallback = object : ComponentCallbacks {
+        override fun onConfigurationChanged(newConfig: Configuration) { updateWindowBounds() }
+        override fun onLowMemory() = Unit
+    }
 
     /** Gate for [AccessibilityGestureInjector] to temporarily pass touches through. */
     val touchGate: OverlayTouchGate = object : OverlayTouchGate {
@@ -122,9 +131,8 @@ class CapsuleOverlayHost(
             val stopPending by stateHolder.isStopPending.collectAsState(initial = false)
             val ctx by stateHolder.context.collectAsState()
             val platform by stateHolder.platformMode.collectAsState()
-            val bubbleEnabled by stateHolder.hasBubble.collectAsState()
-            val flashThought by transientThought.collectAsState(initial = null)
             val lockTouches by interactionLocked.collectAsState(initial = false)
+            val flashThought by transientThought.collectAsState(initial = null)
 
             val capsuleContent: @androidx.compose.runtime.Composable () -> Unit = {
                 val overlayContext = LocalContext.current
@@ -153,9 +161,11 @@ class CapsuleOverlayHost(
                     },
                 ) {
                     SmartCapsuleSurface(
+                        modifier = Modifier.onGloballyPositioned { coordinates ->
+                            onPanelTopChanged?.invoke(composeHost.topOnScreen() + coordinates.positionInWindow().y.toInt())
+                        },
                         mode = mode,
-                        inputDraft = inputDraft,
-                        previousMode = stateHolder.previousMode,
+                        inputDraft = if (mode is CapsuleMode.WaitingForInput) stateHolder.responseDraft else stateHolder.inputDraft,
                         isStopPending = stopPending,
                         platformMode = platform,
                         context = ctx,
@@ -182,21 +192,14 @@ class CapsuleOverlayHost(
                         onApprovalResponse = { callId, decision, scope, packageName ->
                             debounced { onApprovalResponse?.invoke(callId, decision, scope, packageName) }
                         },
-                        onDismissError = { debounced { onDismissError?.invoke() } },
                         onNavigate = { action ->
                             debounced {
                                 when (action) {
-                                    NavAction.MINIMIZE -> onMinimize?.invoke()
+                                    NavAction.CLOSE_OVERLAY -> onCloseOverlay?.invoke()
                                     NavAction.OPEN_APP -> onOpenApp?.invoke()
                                     NavAction.OPEN_VIEWER -> onOpenViewer?.invoke()
                                 }
                             }
-                        },
-                        hasBubble = bubbleEnabled,
-                        onStatusClick = if (platform != PlatformMode.ACCESSIBILITY) {
-                            { debounced { onOpenApp?.invoke() } }
-                        } else {
-                            null
                         },
                         onInputFocusChanged = { focused -> inputFocused.value = focused },
                         onInputSubmitted = {
@@ -208,6 +211,7 @@ class CapsuleOverlayHost(
                     )
                 }
             }
+
 
             if (lockTouches) {
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -223,6 +227,7 @@ class CapsuleOverlayHost(
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
+                            .widthIn(max = 420.dp)
                             .fillMaxWidth()
                             .imePadding()
                             .navigationBarsPadding()
@@ -235,23 +240,24 @@ class CapsuleOverlayHost(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .imePadding()
-                        .navigationBarsPadding()
                         .smartCapsuleHostPadding()
                 ) {
                     capsuleContent()
                 }
             }
         }
+        if (composeHost.isShowing()) service.registerComponentCallbacks(configurationCallback)
         startFocusObserver()
         Log.i(TAG, "Capsule overlay shown")
     }
 
     fun hide() {
+        if (composeHost.isShowing()) service.unregisterComponentCallbacks(configurationCallback)
         stopFocusObserver()
         inputFocused.value = false
         setOverlayFocusable(false)
         composeHost.hide()
+        onPanelTopChanged?.invoke(null)
     }
 
     fun dispose() {
@@ -264,19 +270,20 @@ class CapsuleOverlayHost(
     fun setInteractionLocked(locked: Boolean) {
         if (interactionLocked.value == locked) return
         interactionLocked.value = locked
-        if (!composeHost.isShowing()) return
-        composeHost.updateLayoutParams { params ->
-            params.height = if (locked) {
-                WindowManager.LayoutParams.MATCH_PARENT
-            } else {
-                WindowManager.LayoutParams.WRAP_CONTENT
-            }
-            params.gravity = if (locked) {
-                Gravity.TOP or Gravity.START
-            } else {
-                Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-            }
-        }
+        updateWindowBounds()
+    }
+
+    private fun updateWindowBounds() {
+        composeHost.updateLayoutParams { configureBounds(it, interactionLocked.value) }
+    }
+
+    private fun configureBounds(params: WindowManager.LayoutParams, locked: Boolean) {
+        params.width = if (locked) WindowManager.LayoutParams.MATCH_PARENT
+            else (420 * service.resources.displayMetrics.density).toInt().coerceAtMost(windowManager.maximumWindowMetrics.bounds.width())
+        params.height = if (locked) WindowManager.LayoutParams.MATCH_PARENT else WindowManager.LayoutParams.WRAP_CONTENT
+        params.gravity = if (locked) Gravity.TOP or Gravity.START else Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+        params.setFitInsetsTypes(if (locked) WindowInsets.Type.systemBars()
+            else WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout() or WindowInsets.Type.ime())
     }
 
     fun flashSupplementConfirmation(isAgentMidTurn: Boolean) {
@@ -300,7 +307,7 @@ class CapsuleOverlayHost(
             combine(stateHolder.mode, inputFocused) { mode, focused ->
                 when (mode) {
                     is CapsuleMode.WaitingForInput -> true
-                    is CapsuleMode.Done, is CapsuleMode.Hidden -> true
+                    is CapsuleMode.Done, is CapsuleMode.Hidden, is CapsuleMode.Error -> true
                     is CapsuleMode.Takeover -> focused
                     else -> false
                 }
@@ -347,8 +354,8 @@ class CapsuleOverlayHost(
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = if (locked) Gravity.TOP or Gravity.START
-            else Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+            title = "PocketPilot controls"
+            configureBounds(this, locked)
         }
 
     private fun applyNotTouchableFlag(forceNotTouchable: Boolean) {

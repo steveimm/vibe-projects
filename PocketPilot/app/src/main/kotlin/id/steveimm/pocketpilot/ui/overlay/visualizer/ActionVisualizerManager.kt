@@ -1,24 +1,18 @@
 package id.steveimm.pocketpilot.ui.overlay.visualizer
 
 import android.accessibilityservice.AccessibilityService
-import androidx.lifecycle.LifecycleOwner
-import androidx.savedstate.SavedStateRegistryOwner
 import id.steveimm.pocketpilot.ui.overlay.compose.VisualizerOverlayHost
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleContext
 import kotlinx.coroutines.flow.StateFlow
 
-/** Compose-backed touch action visualizer. */
+/** Routes action feedback to its bounded overlay window. */
 class ActionVisualizerManager(
     context: AccessibilityService,
-    lifecycleOwner: LifecycleOwner,
-    savedStateRegistryOwner: SavedStateRegistryOwner,
     private val renderContext: StateFlow<CapsuleContext>,
     enabled: Boolean,
 ) {
     private val overlayHost = VisualizerOverlayHost(
         service = context,
-        lifecycleOwner = lifecycleOwner,
-        savedStateRegistryOwner = savedStateRegistryOwner,
     )
 
     @Volatile
@@ -30,9 +24,9 @@ class ActionVisualizerManager(
 
     fun suppressForScreenshot(): AutoCloseable = overlayHost.suppressForScreenshot()
 
-    fun showClick(x: Float, y: Float, longPress: Boolean = false) {
+    fun showClick(x: Float, y: Float, longPress: Boolean = false, durationMs: Long = if (longPress) 1000 else 100) {
         if (!shouldRender()) return
-        overlayHost.showClick(x = x, y = y, longPress = longPress)
+        overlayHost.showClick(x = x, y = y, longPress = longPress, durationMs = durationMs)
     }
 
     fun showSwipe(
@@ -51,6 +45,8 @@ class ActionVisualizerManager(
             durationMs = durationMs,
         )
     }
+
+    fun hide() { overlayHost.hide() }
 
     fun dispose() {
         overlayHost.dispose()

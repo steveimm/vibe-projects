@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
@@ -15,99 +14,41 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PanTool
-import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.RemoveCircleOutline
 import androidx.compose.material.icons.rounded.StopCircle
-import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.protocol.ApprovalDecision
 import id.steveimm.pocketpilot.protocol.ApprovalScope
-import id.steveimm.pocketpilot.ui.capsule.NavAction
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleRenderSpec
-import id.steveimm.pocketpilot.ui.overlay.model.NavSpec
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
 /** CapsuleControlBar — the row beneath the status line / detail body. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CapsuleControlBar(
     spec: CapsuleRenderSpec,
-    navSpec: NavSpec,
     mode: CapsuleMode,
     onTakeover: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit,
     onDone: (String) -> Unit,
     onApprovalResponse: (String, ApprovalDecision, ApprovalScope, String) -> Unit,
-    onDismissError: () -> Unit,
-    onNavigate: (NavAction) -> Unit,
 ) {
-    val requiredActionsOnly =
-        spec.buttons.layout == CapsuleRenderSpec.ControlLayout.RequiredActionsOnly
-    if (requiredActionsOnly) {
-        ActionButtonCluster(
-            buttons = spec.buttons,
-            mode = mode,
-            modifier = Modifier.fillMaxWidth(),
-            requiredActionsOnly = true,
-            onTakeover = onTakeover,
-            onResume = onResume,
-            onStop = onStop,
-            onDone = onDone,
-            onApprovalResponse = onApprovalResponse,
-            onDismissError = onDismissError,
-        )
-    } else {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            ActionButtonCluster(
-                buttons = spec.buttons,
-                mode = mode,
-                onTakeover = onTakeover,
-                onResume = onResume,
-                onStop = onStop,
-                onDone = onDone,
-                onApprovalResponse = onApprovalResponse,
-                onDismissError = onDismissError,
-            )
-            NavButtonCluster(navSpec = navSpec, onNavigate = onNavigate)
-        }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ActionButtonCluster(
-    buttons: CapsuleRenderSpec.ButtonsSpec,
-    mode: CapsuleMode,
-    modifier: Modifier = Modifier,
-    requiredActionsOnly: Boolean = false,
-    onTakeover: () -> Unit,
-    onResume: () -> Unit,
-    onStop: () -> Unit,
-    onDone: (String) -> Unit,
-    onApprovalResponse: (String, ApprovalDecision, ApprovalScope, String) -> Unit,
-    onDismissError: () -> Unit,
-) {
-    val actionModifier =
-        if (requiredActionsOnly) Modifier.minimumInteractiveComponentSize() else Modifier
+    val buttons = spec.buttons
+    val modifier = Modifier.fillMaxWidth()
+    val actionModifier = Modifier.minimumInteractiveComponentSize()
     val spacing = MaterialTheme.pocketPilot.spacing.sm
     val actionButtons: @Composable () -> Unit = {
         buttons.primary?.let { btn ->
@@ -126,7 +67,7 @@ private fun ActionButtonCluster(
                 modifier = actionModifier,
                 enabled = btn.enabled,
                 shape = MaterialTheme.shapes.large,
-                colors = primaryButtonColorsForMode(mode),
+                colors = primaryButtonColors(),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
             ) {
                 Icon(
@@ -155,7 +96,6 @@ private fun ActionButtonCluster(
             OutlinedButton(
                 onClick = {
                     when (mode) {
-                        is CapsuleMode.Error -> onDismissError()
                         is CapsuleMode.WaitingForApproval -> onApprovalResponse(
                             mode.callId, ApprovalDecision.DENIED, ApprovalScope.SESSION, mode.packageName,
                         )
@@ -183,87 +123,20 @@ private fun ActionButtonCluster(
             }
         }
     }
-    if (requiredActionsOnly) {
-        FlowRow(
-            modifier = modifier,
-            horizontalArrangement = Arrangement.spacedBy(spacing),
-            verticalArrangement = Arrangement.spacedBy(spacing),
-        ) {
-            actionButtons()
-        }
-    } else {
-        Row(
-            modifier = modifier,
-            horizontalArrangement = Arrangement.spacedBy(spacing),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            actionButtons()
-        }
-    }
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(spacing),
+        verticalArrangement = Arrangement.spacedBy(spacing),
+    ) { actionButtons() }
 }
 
 @Composable
-private fun primaryButtonColorsForMode(mode: CapsuleMode): ButtonColors {
+private fun primaryButtonColors(): ButtonColors {
     val colorScheme = MaterialTheme.colorScheme
     return ButtonDefaults.filledTonalButtonColors(
-        containerColor = when (mode) {
-            is CapsuleMode.WaitingForApproval,
-            is CapsuleMode.Takeover -> colorScheme.secondary
-            else -> colorScheme.tertiaryContainer
-        },
-        contentColor = when (mode) {
-            is CapsuleMode.WaitingForApproval,
-            is CapsuleMode.Takeover -> colorScheme.onSecondary
-            else -> colorScheme.onTertiaryContainer
-        },
+        containerColor = colorScheme.primaryContainer,
+        contentColor = colorScheme.onPrimaryContainer,
     )
-}
-
-@Composable
-private fun NavButtonCluster(
-    navSpec: NavSpec,
-    onNavigate: (NavAction) -> Unit,
-) {
-    Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.xs)) {
-        if (navSpec.showMinimize) {
-            NavIconButton(
-                icon = Icons.Rounded.RemoveCircleOutline,
-                contentDescription = "Minimize",
-                onClick = { onNavigate(NavAction.MINIMIZE) },
-            )
-        }
-        if (navSpec.showApp) {
-            NavIconButton(
-                icon = Icons.Rounded.PhoneAndroid,
-                contentDescription = "Open app",
-                onClick = { onNavigate(NavAction.OPEN_APP) },
-            )
-        }
-        if (navSpec.showWatch) {
-            NavIconButton(
-                icon = Icons.Rounded.Visibility,
-                contentDescription = "Open viewer",
-                onClick = { onNavigate(NavAction.OPEN_VIEWER) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun NavIconButton(
-    icon: ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit,
-) {
-    FilledTonalIconButton(
-        onClick = onClick,
-        modifier = Modifier
-            .minimumInteractiveComponentSize()
-            .size(32.dp),
-        shape = MaterialTheme.shapes.medium,
-    ) {
-        Icon(imageVector = icon, contentDescription = contentDescription, modifier = Modifier.size(18.dp))
-    }
 }
 
 private fun primaryIconForMode(mode: CapsuleMode): ImageVector = when (mode) {
@@ -294,8 +167,8 @@ private fun ApprovalScopeButton(
         enabled = btn.enabled,
         shape = MaterialTheme.shapes.large,
         colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = MaterialTheme.colorScheme.secondary,
-            contentColor = MaterialTheme.colorScheme.onSecondary,
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         ),
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
     ) {

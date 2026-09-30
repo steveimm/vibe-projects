@@ -1,10 +1,6 @@
 package id.steveimm.pocketpilot.ui.capsule.surface
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +21,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -43,7 +42,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.protocol.ApprovalDecision
-import id.steveimm.pocketpilot.protocol.compactThought
 import id.steveimm.pocketpilot.protocol.ApprovalScope
 import id.steveimm.pocketpilot.protocol.PlatformMode
 import id.steveimm.pocketpilot.ui.capsule.NavAction
@@ -74,13 +72,9 @@ fun SmartCapsuleSurface(
     onStop: () -> Unit,
     onUserResponse: (String, String) -> Unit,
     onApprovalResponse: (String, ApprovalDecision, ApprovalScope, String) -> Unit = { _, _, _, _ -> },
-    onDismissError: () -> Unit,
     onNavigate: (NavAction) -> Unit,
     modifier: Modifier = Modifier,
-    hasBubble: Boolean = true,
-    previousMode: CapsuleMode? = null,
     transientThought: String? = null,
-    onStatusClick: (() -> Unit)? = null,
     onInputFocusChanged: (Boolean) -> Unit = {},
     onInputSubmitted: () -> Unit = {},
     autoFocusInput: Boolean = false,
@@ -92,13 +86,13 @@ fun SmartCapsuleSurface(
     onStartupErrorClick: (() -> Unit)? = null,
     voice: VoiceMicDeps? = null,
 ) {
-    val renderSpec = remember(mode, isStopPending, previousMode, transientThought) {
-        val baseSpec = CapsuleRenderSpec.from(mode, previousMode, isStopPending)
+    val renderSpec = remember(mode, isStopPending, transientThought) {
+        val baseSpec = CapsuleRenderSpec.from(mode, isStopPending)
         if (transientThought.isNullOrBlank()) baseSpec
         else baseSpec.copy(thought = CapsuleRenderSpec.ThoughtSpec(transientThought))
     }
-    val navSpec = remember(context, platformMode, mode, hasBubble) {
-        NavSpec.from(context, platformMode, hasBubble = hasBubble, mode = mode)
+    val navSpec = remember(context, platformMode, mode) {
+        NavSpec.from(context, platformMode, mode = mode)
     }
     val isTaskActive = mode !is CapsuleMode.Hidden
     val shape = MaterialTheme.shapes.large
@@ -115,25 +109,42 @@ fun SmartCapsuleSurface(
                 .padding(horizontal = spacing.md)
                 .padding(top = spacing.sm, bottom = 6.dp),
         ) {
+            if (isTaskActive || navSpec.showApp || navSpec.showWatch) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) {
+                        if (isTaskActive) CapsuleStatusLine(spec = renderSpec)
+                    }
+                    if (navSpec.showApp) {
+                        TextButton(onClick = { onNavigate(NavAction.OPEN_APP) },
+                            modifier = Modifier.semantics { contentDescription = "Open PocketPilot" }) {
+                            Icon(Icons.Rounded.OpenInNew, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Open chat", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                    if (navSpec.showWatch) IconButton(onClick = { onNavigate(NavAction.OPEN_VIEWER) }) {
+                        Icon(Icons.Rounded.Visibility, "Open viewer", Modifier.size(20.dp))
+                    }
+                    if (navSpec.showClose) IconButton(onClick = { onNavigate(NavAction.CLOSE_OVERLAY) }) {
+                        val active = mode !is CapsuleMode.Hidden && mode !is CapsuleMode.Done && mode !is CapsuleMode.Error
+                        Icon(Icons.Rounded.Close, if (active) "Stop and close" else "Close overlay", Modifier.size(20.dp))
+                    }
+                }
+            }
             if (isTaskActive) {
-                CapsuleStatusLine(spec = renderSpec, onClick = onStatusClick)
                 if (mode !is CapsuleMode.Done || context != CapsuleContext.MAIN_APP) {
                     if (renderSpec.expandedBody != null) {
                         CapsuleDivider()
-                        CapsuleDetailBody(text = renderSpec.expandedBody)
+                        CapsuleDetailBody(text = renderSpec.expandedBody, modifier = Modifier.weight(1f, fill = false))
                     }
-                    CapsuleDivider()
-                    CapsuleControlBar(
+                    if (renderSpec.buttons.primary != null || renderSpec.buttons.stop != null) CapsuleControlBar(
                         spec = renderSpec,
-                        navSpec = navSpec,
                         mode = mode,
                         onTakeover = onTakeover,
                         onResume = onResume,
                         onStop = onStop,
                         onDone = { callId -> onUserResponse(callId, "done") },
                         onApprovalResponse = onApprovalResponse,
-                        onDismissError = onDismissError,
-                        onNavigate = onNavigate,
                     )
                 }
             }
@@ -161,7 +172,7 @@ fun SmartCapsuleSurface(
                     onInputFocusChanged = onInputFocusChanged,
                     onSubmit = { text ->
                         when (mode) {
-                            is CapsuleMode.Hidden, is CapsuleMode.Done -> onSend(text)
+                            is CapsuleMode.Hidden, is CapsuleMode.Done, is CapsuleMode.Error -> onSend(text)
                             is CapsuleMode.WaitingForInput -> onUserResponse(mode.callId, text)
                             is CapsuleMode.Takeover -> onSupplementAndResume(text)
                             else -> onSupplement(text)
@@ -185,12 +196,12 @@ private fun CapsuleDivider() {
 }
 
 @Composable
-private fun CapsuleDetailBody(text: String) {
+private fun CapsuleDetailBody(text: String, modifier: Modifier) {
     ChatMarkdown(
         text = text,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp).verticalScroll(rememberScrollState()).padding(horizontal = 2.dp),
+        modifier = modifier.fillMaxWidth().heightIn(max = 240.dp).verticalScroll(rememberScrollState()).padding(horizontal = 2.dp),
     )
 }
 
@@ -253,75 +264,17 @@ private fun StartupErrorBanner(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun CapsuleStatusLine(
-    spec: CapsuleRenderSpec,
-    onClick: (() -> Unit)?,
-) {
-    val rowModifier = if (onClick != null) {
-        Modifier
-            .fillMaxWidth()
-            .minimumInteractiveComponentSize()
-            .clip(MaterialTheme.shapes.medium)
-            .clickable(
-                role = Role.Button,
-                onClickLabel = "Open current app",
-            ) {
-                onClick()
-            }
-            .semantics { contentDescription = "Capsule status: ${spec.thought.text}" }
-            .padding(vertical = 2.dp)
-    } else {
-        Modifier.fillMaxWidth()
-    }
-
-    val reducedMotion = PocketPilotMotion.reducedMotion()
-
-    Row(
-        modifier = rowModifier,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (spec.dot != null) {
-            val dotColor by animateColorAsState(
-                targetValue = spec.dot.status.toStatusColor(),
-                animationSpec = tween(PocketPilotMotion.StatusFlip, easing = PocketPilotMotion.EaseInOutSine),
-                label = "dotColor",
-            )
-            if (spec.dot.pulsing && !reducedMotion) {
-                CircularProgressIndicator(Modifier.size(14.dp), color = dotColor, strokeWidth = 2.dp)
-            } else {
-                Box(Modifier.size(6.dp).background(dotColor, CircleShape))
-            }
+private fun CapsuleStatusLine(spec: CapsuleRenderSpec) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        spec.dot?.let { dot ->
+            val color = dot.status.toStatusColor()
+            if (dot.pulsing && !PocketPilotMotion.reducedMotion()) {
+                CircularProgressIndicator(Modifier.size(14.dp), color = color, strokeWidth = 2.dp)
+            } else Box(Modifier.size(6.dp).background(color, CircleShape))
             Spacer(Modifier.width(8.dp))
         }
-
-        val textColor = MaterialTheme.colorScheme.onSurface.copy(
-            alpha = if (spec.thought.dimmed) 0.6f else 1f,
-        )
-        if (reducedMotion) {
-            Text(
-                text = compactThought(spec.thought.text),
-                style = MaterialTheme.typography.titleMedium,
-                color = textColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-        } else {
-            Text(
-                text = spec.thought.text,
-                style = MaterialTheme.typography.titleMedium,
-                color = textColor,
-                maxLines = 1,
-                modifier = Modifier
-                    .weight(1f)
-                    .basicMarquee(
-                        iterations = Int.MAX_VALUE,
-                        velocity = 30.dp,
-                        initialDelayMillis = 1500,
-                    ),
-            )
-        }
+        Text(spec.thought.text, style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }

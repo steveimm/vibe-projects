@@ -1,6 +1,7 @@
 package id.steveimm.pocketpilot.ui.overlay
 
 import android.util.Log
+import androidx.compose.runtime.mutableStateOf
 import id.steveimm.pocketpilot.protocol.AskUserType
 import id.steveimm.pocketpilot.protocol.SessionEndReason
 import id.steveimm.pocketpilot.protocol.TaskOutcome
@@ -22,6 +23,9 @@ class CapsuleStateHolder {
         private const val TAG = "CapsuleStateHolder"
     }
 
+    val inputDraft = mutableStateOf("")
+    val responseDraft = mutableStateOf("")
+
     private val _mode = MutableStateFlow<CapsuleMode>(CapsuleMode.Hidden)
     val mode: StateFlow<CapsuleMode> = _mode.asStateFlow()
 
@@ -31,8 +35,6 @@ class CapsuleStateHolder {
     private val _platformMode = MutableStateFlow(PlatformMode.ACCESSIBILITY)
     val platformMode: StateFlow<PlatformMode> = _platformMode.asStateFlow()
 
-    private val _hasBubble = MutableStateFlow(true)
-    val hasBubble: StateFlow<Boolean> = _hasBubble.asStateFlow()
 
     private val _turnPhase = MutableStateFlow<TurnPhase?>(null)
     val turnPhase: StateFlow<TurnPhase?> = _turnPhase.asStateFlow()
@@ -44,10 +46,6 @@ class CapsuleStateHolder {
     /** Transient stop feedback flag. */
     private val _isStopPending = MutableStateFlow(false)
     val isStopPending: StateFlow<Boolean> = _isStopPending.asStateFlow()
-
-    /** The mode before the current one, for transition animations. */
-    var previousMode: CapsuleMode = CapsuleMode.Hidden
-        private set
 
     /** Derived glow state — no parallel state machine needed. */
     val derivedGlowState: GlowState get() = deriveGlowState(_mode.value, _turnPhase.value)
@@ -86,7 +84,6 @@ class CapsuleStateHolder {
 
     fun setContext(ctx: CapsuleContext) { _context.value = ctx }
 
-    fun setHasBubble(enabled: Boolean) { _hasBubble.value = enabled }
 
     fun onTaskStarted(taskId: String, input: String) {
         _isStopPending.value = false
@@ -100,6 +97,10 @@ class CapsuleStateHolder {
     }
 
     fun onAskUser(type: AskUserType, message: String, callId: String) {
+        val previous = _mode.value
+        if (type == AskUserType.QUESTION && (previous !is CapsuleMode.WaitingForInput || previous.callId != callId)) {
+            responseDraft.value = ""
+        }
         setMode(
             when (type) {
                 AskUserType.QUESTION -> CapsuleMode.WaitingForInput(
@@ -232,14 +233,8 @@ class CapsuleStateHolder {
         }
     }
 
-    fun onDismissError() {
-        if (_mode.value !is CapsuleMode.Error) return
-        _isStopPending.value = false
-        setMode(CapsuleMode.Hidden)
-    }
 
     private fun setMode(new: CapsuleMode) {
-        previousMode = _mode.value
         _mode.value = new
     }
 }
