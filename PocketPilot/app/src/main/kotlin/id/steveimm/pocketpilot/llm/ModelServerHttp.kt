@@ -1,5 +1,9 @@
 package id.steveimm.pocketpilot.llm
 
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withTimeoutOrNull
+import java.net.SocketTimeoutException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
@@ -18,18 +22,18 @@ internal object ModelServerHttp {
         .followRedirects(false)
         .followSslRedirects(false)
         .retryOnConnectionFailure(false)
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(2, TimeUnit.SECONDS)
+        .readTimeout(3, TimeUnit.SECONDS)
         .build()
 
-    suspend fun getModels(baseUrl: String, apiKey: String, timeoutSeconds: Long = 30): ModelServerResponse {
+    suspend fun getModels(baseUrl: String, apiKey: String, timeoutSeconds: Long = 3): ModelServerResponse = withContext(Dispatchers.IO) {
         val url = ServerBaseUrlValidator.validate(baseUrl).getOrThrow()
         val request = Request.Builder().url("$url/models").header("Accept", "application/json").apply {
             if (apiKey.isNotBlank()) header("Authorization", "Bearer $apiKey")
         }.build()
         val call = client.newCall(request)
         call.timeout().timeout(timeoutSeconds, TimeUnit.SECONDS)
-        return suspendCancellableCoroutine { continuation ->
+        return@withContext withTimeoutOrNull(timeoutSeconds * 1_000) { suspendCancellableCoroutine { continuation ->
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
@@ -47,6 +51,6 @@ internal object ModelServerHttp {
                     }
                 }
             })
-        }
+        } } ?: throw SocketTimeoutException("Connection timed out")
     }
 }

@@ -99,12 +99,16 @@ class ModelCatalogRepositoryTest {
     }
 
     @Test
-    fun `unresponsive server has a bounded connection check`() {
+    fun `connection test fails within three seconds and a retry can succeed`() {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
+            val start = System.nanoTime()
             assertThrows(InterruptedIOException::class.java) {
-                runBlocking { ModelServerHttp.getModels(server.url("/v1").toString(), "", timeoutSeconds = 1) }
+                runBlocking { ModelServerHttp.getModels(server.url("/v1").toString(), "") }
             }
+            assertThat(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start)).isLessThan(4_000)
+            server.enqueue(MockResponse().setBody("""{"data":[]}"""))
+            assertThat(runBlocking { ModelServerHttp.getModels(server.url("/v1").toString(), "").statusCode }).isEqualTo(200)
         }
     }
 }

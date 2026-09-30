@@ -14,7 +14,7 @@ class ModelCatalogRepository(
 ) {
     suspend fun testConnection(baseUrl: String, apiKey: String = ""): ServerConnectionResult = withContext(Dispatchers.IO) {
         val url = ServerBaseUrlValidator.validate(baseUrl).getOrThrow()
-        val response = ModelServerHttp.getModels(url, apiKey, timeoutSeconds = 10)
+        val response = ModelServerHttp.getModels(url, apiKey)
         val models = if (response.statusCode in 200..299) ModelDiscovery.parse(response.body) else emptyList()
         if (response.statusCode in 200..299) {
             try { discoveryCache.write(url, clock(), models) }

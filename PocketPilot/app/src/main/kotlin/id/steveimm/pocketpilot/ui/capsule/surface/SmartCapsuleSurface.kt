@@ -106,8 +106,8 @@ fun SmartCapsuleSurface(
     ) {
         Column(
             modifier = Modifier
-                .padding(horizontal = spacing.md)
-                .padding(top = spacing.sm, bottom = 6.dp),
+                .padding(horizontal = spacing.sm)
+                .padding(top = if (isTaskActive || navSpec.showApp) spacing.sm else 0.dp),
         ) {
             if (isTaskActive || navSpec.showApp || navSpec.showWatch) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

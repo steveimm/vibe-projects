@@ -101,7 +101,9 @@ fun ModelServerForm(settings: AppSettingsState, onSaved: () -> Unit = {}) {
             label = { Text("Server URL") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
             placeholder = { Text("http://192.168.1.10:8000/v1") },
-            supportingText = { Text(if (urlTouched && url.isNotBlank() && normalizedUrl == null) "Enter a valid HTTP or HTTPS URL." else "API base URL") },
+            supportingText = if (urlTouched && url.isNotBlank() && normalizedUrl == null) {
+                { Text("Enter a valid HTTP or HTTPS URL.") }
+            } else null,
             singleLine = true,
             enabled = !busy,
             isError = urlTouched && url.isNotBlank() && normalizedUrl == null,
@@ -159,7 +161,7 @@ fun ModelServerForm(settings: AppSettingsState, onSaved: () -> Unit = {}) {
                 }
             },
             modifier = Modifier.testTag("test-model-server"),
-        ) { Text(if (testing) "Testing…" else "Test connection") }
+        ) { Text(if (testing) "Testing…" else "Test") }
         Box {
             OutlinedTextField(
                 value = model,
@@ -182,7 +184,6 @@ fun ModelServerForm(settings: AppSettingsState, onSaved: () -> Unit = {}) {
                 }
             }
         }
-        if (normalizedUrl?.startsWith("http://") == true) Text("HTTP is unencrypted.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         error?.let { SettingsAlertCard(message = it, tone = AlertTone.Error) }
         message?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         Button(
@@ -209,6 +210,6 @@ fun ModelServerForm(settings: AppSettingsState, onSaved: () -> Unit = {}) {
                 }
             },
             modifier = Modifier.fillMaxWidth().testTag("save-model-server"),
-        ) { Text(if (saving) "Saving…" else "Save server") }
+        ) { Text(if (saving) "Saving…" else "Save") }
     }
 }

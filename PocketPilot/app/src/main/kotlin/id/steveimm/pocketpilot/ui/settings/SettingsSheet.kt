@@ -23,6 +23,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalContext
 import id.steveimm.pocketpilot.app.AppSettingsState
 import id.steveimm.pocketpilot.protocol.ApprovalMode
@@ -61,6 +63,9 @@ fun SettingsSheet(
     approvalMode: ApprovalMode = ApprovalMode.SMART,
     onApprovalModeChange: (ApprovalMode) -> Unit = {},
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    val hideInput: () -> Unit = { focusManager.clearFocus(force = true); keyboard?.hide() }
     var pages by rememberSaveable(initialPage) {
         mutableStateOf(if (initialPage == SettingsPage.HOME) listOf(initialPage) else listOf(SettingsPage.HOME, initialPage))
     }
@@ -68,13 +73,16 @@ fun SettingsSheet(
     val settingsPage = pages.last()
     val navigate: (SettingsPage) -> Unit = { page ->
         if (page != pages.last()) {
+            hideInput()
             navigatingForward = true
             pages = pages + page
         }
     }
+    val close: () -> Unit = { hideInput(); onDismiss() }
     val goBack: () -> Unit = {
+        hideInput()
         navigatingForward = false
-        if (pages.size > 1) pages = pages.dropLast(1) else onDismiss()
+        if (pages.size > 1) pages = pages.dropLast(1) else close()
     }
     val reducedMotion = PocketPilotMotion.reducedMotion()
 
@@ -124,12 +132,12 @@ fun SettingsSheet(
                         effectivePlatformMode = effectivePlatformMode,
                         approvalMode = approvalMode,
                         onNavigate = navigate,
-                        onDismiss = onDismiss
+                        onDismiss = close
                     )
                     SettingsPage.MODEL_SERVER -> ModelServerSettingsPage(
                         settings = settings,
                         onBack = goBack,
-                        onClose = onDismiss,
+                        onClose = close,
                     )
                     SettingsPage.AGENT_BEHAVIOR -> AgentBehaviorSettingsPage(
                         platformMode = platformMode,
@@ -139,7 +147,7 @@ fun SettingsSheet(
                         onApprovalModeChange = onApprovalModeChange,
                         onNavigateToAppAccess = { navigate(SettingsPage.APP_ACCESS) },
                         onBack = goBack,
-                        onClose = onDismiss,
+                        onClose = close,
                     )
                     SettingsPage.PERMISSIONS_ADVANCED -> PermissionsAdvancedSettingsPage(
                         isAccessibilityEnabled = isAccessibilityEnabled,
@@ -151,17 +159,17 @@ fun SettingsSheet(
                         traceEnabled = traceEnabled,
                         onTraceEnabledChange = onTraceEnabledChange,
                         onBack = goBack,
-                        onClose = onDismiss
+                        onClose = close
                     )
                     SettingsPage.APP_ACCESS -> AppAccessSettingsPage(
                         appClassifier = appClassifier,
                         approvalMode = approvalMode,
                         onBack = goBack,
-                        onClose = onDismiss,
+                        onClose = close,
                     )
                     SettingsPage.OPEN_SOURCE_LICENSES -> OpenSourceLicensesPage(
                         onBack = goBack,
-                        onClose = onDismiss,
+                        onClose = close,
                     )
                 }
             }

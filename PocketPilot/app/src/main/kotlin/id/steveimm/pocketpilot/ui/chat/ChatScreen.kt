@@ -60,6 +60,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -130,6 +132,9 @@ fun ChatScreen(
     val capsulePlatformMode by capsuleBinding.platformMode.collectAsStateWithLifecycle()
     val isStopPending by capsuleBinding.isStopPending.collectAsStateWithLifecycle()
 
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    val hideInput: () -> Unit = { focusManager.clearFocus(force = true); keyboard?.hide() }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -167,6 +172,10 @@ fun ChatScreen(
         if (voiceFeedback?.id == current.id) {
             voiceFeedback = null
         }
+    }
+
+    LaunchedEffect(drawerState.targetValue) {
+        if (drawerState.targetValue == DrawerValue.Open) hideInput()
     }
 
     // Load sessions when drawer opens
@@ -215,9 +224,10 @@ fun ChatScreen(
                 topBar = {
                     ChatHeader(
                         onMenuClick = {
+                            hideInput()
                             scope.launch { drawerState.open() }
                         },
-                        onNewChatClick = onNewSession,
+                        onNewChatClick = { hideInput(); onNewSession() },
                         modelName = currentModel,
                         showNewChatButton = messages.isNotEmpty()
                     )

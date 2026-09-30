@@ -1,15 +1,14 @@
 package id.steveimm.pocketpilot.ui.capsule.surface
 
 import android.app.Activity
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowUpward
@@ -21,8 +20,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Composable
@@ -31,16 +28,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
@@ -54,9 +57,7 @@ import id.steveimm.pocketpilot.ui.capsule.voice.rememberVoicePermissionGate
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleContext
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleRenderSpec
-import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
-import kotlinx.coroutines.launch
 
 /** Dependencies needed for the mic leadingIcon. */
 interface VoiceMicDeps {
@@ -164,25 +165,10 @@ internal fun CapsuleInputBar(
         }
     }
 
-    val reducedMotion = PocketPilotMotion.reducedMotion()
-    val scope = rememberCoroutineScope()
-    val sendScale = remember { Animatable(1f) }
     val canSend = inputEnabled && inputText.isNotBlank() &&
         voiceState != VoiceState.Listening && voiceState != VoiceState.Stopping
-    val onSendClick: () -> Unit = {
-        if (!reducedMotion) {
-            scope.launch {
-                sendScale.animateTo(
-                    1.04f,
-                    tween(PocketPilotMotion.Standard / 2, easing = PocketPilotMotion.EaseOutCubic),
-                )
-                sendScale.animateTo(
-                    1.0f,
-                    tween(PocketPilotMotion.Standard / 2, easing = PocketPilotMotion.EaseOutCubic),
-                )
-            }
-        }
-        submit()
+    LaunchedEffect(inputEnabled) {
+        if (!inputEnabled) voiceController?.cancel()
     }
 
     val onMicTap: () -> Unit = mic@{
@@ -216,6 +202,7 @@ internal fun CapsuleInputBar(
                 Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                     IconButton(
                         onClick = onMicTap,
+                        enabled = inputEnabled,
                         modifier = Modifier
                             .minimumInteractiveComponentSize()
                             .size(36.dp)
@@ -272,72 +259,55 @@ internal fun CapsuleInputBar(
         }
     }
 
-    TextField(
-        value = inputText,
-        onValueChange = { newText ->
-            // Typing (or IME edits) during Listening cancels the recognizer but keeps the user's
-            // text. Detect this by diffing against the last value the controller pushed via onText.
-            if (voiceState == VoiceState.Listening &&
-                voiceController != null &&
-                newText != controllerLastText.value
-            ) {
-                voiceController.cancel()
-            }
-            inputText = newText
-        },
-        enabled = inputEnabled,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 1.dp)
-            .heightIn(min = 48.dp)
-            .focusRequester(focusRequester)
-            .onFocusChanged { onInputFocusChanged(it.isFocused) }
-            .testTag("qa-capsule-input"),
-        placeholder = {
-            Text(text = hint, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        },
-        leadingIcon = leadingIcon,
-        trailingIcon = {
-            Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                FilledIconButton(
-                    onClick = onSendClick,
-                    enabled = canSend,
-                    modifier = Modifier
-                        .minimumInteractiveComponentSize()
-                        .size(36.dp)
-                        .testTag("qa-capsule-send")
-                        .graphicsLayer {
-                            scaleX = sendScale.value
-                            scaleY = sendScale.value
-                        },
-                    shape = CircleShape,
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        disabledContainerColor = MaterialTheme.pocketPilot.mutedText.copy(alpha = 0.30f),
-                        disabledContentColor = MaterialTheme.pocketPilot.mutedText,
-                    ),
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.ArrowUpward,
-                        contentDescription = spec.submitLabel,
-                        modifier = Modifier.size(18.dp),
-                    )
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.Bottom) {
+        leadingIcon?.invoke()
+        BasicTextField(
+            value = inputText,
+            onValueChange = { newText ->
+                if (voiceState == VoiceState.Listening && newText != controllerLastText.value) voiceController?.cancel()
+                inputText = newText
+            },
+            enabled = inputEnabled,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 4.dp, vertical = 12.dp)
+                .focusRequester(focusRequester)
+                .onFocusChanged { onInputFocusChanged(it.isFocused) }
+                .onPreviewKeyEvent { event ->
+                    if (event.key == Key.Enter && (event.isCtrlPressed || event.isMetaPressed)) {
+                        if (event.type == KeyEventType.KeyDown && canSend) submit()
+                        true
+                    } else false
                 }
+                .testTag("qa-capsule-input"),
+            decorationBox = { innerField ->
+                Box {
+                    if (inputText.isEmpty()) Text(hint, style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    innerField()
+                }
+            },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
+            maxLines = 5,
+            singleLine = false,
+        )
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            FilledIconButton(
+                onClick = submit,
+                enabled = canSend,
+                modifier = Modifier.size(36.dp).testTag("qa-capsule-send"),
+                shape = CircleShape,
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = MaterialTheme.pocketPilot.mutedText.copy(alpha = 0.18f),
+                    disabledContentColor = MaterialTheme.pocketPilot.mutedText,
+                ),
+            ) {
+                Icon(Icons.Rounded.ArrowUpward, spec.submitLabel, Modifier.size(18.dp))
             }
-        },
-        shape = MaterialTheme.shapes.large,
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            focusedIndicatorColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-            disabledIndicatorColor = Color.Transparent,
-        ),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-        keyboardActions = KeyboardActions(onSend = { submit() }),
-        maxLines = 4,
-        singleLine = false,
-    )
+        }
+    }
 }
