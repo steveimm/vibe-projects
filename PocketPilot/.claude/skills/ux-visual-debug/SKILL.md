@@ -82,61 +82,11 @@ adb shell monkey -p id.steveimm.pocketpilot -c android.intent.category.LAUNCHER 
 
 ### Smart Capsule State Reference
 
-Source: `CapsuleRenderSpec.from()` + `SmartCapsuleLayoutBuilder.kt`
+Use `CapsuleRenderSpec` and [the capsule architecture](../../../../doc/main/ui/capsule/architecture.md) for current modes and controls. Every panel outside MainActivity exposes Open chat (`Open PocketPilot`) and Close (`Stop and close` while active, otherwise `Close overlay`). The bubble supplies minimize/expand.
 
-#### Modes and UI Elements
+Verify running/paused Stop, Open chat during generation, questions and approval navigation, draft preservation across surfaces, persistent dismissal after reconnects, keyboard/rotation layout, and dragging clear of panel controls. Errors must accept another request. Test stalled headers, stalled streams, and heartbeat-only streams with a local fixture.
 
-| Mode | Dot | Status line (thought) | Detail body | Primary Button | Stop Button | Input bar |
-|---|---|---|---|---|---|---|
-| **Hidden** | — | "" | — | — | — | hint="What can I help you with?" btn="Send" |
-| **Running** | blue pulse | thought text | — | "Takeover" | "Stop" | hint="Got ideas? Add a note..." btn="Add note" |
-| **TakeoverPending** | amber static | "Handing over..." | — | "Handing over" (disabled) | "Stop" | same as Running |
-| **Takeover** | amber static | lastThought (dimmed) | — | "Resume" | "Stop" | same as Running |
-| **WaitingForInput** | — | "Awaiting response" | question text | — | "Stop" | hint="Type your response..." btn="Send" |
-| **WaitingForAction** | — | "Action needed" | instruction text | "Done" | "Stop" | — (hidden) |
-| **Done** | teal static | "Finished" | scrollable result | — | — | new request |
-| **Error** | red static | "message" | — | — | "Close" | — |
-
-#### Content Descriptions (ADB selectors)
-
-| Element | contentDescription | Notes |
-|---|---|---|
-| Primary button | Dynamic: "Takeover" / "Handing over" / "Resume" / "Done" | Matches button label |
-| Stop button | Dynamic: "Stop" / "Close" | Matches button label |
-| Status line container | "Open main app" | Only in overlay mode (when `onStatusClick` is set) |
-| Nav: Minimize | "Minimize" | VD BACKGROUND context only |
-| Nav: Open App | "Open app" | Overlay/VD when not in MAIN_APP |
-| Nav: View Screen | "View screen" | VD BACKGROUND context only |
-| Collapsed bubble | "Expand PocketPilot controls" | Draggable in A11y and VD modes |
-| Expanded bubble | "Minimize PocketPilot controls" | Same bubble remains above the controls |
-
-#### Navigation Button Visibility
-
-| Context | Platform | Minimize | Open App | View Screen |
-|---|---|---|---|---|
-| MAIN_APP | any | no | no | no |
-| SCREEN_VIEWING | A11y | no | yes | no |
-| SCREEN_VIEWING | VD | no | yes | no |
-| BACKGROUND | A11y | no | yes | yes |
-| BACKGROUND | VD | yes | yes | yes |
-
-### How to Verify Each State
-
-**Running**: Blue pulsing dot visible. Status line shows thought text (updates as agent thinks). Control bar has "Takeover" and "Stop" buttons. Input bar shows "Got ideas? Add a note..." hint.
-
-**TakeoverPending**: Amber static dot. Status line shows "Handing over...". Primary button shows "Handing over" but is disabled. Transition is brief — may jump straight to Takeover if agent responds fast.
-
-**Takeover**: Amber static dot. Status line shows last thought text with reduced opacity (dimmed). "Resume" button replaces "Takeover". "Stop" still available. Input bar still available for supplements.
-
-**WaitingForInput**: No dot. Status line shows "Awaiting response". Detail body shows the agent's question. Input bar changes to "Type your response..." with "Send" button. In overlay mode: overlay becomes focusable, keyboard may auto-show.
-
-**WaitingForAction**: No dot. Status line shows "Action needed". Detail body shows instruction. "Done" button visible. Input bar is hidden (no text input needed).
-
-**Done**: The persistent bubble remains. Tap it to show the Finished status, scrollable result, navigation, and new-request composer. Tap it again to minimize. Completion and session expiry do not hide the bubble.
-
-**Error**: Red static dot. Status line shows error message prefixed with warning. Only "Close" button visible. Does NOT auto-hide — stays until user taps Close.
-
-**Hidden**: No capsule visible (in overlay mode). In Main App: only the input bar is visible with "What can I help you with?" hint and "Send" button.
+Action indicators use narrow border windows and a bounded marker. Touch protection is separate and off by default. Android 14+ window capture excludes overlays without hiding them when the scene can be composed faithfully. Launcher transparency, dialogs, and system panels may use display fallback. Compare model screenshots with the visible display.
 
 ### Overlay Visibility Note
 

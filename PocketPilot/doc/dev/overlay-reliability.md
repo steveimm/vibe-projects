@@ -57,3 +57,12 @@ Other checklist items remain under review.
 - Active Close removed all overlay windows immediately. A dismissed idle bubble stayed absent after accessibility was disabled/re-enabled and Settings opened. Explicitly opening Main restored it.
 - Heartbeat-only SSE traffic timed out after 30 seconds without model progress and retained the expanded error panel. Open chat and Close remained usable.
 - Approval prompts kept navigation in the header and preserved the pending decision when switching to chat.
+
+
+### Capture and gesture milestone
+
+- Android 15 Settings and Settings search with the docked Gboard keyboard used native window capture without hiding controls. The keyboard's root bounds differed from its visible bounds, and exact buffer/root matching placed it correctly. Model images excluded the bubble and border.
+- Launcher wallpaper used the transparency fallback. The notification shade used the system-panel fallback. Protected-window errors return no screenshot. Cancellation releases captured buffers and suppression leases.
+- Gesture feedback now starts after the touch pass-through settling delay. Cancellation during that delay restores touchability, and cancelled/failed gestures remove their marker.
+- Accessibility loss during a stalled request stopped the task and showed the permission-repair control. Re-enabling accessibility removed that prompt and restored the composer.
+- An unreachable endpoint failed promptly with “Cannot reach the model server” and retained a usable composer.

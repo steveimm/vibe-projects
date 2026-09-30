@@ -13,12 +13,12 @@ import id.steveimm.pocketpilot.protocol.SessionConfig
 import id.steveimm.pocketpilot.trace.TraceRecorder
 import java.io.File
 import kotlin.coroutines.resume
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** Accessibility screenshot capture pipeline: 1) a11y screenshot API (bounded — never waits forever) 2) software bitmap conversion 3)
- * scale + jpeg compression 4) optional debug/trace persistence */
+/** Captures an unobstructed screen, compresses it, and persists optional local diagnostics. */
 class AccessibilityScreenshotCapturer(
         private val service: AccessibilityService,
         private val config: SessionConfig,
@@ -38,113 +38,72 @@ class AccessibilityScreenshotCapturer(
             return null
         }
 
-        val result = withContext(Dispatchers.Main) {
-            overlayGate?.beginScreenshotCapture().use {
-                if (overlayGate != null) delay(80)
-                takeDisplayScreenshot()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val windowCapture = try { WindowScreenshotComposer(service).capture() }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                Log.w(TAG, "Window capture unavailable", e)
+                null
             }
-        } ?: return null
-        return compressScreenshot(result)
-    }
-
-    private suspend fun takeDisplayScreenshot(): AccessibilityService.ScreenshotResult? {
-        return withContext(Dispatchers.Main) {
-            boundedCallback(
-                timeoutMs = SCREENSHOT_TIMEOUT_MS,
-                label = "takeScreenshot"
-            ) { cont ->
-                service.takeScreenshot(
-                        Display.DEFAULT_DISPLAY,
-                        service.mainExecutor,
-                        object : AccessibilityService.TakeScreenshotCallback {
-                            override fun onSuccess(
-                                    screenshot: AccessibilityService.ScreenshotResult
-                            ) {
-                                cont.resume(screenshot) { _, value, _ -> value.hardwareBuffer.close() }
-                            }
-
-                            override fun onFailure(errorCode: Int) {
-                                Log.w(
-                                        TAG,
-                                        "takeScreenshot failed: ${formatScreenshotError(errorCode)}"
-                                )
-                                cont.resume(null)
-                            }
-                        }
-                )
+            if (windowCapture?.protectedContent == true) return null
+            windowCapture?.bitmap?.let { bitmap ->
+                try { return compressBitmap(bitmap) } finally { bitmap.recycle() }
             }
+        }
+        Log.d(TAG, "Using display screenshot fallback")
+        var captured: AccessibilityService.ScreenshotResult? = null
+        try {
+            withContext(Dispatchers.Main) {
+                overlayGate?.beginScreenshotCapture().use {
+                    if (overlayGate != null) delay(80)
+                    captured = takeDisplayScreenshot()
+                }
+            }
+            return captured?.let { compressScreenshot(it) }
+        } finally {
+            captured?.hardwareBuffer?.close()
         }
     }
 
-    private suspend fun compressScreenshot(
-            screenshot: AccessibilityService.ScreenshotResult
-    ): ScreenshotCapture? =
-            withContext(Dispatchers.Default) {
-                val hardwareBuffer = screenshot.hardwareBuffer
-                var softwareBitmap: Bitmap? = null
-                var scaledBitmap: Bitmap? = null
-                try {
-                    val hardwareBitmap =
-                            Bitmap.wrapHardwareBuffer(hardwareBuffer, screenshot.colorSpace)
-                                    ?: return@withContext null
-
-                    softwareBitmap = try {
-                        hardwareBitmap.copy(Bitmap.Config.ARGB_8888, false)
-                    } finally {
-                        hardwareBitmap.recycle()
-                    }
-                    if (softwareBitmap == null) {
-                        return@withContext null
-                    }
-
-                    scaledBitmap =
-                            BitmapUtils.scaleBitmapIfNeeded(
-                                    softwareBitmap,
-                                    config.perceptionConfig.screenshotMaxDimension
-                            )
-                    val width = scaledBitmap.width
-                    val height = scaledBitmap.height
-                    val jpegBytes =
-                            BitmapUtils.compressJpeg(
-                                    scaledBitmap,
-                                    config.perceptionConfig.screenshotJpegQuality
-                            )
-
-                    jpegBytes?.let { bytes ->
-                        if (config.debugMode) {
-                            persistDebugScreenshot(bytes, width, height)
-                        }
-                        val tracePath =
-                                if (traceRecorder.enabled) {
-                                    traceRecorder.storeBytes(
-                                                    kind = "screenshot",
-                                                    filenameHint =
-                                                            "screenshot_${System.currentTimeMillis()}_${width}x${height}.jpg",
-                                                    bytes = bytes,
-                                                    mimeType = "image/jpeg"
-                                            )
-                                            ?.path
-                                } else {
-                                    null
-                                }
-                        val image =
-                                ScreenImage(
-                                        width = width,
-                                        height = height,
-                                        mimeType = "image/jpeg",
-                                        bytes = bytes,
-                                        source = ScreenImageSource.ACCESSIBILITY_SCREENSHOT
-                                )
-                        ScreenshotCapture(image = image, tracePath = tracePath)
-                    }
-                } finally {
-                    scaledBitmap?.let { s ->
-                        if (s !== softwareBitmap) s.recycle()
-                    }
-                    softwareBitmap?.recycle()
-                    hardwareBuffer.close()
-                }
+    private suspend fun takeDisplayScreenshot(): AccessibilityService.ScreenshotResult? = boundedCallback(
+        timeoutMs = SCREENSHOT_TIMEOUT_MS,
+        label = "takeScreenshot",
+    ) { cont ->
+        service.takeScreenshot(Display.DEFAULT_DISPLAY, service.mainExecutor, object : AccessibilityService.TakeScreenshotCallback {
+            override fun onSuccess(screenshot: AccessibilityService.ScreenshotResult) {
+                cont.resume(screenshot) { _, value, _ -> value.hardwareBuffer.close() }
             }
+            override fun onFailure(errorCode: Int) {
+                Log.w(TAG, "takeScreenshot failed: ${formatScreenshotError(errorCode)}")
+                cont.resume(null)
+            }
+        })
+    }
+
+    private suspend fun compressScreenshot(screenshot: AccessibilityService.ScreenshotResult): ScreenshotCapture? {
+        return withContext(Dispatchers.Default) {
+            val hardware = Bitmap.wrapHardwareBuffer(screenshot.hardwareBuffer, screenshot.colorSpace) ?: return@withContext null
+            val bitmap = try { hardware.copy(Bitmap.Config.ARGB_8888, false) } finally { hardware.recycle() } ?: return@withContext null
+            try { compressBitmap(bitmap) } finally { bitmap.recycle() }
+        }
+    }
+
+    private suspend fun compressBitmap(bitmap: Bitmap): ScreenshotCapture? = withContext(Dispatchers.Default) {
+        val scaled = BitmapUtils.scaleBitmapIfNeeded(bitmap, config.perceptionConfig.screenshotMaxDimension)
+        try {
+            val bytes = BitmapUtils.compressJpeg(scaled, config.perceptionConfig.screenshotJpegQuality) ?: return@withContext null
+            if (config.debugMode) persistDebugScreenshot(bytes, scaled.width, scaled.height)
+            val tracePath = if (traceRecorder.enabled) traceRecorder.storeBytes(
+                kind = "screenshot",
+                filenameHint = "screenshot_${System.currentTimeMillis()}_${scaled.width}x${scaled.height}.jpg",
+                bytes = bytes,
+                mimeType = "image/jpeg",
+            )?.path else null
+            ScreenshotCapture(ScreenImage(scaled.width, scaled.height, "image/jpeg", bytes, ScreenImageSource.ACCESSIBILITY_SCREENSHOT), tracePath)
+        } finally {
+            if (scaled !== bitmap) scaled.recycle()
+        }
+    }
 
     private fun persistDebugScreenshot(bytes: ByteArray, width: Int, height: Int) {
         val dir = service.getExternalFilesDir("debug-output") ?: return
