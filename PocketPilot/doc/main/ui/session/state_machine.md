@@ -51,7 +51,7 @@ Created ──(UserInput)──► Running ──(Takeover)──► TakeoverPen
 | `Running` / `Paused` / `TakeoverPending` | `Op.UserInput` | — (rejected) | emit status "Agent is busy" |
 | `Running` | agent completes | `Idle` | emit `TaskCompleted`, flush checkpoint, `agentRunner.clear()`, schedule idle timeout (note: platform stays alive) |
 | `Running` | `Op.Takeover` | `TakeoverPending` → `Paused` | `agentRunner.pause()` then await deferred (mutex released); on confirm flip to `Paused` and emit `SessionTakeover` |
-| `Running` / `TakeoverPending` | `Op.Interrupt` | unchanged | cancel pending `ask_user`, `agentRunner.stop()` + `cancelJob()` |
+| `Running` / `Paused` / `TakeoverPending` | `Op.Interrupt` | unchanged | cancel pending `ask_user`, `agentRunner.stop()` + `cancelJob()` |
 | `TakeoverPending` | `Op.Resume` | — (rejected) | log warn (agent hasn't reached pause-point) |
 | `Paused` | `Op.Resume` | `Running` | `agentRunner.resume()`, emit `SessionResumed` |
 | `Idle` | `Op.UserInput` | `Running` | cancel idle timeout, `platform.start()`, emit `TaskStarted`, start agent |

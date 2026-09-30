@@ -105,8 +105,8 @@ private fun CompactOverlaysSettingsRow() {
     ToolSettingsCard(
         title = "Touch protection",
         status = ToolStatusUi(
-            label = if (enabled) "Off" else "On",
-            subtitle = "Block other touches while controls are expanded. Leave off for device compatibility.",
+            label = null,
+            subtitle = "Block other touches while controls are open.",
             tone = ToolStatusTone.Neutral,
         ),
         switchChecked = !enabled,
@@ -126,8 +126,8 @@ private fun ActionIndicatorsSettingsRow() {
     var enabled by remember(store) { mutableStateOf(store.loadActionIndicators()) }
     ToolSettingsCard(
         title = "Action indicators",
-        status = ToolStatusUi(label = if (enabled) "On" else "Off",
-            subtitle = "Show a border and touch feedback while the agent works.", tone = ToolStatusTone.Neutral),
+        status = ToolStatusUi(label = null,
+            subtitle = "Show taps and the screen border.", tone = ToolStatusTone.Neutral),
         switchChecked = enabled,
         onSwitchChange = {
             store.saveActionIndicators(it)

@@ -1,9 +1,15 @@
 package id.steveimm.pocketpilot.app
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -11,6 +17,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import id.steveimm.pocketpilot.onboarding.PermissionStateMonitor.PermissionRepairModel
@@ -57,6 +67,10 @@ internal fun MainActivityContent(
     onShowSettingsChange: (Boolean) -> Unit,
     onSessionSelect: (id.steveimm.pocketpilot.history.model.SessionInfo) -> Unit,
     onNewSession: () -> Unit,
+    onDeleteSession: (id.steveimm.pocketpilot.history.model.SessionInfo) -> Unit,
+    dataOperationLabel: String?,
+    onClearTraces: suspend () -> Result<Unit>,
+    onClearHistory: suspend () -> Result<Unit>,
     onOpenViewer: () -> Unit,
     onOpenApp: (String) -> Unit,
     isAccessibilityEnabled: Boolean,
@@ -99,6 +113,7 @@ internal fun MainActivityContent(
 
         Column {
             ChatScreen(
+                isVisible = !showSettings && dataOperationLabel == null,
                 viewModel = viewModel,
                 capsuleBinding = rememberCapsuleBinding(),
                 sessions = sessions,
@@ -109,8 +124,8 @@ internal fun MainActivityContent(
                 },
                 onSessionSelect = onSessionSelect,
                 onNewSession = onNewSession,
-                onDeleteSession = { session -> viewModel.deleteSession(session) },
-                onLoadSessions = { viewModel.loadSessions() },
+                onDeleteSession = onDeleteSession,
+                onLoadSessions = viewModel::loadSessions,
                 onOpenViewer = onOpenViewer,
                 onOpenApp = onOpenApp,
                 repairModel = repairModel,
@@ -135,6 +150,8 @@ internal fun MainActivityContent(
                     onDebugModeChange = settingsState::updateDebugMode,
                     traceEnabled = settingsState.traceEnabled,
                     onTraceEnabledChange = settingsState::updateTraceEnabled,
+                    onClearTraces = onClearTraces,
+                    onClearHistory = onClearHistory,
                     isAccessibilityEnabled = isAccessibilityEnabled,
                     isOverlayEnabled = isOverlayEnabled,
                     onAccessibilityClick = onAccessibilityClick,
@@ -151,6 +168,20 @@ internal fun MainActivityContent(
                     approvalMode = settingsState.approvalMode,
                     onApprovalModeChange = settingsState::updateApprovalMode,
                 )
+            }
+        }
+        if (dataOperationLabel != null) {
+            Dialog(onDismissRequest = {}, properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
+                Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface) {
+                    Row(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Text(dataOperationLabel, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
             }
         }
     }

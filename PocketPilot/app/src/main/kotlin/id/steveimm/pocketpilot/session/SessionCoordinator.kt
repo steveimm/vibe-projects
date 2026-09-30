@@ -9,6 +9,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** Coordinates session lifecycle and input queuing. */
 class SessionCoordinator(private val scope: CoroutineScope) {
@@ -110,6 +111,11 @@ class SessionCoordinator(private val scope: CoroutineScope) {
         val f = lastDeadSessionFileName
         lastDeadSessionFileName = null
         return f
+    }
+
+    suspend fun shutdownSessionForDataClear(): AgentSession? = mutex.withLock {
+        pendingInputs.clear()
+        currentSession?.also { it.submit(Op.Shutdown) }
     }
 
     /** Shutdown and clear the current session. */

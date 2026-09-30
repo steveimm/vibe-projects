@@ -22,7 +22,7 @@ import org.junit.runner.RunWith
 
 /** Dialog body copy is unique in this page and stable across redraws — use it as the dialog-visible marker. */
 private const val CLEAR_TRACES_DIALOG_BODY =
-    "All recorded execution traces will be permanently deleted. This cannot be undone."
+    "This stops the current task and permanently deletes recorded traces and debug screenshots."
 
 @RunWith(AndroidJUnit4::class)
 class SettingsPermissionsTest {

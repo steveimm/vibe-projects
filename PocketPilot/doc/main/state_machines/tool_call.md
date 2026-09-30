@@ -25,9 +25,11 @@
 
 | From | To | Trigger | Guard / Notes |
 |---|---|---|---|
-| (entry) | `Validating` | `execute(...)` called | initial state set at ToolRouter.kt:80-81 |
+| (entry) | `Cancelled` | Context already canceled | Emits the terminal callback without validation, policy checks, or execution |
+| (entry) | `Validating` | `execute(...)` called and context active | Begins argument validation |
 | `Validating` | `Error` | `registry.get(toolName) == null` | `"Unknown tool: …"` (ToolRouter.kt:84-91) |
 | `Validating` | `Error` | `tool.validate(params) is Invalid` | aggregated error message (ToolRouter.kt:93-100) |
+| `Validating` | `Cancelled` | Context or per-call token canceled during destination resolution | Stops before policy checks, approval, or execution |
 | `Validating` | `Cancelled` | `policyDecision is Deny` | reason carries policy reason (ToolRouter.kt:115-123) |
 | `Validating` | `Cancelled` | `policyDecision is AskUser` but no valid approval package exists | fails closed before `onApprovalRequired` |
 | `Validating` | `AwaitingApproval` | `policyDecision is AskUser` and `destinationPackage ?: packageName` is valid | creates `pendingApprovals[callId]` deferred BEFORE invoking `onApprovalRequired` |
@@ -45,7 +47,7 @@
 | `Executing` | `Error` | `invocation.execute(...) is Failure` OR throws | exceptions wrapped via try/catch at ToolRouter.kt:281-285, then mapped at 300-315 |
 | `Executing` | `Cancelled` | `invocation.execute(...) is Cancelled` | reason from invocation (ToolRouter.kt:317-321) |
 
-`cleanupCall` runs in a `finally` for the post-policy path (ToolRouter.kt:323-326) so `activeToolCalls` and `cancellationTokens` are always purged on terminal state. The pre-policy paths (`Error` from validation, `Cancelled` from `Deny`) call `cleanupCall` explicitly.
+`cleanupCall` runs in `finally` for every path, including validation and early cancellation, clearing active calls, cancellation tokens, and pending approvals. Early cancellation emits an explicit terminal state callback.
 
 ## Diagram
 

@@ -1,5 +1,6 @@
 package id.steveimm.pocketpilot.ui.onboarding
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +17,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import id.steveimm.pocketpilot.ui.settings.SettingsAlertCard
 import id.steveimm.pocketpilot.ui.settings.AlertTone
 import androidx.compose.material3.Text
@@ -28,6 +30,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.onboarding.DemoStepState
 import id.steveimm.pocketpilot.onboarding.PermissionStepState
@@ -45,6 +50,7 @@ fun PermissionStepContent(
 ) {
     val copy = permissionStepCopy(step)
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
     var detailsExpanded by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -67,7 +73,11 @@ fun PermissionStepContent(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 TextButton(onClick = {
-                    uriHandler.openUri("https://github.com/steveimm/vibe-projects/blob/main/PocketPilot/PRIVACY_POLICY.md")
+                    try {
+                        uriHandler.openUri("https://github.com/steveimm/vibe-projects/blob/main/PocketPilot/PRIVACY_POLICY.md")
+                    } catch (_: IllegalArgumentException) {
+                        Toast.makeText(context, "No app available to open this link", Toast.LENGTH_SHORT).show()
+                    }
                 }) { Text("Privacy policy") }
             }
         }
@@ -76,9 +86,8 @@ fun PermissionStepContent(
 
         if (state == PermissionStepState.Unsatisfied) {
             SettingsAlertCard(message = copy.consequence, tone = AlertTone.Error)
+            Spacer(modifier = Modifier.height(16.dp))
         }
-
-        Spacer(modifier = Modifier.weight(1f))
 
         // Primary CTA
         when (state) {
@@ -121,8 +130,6 @@ fun PermissionStepContent(
                 Text("Continue without this")
             }
         }
-
-        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
@@ -130,24 +137,29 @@ fun PermissionStepContent(
 fun DemoStepContent(
     state: DemoStepState,
     onRunDemo: () -> Unit,
+    onStopDemo: () -> Unit,
     onSkip: () -> Unit,
     onGoToServerStep: () -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         when (state) {
-            DemoStepState.Ready, DemoStepState.Preflight -> {
+            DemoStepState.Ready -> {
                 Text(
                     text = "Ask your model to open Android Settings. This demo does not change any device setting.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            DemoStepState.Running -> {
-                Text(
-                    text = "Opening Settings...",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            DemoStepState.Preflight, DemoStepState.Running -> {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = if (state == DemoStepState.Preflight) "Starting…" else "Opening Settings…",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             is DemoStepState.Success -> {
                 Text(
@@ -166,7 +178,7 @@ fun DemoStepContent(
             DemoStepState.Skipped -> {}
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(24.dp))
 
         when (state) {
             DemoStepState.Ready -> {
@@ -183,7 +195,7 @@ fun DemoStepContent(
                 }
             }
             DemoStepState.Preflight, DemoStepState.Running -> {
-                LoadingButton(text = "Running...")
+                OutlinedButton(onClick = onStopDemo, modifier = Modifier.fillMaxWidth()) { Text("Stop") }
             }
             is DemoStepState.Failure -> {
                 Button(onClick = onRunDemo, modifier = Modifier.fillMaxWidth()) {
@@ -203,8 +215,6 @@ fun DemoStepContent(
                 SuccessButton(text = "Demo complete")
             }
         }
-
-        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
@@ -228,16 +238,14 @@ fun CompleteStepContent(
         OutcomeRow("Model server", outcomes.modelServer)
         OutcomeRow("Demo task", outcomes.demo)
 
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Button(
             onClick = onFinish,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Start using PocketPilot")
+            Text("Open chat")
         }
-
-        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
@@ -284,7 +292,8 @@ private fun LiveStatusRow(label: String, granted: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp, horizontal = 16.dp),
+            .padding(vertical = 6.dp)
+            .semantics(mergeDescendants = true) { stateDescription = if (granted) "Enabled" else "Not enabled" },
         verticalAlignment = Alignment.CenterVertically
     ) {
         val (icon, tint) = if (granted) {
@@ -312,7 +321,14 @@ private fun OutcomeRow(label: String, outcome: StepOutcome) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp, horizontal = 16.dp),
+            .padding(vertical = 6.dp)
+            .semantics(mergeDescendants = true) {
+                stateDescription = when (outcome) {
+                    StepOutcome.Done -> "Complete"
+                    StepOutcome.Skipped -> "Skipped"
+                    StepOutcome.Pending -> "Incomplete"
+                }
+            },
         verticalAlignment = Alignment.CenterVertically
     ) {
         val (icon, tint, suffix) = when (outcome) {
@@ -366,10 +382,10 @@ private fun permissionStepCopy(step: WizardStep): PermissionCopy = when (step) {
     WizardStep.Overlay -> PermissionCopy(
         description = "The floating controls show progress and let you stop, take over, or return to PocketPilot.",
         consequence = "Without Overlay, you won't see controls while the agent works in other apps.",
-        ctaLabel = "Grant Overlay permission"
+        ctaLabel = "Allow floating controls"
     )
     WizardStep.Battery -> PermissionCopy(
-        description = "Some phones aggressively stop background work. Allowing unrestricted battery use makes long tasks reliable.\n\nThis is optional but recommended.",
+        description = "Allow unrestricted battery use to help tasks continue in the background. This is optional.",
         consequence = "Long tasks may stop when the app is backgrounded.",
         ctaLabel = "Allow background activity"
     )

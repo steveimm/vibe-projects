@@ -2,6 +2,8 @@
 
 PocketPilot runs one agent. Each new user message is sent unchanged with conversation history. The model can respond directly or select a tool. The runtime captures the phone after a screen-reading or phone-action request, then includes that fresh observation in the next model turn. Non-phone tools can return text without triggering a screenshot.
 
+Overlay requests also observe the current app before the first model turn. Main-chat requests do not capture the screen until needed. Takeover interrupts model generation and blocks pending actions before dispatch. Resume starts with a fresh observation. Screen-off and lock hide the overlays and pause running work, without automatic resume on unlock.
+
 ## Response contract
 
 - Structured tool calls continue the loop. Their results return with matching call IDs.

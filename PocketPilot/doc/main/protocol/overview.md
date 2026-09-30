@@ -52,10 +52,10 @@ Unidirectional flow with a task-based model:
 
 | Operation | Valid States | Effect |
 |-----------|--------------|--------|
-| `UserInput(text)` | Created, Idle | Start a new task |
+| `UserInput(text, observeScreen=false)` | Created, Idle | Start a task; overlay requests set `observeScreen=true` to include the current app in the first model request |
 | `Takeover` | Running | Pause cooperatively |
 | `Resume` | Paused | Resume execution |
-| `Interrupt` | Running | Stop current task → Idle |
+| `Interrupt` | Running, Paused, TakeoverPending | Stop current task → Idle |
 | `Shutdown` | Any | Graceful shutdown |
 | `Approve(id, decision, scope, packageName)` | Running | Resolve pending app-level approval |
 | `Supplement(text)` | Running, Paused | Inject context mid-task |

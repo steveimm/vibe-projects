@@ -1,15 +1,12 @@
 package id.steveimm.pocketpilot.ui.onboarding
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -23,8 +20,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.ui.theme.AppWindowInsets
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
@@ -37,6 +35,8 @@ fun OnboardingShell(
     onBack: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -55,7 +55,11 @@ fun OnboardingShell(
             // Back arrow + step counter
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (onBack != null) {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = {
+                        focusManager.clearFocus(force = true)
+                        keyboard?.hide()
+                        onBack()
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -71,20 +75,19 @@ fun OnboardingShell(
                 )
             }
 
-            Spacer(modifier = Modifier.height(spacing.sm))
-
-            Spacer(modifier = Modifier.height(spacing.lg))
+            Spacer(modifier = Modifier.height(spacing.md))
 
             Text(
                 text = title,
-                style = MaterialTheme.typography.displaySmall,
+                style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(spacing.lg))
 
             // Step content
             content()
+            Spacer(modifier = Modifier.height(spacing.lg))
         }
     }
 }

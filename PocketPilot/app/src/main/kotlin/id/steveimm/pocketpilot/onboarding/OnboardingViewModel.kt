@@ -29,6 +29,7 @@ class OnboardingViewModel(
     private val effectChannel = Channel<OnboardingEffect>(Channel.BUFFERED)
     val effects = effectChannel.receiveAsFlow()
     private var transition: Job? = null
+    private var demoAttempt = 0
 
     init {
         if (!serverConfigured()) mark(WizardStep.ModelServer, StepOutcome.Pending)
@@ -40,12 +41,13 @@ class OnboardingViewModel(
     fun isBatteryOptimized(): Boolean = permissionMonitor.isBatteryOptimized()
 
     fun onHostResumed() {
-        if (currentStep in permissionSteps) checkPermission(returned = true)
+        if (currentStep !in permissionSteps || stepState == PermissionStepState.Checking) return
+        checkPermission(returned = stepState == PermissionStepState.OpeningSettings)
     }
 
     fun goBack() {
         val previous = WizardStep.entries.getOrNull(currentStep.ordinal - 1) ?: return
-        if (currentStep == WizardStep.Demo) demoController.cancel()
+        if (currentStep == WizardStep.Demo) cancelDemo()
         enter(previous, advance = false)
     }
 
@@ -65,7 +67,7 @@ class OnboardingViewModel(
     }
 
     fun goToServerStep() {
-        demoController.cancel()
+        cancelDemo()
         mark(WizardStep.ModelServer, StepOutcome.Pending)
         mark(WizardStep.Demo, StepOutcome.Pending)
         enter(WizardStep.ModelServer, advance = false)
@@ -83,7 +85,7 @@ class OnboardingViewModel(
     }
 
     fun startDemo() {
-        if (currentStep != WizardStep.Demo) return
+        if (currentStep != WizardStep.Demo || stepState == DemoStepState.Running) return
         val missing = listOf(WizardStep.Accessibility, WizardStep.Overlay).firstOrNull { !permissionGranted(it) }
         if (missing != null) {
             mark(missing, StepOutcome.Pending)
@@ -94,23 +96,38 @@ class OnboardingViewModel(
             goToServerStep()
             return
         }
+        val attempt = ++demoAttempt
+        fun isCurrentAttempt() = currentStep == WizardStep.Demo && demoAttempt == attempt && stepState == DemoStepState.Running
+        mark(WizardStep.Demo, StepOutcome.Pending)
         stepState = DemoStepState.Running
         demoController.run(
             onSuccess = {
-                if (currentStep == WizardStep.Demo) {
+                if (isCurrentAttempt()) {
                     stepState = DemoStepState.Success(it)
                     mark(WizardStep.Demo, StepOutcome.Done)
                     advanceSoon()
                 }
             },
-            onFailure = { if (currentStep == WizardStep.Demo) stepState = DemoStepState.Failure(it) },
-            onBringToFront = { effectChannel.trySend(OnboardingEffect.BringMainActivityToFront) },
+            onFailure = { if (isCurrentAttempt()) stepState = DemoStepState.Failure(it) },
+            onBringToFront = { if (isCurrentAttempt()) effectChannel.trySend(OnboardingEffect.BringMainActivityToFront) },
+            onStopped = { if (isCurrentAttempt()) stepState = DemoStepState.Ready },
         )
+    }
+
+    fun stopDemo() {
+        if (currentStep != WizardStep.Demo || stepState != DemoStepState.Running) return
+        cancelDemo()
+        stepState = DemoStepState.Ready
+    }
+
+    private fun cancelDemo() {
+        demoAttempt += 1
+        demoController.cancel()
     }
 
     fun skipStep() {
         if (currentStep != WizardStep.Battery && currentStep != WizardStep.Demo) return
-        if (currentStep == WizardStep.Demo) demoController.cancel()
+        if (currentStep == WizardStep.Demo) cancelDemo()
         mark(currentStep, StepOutcome.Skipped)
         advance()
     }

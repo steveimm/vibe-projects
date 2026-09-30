@@ -45,6 +45,62 @@ class SessionHistoryManagerTest {
     }
 
     @Test
+    fun `deleting the current chat prevents later writes while deleting another keeps the current chat`() = runTest {
+        val context = buildTestContext(tempFolder.newFolder("files"))
+        val storage = SessionStorage(context, StandardTestDispatcher(testScheduler))
+        val manager = SessionHistoryManager.create(storage, this)
+        val oldId = manager.startNewSession(model = "local-model")
+        val recording = manager.getRecordingService()
+        recording.recordUserMessage("old", 1L, "older chat")
+        advanceUntilIdle()
+        val currentId = manager.startNewSession(model = "local-model")
+        manager.setActiveSessionId(currentId)
+        recording.recordUserMessage("current", 2L, "current chat")
+        advanceUntilIdle()
+
+        manager.deleteSession(oldId).getOrThrow()
+        assertThat(recording.getCurrentSessionId()).isEqualTo(currentId)
+        recording.recordUserMessage("pending", 3L, "must be deleted")
+        manager.deleteSession(currentId).getOrThrow()
+        recording.completeSession()
+        advanceUntilIdle()
+
+        assertThat(recording.getCurrentSession()).isNull()
+        assertThat(manager.getCurrentSessionId()).isNull()
+        assertThat(manager.listSessions()).isEmpty()
+    }
+
+    @Test
+    fun `clear history removes persisted and pending records before a fresh conversation`() = runTest {
+        val context = buildTestContext(tempFolder.newFolder("files"))
+        val storage = SessionStorage(context, StandardTestDispatcher(testScheduler))
+        val manager = SessionHistoryManager.create(storage, this)
+        val oldId = manager.startNewSession(model = "local-model")
+        manager.setActiveSessionId(oldId)
+        val recording = manager.getRecordingService()
+        recording.recordUserMessage("old", 1L, "private old message")
+        advanceUntilIdle()
+        assertThat(manager.listSessions()).hasSize(1)
+        File(storage.getSessionsDir(), "orphan-context.json.tmp").writeText("old checkpoint")
+        recording.recordUserMessage("pending", 2L, "not saved yet")
+
+        manager.clearHistory().getOrThrow()
+        recording.completeSession()
+        advanceUntilIdle()
+        assertThat(manager.listSessions()).isEmpty()
+        assertThat(storage.getSessionsDir().listFiles()).isEmpty()
+        assertThat(manager.getCurrentSessionId()).isNull()
+
+        val newId = manager.startNewSession(model = "local-model")
+        recording.recordUserMessage("new", 3L, "new message")
+        advanceUntilIdle()
+        val sessions = manager.listSessions()
+        assertThat(sessions.map { it.id }).containsExactly(newId)
+        assertThat(manager.loadSession(newId).getOrThrow().session.messages).hasSize(1)
+        assertThat(sessions.single().firstUserMessage).isEqualTo("new message")
+    }
+
+    @Test
     fun `loadSession fails when session is missing`() = runTest {
         val context = buildTestContext(tempFolder.newFolder("files"))
         val ioDispatcher = StandardTestDispatcher(testScheduler)

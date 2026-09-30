@@ -24,6 +24,8 @@ internal fun TestSettingsSheet(
             onDebugModeChange = {},
             traceEnabled = false,
             onTraceEnabledChange = {},
+            onClearTraces = { Result.success(Unit) },
+            onClearHistory = { Result.success(Unit) },
             isAccessibilityEnabled = true,
             isOverlayEnabled = true,
             onAccessibilityClick = {},
@@ -52,6 +54,8 @@ internal fun TestPermissionsPage(
             onDebugModeChange = {},
             traceEnabled = traceEnabled,
             onTraceEnabledChange = onTraceEnabledChange,
+            onClearTraces = { Result.success(Unit) },
+            onClearHistory = { Result.success(Unit) },
             onBack = {},
             onClose = {},
         )

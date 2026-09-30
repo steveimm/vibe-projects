@@ -132,7 +132,13 @@ class ServiceOverlayController(
             overlayPreferences.edit().putBoolean("dismissed", value).apply()
         }
     private var openAppAfterTakeover = false
+    private var dataOperationInProgress = false
     private var screenAvailable = isScreenAvailable(context)
+
+    fun setDataOperationInProgress(active: Boolean) {
+        dataOperationInProgress = active
+        applyVisibility()
+    }
 
     fun setScreenAvailable(available: Boolean) {
         screenAvailable = available
@@ -184,9 +190,9 @@ class ServiceOverlayController(
 
     /** The ONE function that decides which overlay windows are visible. Called after every state change and context change. */
     private fun applyVisibility() {
-        if (overlaysDismissed || !screenAvailable) {
+        if (overlaysDismissed || !screenAvailable || dataOperationInProgress) {
             onIndicatorsVisibilityChanged(false)
-            capsuleManager.hide(immediate = !screenAvailable)
+            capsuleManager.hide(immediate = !screenAvailable || dataOperationInProgress)
             bubbleManager?.hide()
             edgeGlowManager.hideImmediately()
             return

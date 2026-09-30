@@ -21,6 +21,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -73,6 +79,7 @@ internal fun AppAccessSettingsPage(
     rowsOverride: List<AppRow>? = null,
 ) {
     val context = LocalContext.current
+    val keyboard = LocalSoftwareKeyboardController.current
     val overrides by appClassifier.userOverrides.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var rows by remember { mutableStateOf<List<AppRow>>(emptyList()) }
@@ -100,6 +107,11 @@ internal fun AppAccessSettingsPage(
         DetailPageHeader(title = "App access", onBack = onBack, onClose = onClose)
         OutlinedTextField(
             value = query, onValueChange = { query = it }, label = { Text("Search apps") }, singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
+            trailingIcon = if (query.isEmpty()) null else {
+                { IconButton(onClick = { query = "" }) { Icon(Icons.Rounded.Close, "Clear search", Modifier.size(18.dp)) } }
+            },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         )
         Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -115,6 +127,8 @@ internal fun AppAccessSettingsPage(
             TextButton(onClick = { reload++ }) { Text("Retry") }
         }
         if (loading) Text("Loading apps…", Modifier.padding(16.dp))
+        else if (error == null && visibleRows.isEmpty()) Text("No matching apps", Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(visibleRows, key = { it.info.packageName }) { row ->
                 val pkg = row.info.packageName

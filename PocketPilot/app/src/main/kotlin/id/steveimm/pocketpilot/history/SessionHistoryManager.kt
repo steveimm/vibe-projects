@@ -77,14 +77,24 @@ class SessionHistoryManager(
 
     /** Delete a session. */
     suspend fun deleteSession(sessionId: String): Result<Unit> {
+        if (recordingService.getCurrentSessionId() == sessionId) recordingService.clearSessionAndAwait()
         val files = storage.listSessionFiles()
         val file = files.find { extractSessionIdFromFileName(it.name) == sessionId }
             ?: return Result.failure(NoSuchElementException("Session not found: $sessionId"))
 
         return storage.deleteSessionPair(file.name).onSuccess {
+            if (externalActiveSessionId == sessionId) externalActiveSessionId = null
             cacheMutex.withLock {
                 sessionInfoCache.remove(file.name)
             }
+        }
+    }
+
+    suspend fun clearHistory(): Result<Unit> {
+        recordingService.clearSessionAndAwait()
+        externalActiveSessionId = null
+        return storage.deleteAllSessions().onSuccess {
+            cacheMutex.withLock { sessionInfoCache.clear() }
         }
     }
 

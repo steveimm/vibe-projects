@@ -31,7 +31,7 @@
 | `Idle` | `Running` | `Op.UserInput` (AgentSession.kt:311-316, 397-399) | `reacquirePlatform()` succeeds |
 | `Idle` | `Shutdown` | Idle timeout job fires after `IDLE_TIMEOUT_MS=300_000` (AgentSession.kt:56, 710-718) | none |
 | any non-Shutdown | `Shutdown` | `Op.Shutdown` or idle timeout (AgentSession.kt:593-700) | Idempotent guard at line 595 |
-| `Running` / `TakeoverPending` | (signals stop) | `Op.Interrupt` (AgentSession.kt:580-591) | Calls `agentRunner.stop()` + `cancelJob()`; the actual transition to `Idle` follows from `handleAgentComplete` |
+| `Running` / `Paused` / `TakeoverPending` | (signals stop) | `Op.Interrupt` | Calls `agentRunner.stop()` + `cancelJob()`; the actual transition to `Idle` follows from `handleAgentComplete` |
 
 `Op.Supplement`, `Op.UserResponse`, `Op.Approve` do **not** change `SessionState` — they mutate history / approval / response channels and are routed without taking the lifecycle mutex (AgentSession.kt:286-289).
 

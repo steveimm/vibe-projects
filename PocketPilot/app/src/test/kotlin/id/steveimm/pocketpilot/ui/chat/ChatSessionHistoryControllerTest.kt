@@ -15,6 +15,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -73,6 +74,26 @@ class ChatSessionHistoryControllerTest {
         assertThat(uiState.value.showEmptyState).isFalse()
         assertThat(callbackCalled).isTrue()
         coVerify { manager.resumeSession(data) }
+    }
+
+    @Test
+    fun `clearing history cancels a pending resume before it can restore deleted messages`() = runTest(dispatcher) {
+        val manager = mockk<SessionHistoryManager>(relaxed = true)
+        val info = sessionInfo()
+        val result = CompletableDeferred<Result<ResumedSessionData>>()
+        coEvery { manager.loadSession(info.id) } coAnswers { result.await() }
+        val messages = mutableStateListOf<ChatMessage>()
+        val controller = buildController(manager, messages)
+        controller.resumeSession(info)
+        controller.clearHistoryState()
+        result.complete(Result.success(ResumedSessionData(
+            session = SessionRecord(info.id, 0L, 0L, listOf(MessageRecord.User("old", 0L, "deleted message"))),
+            fileName = info.fileName,
+        )))
+
+        assertThat(messages).isEmpty()
+        assertThat(controller.sessions.value).isEmpty()
+        verify(exactly = 0) { manager.resumeSession(any()) }
     }
 
     @Test

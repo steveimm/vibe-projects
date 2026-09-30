@@ -110,6 +110,24 @@ class SessionCoordinatorTest {
     }
 
     @Test
+    fun `data cleanup shuts down work discards queued input and retains the reload checkpoint`() = runTest {
+        val coordinator = SessionCoordinator(backgroundScope)
+        val state = MutableStateFlow<SessionState>(SessionState.Running)
+        val session = fakeSession(state)
+        every { session.getServices().recordingService.getCurrentFileName() } returns "session-before-clear.json"
+        coEvery { session.submit(Op.Shutdown) } answers { state.value = SessionState.Shutdown }
+        coordinator.attachSession(session)
+        coordinator.submit("queued before clearing")
+
+        assertThat(coordinator.shutdownSessionForDataClear()).isSameInstanceAs(session)
+        assertThat(coordinator.submit("next task")).isEqualTo(SubmitResult.SESSION_DEAD)
+        assertThat(coordinator.consumeDeadSessionFileName()).isEqualTo("session-before-clear.json")
+        val replacement = fakeSession()
+        coordinator.createAndSubmit("new task") { replacement }
+        coVerify(exactly = 0) { replacement.submit(Op.UserInput("queued before clearing")) }
+    }
+
+    @Test
     fun `submit without session returns NO_SESSION`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val scope = TestScope(dispatcher)

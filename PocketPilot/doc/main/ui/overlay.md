@@ -8,13 +8,17 @@ PocketPilot uses accessibility overlay windows outside MainActivity. The main ch
 
 Drag uses absolute screen touch positions and Android's touch-slop threshold to distinguish moving from tapping. Release docks the bubble to the nearest side. The selected side and relative vertical position are saved locally. System-bar and cutout insets bound its position, and configuration changes reposition it within the new display geometry.
 
+Dragging reveals a dismiss target at the bottom center. Dropping the bubble there stops active work and dismisses every overlay. Repositioning pauses active work during the drag and resumes only the pause that drag requested. Manual takeover, Stop, dismissal, locking, or opening MainActivity cancels that automatic resume. Plain taps only expand or minimize controls.
+
 New tasks use the minimized bubble. Completion and session expiry preserve the user’s expanded/minimized choice. Questions, approvals, and errors open the controls for attention, after which the user may minimize them. The bubble's status color reflects task state. The edge glow is limited to active tasks.
 
 Completed results remain in `CapsuleStateHolder` without an automatic hide timer, including after idle session expiry. Expanded controls show the result as scrollable Markdown, navigation, and a composer. Stopping a session retains a stopped result. The main chat returns directly to its idle composer after completion.
 
-The service state holder owns shared task/note and question-answer drafts. They survive minimizing and switching to chat. A new question clears only its answer draft. Sending while a session exists submits `Op.UserInput`. When a new session is needed, the service holds the user-entered text in memory, opens MainActivity, and hands it to the existing session-creation path. No external-intent confirmation bypass is introduced.
+The service state holder owns shared task/note and question-answer drafts. They survive minimizing and switching to chat. A new question clears only its answer draft. Sending a task from the overlay reuses a compatible session or creates one in the service without opening MainActivity. It submits `Op.UserInput(observeScreen = true)`, so the first model request includes the app already on screen. Startup failure or cancellation restores the draft.
 
-The panel header always provides Open chat and Close outside MainActivity. Open chat pauses active generation before opening the app. Close stops active work and dismisses all overlays. The dismissed state survives service reconnects and resets when the user opens MainActivity or starts another task. Tapping the bubble only minimizes/expands the panel.
+The panel header always provides Open chat and Close outside MainActivity. Open chat pauses active generation before opening the app. Close uses the same dismissal path as the drag target. Dismissal survives service reconnects and late task events until the user opens MainActivity.
+
+`DeviceScreenState` hides all controls and indicators immediately when the screen turns off or locks. Running work requests takeover, and pending overlay startup is canceled. Unlocking restores eligible overlays but never resumes paused work automatically.
 
 Controls have a 420 dp maximum width and fit above system bars and the keyboard. Details and task buttons scroll within the remaining height, preserving the header and composer above a landscape keyboard. The bubble moves clear of the panel without replacing its saved position.
 
@@ -24,9 +28,11 @@ On Android 14+, `WindowScreenshotComposer` uses the public [takeScreenshotOfWind
 
 The composer requires stable geometry, exact buffer dimensions, and complete opaque coverage. Overlapping app windows, magnification, system windows covering content, unavailable window captures, and uncovered wallpaper use full-display capture with temporary overlay suppression. A protected window produces no image. Hardware buffers and bitmaps are released on cancellation. This reduces flickering on supported screens but does not eliminate the display fallback.
 
- Both bubble and controls become untouchable during injected gestures and restore their flags afterward. This lets an agent act at a position occupied by the bubble without toggling its UI.
+The bubble remains touchable during injected gestures. A stroke that overlaps it moves the unheld bubble to a nearby clear position before dispatch, then restores its preferred position with the docking animation. Holding the bubble delays injection. Dragging requests takeover, and both the execution delay and gesture setup delay check interruption before acting. Android interruption of a running stroke is reported as a recoverable action failure, rather than ending the task.
 
-Expanded accessibility controls may use the existing full-screen interaction shield during automation. The bubble is placed above that window. Minimized controls have no full-screen touch shield. Takeover releases interaction locking while keeping controls available.
+Compact controls remain interactive for strokes outside their actual window bounds. Intersecting strokes temporarily suppress both panel rendering and touch interception. Gesture and screenshot suppression compose across nested leases and recreated windows. If no clear bubble position exists, the action fails without disabling the bubble.
+
+Expanded accessibility controls may use the full-screen interaction shield during automation. Every injected gesture temporarily passes through that shield and hides its panel, while the bubble remains available above it. Minimized controls have no full-screen touch shield. Takeover releases interaction locking while keeping controls available.
 
 **Touch protection** is off by default, retaining the saved compact-overlay preference. Enabling it adds the existing full-screen touch shield while active controls are expanded. This remains optional because the OPPO Find X8 previously revoked accessibility after full-screen overlays.
 

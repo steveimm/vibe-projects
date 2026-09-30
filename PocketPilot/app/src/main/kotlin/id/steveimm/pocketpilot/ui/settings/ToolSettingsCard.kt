@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
@@ -32,7 +33,7 @@ import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
 internal data class ToolStatusUi(
-    val label: String,
+    val label: String?,
     val subtitle: String,
     val tone: ToolStatusTone,
     val showSpinner: Boolean = false,
@@ -91,12 +92,13 @@ internal fun ToolSettingsCard(
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Spacer(modifier = Modifier.height(2.dp))
+                    if (status.label != null || status.showSpinner) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Text(
-                            text = status.label,
+                            text = status.label.orEmpty(),
                             style = MaterialTheme.typography.labelMedium,
                             color = status.tone.labelColor(),
                         )
@@ -106,6 +108,7 @@ internal fun ToolSettingsCard(
                                 strokeWidth = 2.dp,
                             )
                         }
+                    }
                     }
                     Text(
                         text = status.subtitle,
@@ -131,7 +134,7 @@ internal fun ToolSettingsCard(
                     checked = switchChecked,
                     onCheckedChange = onSwitchChange,
                     enabled = switchEnabled,
-                    modifier = switchModifier,
+                    modifier = switchModifier.semantics { contentDescription = title },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = MaterialTheme.colorScheme.primary,
                         checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,

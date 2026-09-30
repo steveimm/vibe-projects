@@ -21,8 +21,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -40,18 +38,18 @@ class OnboardingDemoController(
 
     }
 
-    private val mutex = Mutex()
     private var demoJob: Job? = null
-    private var demoSession: AgentSession? = null
 
     fun run(
         onSuccess: (message: String) -> Unit,
         onFailure: (reason: String) -> Unit,
-        onBringToFront: () -> Unit
+        onBringToFront: () -> Unit,
+        onStopped: () -> Unit,
     ) {
-        cancel() // clean up any prior run
-
+        val previousJob = demoJob
+        previousJob?.cancel()
         demoJob = scope.launch {
+            previousJob?.join()
             val service = AgentService.instance
             if (service == null) {
                 withContext(Dispatchers.Main) {
@@ -62,6 +60,7 @@ class OnboardingDemoController(
 
             val credentialStore = ServerCredentialStoreHolder.get(service.applicationContext)
 
+            var ownedSession: AgentSession? = null
             try {
                 val config = SessionConfig(
                     approvalMode = ApprovalMode.AUTO_APPROVE,
@@ -82,9 +81,8 @@ class OnboardingDemoController(
                         credentialStore = credentialStore,
                         visualizer = visualizer,
                         overlayTouchGate = touchGate
-                    )
+                    ).also { ownedSession = it }
                 }
-                mutex.withLock { demoSession = session }
 
                 // Register with service for overlay visualization
                 service.observeExternalSession(session, PlatformMode.ACCESSIBILITY)
@@ -93,7 +91,7 @@ class OnboardingDemoController(
                 var lastPackageName: String? = null
                 var taskCompleted: TaskCompleted? = null
 
-                val eventJob = scope.launch {
+                val eventJob = launch {
                     session.events.collect { event ->
                         when (event) {
                             is ScreenCaptured -> {
@@ -135,6 +133,9 @@ class OnboardingDemoController(
                             Log.w(TAG, "Demo finished without verifying Settings: package=$lastPackageName")
                             onBringToFront()
                             onFailure("Settings did not open. Check the model response and try again.")
+                        } else if (completed.outcome == TaskOutcome.USER_STOPPED) {
+                            onBringToFront()
+                            onStopped()
                         } else {
                             val reason = when (completed.outcome) {
                                 TaskOutcome.ERROR -> "Demo encountered an error"
@@ -158,25 +159,20 @@ class OnboardingDemoController(
                     onFailure("Demo failed: ${e.message}")
                 }
             } finally {
-                withContext(NonCancellable) { shutdownSession() }
+                withContext(NonCancellable) { shutdownSession(ownedSession) }
             }
         }
     }
 
     fun cancel() {
         demoJob?.cancel()
-        demoJob = null
-        scope.launch { shutdownSession() }
     }
 
-    private suspend fun shutdownSession() {
-        val session = mutex.withLock {
-            val s = demoSession
-            demoSession = null
-            s
-        }
+    private suspend fun shutdownSession(session: AgentSession?) {
         try {
             session?.submit(Op.Shutdown)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "Demo session shutdown error: ${e.message}")
         }

@@ -25,6 +25,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -143,6 +144,7 @@ class AgentService : AccessibilityService() {
     }
 
     private var eventCollectorJob: Job? = null
+    private var observedRecordingService: id.steveimm.pocketpilot.history.SessionRecordingService? = null
 
     fun observeExternalSession(
             externalSession: AgentSession,
@@ -327,6 +329,32 @@ class AgentService : AccessibilityService() {
     }
 
     private var overlayStartJob: Job? = null
+    private var dataOperationInProgress = false
+
+    fun setDataOperationInProgress(active: Boolean) {
+        dataOperationInProgress = active
+        overlayController?.setDataOperationInProgress(active)
+    }
+
+    fun getRecordedSessionId(): String? = observedRecordingService?.getCurrentSessionId()
+
+    suspend fun shutdownSessionForDataClear(): AgentSession? {
+        overlayStartJob?.cancelAndJoin()
+        overlayStartJob = null
+        return session?.also { it.submit(Op.Shutdown) }
+    }
+
+    suspend fun clearRecordedConversation() {
+        eventCollectorJob?.cancelAndJoin()
+        eventCollectorJob = null
+        observedRecordingService?.clearSessionAndAwait()
+        observedRecordingService = null
+        session = null
+        _effectivePlatformMode.value = null
+        overlayController?.clearConversation()
+        actionVisualizer?.hide()
+        updateStatus("")
+    }
 
     private fun stopFromOverlay() {
         overlayStartJob?.cancel()
@@ -336,12 +364,13 @@ class AgentService : AccessibilityService() {
     }
 
     private fun sendOverlayInput(text: String) {
-        if (overlayStartJob?.isActive == true) return
+        if (dataOperationInProgress || overlayStartJob?.isActive == true) return
         val controller = overlayController ?: return
         controller.onTaskStarted("overlay-start", text)
         overlayStartJob = serviceScope.launch {
             var created: AgentSession? = null
             var attached = false
+            var submitted = false
             try {
                 check(isScreenAvailable(this@AgentService)) { "Unlock the phone to continue." }
                 val targetMode = if (currentPlatformMode == PlatformMode.VIRTUAL_DISPLAY &&
@@ -368,6 +397,7 @@ class AgentService : AccessibilityService() {
                     attached = true
                 }
                 target.submit(Op.UserInput(text, observeScreen = true))
+                submitted = true
             } catch (e: CancellationException) {
                 if (controller.stateHolder.inputDraft.value.isBlank()) controller.stateHolder.inputDraft.value = text
                 controller.onTaskCompleted(TaskOutcome.USER_STOPPED, "Stopped")
@@ -376,7 +406,9 @@ class AgentService : AccessibilityService() {
                 if (controller.stateHolder.inputDraft.value.isBlank()) controller.stateHolder.inputDraft.value = text
                 controller.onSessionError(e.message ?: "Could not start the task. Check the model server in PocketPilot.")
             } finally {
-                if (!attached && created != null) withContext(NonCancellable) { created?.submit(Op.Shutdown) }
+                if (created != null && (!attached || !submitted)) {
+                    withContext(NonCancellable) { created?.submit(Op.Shutdown) }
+                }
             }
         }
     }
@@ -418,6 +450,7 @@ class AgentService : AccessibilityService() {
         eventCollectorJob?.cancel()
 
         val recordingService = agentSession.getServices().recordingService
+        observedRecordingService = recordingService
 
         eventCollectorJob =
                 serviceScope.launch {

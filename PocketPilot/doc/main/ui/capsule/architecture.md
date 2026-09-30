@@ -2,7 +2,7 @@
 
 `CapsuleStateHolder` owns mode, context, platform mode, turn phase, Stop feedback, and shared drafts. `ServiceOverlayController` owns panel visibility, persisted dismissal, and returning to MainActivity. See [overlay behavior](../overlay.md) for window ownership and capture details, and [state transitions](../../state_machines/ui_capsule.md) for mode guards.
 
-`SmartCapsuleSurface` renders both the embedded chat controls and the floating panel. It derives `CapsuleRenderSpec` and `NavSpec`, then renders a header, optional scrollable detail, action buttons, and input. Navigation stays in the header even for questions, approvals, and errors. The bubble supplies minimize/expand. Close dismisses the entire overlay.
+`SmartCapsuleSurface` renders both the embedded chat controls and the floating panel. It derives `CapsuleRenderSpec` and `NavSpec`, then renders a header, optional scrollable detail, action buttons, and input. Navigation stays in the header even for questions, approvals, and errors. The bubble supplies minimize/expand and drag-to-dismiss. Close uses the same dismissal path.
 
 `CapsuleControlBar` renders Takeover, Resume, Done, approval choices, and Stop. `CapsuleInputBar` binds the supplied mutable draft. `CapsuleBinding` connects chat to service flows and guarded response callbacks without owning another task state.
 
@@ -24,12 +24,16 @@ Outside Main, every row also has Open chat and Close. Virtual-display contexts e
 
 ## Drafts and input
 
-The service keeps task/note text separate from question-answer text. Main binds its composer to the same draft as the overlay. A new question call clears only the answer draft. Recomposition, minimizing, and switching surfaces do not clear it. Successful submission clears the submitted draft.
+The service keeps task/note text separate from question-answer text. Main binds its composer to the same draft as the overlay. A new question call clears only the answer draft. Recomposition, minimizing, and switching surfaces do not clear it. Successful submission clears the submitted draft. Explicit history deletion also clears the affected conversation's drafts and retained result; [deletion ownership](../../app/history/persistence.md#deletion-ownership) describes the shutdown and write ordering.
 
-Hidden, Done, and Error submit new input. Questions submit a response tied to the current call ID. Takeover submits a note and resumes. Running input submits a note where editing is allowed. Voice uses the same draft and submission path, with permission handling described in [voice input](voice.md).
+Hidden, Done, and Error submit new input. Questions submit a response tied to the current call ID. Takeover submits a note and resumes. Running input submits a note where editing is allowed. Opening the drawer or Settings disables chat input and cancels dictation without clearing text. Incoming questions cannot open the keyboard behind those surfaces, and closing them does not repeat question autofocus. Voice uses the same draft and submission path, with permission handling described in [voice input](voice.md).
+
+New overlay tasks are created by the service without opening MainActivity. They capture the current app before the first model request. Main-chat tasks retain the normal conversation-first behavior.
 
 ## Runtime controls
 
 Takeover cancels active model transport, waits for execution to reach its pause boundary, and prevents queued model actions from executing. Resume performs a fresh observation. Open chat requests this handover before launching MainActivity. Stop cancels work from both Running and Paused states. Close dispatches Stop when necessary and immediately removes the windows.
+
+Dragging the bubble owns a temporary takeover and resumes only that pause after repositioning. Dismissal, lock, Stop, manual takeover, and opening MainActivity revoke that ownership. Screen-off and lock hide every overlay immediately; unlocking does not resume work. [Overlay behavior](../overlay.md) defines gesture priority, touch protection, and screenshot exclusion.
 
 Phase status comes from `TurnPhaseChanged`. Native reasoning is streamed and retained in chat separately, with no model-generated capsule heading. An interrupted stream cannot become a completed answer.

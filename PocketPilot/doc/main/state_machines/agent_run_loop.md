@@ -135,7 +135,7 @@ Maps `(TurnResult, ExecutionPhaseResult)` to `TurnOutcome`. Key rules:
 - `MAX_TOOL_FAILURE_TURNS = 6` applies across the whole request. After six failed tool turns, one model response with tools disabled can explain the blocker. No further tool execution is permitted.
 - `MAX_CONSECUTIVE_COMPACTION_FAILURES = 3` — three consecutive `Failed` outcomes trip the circuit breaker; any non-failed outcome (`Compacted`, `Skipped`, `Stale`, `NothingToCompact`) resets the counter.
 - `turnCount` is incremented after the compaction step and the eval-budget guard, so the eval safety net catches the (N+1)-th attempt rather than letting it start.
-- Pause is cooperative — pause check happens once per loop iteration, immediately before stop check.
+- Pause cancels active model transport and is checked around capture, planning, and execution. Tool routing checks interruption after the pre-execution delay and approval wait; gesture dispatch rechecks after its setup delay. An interrupted turn continues with a fresh observation after resume, without counting takeover as a tool failure.
 - The agent's `pauseConfirmed` deferred is **always** completed in the `finally` block so `AgentSession.handleTakeover()` cannot hang past run termination.
 - Cross-turn state lives only in `TurnRunnerState` (`NavigationState` and `observeScreen`); no other mutable state is passed across turns.
 - The compactor never silently drops data on contention — `HistoryManager.replaceAllIfRevision` rejects stale swaps and the loop retries.

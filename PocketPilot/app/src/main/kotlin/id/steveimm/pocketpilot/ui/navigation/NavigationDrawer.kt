@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -28,9 +29,7 @@ import androidx.compose.material.icons.rounded.Delete
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.SlidersHorizontal
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +38,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,6 +62,7 @@ import id.steveimm.pocketpilot.ui.theme.pocketPilot
 @Composable
 fun NavigationDrawerContent(
     sessions: List<SessionInfo>,
+    listState: LazyListState,
     onSessionSelect: (SessionInfo) -> Unit,
     onNewSession: () -> Unit,
     onDeleteSession: (SessionInfo) -> Unit,
@@ -101,6 +100,7 @@ fun NavigationDrawerContent(
                     )
                 } else {
                     LazyColumn(
+                        state = listState,
                         contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.sm),
                         verticalArrangement = Arrangement.spacedBy(spacing.xs)
                     ) {
@@ -211,7 +211,7 @@ private fun DrawerSessionItem(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Delete chat") },
-            text = { Text("This chat and its messages will be permanently deleted.") },
+            text = { Text("This permanently deletes this chat and stops any task using it.") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -309,23 +309,16 @@ private fun DrawerSessionItem(
                 }
             }
 
-            // Delete button — ghosted; visible but de-emphasised so the row
-            // reads as a passive ledger entry, not a destructive surface.
-            Box(
-                modifier = Modifier.minimumInteractiveComponentSize(),
-                contentAlignment = Alignment.Center
+            IconButton(
+                onClick = { showDeleteConfirm = true },
+                modifier = Modifier.size(48.dp)
             ) {
-                IconButton(
-                    onClick = { showDeleteConfirm = true },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Delete,
-                        contentDescription = "Delete chat",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.pocketPilot.mutedText
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Rounded.Delete,
+                    contentDescription = "Delete chat",
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.pocketPilot.mutedText
+                )
             }
         }
     }
@@ -358,7 +351,7 @@ private fun SettingsEntry(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -371,15 +364,11 @@ private fun SettingsEntry(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Settings",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-
-        }
+        Text(
+            text = "Settings",
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }

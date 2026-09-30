@@ -57,6 +57,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.io.File
+import java.io.IOException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -94,6 +99,9 @@ class MainActivity : ComponentActivity() {
     private var pendingEvalTurnBudget: Int? = null
     private var pendingAutoStartGoal: String? = null
     private var pendingGoalRunnable: Runnable? = null
+    private val dataClearMutex = Mutex()
+    private var dataOperationLabel by mutableStateOf<String?>(null)
+    private val clearingStoredData get() = dataOperationLabel != null
     private var pendingGoalForConfirmation by mutableStateOf<String?>(null)
     private var intentPayloadConsumed = false
     private lateinit var sessionHistoryManager: SessionHistoryManager
@@ -194,6 +202,7 @@ class MainActivity : ComponentActivity() {
                         onOpenSettings = { vm.openSystemSettings() },
                         onSkipStep = { vm.skipStep() },
                         onStartDemo = { vm.startDemo() },
+                        onStopDemo = { vm.stopDemo() },
                         onGoToServerStep = { vm.goToServerStep() },
                         onFinish = {
                             vm.finish()
@@ -240,6 +249,14 @@ class MainActivity : ComponentActivity() {
                         lifecycleScope.launch { coordinator.clearSession() }
                         viewModel.startNewSession(settingsState.serverModelId, BuildConfig.VERSION_NAME)
                     },
+                    onDeleteSession = { info ->
+                        lifecycleScope.launch {
+                            deleteSavedSession(info).onFailure { viewModel.reportHistoryError("Could not delete this chat. Try again.") }
+                        }
+                    },
+                    dataOperationLabel = dataOperationLabel,
+                    onClearTraces = { lifecycleScope.async { clearStoredData(clearHistory = false) }.await() },
+                    onClearHistory = { lifecycleScope.async { clearStoredData(clearHistory = true) }.await() },
                     onOpenViewer = { openViewer(this@MainActivity) },
                     onOpenApp = { pkg ->
                         packageManager.getLaunchIntentForPackage(pkg)
@@ -414,6 +431,75 @@ class MainActivity : ComponentActivity() {
         Log.d(TAG, "Current session cleared")
     }
 
+    private suspend fun clearStoredData(clearHistory: Boolean): Result<Unit> = performDataOperation(
+        label = if (clearHistory) "Clearing chat history…" else "Clearing traces…",
+    ) { service ->
+        pendingGoalRunnable?.let { window.decorView.removeCallbacks(it) }
+        pendingGoalRunnable = null
+        pendingAutoStartGoal = null
+        pendingGoalForConfirmation = null
+        val coordinatedSession = coordinator.shutdownSessionForDataClear()
+        val serviceSession = service?.shutdownSessionForDataClear()
+        if (clearHistory) {
+            service?.clearRecordedConversation()
+            for (session in listOfNotNull(coordinatedSession, serviceSession).distinct()) {
+                session.getServices().recordingService.clearSessionAndAwait()
+            }
+            coordinator.detachSession()
+            coordinator.selectedSessionForReload = null
+            viewModel.clearHistoryState()
+            sessionHistoryManager.clearHistory().getOrThrow()
+            viewModel.loadSessions()
+        } else {
+            withContext(Dispatchers.IO) {
+                val external = getExternalFilesDir(null) ?: throw IOException("External storage is unavailable")
+                for (name in listOf("inspection-trace", "debug-output")) {
+                    if (!File(external, name).deleteRecursively()) throw IOException("Could not clear $name")
+                }
+            }
+        }
+    }
+
+    private suspend fun deleteSavedSession(info: SessionInfo): Result<Unit> = performDataOperation("Deleting chat…") { service ->
+        val coordinatedSession = coordinator.currentSession?.takeIf { it.sessionId.value == info.id }
+        val selectedId = coordinator.selectedSessionForReload?.id
+        val isVisibleChat = selectedId == info.id ||
+            (selectedId == null && (coordinatedSession != null || sessionHistoryManager.getCurrentSessionId() == info.id))
+        val serviceSession = service?.getActiveSession()?.takeIf { it.sessionId.value == info.id }
+        val clearFloating = service?.getRecordedSessionId() == info.id || serviceSession != null
+        if (coordinatedSession != null) coordinator.shutdownSessionForDataClear()
+        if (serviceSession != null) service?.shutdownSessionForDataClear()
+        if (clearFloating) service?.clearRecordedConversation()
+        for (session in listOfNotNull(coordinatedSession, serviceSession).distinct()) {
+            session.getServices().recordingService.clearSessionAndAwait()
+        }
+        if (isVisibleChat) {
+            coordinator.detachSession()
+            coordinator.selectedSessionForReload = null
+            viewModel.startNewSession()
+        }
+        viewModel.deleteSession(info).getOrThrow()
+    }
+
+    private suspend fun performDataOperation(label: String, operation: suspend (AgentService?) -> Unit): Result<Unit> =
+        dataClearMutex.withLock {
+            val service = AgentService.instance
+            dataOperationLabel = label
+            service?.setDataOperationInProgress(true)
+            try {
+                operation(service)
+                Result.success(Unit)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Log.e(TAG, "Could not change stored data", error)
+                Result.failure(error)
+            } finally {
+                service?.setDataOperationInProgress(false)
+                dataOperationLabel = null
+            }
+        }
+
     private fun rebindActiveServiceSessionIfNeeded() {
         val service = AgentService.instance ?: return
         val serviceSession = service.getActiveSession() ?: return
@@ -446,6 +532,10 @@ class MainActivity : ComponentActivity() {
             text: String,
             launchPolicy: SessionLaunchPolicy = SessionLaunchPolicy.AUTO
     ) {
+        if (clearingStoredData) {
+            viewModel.reportStartupFailure(text, "Wait for data deletion to finish, then try again.")
+            return
+        }
         if (!validateServerSettings()) return
 
         if (!Settings.canDrawOverlays(this)) {
@@ -464,6 +554,10 @@ class MainActivity : ComponentActivity() {
         }
 
         lifecycleScope.launch {
+            if (clearingStoredData) {
+                viewModel.reportStartupFailure(text, "Wait for data deletion to finish, then try again.")
+                return@launch
+            }
             // Try existing session first
             val submitResult = coordinator.submit(text)
             when (submitResult) {

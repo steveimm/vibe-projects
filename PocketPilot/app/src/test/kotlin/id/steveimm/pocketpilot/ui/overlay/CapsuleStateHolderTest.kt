@@ -24,6 +24,24 @@ class CapsuleStateHolderTest {
     }
 
     @Test
+    fun `clearing conversation removes floating results drafts and task controls`() {
+        holder.onTaskStarted("old", "private request")
+        holder.inputDraft.value = "unsent request"
+        holder.responseDraft.value = "private answer"
+        holder.setAgentMidTurn(true)
+        holder.onStopRequested()
+        holder.onTaskCompleted(TaskOutcome.FINISHED, "private result")
+
+        holder.clearConversation()
+        assertThat(holder.mode.value).isEqualTo(CapsuleMode.Hidden)
+        assertThat(holder.inputDraft.value).isEmpty()
+        assertThat(holder.responseDraft.value).isEmpty()
+        assertThat(holder.isAgentMidTurn.value).isFalse()
+        assertThat(holder.isStopPending.value).isFalse()
+        assertThat(holder.hasActiveTask).isFalse()
+    }
+
+    @Test
     fun `initial mode is Hidden`() {
         assertThat(holder.mode.value).isEqualTo(CapsuleMode.Hidden)
     }

@@ -287,6 +287,8 @@ class ChatViewModel(
         }
     }
 
+    fun reportHistoryError(message: String) { _uiState.update { it.copy(historyError = message) } }
+
     fun dismissHistoryError() { _uiState.update { it.copy(historyError = null) } }
 
 
@@ -320,9 +322,16 @@ class ChatViewModel(
         sessionHistoryController.clearConversation()
     }
 
+    fun clearHistoryState() {
+        eventCollectionJob?.cancel()
+        eventCollectionJob = null
+        clearComposer()
+        sessionHistoryController.clearHistoryState()
+    }
+
     /** Load the list of saved sessions. */
-    fun loadSessions() {
-        sessionHistoryController.loadSessions()
+    fun loadSessions(onLoaded: () -> Unit = {}) {
+        sessionHistoryController.loadSessions(onLoaded)
     }
 
     /** Resume a previously saved session. */
@@ -350,9 +359,7 @@ class ChatViewModel(
     }
 
     /** Delete a saved session. */
-    fun deleteSession(sessionInfo: SessionInfo) {
-        sessionHistoryController.deleteSession(sessionInfo)
-    }
+    suspend fun deleteSession(sessionInfo: SessionInfo): Result<Unit> = sessionHistoryController.deleteSession(sessionInfo)
 
     /** Check if session history is available. */
     fun hasSessionHistory(): Boolean = sessionHistoryController.hasSessionHistory()

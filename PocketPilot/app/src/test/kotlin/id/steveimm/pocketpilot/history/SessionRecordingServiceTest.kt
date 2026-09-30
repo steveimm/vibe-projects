@@ -10,10 +10,17 @@ import id.steveimm.pocketpilot.history.storage.SessionStorage
 import id.steveimm.pocketpilot.protocol.TaskOutcome
 import id.steveimm.pocketpilot.test.buildTestContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.runCurrent
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -23,6 +30,36 @@ class SessionRecordingServiceTest {
 
     @get:Rule
     val tempFolder = TemporaryFolder()
+
+    @Test
+    fun `clearing session waits for an in-flight forced write`() = runTest {
+        val storage = mockk<SessionStorage>(relaxed = true)
+        every { storage.generateFileName(any()) } returns "session-old.json"
+        every { storage.contextFileNameFor(any()) } returns "context-old.json"
+        val writeStarted = CompletableDeferred<Unit>()
+        val finishWrite = CompletableDeferred<Unit>()
+        coEvery { storage.writeSession(any(), any()) } coAnswers {
+            writeStarted.complete(Unit)
+            finishWrite.await()
+            Result.success(Unit)
+        }
+        val service = SessionRecordingService(storage, this)
+        service.initializeNewSession()
+        service.recordUserMessage("old", 1L, "old message")
+        service.completeSession()
+        runCurrent()
+        assertThat(writeStarted.isCompleted).isTrue()
+        val clearing = async { service.clearSessionAndAwait() }
+        runCurrent()
+        assertThat(clearing.isCompleted).isFalse()
+
+        finishWrite.complete(Unit)
+        clearing.await()
+        service.recordUserMessage("late", 2L, "must not return")
+        advanceUntilIdle()
+        assertThat(service.getCurrentSession()).isNull()
+        coVerify(exactly = 1) { storage.writeSession(any(), any()) }
+    }
 
     @Test
     fun `recordUserMessage persists after debounce`() = runTest {

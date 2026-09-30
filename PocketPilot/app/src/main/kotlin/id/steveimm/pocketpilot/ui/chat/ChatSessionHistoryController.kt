@@ -9,6 +9,7 @@ import id.steveimm.pocketpilot.ui.chat.model.ChatMessage
 import id.steveimm.pocketpilot.ui.chat.model.ChatUiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,21 +27,34 @@ class ChatSessionHistoryController(
         private const val TAG = "ChatSessionHistory"
     }
 
+    private var loadJob: Job? = null
+    private var resumeJob: Job? = null
+
     private val _sessions = MutableStateFlow<List<SessionInfo>>(emptyList())
     val sessions: StateFlow<List<SessionInfo>> = _sessions.asStateFlow()
 
     fun clearConversation() {
+        loadJob?.cancel()
+        resumeJob?.cancel()
         synchronized(stateLock) {
             messages.clear()
             uiState.update { it.copy(showEmptyState = true) }
         }
     }
 
-    fun loadSessions() {
+    fun clearHistoryState() {
+        clearConversation()
+        _sessions.value = emptyList()
+        uiState.update { it.copy(historyError = null) }
+    }
+
+    fun loadSessions(onLoaded: () -> Unit = {}) {
         val manager = sessionHistoryManager ?: return
-        scope.launch {
+        loadJob?.cancel()
+        loadJob = scope.launch {
             try {
                 _sessions.value = manager.listSessions()
+                onLoaded()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -52,7 +66,8 @@ class ChatSessionHistoryController(
 
     fun resumeSession(sessionInfo: SessionInfo, onResumed: (suspend () -> Unit)? = null) {
         val manager = sessionHistoryManager ?: return
-        scope.launch {
+        resumeJob?.cancel()
+        resumeJob = scope.launch {
             manager.loadSession(sessionInfo.id)
                 .onSuccess { data ->
                     val restoredMessages = MessageConverter.fromRecords(data.session.messages)
@@ -81,19 +96,17 @@ class ChatSessionHistoryController(
         Log.d(TAG, "Started new session")
     }
 
-    fun deleteSession(sessionInfo: SessionInfo) {
-        val manager = sessionHistoryManager ?: return
-        scope.launch {
-            manager.deleteSession(sessionInfo.id)
-                .onSuccess {
-                    Log.d(TAG, "Deleted session ${sessionInfo.id}")
-                    loadSessions()
-                }
-                .onFailure { error ->
-                    Log.e(TAG, "Failed to delete session", error)
-                    uiState.update { it.copy(historyError = "Could not delete this chat. Try again.") }
-                }
-        }
+    suspend fun deleteSession(sessionInfo: SessionInfo): Result<Unit> {
+        val manager = sessionHistoryManager ?: return Result.failure(IllegalStateException("History is unavailable"))
+        return manager.deleteSession(sessionInfo.id)
+            .onSuccess {
+                Log.d(TAG, "Deleted session ${sessionInfo.id}")
+                loadSessions()
+            }
+            .onFailure { error ->
+                Log.e(TAG, "Failed to delete session", error)
+                uiState.update { it.copy(historyError = "Could not delete this chat. Try again.") }
+            }
     }
 
     fun hasSessionHistory(): Boolean = sessionHistoryManager != null

@@ -11,6 +11,8 @@ import androidx.compose.animation.togetherWith
 import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import id.steveimm.pocketpilot.onboarding.DemoStepState
 import id.steveimm.pocketpilot.onboarding.OnboardingEffect
 import id.steveimm.pocketpilot.onboarding.OnboardingStepState
@@ -36,10 +38,18 @@ fun OnboardingScreen(
     onOpenSettings: () -> Unit,
     onSkipStep: () -> Unit,
     onStartDemo: () -> Unit,
+    onStopDemo: () -> Unit,
     onFinish: () -> Unit,
     onGoToServerStep: () -> Unit,
     onEffect: (OnboardingEffect) -> Unit
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(currentStep) {
+        focusManager.clearFocus(force = true)
+        keyboard?.hide()
+    }
+
     // Consume one-shot effects
     LaunchedEffect(Unit) {
         effects.collect { effect -> onEffect(effect) }
@@ -62,7 +72,7 @@ fun OnboardingScreen(
                 OnboardingShell(
                     stepIndex = 1,
                     totalSteps = totalSteps,
-                    title = "Let PocketPilot control your phone"
+                    title = "Accessibility"
                 ) {
                     PermissionStepContent(
                         step = WizardStep.Accessibility,
@@ -78,7 +88,7 @@ fun OnboardingScreen(
                 OnboardingShell(
                     stepIndex = 2,
                     totalSteps = totalSteps,
-                    title = "See controls while the agent works",
+                    title = "Floating controls",
                     onBack = backAction
                 ) {
                     PermissionStepContent(
@@ -95,7 +105,7 @@ fun OnboardingScreen(
                 OnboardingShell(
                     stepIndex = 3,
                     totalSteps = totalSteps,
-                    title = "Keep long tasks alive",
+                    title = "Background activity",
                     onBack = backAction
                 ) {
                     PermissionStepContent(
@@ -109,7 +119,7 @@ fun OnboardingScreen(
             }
 
             WizardStep.ModelServer -> {
-                OnboardingShell(stepIndex = 4, totalSteps = totalSteps, title = "Connect your model server", onBack = backAction) {
+                OnboardingShell(stepIndex = 4, totalSteps = totalSteps, title = "Model server", onBack = backAction) {
                     ModelServerForm(settings, onSaved = onServerSaved)
                 }
             }
@@ -118,12 +128,13 @@ fun OnboardingScreen(
                 OnboardingShell(
                     stepIndex = 5,
                     totalSteps = totalSteps,
-                    title = "Try a safe demo",
+                    title = "Try a task",
                     onBack = backAction
                 ) {
                     DemoStepContent(
                         state = stepState as? DemoStepState ?: DemoStepState.Ready,
                         onRunDemo = onStartDemo,
+                        onStopDemo = onStopDemo,
                         onSkip = onSkipStep,
                         onGoToServerStep = onGoToServerStep
                     )
@@ -134,7 +145,7 @@ fun OnboardingScreen(
                 OnboardingShell(
                     stepIndex = totalSteps,
                     totalSteps = totalSteps,
-                    title = "You're ready",
+                    title = "Ready",
                     onBack = backAction
                 ) {
                     CompleteStepContent(

@@ -1,8 +1,8 @@
 # Phone actions
 
-Each new user message starts with conversation context. The model can answer directly, open an app, or request the screen. It uses at most one tool call per response, or assistant text alone to finish. There is no action selector or semantic target selector.
+Each new user message starts with conversation context. An overlay task also captures the current app before the first model request, allowing work to start from a screen the user opened manually. The model can answer directly, open an app, or request the screen. It uses at most one tool call per response, or assistant text alone to finish. There is no action selector or semantic target selector.
 
-Gesture feedback uses the same physical display coordinates as gesture injection. Its overlay covers the complete display, including system-bar and cutout regions, without keyboard-driven resizing or marker-only edge clamping.
+Gesture feedback uses the same physical display coordinates as injection. A bounded 64 dp window follows the gesture, including near system bars and cutouts, without shifting the marker's center when the window is clamped to an edge.
 
 | Tool | Parameters | Behavior |
 | --- | --- | --- |
@@ -22,6 +22,8 @@ Taps and text entry require a current screenshot. The caller must tap a field be
 `parallel_tool_calls=false` requests serial calls. If a response still contains multiple calls, all are rejected before execution and each receives a correlated error. Invalid JSON, unavailable tools, missing fields, wrong types, unknown fields, enums, and numeric bounds produce explicit feedback. The runtime never executes malformed arguments as an empty default call.
 
 App-access policy and cancellation apply to every action. `back` and `home` remain available to leave blocked apps.
+
+A held overlay bubble delays dispatch. Dragging requests takeover and blocks queued actions, including actions waiting in the execution or gesture setup delays. The bubble stays touchable and moves clear of overlapping strokes. Compact panels pass through only intersecting strokes; the optional full-screen touch shield passes through every injected stroke. A panel that cannot receive touches is hidden for that lease. See [overlay behavior](../../ui/overlay.md#capture-and-touch-handling).
 
 Owners: `TouchTools.kt`, `ToolParameters.kt`, `ToolRouter.kt`, `Turn.kt`, and `TurnExecutionPhaseRunner.kt`.
 

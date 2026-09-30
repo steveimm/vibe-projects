@@ -1,18 +1,23 @@
 package id.steveimm.pocketpilot.ui.settings
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,9 +28,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.ui.theme.DetailPageHeader
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
@@ -72,7 +80,7 @@ internal suspend fun loadLicenseEntries(context: Context): List<LicenseEntry> =
 private sealed interface LicenseLoadState {
     data object Loading : LicenseLoadState
     data class Loaded(val rows: List<LicenseEntry>) : LicenseLoadState
-    data class Error(val message: String) : LicenseLoadState
+    data object Error : LicenseLoadState
 }
 
 @Composable
@@ -92,14 +100,14 @@ internal fun OpenSourceLicensesPage(
     Column(modifier = Modifier.fillMaxSize()) {
         DetailPageHeader(title = "Open-source licenses", onBack = onBack, onClose = onClose)
         when (val state = loadState) {
-            LicenseLoadState.Loading -> LoadingNotice()
-            is LicenseLoadState.Error -> ErrorNotice(
-                message = state.message,
-                onRetry = { reloadKey += 1 },
+            LicenseLoadState.Loading -> LicenseNotice(text = "Loading licenses…", loading = true)
+            LicenseLoadState.Error -> LicenseNotice(
+                text = "Could not load licenses",
+                action = { TextButton(onClick = { reloadKey += 1 }) { Text("Retry") } },
             )
             is LicenseLoadState.Loaded -> {
                 if (state.rows.isEmpty()) {
-                    EmptyNotice()
+                    LicenseNotice(text = "No license information available")
                 } else {
                     LicenseList(rows = state.rows, onOpenUrl = { url -> openUrl(context, url) })
                 }
@@ -114,54 +122,25 @@ private suspend fun loadLicenseState(context: Context): LicenseLoadState =
             .sortedBy { (it.project ?: it.dependency ?: "").lowercase() }
         LicenseLoadState.Loaded(rows)
     } catch (e: IOException) {
-        LicenseLoadState.Error("Could not open the generated license asset. Retry from Settings.")
+        LicenseLoadState.Error
     } catch (e: SerializationException) {
-        LicenseLoadState.Error("Could not read the generated license asset. Retry from Settings.")
+        LicenseLoadState.Error
     }
 
 @Composable
-private fun LoadingNotice() {
-    LicenseNoticeCard(
-        title = "Loading licenses",
-        message = "Reading the generated dependency license list.",
-        loading = true,
-    )
-}
-
-@Composable
-private fun EmptyNotice() {
-    LicenseNoticeCard(
-        title = "No license entries",
-        message = "The generated license asset is empty.",
-    )
-}
-
-@Composable
-private fun ErrorNotice(message: String, onRetry: () -> Unit) {
-    LicenseNoticeCard(
-        title = "Could not load licenses",
-        message = message,
-        action = {
-            TextButton(onClick = onRetry) {
-                Text("Retry")
-            }
-        },
-    )
-}
-
-@Composable
-private fun LicenseNoticeCard(
-    title: String,
-    message: String,
+private fun LicenseNotice(
+    text: String,
     loading: Boolean = false,
     action: (@Composable () -> Unit)? = null,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = MaterialTheme.pocketPilot.spacing.lg, vertical = MaterialTheme.pocketPilot.spacing.cardPadding),
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(MaterialTheme.pocketPilot.spacing.lg),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SettingsNoticeCard(title = title, message = message, loading = loading, action = action)
+        if (loading) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+        Text(text, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+        action?.invoke()
     }
 }
 
@@ -202,8 +181,11 @@ private fun LicensesPreamble() {
 
 @Composable
 private fun LicenseCard(entry: LicenseEntry, onOpenUrl: (String) -> Unit) {
-    val title = entry.project?.takeIf { it.isNotBlank() } ?: entry.dependency.orEmpty()
     val coordinates = entry.dependency.orEmpty()
+    val version = entry.version?.takeIf(String::isNotBlank) ?: coordinates.split(':').getOrNull(2)
+    val artifact = coordinates.removeSuffix(":$version")
+    val title = entry.project?.takeIf(String::isNotBlank)?.substringAfterLast(':')
+        ?: artifact.substringAfterLast(':')
     val licenseLine = entry.licenses.mapNotNull { it.license?.takeIf(String::isNotBlank) }
         .joinToString(", ")
         .ifBlank { "Unknown license" }
@@ -214,21 +196,29 @@ private fun LicenseCard(entry: LicenseEntry, onOpenUrl: (String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
-            .let { if (urlForClick != null) it.clickable { onOpenUrl(urlForClick) } else it },
+            .let { if (urlForClick != null) it.clickable(role = Role.Button, onClickLabel = "Open license") { onOpenUrl(urlForClick) } else it },
         color = MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.medium,
     ) {
         Column(modifier = Modifier.padding(MaterialTheme.pocketPilot.spacing.cardPadding), verticalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.xs)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            if (coordinates.isNotBlank() && coordinates != title) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = coordinates,
+                    text = title,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (version != null) {
+                    Text(version, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (artifact.isNotBlank() && artifact != title) {
+                Text(
+                    text = artifact,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(
@@ -241,9 +231,13 @@ private fun LicenseCard(entry: LicenseEntry, onOpenUrl: (String) -> Unit) {
 }
 
 private fun openUrl(context: Context, url: String) {
-    runCatching {
+    try {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
+    } catch (_: ActivityNotFoundException) {
+        Toast.makeText(context, "No app available to open this link", Toast.LENGTH_SHORT).show()
+    } catch (_: SecurityException) {
+        Toast.makeText(context, "Could not open this link", Toast.LENGTH_SHORT).show()
     }
 }

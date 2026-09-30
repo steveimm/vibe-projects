@@ -1,7 +1,6 @@
 # Session / Task User Flows
 
 > User-facing flows for session lifecycle, task execution, follow-up, and recovery.
-> Last updated: 2026-04-09 (commit: 9ab9b5f)
 
 ## 1. Session vs Task
 
@@ -20,10 +19,10 @@ The user does not manage sessions explicitly. Sessions start implicitly on first
 ## 2. First Task Flow
 
 ```
-User types goal in capsule input → taps Send
+User types goal in the main chat → taps Send
   │
   ├─ MainActivity.ensureSessionAndSend()
-  │   ├─ Validates API keys + overlay + a11y permissions
+  │   ├─ Validates server URL/model + overlay + a11y permissions
   │   ├─ Creates AgentSession (or reloads from checkpoint)
   │   ├─ Submits Op.UserInput
   │
@@ -50,19 +49,21 @@ User types goal in capsule input → taps Send
       │   ├─ Schedules 5-min idle timeout
       │
       ├─ UI: TaskCompleted → completion text appended to chat
-      │   ├─ Capsule → persistent Done result; floating controls minimize to the bubble
+      │   ├─ Capsule → persistent Done result; preserves expanded/minimized choice
       │   ├─ Recording service finalizes agent message to disk
       │   └─ VD completions: row also carries CompletionHandoff(appPackage, appLabel) → renders "Open <App>" CTA (see "VD completion handoff" below)
       │
       └─ Session alive in Hot Idle, awaiting follow-up
 ```
 
+Overlay requests use `AgentService.sendOverlayInput()` instead. The service reuses a compatible session or creates one without opening MainActivity, then submits `Op.UserInput(observeScreen = true)`. The first model request observes the app the user already opened. Main-chat input keeps `observeScreen = false` by default.
+
 ## 3. Follow-Up Task Flow (Hot Idle)
 
 After task completion, the session stays alive in `Idle` state. The user can send follow-up input without starting a new session.
 
 ```
-User types follow-up in capsule input → taps Send
+User types follow-up in the main chat → taps Send
   │
   ├─ MainActivity.ensureSessionAndSend()
   │   ├─ currentSession exists and state == Idle
@@ -88,7 +89,7 @@ User taps [Takeover] in capsule
   │
   ├─ Op.Takeover submitted
   ├─ Capsule → TakeoverPending (amber dot, "Handing over...")
-  ├─ agentRunner.pause() — agent finishes current action
+  ├─ agentRunner.pause() — interrupts generation and waits for the current execution boundary
   ├─ Deferred completes → emit SessionTakeover
   ├─ Capsule → Takeover (amber dot, [Resume] button)
   │
@@ -101,7 +102,9 @@ User taps [Takeover] in capsule
       └─ Capsule → Running (blue dot)
 ```
 
-Takeover is cooperative: the agent always finishes its current action before pausing. `TakeoverPending` reflects this real latency.
+Takeover cancels model transport and prevents planned actions from dispatching after the execution or gesture setup delays. An action already in progress can complete or be interrupted by user input. Resume observes the screen again. Screen-off and lock request takeover, hide all overlays immediately, and never resume work automatically on unlock.
+
+Dragging the bubble also pauses running work. Dropping it on the dismiss target stops the task; repositioning resumes only the pause owned by that drag. Manual takeover, Stop, lock, and opening MainActivity revoke that automatic resume.
 
 ## 5. Supplement Flow
 
@@ -131,7 +134,7 @@ Task completes → Idle → 5 minutes pass with no input
       ├─ Flush CLOSED checkpoint
       ├─ services.cleanup() — all resources released
       ├─ Emit SessionCompleted(reason=IDLE_TIMEOUT)
-      └─ Capsule: onSessionEnded → Hidden (immediate)
+      └─ Capsule: retains the completed result and expanded/minimized choice
 ```
 
 ### 6.2 User stops agent (explicit)

@@ -35,17 +35,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import id.steveimm.pocketpilot.BuildConfig
 import id.steveimm.pocketpilot.ui.theme.DetailPageHeader
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
-import java.io.File
 
 @Composable
 internal fun PermissionsAdvancedSettingsPage(
@@ -57,6 +51,8 @@ internal fun PermissionsAdvancedSettingsPage(
     onDebugModeChange: (Boolean) -> Unit,
     traceEnabled: Boolean,
     onTraceEnabledChange: (Boolean) -> Unit,
+    onClearTraces: suspend () -> Result<Unit>,
+    onClearHistory: suspend () -> Result<Unit>,
     onBack: () -> Unit,
     onClose: () -> Unit
 ) {
@@ -127,23 +123,14 @@ internal fun PermissionsAdvancedSettingsPage(
             Spacer(modifier = Modifier.height(20.dp))
             DataStorageSection(
                 traceEnabled = traceEnabled,
-                onTraceEnabledChange = onTraceEnabledChange
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(
-                text = "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                onTraceEnabledChange = onTraceEnabledChange,
+                onClearTraces = onClearTraces,
+                onClearHistory = onClearHistory,
             )
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
-
-private const val TRACE_DIR = "inspection-trace"
-private const val SESSIONS_DIR = "sessions"
 
 private sealed interface ClearDataState {
     data object Idle : ClearDataState
@@ -155,9 +142,10 @@ private sealed interface ClearDataState {
 @Composable
 private fun DataStorageSection(
     traceEnabled: Boolean,
-    onTraceEnabledChange: (Boolean) -> Unit
+    onTraceEnabledChange: (Boolean) -> Unit,
+    onClearTraces: suspend () -> Result<Unit>,
+    onClearHistory: suspend () -> Result<Unit>,
 ) {
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var traceClearState by remember { mutableStateOf<ClearDataState>(ClearDataState.Idle) }
     var sessionClearState by remember { mutableStateOf<ClearDataState>(ClearDataState.Idle) }
@@ -165,22 +153,24 @@ private fun DataStorageSection(
     var showClearSessionsConfirm by remember { mutableStateOf(false) }
 
     fun clearTraces() {
-        if (traceClearState is ClearDataState.Clearing) return
+        if (traceClearState is ClearDataState.Clearing || sessionClearState is ClearDataState.Clearing) return
         traceClearState = ClearDataState.Clearing
         scope.launch {
-            traceClearState = withContext(Dispatchers.IO) {
-                clearDirectory(context.getExternalFilesDir(TRACE_DIR), label = "traces")
-            }
+            traceClearState = onClearTraces().fold(
+                onSuccess = { ClearDataState.Cleared },
+                onFailure = { ClearDataState.Failed("Could not clear traces and screenshots. Try again.") },
+            )
         }
     }
 
     fun clearSessions() {
-        if (sessionClearState is ClearDataState.Clearing) return
+        if (traceClearState is ClearDataState.Clearing || sessionClearState is ClearDataState.Clearing) return
         sessionClearState = ClearDataState.Clearing
         scope.launch {
-            sessionClearState = withContext(Dispatchers.IO) {
-                clearDirectory(File(context.filesDir, SESSIONS_DIR), label = "session history")
-            }
+            sessionClearState = onClearHistory().fold(
+                onSuccess = { ClearDataState.Cleared },
+                onFailure = { ClearDataState.Failed("Could not clear chat history. Try again.") },
+            )
         }
     }
 
@@ -188,7 +178,7 @@ private fun DataStorageSection(
         AlertDialog(
             onDismissRequest = { showClearTracesConfirm = false },
             title = { Text("Clear traces") },
-            text = { Text("All recorded execution traces will be permanently deleted. This cannot be undone.") },
+            text = { Text("This stops the current task and permanently deletes recorded traces and debug screenshots.") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -210,7 +200,7 @@ private fun DataStorageSection(
         AlertDialog(
             onDismissRequest = { showClearSessionsConfirm = false },
             title = { Text("Clear chat history") },
-            text = { Text("All saved chats will be permanently deleted. This cannot be undone.") },
+            text = { Text("This stops the current task and permanently deletes all saved chats, including the current conversation.") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -273,7 +263,7 @@ private fun DataStorageSection(
                             shape = MaterialTheme.shapes.small
                         ) {
                             Text(
-                                text = "Traces may include screenshots and inputs. Turn off when done.",
+                                text = "Includes screenshots and inputs.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                                 modifier = Modifier.padding(horizontal = MaterialTheme.pocketPilot.spacing.md, vertical = MaterialTheme.pocketPilot.spacing.sm)
@@ -286,7 +276,8 @@ private fun DataStorageSection(
             // Clear traces button
             ClearDataButton(
                 label = clearDataButtonLabel(traceClearState, idle = "Clear traces", clearing = "Clearing traces", cleared = "Traces cleared"),
-                enabled = traceClearState !is ClearDataState.Clearing && traceClearState !is ClearDataState.Cleared,
+                enabled = traceClearState !is ClearDataState.Clearing && sessionClearState !is ClearDataState.Clearing &&
+                    traceClearState !is ClearDataState.Cleared,
                 onClick = { showClearTracesConfirm = true }
             )
             ClearFailureAlert(state = traceClearState, onRetry = { clearTraces() })
@@ -294,26 +285,12 @@ private fun DataStorageSection(
             // Clear session history button
             ClearDataButton(
                 label = clearDataButtonLabel(sessionClearState, idle = "Clear chat history", clearing = "Clearing chats", cleared = "Chats cleared"),
-                enabled = sessionClearState !is ClearDataState.Clearing && sessionClearState !is ClearDataState.Cleared,
+                enabled = traceClearState !is ClearDataState.Clearing && sessionClearState !is ClearDataState.Clearing &&
+                    sessionClearState !is ClearDataState.Cleared,
                 onClick = { showClearSessionsConfirm = true }
             )
             ClearFailureAlert(state = sessionClearState, onRetry = { clearSessions() })
         }
-    }
-}
-
-private fun clearDirectory(directory: File?, label: String): ClearDataState {
-    if (directory == null) {
-        return ClearDataState.Failed("Could not access $label storage. Retry from Settings.")
-    }
-    return try {
-        if (directory.deleteRecursively()) {
-            ClearDataState.Cleared
-        } else {
-            ClearDataState.Failed("Could not clear $label. Retry from Settings.")
-        }
-    } catch (e: SecurityException) {
-        ClearDataState.Failed("Could not clear $label because storage access was denied.")
     }
 }
 

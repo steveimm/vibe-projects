@@ -49,6 +49,8 @@ fun SettingsSheet(
     onDebugModeChange: (Boolean) -> Unit,
     traceEnabled: Boolean,
     onTraceEnabledChange: (Boolean) -> Unit,
+    onClearTraces: suspend () -> Result<Unit>,
+    onClearHistory: suspend () -> Result<Unit>,
     isAccessibilityEnabled: Boolean,
     isOverlayEnabled: Boolean,
     onAccessibilityClick: () -> Unit,
@@ -158,6 +160,8 @@ fun SettingsSheet(
                         onDebugModeChange = onDebugModeChange,
                         traceEnabled = traceEnabled,
                         onTraceEnabledChange = onTraceEnabledChange,
+                        onClearTraces = onClearTraces,
+                        onClearHistory = onClearHistory,
                         onBack = goBack,
                         onClose = close
                     )

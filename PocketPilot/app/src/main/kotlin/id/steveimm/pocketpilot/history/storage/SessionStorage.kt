@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.io.IOException
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -120,6 +121,16 @@ class SessionStorage(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to delete session $fileName", e)
             Result.failure(e)
+        }
+    }
+
+    suspend fun deleteAllSessions(): Result<Unit> = withContext(ioDispatcher) {
+        try {
+            val directory = File(context.filesDir, SESSIONS_DIR)
+            if (directory.deleteRecursively()) Result.success(Unit)
+            else Result.failure(IOException("Could not delete all saved chats"))
+        } catch (error: SecurityException) {
+            Result.failure(error)
         }
     }
 

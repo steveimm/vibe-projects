@@ -50,8 +50,7 @@ internal fun AgentBehaviorSettingsPage(
                 effectiveMode = effectivePlatformMode,
                 onPlatformModeChange = onPlatformModeChange,
             )
-            Spacer(modifier = Modifier.height(20.dp))
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }

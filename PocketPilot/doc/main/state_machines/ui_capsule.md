@@ -131,7 +131,7 @@ The spec has five parts:
 - `buttons` — control-bar button slots (`primary`, `secondary`, `stop`)
 - `input` — optional input-bar spec (`hint`, `submitLabel`)
 
-`NavSpec.from(context, platformMode, mode)` derives Close, Open chat, and Open viewer. Every panel outside MainActivity exposes Close and Open chat, including waiting and error states. The persistent bubble controls minimize/expand. Closing hides overlays without altering the stored result and stops active work.
+`NavSpec.from(context, platformMode, mode)` derives Close, Open chat, and Open viewer. Every panel outside MainActivity exposes Close and Open chat, including waiting and error states. The persistent bubble controls minimize/expand and drag-to-dismiss. Close and the drag target stop active work and hide overlays without altering the stored result. Screen-off and lock also hide the windows, but pause running work and require explicit resume after unlocking. See [overlay behavior](../ui/overlay.md).
 
 ## Input behavior
 

@@ -66,6 +66,15 @@ class CapsuleStateHolder {
             }
 
 
+    fun clearConversation() {
+        inputDraft.value = ""
+        responseDraft.value = ""
+        _turnPhase.value = null
+        _isAgentMidTurn.value = false
+        _isStopPending.value = false
+        setMode(CapsuleMode.Hidden)
+    }
+
     fun setPlatformMode(mode: PlatformMode) { _platformMode.value = mode }
 
     fun setTurnPhase(phase: TurnPhase) {

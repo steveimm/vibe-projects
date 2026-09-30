@@ -335,12 +335,15 @@ class SessionRecordingService(
         pendingCheckpoint?.cancel()
         pendingSave?.join()
         pendingCheckpoint?.join()
-        synchronized(stateLock) {
-            currentSession = null
-            currentFileName = null
-            agentMessageBuffer.clear()
-            awaitingUser = false
-            contextFileName = null
+        writeMutex.withLock {
+            synchronized(stateLock) {
+                currentSession = null
+                currentFileName = null
+                agentMessageBuffer.clear()
+                lastTaskOutcome = null
+                awaitingUser = false
+                contextFileName = null
+            }
         }
         Log.d(TAG, "Session tracking cleared")
     }

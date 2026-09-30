@@ -1,6 +1,6 @@
 # Privacy Policy for PocketPilot
 
-Effective date: 2026-05-21
+Effective date: 2026-10-01
 
 PocketPilot (`id.steveimm.pocketpilot`) is an open source Android app for user-directed automation through Android Accessibility Service. PocketPilot is designed to run on your device and to send information only when it is needed to complete a task you explicitly start.
 
@@ -12,7 +12,7 @@ PocketPilot does not collect user data on PocketPilot-operated servers. The app 
 
 The app can store settings on your device so it can function. This includes your model server URL, model ID, and optional API key. Keys are stored locally and scoped to their server endpoint. Persistent API keys are stored using AndroidX Security `EncryptedSharedPreferences`, protected by a `MasterKey` using AES256_GCM.
 
-PocketPilot can read the current screen only through the Android Accessibility Service permission that you enable. It uses that access to understand the visible interface and perform the actions you request. PocketPilot does not use root access and does not record your screen.
+PocketPilot can read the current screen only through the Android Accessibility Service permission that you enable. It uses that access to understand the visible interface and perform the actions you request. Task observations can include screenshots. Optional local traces and debug output can retain these screenshots on your device.
 
 ## What is sent to third parties
 
@@ -26,7 +26,7 @@ The LLM provider you choose may process, retain, or log requests according to th
 
 ## Permissions used and why
 
-Accessibility Service: PocketPilot uses Android Accessibility Service to read the visible screen, inspect UI elements, and perform taps, swipes, and text entry on your behalf. This permission is required for automation. The service is intended to be active for user-started tasks and to stop when you stop the task or the task completes.
+Accessibility Service: PocketPilot uses Android Accessibility Service to read the visible screen, inspect UI elements, and perform taps, swipes, and text entry on your behalf. This permission is required for automation. Automation stops when you stop the task or it completes. The accessibility service can remain connected to host the floating controls between tasks.
 
 Display over other apps: PocketPilot uses the overlay permission to show the Smart Capsule while you are in other apps. The Smart Capsule displays task progress and controls such as pause, take over, and stop. This permission does not allow PocketPilot to record the screen.
 
@@ -36,28 +36,27 @@ Battery optimization or background running: PocketPilot may ask you to allow unr
 
 PocketPilot does not retain user data on PocketPilot-operated servers because it does not collect user data server-side. Task screen content and task context are not stored by PocketPilot on a developer server.
 
-On your device, PocketPilot may retain local settings and provider credentials until you remove them, clear app data, or uninstall the app. Provider credentials are intended to remain on device except when sent to the selected provider as authentication for requests you initiate.
+On your device, PocketPilot may retain local settings, provider credentials, saved conversations, and enabled execution traces until you remove them, clear app data, or uninstall the app. Provider credentials are intended to remain on device except when sent to the selected provider as authentication for requests you initiate.
 
 Third-party LLM providers may have their own retention practices for requests sent to them. Review your selected provider's privacy policy and account settings for details.
 
 ## How to delete your data
 
-Because PocketPilot stores everything locally on your device and does not operate a backend, you can delete your data at any time without contacting the developer. All deletion is immediate and final — there is no retention period.
+Because PocketPilot stores everything locally on your device and does not operate a backend, you can delete your data at any time without contacting the developer. Deletion is local and permanent once the action succeeds.
 
 In-app deletion (granular):
 
 - **Server API key** — clear the optional key in `Settings → Model server` and save. Keys are encrypted and scoped to each endpoint.
-- **Session history and local traces** — `Settings → Permissions & Advanced → Clear session history` and `Clear debug traces`. Removes recorded task transcripts, on-device debug screenshots, and tool-call logs.
+- **One chat** — choose Delete in the chat drawer. This stops any task using that chat and removes its saved conversation and resume data, including its displayed result and drafts.
+- **All chats** — `Settings → Permissions & diagnostics → Clear chat history` stops current work and removes saved conversations, resume data, the current conversation, floating results, and drafts. Execution traces are separate.
+- **Local traces** — `Settings → Permissions & diagnostics → Clear traces` stops current work and removes recorded execution traces, tool-call logs, and debug screenshots. Saved chats and displayed results remain available.
 
-Full deletion (one tap):
+Full deletion:
 
 - Open Android `Settings → Apps → PocketPilot → Storage → Clear data`. This removes all credentials, history, traces, and settings simultaneously.
 - Uninstalling PocketPilot also deletes all local app data.
 
-What is deleted vs. kept:
-
-- **Deleted:** all data created by your use of the app, stored on the device — credentials, history, traces, settings.
-- **Stored by your model server:** prompts or screen content retained by that server are governed by its configuration. Delete them on the server if needed.
+Prompts or screen content retained by your model server are governed by its configuration. Deleting local app data does not delete server-held copies.
 
 ## Children
 
@@ -69,7 +68,11 @@ PocketPilot's Google Play disclosures should state that the app does not collect
 
 ## Contact
 
-Contact email: guoqithu10@gmail.com
+Project issue tracker: https://github.com/steveimm/vibe-projects/issues
 
 Source code: https://github.com/steveimm/vibe-projects/tree/main/PocketPilot
 
+
+## Voice input
+
+PocketPilot uses Android’s on-device speech recognizer for dictation. The microphone is unavailable when that service is absent. There is no fallback to the default network speech recognizer. Recognized text becomes an editable draft and is sent to the configured model server only when submitted.

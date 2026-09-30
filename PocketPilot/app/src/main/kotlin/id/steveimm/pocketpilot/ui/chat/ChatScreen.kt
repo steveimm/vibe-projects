@@ -59,6 +59,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -107,14 +108,15 @@ fun ChatScreen(
     onSessionSelect: (SessionInfo) -> Unit,
     onNewSession: () -> Unit,
     onDeleteSession: (SessionInfo) -> Unit,
-    onLoadSessions: () -> Unit,
+    onLoadSessions: (onLoaded: () -> Unit) -> Unit,
     onOpenViewer: () -> Unit,
     onOpenApp: (String) -> Unit,
     repairModel: PermissionRepairModel? = null,
     onFixAccessibility: () -> Unit = {},
     onFixOverlay: () -> Unit = {},
     onFixBattery: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isVisible: Boolean = true,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHost = remember { SnackbarHostState() }
@@ -136,7 +138,17 @@ fun ChatScreen(
     val keyboard = LocalSoftwareKeyboardController.current
     val hideInput: () -> Unit = { focusManager.clearFocus(force = true); keyboard?.hide() }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val drawerListState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    val inputVisible = isVisible && drawerState.currentValue == DrawerValue.Closed && drawerState.targetValue == DrawerValue.Closed
+    val questionId = (capsuleMode as? CapsuleMode.WaitingForInput)?.callId
+    var autoFocusQuestionId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(isVisible) {
+        if (!isVisible) { autoFocusQuestionId = null; hideInput() }
+    }
+    LaunchedEffect(questionId) {
+        autoFocusQuestionId = questionId.takeIf { inputVisible }
+    }
 
     BackHandler(enabled = drawerState.isOpen) {
         scope.launch { drawerState.close() }
@@ -175,33 +187,49 @@ fun ChatScreen(
     }
 
     LaunchedEffect(drawerState.targetValue) {
-        if (drawerState.targetValue == DrawerValue.Open) hideInput()
+        if (drawerState.targetValue == DrawerValue.Open) {
+            autoFocusQuestionId = null
+            hideInput()
+        }
     }
 
     // Load sessions when drawer opens
     LaunchedEffect(drawerState.isOpen) {
         if (drawerState.isOpen) {
-            onLoadSessions()
+            val openingIndex = drawerListState.firstVisibleItemIndex
+            val openingOffset = drawerListState.firstVisibleItemScrollOffset
+            onLoadSessions {
+                if (drawerState.targetValue == DrawerValue.Open && !drawerListState.isScrollInProgress &&
+                    drawerListState.firstVisibleItemIndex == openingIndex &&
+                    drawerListState.firstVisibleItemScrollOffset == openingOffset
+                ) {
+                    drawerListState.requestScrollToItem(0)
+                }
+            }
         }
     }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().then(if (isVisible) Modifier else Modifier.clearAndSetSemantics {}),
         drawerContent = {
             NavigationDrawerContent(
                 sessions = sessions,
+                listState = drawerListState,
                 onSessionSelect = { session ->
                     scope.launch { drawerState.close() }
+                    hideInput()
                     onSessionSelect(session)
                 },
                 onNewSession = {
                     scope.launch { drawerState.close() }
+                    hideInput()
                     onNewSession()
                 },
                 onDeleteSession = onDeleteSession,
                 onSettingsClick = {
                     scope.launch { drawerState.close() }
+                    hideInput()
                     onOpenSettings(null)
                 },
                 onClose = {
@@ -209,7 +237,7 @@ fun ChatScreen(
                 }
             )
         },
-        gesturesEnabled = true
+        gesturesEnabled = isVisible
     ) {
         Box(
             modifier = Modifier
@@ -243,9 +271,9 @@ fun ChatScreen(
                         if (repairModel != null) {
                             PermissionRepairCard(
                                 model = repairModel,
-                                onFixAccessibility = onFixAccessibility,
-                                onFixOverlay = onFixOverlay,
-                                onFixBattery = onFixBattery,
+                                onFixAccessibility = { hideInput(); onFixAccessibility() },
+                                onFixOverlay = { hideInput(); onFixOverlay() },
+                                onFixBattery = { hideInput(); onFixBattery() },
                             )
                         }
                         voiceFeedback?.let { alert ->
@@ -284,6 +312,7 @@ fun ChatScreen(
                                 },
                                 onNavigate = { action ->
                                     if (action == NavAction.OPEN_VIEWER) {
+                                        hideInput()
                                         onOpenViewer()
                                     }
                                 },
@@ -291,12 +320,14 @@ fun ChatScreen(
                                 inputDraft = if (capsuleMode is CapsuleMode.WaitingForInput) {
                                     capsuleBinding.responseDraft ?: viewModel.inputDraft
                                 } else viewModel.inputDraft,
-                                autoFocusInput = capsuleMode is CapsuleMode.WaitingForInput,
-                                pendingInputText = pendingInput,
+                                inputActive = inputVisible,
+                                autoFocusInput = inputVisible && questionId != null && questionId == autoFocusQuestionId,
+                                pendingInputText = pendingInput.takeIf { inputVisible }.orEmpty(),
                                 onPendingInputConsumed = { viewModel.consumePendingInput() },
                                 startupError = startupError,
                                 onDismissStartupError = { viewModel.dismissStartupError() },
                                 onStartupErrorClick = {
+                                    hideInput()
                                     onOpenSettings(viewModel.startupErrorDeepLink.value)
                                 },
                                 voice = voiceDeps,
@@ -320,7 +351,7 @@ fun ChatScreen(
                         // Message list
                         MessageList(
                             messages = messages,
-                            onOpenApp = onOpenApp,
+                            onOpenApp = { packageName -> hideInput(); onOpenApp(packageName) },
                             modifier = Modifier.fillMaxSize()
                         )
                     }
