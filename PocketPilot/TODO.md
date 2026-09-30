@@ -1,5 +1,7 @@
 # TODO
 
+- [ ] Investigate restoring the border and gesture markers without full-screen overlay windows. Use small moving windows around touch points and four narrow windows along the screen edges. Validate on the actual OPPO Find X8 that accessibility remains enabled, markers stay aligned, and effects remain excluded from model screenshots. Keep compact mode as the fallback until device testing confirms compatibility.
+
 - [x] Remove the synthetic reasoning/step-heading mechanism: `agent_thought` tool arguments, their schema instructions, and generated thought-caption fallbacks. Focus on locally deployed models and allow inspection of their exposed reasoning instead.
 - [x] Remove subagent support, including `delegate_task`, delegation prompt instructions, child-agent execution, and related UI, tests, and documentation. Keep a single agent executing tasks directly.
 - [x] Remove the restricted Android `shell` tool, including its registration, prompt references, implementation, and related tests and documentation. This item does not include `termux_shell`.
