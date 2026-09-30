@@ -149,7 +149,7 @@ class ChatSupplementAndActionTransitionTest {
         val agent = f.messages[0] as ChatMessage.Agent
         assertThat(agent.state).isEqualTo(AgentMessageState.Complete)
         val text = agent.contentBlocks.single() as ContentBlock.Text
-        assertThat(text.text).isEqualTo("⚠️ boom")
+        assertThat(text.text).isEqualTo("boom")
     }
 
     @Test

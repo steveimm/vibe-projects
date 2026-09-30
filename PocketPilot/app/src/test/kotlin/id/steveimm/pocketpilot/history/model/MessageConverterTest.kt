@@ -152,40 +152,6 @@ class MessageConverterTest {
     }
 
     @Test
-    fun `fromRecords hydrates userPrompt from preceding User record`() {
-        val records = listOf(
-            MessageRecord.User(id = "u1", timestamp = 1L, text = "open settings"),
-            MessageRecord.Agent(
-                id = "a1",
-                timestamp = 2L,
-                contentBlocks = listOf(ContentBlockRecord.Text("ok")),
-                isComplete = true,
-                rowState = "complete"
-            )
-        )
-
-        val restored = MessageConverter.fromRecords(records)
-        val agent = restored[1] as ChatMessage.Agent
-        assertThat(agent.userPrompt).isEqualTo("open settings")
-    }
-
-    @Test
-    fun `fromRecords leaves userPrompt null when no preceding User record`() {
-        val records = listOf(
-            MessageRecord.Agent(
-                id = "a-orphan",
-                timestamp = 1L,
-                contentBlocks = emptyList(),
-                isComplete = true
-            )
-        )
-
-        val restored = MessageConverter.fromRecords(records)
-        val agent = restored[0] as ChatMessage.Agent
-        assertThat(agent.userPrompt).isNull()
-    }
-
-    @Test
     fun `agent message preserves long thought verbatim through round trip`() {
         val longThought = "I should open Settings, scroll down to Accessibility, " +
             "tap Installed Services, find PocketPilot, toggle the switch, and confirm " +

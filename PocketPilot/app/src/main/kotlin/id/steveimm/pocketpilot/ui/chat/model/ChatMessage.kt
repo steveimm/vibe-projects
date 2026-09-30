@@ -21,11 +21,7 @@ sealed interface ChatMessage {
         val contentBlocks: List<ContentBlock>,
         val state: AgentMessageState,
         val rowState: RowState = RowState.Live,
-        /** User prompt that opened this turn — drives the collapsed-row headline per Track A spec §5.2 (top of the ladder). Null when
-         * restored from historical records or for synthetic agent rows (startup errors). */
-        val userPrompt: String? = null,
-        /** Wall-clock when the row sealed (TaskCompleted / SessionError / supplement). Null while Live or Waiting. Used by the
-         * collapsed/footer summary to show elapsed wall time per Track A spec §4.5/§5.2. */
+        /** Wall-clock time when this response ended. */
         val completedTimestamp: Long? = null,
         /** VD completion handoff metadata — populated only when [TaskCompleted] carries one (i.e. the row finished on the Virtual
          * Display). Drives the explicit "Open <App>" CTA in the final region. Null for accessibility completions and historical rows. */
@@ -33,20 +29,7 @@ sealed interface ChatMessage {
     ) : ChatMessage
 }
 
-/** RowState — explicit row-level state machine (Track A spec §5). */
-enum class RowState {
-    /** Task in progress — auto-tracking trace, no collapse. */
-    Live,
-
-    /** Awaiting user reply (AskUser/Approval) — locked open. */
-    Waiting,
-
-    /** Task finished — collapsible (default collapsed). */
-    Complete,
-
-    /** Task errored — locked open until acknowledged, then collapsible. */
-    Error
-}
+enum class RowState { Live, Waiting, Complete, Stopped, Error }
 
 /** AgentMessageState - The visual state of an agent message. */
 enum class AgentMessageState {

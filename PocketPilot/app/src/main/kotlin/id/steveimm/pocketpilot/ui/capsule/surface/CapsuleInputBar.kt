@@ -87,12 +87,14 @@ internal fun CapsuleInputBar(
     val draftState: MutableState<String> = inputDraft ?: remember { mutableStateOf("") }
     var inputText by draftState
 
-    // Restore preserved input after a session bootstrap failure. Seeds once per
-    // non-empty pendingInputText value, then tells the VM to clear it.
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(pendingInputText) {
         if (pendingInputText.isNotEmpty()) {
             inputText = pendingInputText
             onPendingInputConsumed()
+            focusRequester.requestFocus()
+            keyboard?.show()
         }
     }
     LaunchedEffect(spec.clearDraft) {
@@ -149,9 +151,6 @@ internal fun CapsuleInputBar(
         else -> "Take over to type note"
     }
     val autoFocus = autoFocusInput && mode is CapsuleMode.WaitingForInput
-
-    val focusRequester = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(autoFocus, inputEnabled) {
         if (autoFocus && inputEnabled) {

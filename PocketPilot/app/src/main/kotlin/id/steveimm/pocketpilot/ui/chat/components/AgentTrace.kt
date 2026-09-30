@@ -13,15 +13,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.ArrowRight
 import com.composables.icons.lucide.Ban
@@ -58,12 +52,9 @@ internal fun ExpandedTrace(blocks: List<ContentBlock>, state: AgentMessageState)
 
 @Composable
 private fun ReasoningBlock(text: String, isStreaming: Boolean) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    Column {
-        TextButton(onClick = { expanded = !expanded }) {
-            Text(if (expanded) "Hide model reasoning" else "Show model reasoning")
-        }
-        if (expanded) SelectionContainer {
+    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.xs)) {
+        Text("Model reasoning", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        SelectionContainer {
             if (isStreaming) Text(text.trimStart('\n', '\r'), style = MaterialTheme.typography.bodyMedium)
             else ChatMarkdown(text, style = MaterialTheme.typography.bodyMedium)
         }
@@ -108,8 +99,8 @@ internal fun ActionRow(
             Spacer(Modifier.width(spacing.sm))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = formatToolCall(data),
-                    style = MaterialTheme.pocketPilot.monoSmall,
+                    text = data.description.ifBlank { data.toolName },
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 val subtitle = data.resultSummary
@@ -148,9 +139,4 @@ internal fun ActionRow(
             }
         }
     }
-}
-
-private fun formatToolCall(data: ActionCardData): String {
-    val args = data.description.takeIf { it.isNotBlank() } ?: ""
-    return "${data.toolName}($args)"
 }

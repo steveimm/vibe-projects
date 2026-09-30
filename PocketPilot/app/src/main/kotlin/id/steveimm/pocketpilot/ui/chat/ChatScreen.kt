@@ -1,5 +1,14 @@
 package id.steveimm.pocketpilot.ui.chat
 
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import kotlinx.coroutines.flow.collectLatest
 import androidx.activity.compose.BackHandler
 
 import androidx.compose.animation.AnimatedVisibility
@@ -41,7 +50,6 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,7 +76,6 @@ import id.steveimm.pocketpilot.ui.chat.components.ChatHeader
 import id.steveimm.pocketpilot.ui.chat.components.EmptyState
 import id.steveimm.pocketpilot.ui.chat.components.MessageBubble
 import id.steveimm.pocketpilot.ui.chat.model.ChatMessage
-import id.steveimm.pocketpilot.ui.chat.model.ContentBlock
 import id.steveimm.pocketpilot.ui.navigation.NavigationDrawerContent
 import id.steveimm.pocketpilot.ui.onboarding.PermissionRepairCard
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
@@ -261,6 +268,7 @@ fun ChatScreen(
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 previousMode = capsuleBinding.previousMode(),
+                                inputDraft = viewModel.inputDraft,
                                 pendingInputText = pendingInput,
                                 onPendingInputConsumed = { viewModel.consumePendingInput() },
                                 startupError = startupError,
@@ -309,63 +317,30 @@ private fun MessageList(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
-    // Follow mode: true = auto-scroll with new content, false = user scrolled up.
     var followMode by remember { mutableStateOf(true) }
-    // Suppress follow-mode detection during programmatic scrolls.
-    var programmaticScroll by remember { mutableStateOf(false) }
-
-    // Detect user scroll gestures to toggle follow mode.
-    LaunchedEffect(Unit) {
-        snapshotFlow {
-            listState.isScrollInProgress to listState.canScrollForward
-        }.collect { (scrolling, canForward) ->
-            if (programmaticScroll) return@collect
-            if (scrolling && canForward) {
-                followMode = false
-            } else if (!canForward && !scrolling) {
-                followMode = true
+    val messageCount by rememberUpdatedState(messages.size)
+    val scrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && available.y > 0) followMode = false
+                return Offset.Zero
             }
         }
     }
-
-    // Derive a scroll key that changes on message count *and* last-message content.
-    // This covers new messages, streaming text, AND action-card state changes.
-    val scrollKey by remember {
-        derivedStateOf {
-            val last = messages.lastOrNull()
-            val contentSignal = when (last) {
-                is ChatMessage.Agent -> {
-                    var signal = last.contentBlocks.size.toLong()
-                    for (block in last.contentBlocks) {
-                        when (block) {
-                            is ContentBlock.Text -> signal += block.text.length
-                            is ContentBlock.FinalText -> signal += block.text.length
-                            is ContentBlock.Reasoning -> signal += block.text.length
-                            is ContentBlock.Action -> signal += block.data.state.ordinal +
-                                (block.data.resultSummary?.length ?: 0)
-                        }
-                    }
-                    signal
+    LaunchedEffect(listState) {
+        snapshotFlow { Triple(listState.layoutInfo, followMode, listState.isScrollInProgress) }
+            .collectLatest { (_, following, scrolling) ->
+                if (!following && !scrolling && !listState.canScrollForward) followMode = true
+                if (following && listState.canScrollForward) {
+                    withFrameNanos { }
+                    if (followMode) listState.scrollToItem(messageCount)
                 }
-                is ChatMessage.User -> last.text.length.toLong()
-                null -> 0L
             }
-            messages.size.toLong() * 100_000 + contentSignal
-        }
-    }
-
-    // Auto-scroll to actual bottom when content changes and we're following.
-    LaunchedEffect(scrollKey) {
-        if (messages.isNotEmpty() && followMode) {
-            programmaticScroll = true
-            listState.scrollToItem(messages.size - 1, Int.MAX_VALUE)
-            programmaticScroll = false
-        }
     }
 
     Box(modifier = modifier) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().nestedScroll(scrollConnection),
             state = listState,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -377,14 +352,15 @@ private fun MessageList(
                 MessageBubble(
                     message = message,
                     onOpenApp = onOpenApp,
+                    onInspect = { followMode = false },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+            item(key = "chat-bottom") { Spacer(Modifier.size(1.dp)) }
         }
 
-        // Scroll-to-bottom 'live' pill (Track A §5.1) when user has scrolled up.
         AnimatedVisibility(
-            visible = !followMode && messages.isNotEmpty(),
+            visible = !followMode && listState.canScrollForward,
             enter = fadeIn(animationSpec = tween(PocketPilotMotion.StatusFlip)),
             exit = fadeOut(animationSpec = tween(PocketPilotMotion.StatusFlip)),
             modifier = Modifier
@@ -399,18 +375,16 @@ private fun MessageList(
                 modifier = Modifier
                     .testTag("qa-live-pill")
                     .clickable {
-                        followMode = true
                         scope.launch {
-                            programmaticScroll = true
-                            listState.scrollToItem(messages.size - 1, Int.MAX_VALUE)
-                            programmaticScroll = false
+                            listState.animateScrollToItem(messages.size)
+                            followMode = true
                         }
                     }
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    modifier = Modifier.defaultMinSize(minHeight = 48.dp).padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.KeyboardArrowDown,
@@ -418,8 +392,8 @@ private fun MessageList(
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
-                        text = "live",
-                        style = MaterialTheme.pocketPilot.monoSmall,
+                        text = "Latest",
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

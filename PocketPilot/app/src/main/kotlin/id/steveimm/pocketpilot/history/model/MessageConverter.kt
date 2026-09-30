@@ -31,7 +31,7 @@ object MessageConverter {
     }
 
     /** Convert a MessageRecord to ChatMessage for UI display. */
-    fun fromRecord(record: MessageRecord, userPrompt: String? = null): ChatMessage {
+    fun fromRecord(record: MessageRecord): ChatMessage {
         return when (record) {
             is MessageRecord.User -> ChatMessage.User(
                 id = record.id,
@@ -45,7 +45,6 @@ object MessageConverter {
                     contentBlocks = fromContentRecords(record.contentBlocks),
                     state = if (record.isComplete) AgentMessageState.Complete else AgentMessageState.Streaming,
                     rowState = parseRowState(record.rowState, record.isComplete),
-                    userPrompt = userPrompt,
                     completedTimestamp = record.completedTimestamp
                 )
             }
@@ -88,11 +87,7 @@ object MessageConverter {
 
     /** Convert a list of MessageRecords to ChatMessages. */
     fun fromRecords(records: List<MessageRecord>): List<ChatMessage> {
-        return records.mapIndexed { index, record ->
-            val prev = records.getOrNull(index - 1)
-            val userPrompt = (prev as? MessageRecord.User)?.text
-            fromRecord(record, userPrompt = userPrompt)
-        }
+        return records.map(::fromRecord)
     }
 
     /** Convert a list of ChatMessages to MessageRecords. */
@@ -117,6 +112,7 @@ object MessageConverter {
             "waiting" -> RowState.Waiting
             "complete" -> RowState.Complete
             "error" -> RowState.Error
+            "stopped" -> RowState.Stopped
             null -> if (isComplete) RowState.Complete else RowState.Live
             else -> if (isComplete) RowState.Complete else RowState.Live
         }

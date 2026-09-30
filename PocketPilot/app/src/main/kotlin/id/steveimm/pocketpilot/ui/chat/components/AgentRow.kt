@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.Text
+import id.steveimm.pocketpilot.ui.settings.SettingsAlertCard
+import id.steveimm.pocketpilot.ui.settings.AlertTone
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,28 +31,23 @@ import id.steveimm.pocketpilot.ui.chat.model.RowState
 import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
-/** AgentRow — D2/D3 layout. Three vertical regions: 1. Trace (collapsible) — Thought + Action + mid-stream Text blocks. 2. CollapsePill
- * (toggle) — only on Complete rows that have a trace. 3. Final region (always visible) — the FinalText block, if present. */
 @Composable
 internal fun AgentRow(
     message: ChatMessage.Agent,
     onOpenApp: (String) -> Unit,
+    onInspect: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val spacing = MaterialTheme.pocketPilot.spacing
-    val traceBlocks = message.contentBlocks.filter { it !is ContentBlock.FinalText }
     val finalText = message.contentBlocks.filterIsInstance<ContentBlock.FinalText>().lastOrNull()
-    val hasTrace = traceBlocks.isNotEmpty()
-
-    val collapsible = message.rowState == RowState.Complete && hasTrace
-    var userCollapsed by remember(message.id) { mutableStateOf<Boolean?>(null) }
-    val collapsed = if (collapsible) (userCollapsed ?: true) else false
-    val expanded = !collapsed
-
+    val preview = if (finalText == null) message.contentBlocks.lastOrNull() as? ContentBlock.Text else null
+    val traceBlocks = message.contentBlocks.filter { it !is ContentBlock.FinalText && it !== preview }
+    var expanded by remember(message.id) { mutableStateOf(false) }
     val rowDescription = when (message.rowState) {
         RowState.Live -> "live"
         RowState.Waiting -> "waiting"
-        RowState.Complete -> if (collapsed) "collapsed" else "expanded"
+        RowState.Complete -> if (expanded) "expanded" else "collapsed"
+        RowState.Stopped -> "stopped"
         RowState.Error -> "error"
     }
 
@@ -65,7 +63,15 @@ internal fun AgentRow(
             return@Column
         }
 
-        if (hasTrace) {
+        if (traceBlocks.isNotEmpty()) {
+            CollapsePill(
+                summary = outcomeFooter(message),
+                expanded = expanded,
+                onToggle = {
+                    if (!expanded) onInspect()
+                    expanded = !expanded
+                },
+            )
             val rowTween = tween<IntSize>(PocketPilotMotion.RowExpand, easing = PocketPilotMotion.EaseInOutSine)
             val fadeTween = tween<Float>(PocketPilotMotion.RowExpand, easing = PocketPilotMotion.EaseInOutSine)
             AnimatedVisibility(
@@ -75,13 +81,21 @@ internal fun AgentRow(
             ) {
                 ExpandedTrace(traceBlocks, message.state)
             }
-            if (collapsible) {
-                CollapsePill(
-                    summary = outcomeFooter(message),
-                    expanded = expanded,
-                    onToggle = { userCollapsed = !collapsed },
+        }
+
+        if (preview != null) {
+            if (message.rowState == RowState.Error) {
+                SettingsAlertCard(message = preview.text, tone = AlertTone.Error)
+            } else {
+                StreamingText(
+                    text = preview.text,
+                    isStreaming = message.state == AgentMessageState.Streaming,
+                    textColor = MaterialTheme.colorScheme.onSurface,
                 )
             }
+        }
+        if (message.rowState == RowState.Stopped) {
+            Text("Stopped", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         if (finalText != null) {

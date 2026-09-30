@@ -1,5 +1,7 @@
 package id.steveimm.pocketpilot.app
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -163,6 +165,7 @@ class MainActivity : ComponentActivity() {
                 )
 
         setContent {
+            val serviceConnected by AgentService.connected.collectAsStateWithLifecycle()
             if (onboardingRequired) {
                 val vm = onboardingViewModel!!
                 PocketPilotTheme {
@@ -190,9 +193,9 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             } else {
-                var repairModel by remember { mutableStateOf(deriveRepairModel()) }
+                var repairModel by remember(serviceConnected) { mutableStateOf(deriveRepairModel()) }
                 val lifecycleOwner = LocalLifecycleOwner.current
-                DisposableEffect(lifecycleOwner) {
+                DisposableEffect(lifecycleOwner, serviceConnected) {
                     val observer = LifecycleEventObserver { _, event ->
                         if (event == Lifecycle.Event.ON_RESUME) {
                             repairModel = deriveRepairModel()
@@ -233,7 +236,7 @@ class MainActivity : ComponentActivity() {
                             ?.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
                             ?.let { startActivity(it) }
                     },
-                    isAccessibilityEnabled = AgentService.instance != null,
+                    isAccessibilityEnabled = PermissionStateMonitor(this@MainActivity).isAccessibilityEnabled(),
                     isOverlayEnabled = Settings.canDrawOverlays(this@MainActivity),
                     onAccessibilityClick = { openAccessibilitySettings(this@MainActivity) },
                     onOverlayClick = { openOverlaySettings(this@MainActivity) },

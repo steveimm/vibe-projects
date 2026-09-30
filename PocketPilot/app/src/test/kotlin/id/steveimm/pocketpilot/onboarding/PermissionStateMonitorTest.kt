@@ -53,4 +53,12 @@ class PermissionStateMonitorTest {
         assertThat(model.overlayMissing).isTrue()
         assertThat(model.primaryIssue).isEqualTo("Overlay permission is revoked")
     }
+    @Test
+    fun `enabled service reconnect is distinguished from revoked permission`() {
+        val reconnecting = PermissionStateMonitor.deriveRepairModel(true, true, true, true, accessibilityConnected = false)!!
+        assertThat(reconnecting.accessibilityMissing).isFalse()
+        assertThat(reconnecting.accessibilityConnecting).isTrue()
+        assertThat(PermissionStateMonitor.deriveRepairModel(true, true, true, true, accessibilityConnected = true)).isNull()
+    }
+
 }

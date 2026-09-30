@@ -29,7 +29,7 @@ class ChatHeaderTest {
             }
         }
 
-        compose.onAllNodesWithContentDescription("New conversation").assertCountEquals(0)
+        compose.onAllNodesWithContentDescription("New chat").assertCountEquals(0)
     }
 
     @Test fun new_chat_button_visible_and_fires_callback_when_enabled() {
@@ -44,7 +44,7 @@ class ChatHeaderTest {
             }
         }
 
-        compose.onNodeWithContentDescription("New conversation").performClick()
+        compose.onNodeWithContentDescription("New chat").performClick()
         assertTrue("onNewChatClick was not invoked", clicked)
     }
 }

@@ -30,6 +30,7 @@ import java.util.Date
 fun MessageBubble(
     message: ChatMessage,
     onOpenApp: (String) -> Unit = {},
+    onInspect: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
@@ -42,6 +43,7 @@ fun MessageBubble(
         is ChatMessage.Agent -> AgentRow(
             message = message,
             onOpenApp = onOpenApp,
+            onInspect = onInspect,
             modifier = modifier,
         )
     }

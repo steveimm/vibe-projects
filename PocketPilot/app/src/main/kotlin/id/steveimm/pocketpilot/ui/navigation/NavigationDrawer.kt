@@ -154,7 +154,7 @@ private fun DrawerHeader(
     onClose: () -> Unit
 ) {
     RootPageHeader(
-        title = "Sessions",
+        title = "Chats",
         onClose = onClose,
         modifier = Modifier.padding(top = 12.dp, bottom = 12.dp),
     )
@@ -185,7 +185,7 @@ private fun NewSessionButton(
             tint = MaterialTheme.colorScheme.primary
         )
         Spacer(modifier = Modifier.width(8.dp))
-        Text("New Conversation")
+        Text("New chat")
     }
 }
 
@@ -340,7 +340,7 @@ private fun DrawerSessionItem(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Delete,
-                        contentDescription = "Delete session",
+                        contentDescription = "Delete chat",
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.pocketPilot.mutedText
                     )

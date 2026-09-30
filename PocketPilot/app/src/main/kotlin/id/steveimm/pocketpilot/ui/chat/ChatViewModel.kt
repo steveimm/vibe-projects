@@ -1,5 +1,6 @@
 package id.steveimm.pocketpilot.ui.chat
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -39,25 +40,30 @@ internal fun appendCompletionToMessages(
         timestamp: Long,
         taskId: String,
         isError: Boolean = false,
+        isStopped: Boolean = false,
         handoff: id.steveimm.pocketpilot.protocol.CompletionHandoff? = null,
 ) {
-    val terminalRowState = if (isError) RowState.Error else RowState.Complete
+    val terminalRowState = when {
+        isError -> RowState.Error
+        isStopped -> RowState.Stopped
+        else -> RowState.Complete
+    }
     val index = messages.indexOfLast { it is ChatMessage.Agent }
     if (index >= 0) {
         val current = messages[index] as ChatMessage.Agent
-        val newBlocks = applyCompletionToBlocks(current.contentBlocks, rawResult, isError)
+        val newBlocks = if (isStopped) current.contentBlocks else applyCompletionToBlocks(current.contentBlocks, rawResult, isError)
         messages[index] =
                 current.copy(
                         contentBlocks = newBlocks,
                         state = AgentMessageState.Complete,
-                        rowState = if (current.rowState == RowState.Error || isError) RowState.Error else RowState.Complete,
+                        rowState = if (current.rowState == RowState.Error) RowState.Error else terminalRowState,
                         completedTimestamp = timestamp,
                         handoff = handoff,
                 )
         return
     }
 
-    val seedBlocks = applyCompletionToBlocks(emptyList(), rawResult, isError)
+    val seedBlocks = if (isStopped) emptyList() else applyCompletionToBlocks(emptyList(), rawResult, isError)
     messages.add(
             ChatMessage.Agent(
                     id = taskId,
@@ -77,7 +83,7 @@ private fun applyCompletionToBlocks(
         isError: Boolean
 ): List<ContentBlock> {
     if (isError) {
-        return blocks + ContentBlock.Text("⚠️ ${completionSummary(rawResult)}")
+        return blocks + ContentBlock.Text(completionSummary(rawResult))
     }
     val answer = rawResult?.takeIf { it.isNotBlank() } ?: return blocks
     return MessageConverter.fromContentRecords(MessageConverter.toContentRecords(blocks).withFinalAnswer(answer))
@@ -129,7 +135,7 @@ internal fun appendStartupFailureMessages(
                     id = "startup-error-$timestamp",
                     timestamp = timestamp,
                     contentBlocks =
-                            listOf(ContentBlock.Text("⚠️ Failed to start: $errorMessage")),
+                            listOf(ContentBlock.Text("Failed to start: $errorMessage")),
                     state = AgentMessageState.Complete,
                     rowState = RowState.Error,
                     completedTimestamp = timestamp
@@ -171,6 +177,7 @@ class ChatViewModel(
     val messages: List<ChatMessage>
         get() = _messages
 
+    val inputDraft = mutableStateOf("")
     private val chatStateLock = Any()
 
     // Active event collection job
@@ -336,6 +343,7 @@ class ChatViewModel(
 
     /** Clear conversation history. */
     fun clearConversation() {
+        clearComposer()
         sessionHistoryController.clearConversation()
     }
 
@@ -348,14 +356,24 @@ class ChatViewModel(
     fun resumeSession(sessionInfo: SessionInfo, onResumed: (suspend () -> Unit)? = null) {
         eventCollectionJob?.cancel()
         eventCollectionJob = null
-        sessionHistoryController.resumeSession(sessionInfo, onResumed)
+        sessionHistoryController.resumeSession(sessionInfo) {
+            clearComposer()
+            onResumed?.invoke()
+        }
     }
 
     /** Start a new session, clearing current conversation. */
     fun startNewSession(model: String? = null, appVersion: String? = null) {
         eventCollectionJob?.cancel()
         eventCollectionJob = null
+        clearComposer()
         sessionHistoryController.startNewSession(model, appVersion)
+    }
+
+    private fun clearComposer() {
+        inputDraft.value = ""
+        _pendingInput.value = ""
+        dismissStartupError()
     }
 
     /** Delete a saved session. */

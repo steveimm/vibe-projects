@@ -126,12 +126,13 @@ internal class ChatEventReducer(
             timestamp = event.timestamp,
             taskId = event.taskId,
             isError = isError,
+            isStopped = event.outcome == id.steveimm.pocketpilot.protocol.TaskOutcome.USER_STOPPED,
             handoff = event.handoff,
         )
     }
 
     private fun handleError(event: SessionError) {
-        val errorText = "⚠️ ${event.message}"
+        val errorText = event.message
         val index = messages.indexOfLast { it is ChatMessage.Agent }
         if (index >= 0) {
             val current = messages[index] as ChatMessage.Agent
@@ -192,7 +193,6 @@ internal class ChatEventReducer(
                 contentBlocks = emptyList(),
                 state = AgentMessageState.Thinking,
                 rowState = RowState.Live,
-                userPrompt = text,
             )
         )
     }

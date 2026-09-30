@@ -61,26 +61,26 @@ internal fun SettingsHomePage(
                 onClick = { onNavigate(SettingsPage.MODEL_SERVER) }
             )
             SettingsNavigationRow(
-                title = "Agent Behavior",
+                title = "Automation",
                 subtitle = agentBehaviorSubtitle( platformMode, effectivePlatformMode, approvalMode),
                 onClick = { onNavigate(SettingsPage.AGENT_BEHAVIOR) }
             )
 
             SectionHeader("Access")
             SettingsNavigationRow(
-                title = "App Access",
+                title = "App access",
                 subtitle = appAccessSubtitle(appClassifier, approvalMode),
                 onClick = { onNavigate(SettingsPage.APP_ACCESS) }
             )
             SettingsNavigationRow(
-                title = "System & Debug",
+                title = "Permissions & diagnostics",
                 subtitle = permissionsSubtitle(isAccessibilityEnabled, isOverlayEnabled, debugMode),
                 onClick = { onNavigate(SettingsPage.PERMISSIONS_ADVANCED) }
             )
 
             SectionHeader("About")
             SettingsNavigationRow(
-                title = "Open Source Licenses",
+                title = "Open-source licenses",
                 subtitle = "PocketPilot is Apache 2.0 · view third-party notices",
                 onClick = { onNavigate(SettingsPage.OPEN_SOURCE_LICENSES) }
             )

@@ -137,6 +137,20 @@ class ChatCompletionMessageTest {
         )
 
         val last = messages.last() as ChatMessage.Agent
-        assertThat(last.contentBlocks).containsExactly(ContentBlock.Text("⚠️ boom"))
+        assertThat(last.contentBlocks).containsExactly(ContentBlock.Text("boom"))
     }
+    @Test
+    fun `stopping preserves partial response and survives history reload`() {
+        val partial = listOf(ContentBlock.Reasoning("Checking"), ContentBlock.Text("Partial answer"))
+        val messages = mutableListOf<ChatMessage>(ChatMessage.Agent(
+            id = "a", timestamp = 1L, contentBlocks = partial, state = AgentMessageState.Streaming,
+        ))
+        appendCompletionToMessages(messages, "Stopped", 2L, "t", isStopped = true)
+        val stopped = messages.single() as ChatMessage.Agent
+        assertThat(stopped.rowState).isEqualTo(id.steveimm.pocketpilot.ui.chat.model.RowState.Stopped)
+        assertThat(stopped.contentBlocks).isEqualTo(partial)
+        val converter = id.steveimm.pocketpilot.history.model.MessageConverter
+        assertThat(converter.fromRecord(converter.toRecord(stopped))).isEqualTo(stopped)
+    }
+
 }

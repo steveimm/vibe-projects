@@ -1,5 +1,6 @@
 package id.steveimm.pocketpilot.onboarding
 
+import android.content.ComponentName
 import android.content.Context
 import android.os.PowerManager
 import android.provider.Settings
@@ -8,7 +9,11 @@ import id.steveimm.pocketpilot.app.AgentService
 /** Live permission state checks. */
 class PermissionStateMonitor(private val context: Context) {
 
-    fun isAccessibilityEnabled(): Boolean = AgentService.instance != null
+    fun isAccessibilityEnabled(): Boolean {
+        val service = ComponentName(context, AgentService::class.java)
+        val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        return enabled.orEmpty().split(':').any { ComponentName.unflattenFromString(it) == service }
+    }
 
     fun isOverlayEnabled(): Boolean = Settings.canDrawOverlays(context)
 
@@ -21,10 +26,11 @@ class PermissionStateMonitor(private val context: Context) {
     data class PermissionRepairModel(
         val accessibilityMissing: Boolean,
         val overlayMissing: Boolean,
-        val batteryMissing: Boolean // only if was DONE during onboarding, not SKIPPED
+        val batteryMissing: Boolean,
+        val accessibilityConnecting: Boolean = false,
     ) {
         val hasAnyIssue: Boolean
-            get() = accessibilityMissing || overlayMissing || batteryMissing
+            get() = accessibilityMissing || overlayMissing || batteryMissing || accessibilityConnecting
 
         /** Highest-priority missing permission label. */
         val primaryIssue: String?
@@ -32,6 +38,7 @@ class PermissionStateMonitor(private val context: Context) {
                 accessibilityMissing -> "Accessibility service is disabled"
                 overlayMissing -> "Overlay permission is revoked"
                 batteryMissing -> "Battery optimization re-enabled"
+                accessibilityConnecting -> "Accessibility service is connecting"
                 else -> null
             }
     }
@@ -42,7 +49,8 @@ class PermissionStateMonitor(private val context: Context) {
             accessibilityEnabled = isAccessibilityEnabled(),
             overlayEnabled = isOverlayEnabled(),
             batteryIgnoringOptimizations = isBatteryOptimized(),
-            batteryWasDone = batteryWasDone
+            batteryWasDone = batteryWasDone,
+            accessibilityConnected = AgentService.connected.value,
         )
 
     companion object {
@@ -51,12 +59,14 @@ class PermissionStateMonitor(private val context: Context) {
             accessibilityEnabled: Boolean,
             overlayEnabled: Boolean,
             batteryIgnoringOptimizations: Boolean,
-            batteryWasDone: Boolean
+            batteryWasDone: Boolean,
+            accessibilityConnected: Boolean = accessibilityEnabled,
         ): PermissionRepairModel? {
             val model = PermissionRepairModel(
                 accessibilityMissing = !accessibilityEnabled,
                 overlayMissing = !overlayEnabled,
-                batteryMissing = batteryWasDone && !batteryIgnoringOptimizations
+                batteryMissing = batteryWasDone && !batteryIgnoringOptimizations,
+                accessibilityConnecting = accessibilityEnabled && !accessibilityConnected,
             )
             return if (model.hasAnyIssue) model else null
         }

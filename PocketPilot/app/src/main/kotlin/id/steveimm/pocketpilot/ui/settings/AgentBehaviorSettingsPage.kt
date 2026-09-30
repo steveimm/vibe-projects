@@ -32,7 +32,7 @@ internal fun AgentBehaviorSettingsPage(
     onClose: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        DetailPageHeader(title = "Agent Behavior", onBack = onBack, onClose = onClose)
+        DetailPageHeader(title = "Automation", onBack = onBack, onClose = onClose)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -111,7 +111,7 @@ private fun ApprovalSection(
                 if (approvalMode == ApprovalMode.SMART) {
                     Spacer(modifier = Modifier.height(MaterialTheme.pocketPilot.spacing.md))
                     SettingsNavigationRow(
-                        title = "App Access Rules",
+                        title = "App access rules",
                         subtitle = "Set allow, ask, or reject for each app",
                         onClick = onNavigateToAppAccess,
                     )

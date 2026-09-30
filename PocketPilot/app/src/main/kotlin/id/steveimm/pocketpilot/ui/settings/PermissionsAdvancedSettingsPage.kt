@@ -61,7 +61,7 @@ internal fun PermissionsAdvancedSettingsPage(
     onClose: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        DetailPageHeader(title = "System & Debug", onBack = onBack, onClose = onClose)
+        DetailPageHeader(title = "Permissions & diagnostics", onBack = onBack, onClose = onClose)
         Column(
             modifier = Modifier
                 .fillMaxWidth()

@@ -90,7 +90,7 @@ internal fun OpenSourceLicensesPage(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        DetailPageHeader(title = "Open Source Licenses", onBack = onBack, onClose = onClose)
+        DetailPageHeader(title = "Open-source licenses", onBack = onBack, onClose = onClose)
         when (val state = loadState) {
             LicenseLoadState.Loading -> LoadingNotice()
             is LicenseLoadState.Error -> ErrorNotice(

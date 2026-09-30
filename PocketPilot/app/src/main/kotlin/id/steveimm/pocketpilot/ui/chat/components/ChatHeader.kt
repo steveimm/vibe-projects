@@ -45,7 +45,7 @@ fun ChatHeader(
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (showNewChatButton && onNewChatClick != null) {
-            IconButton(onClick = onNewChatClick) { Icon(Icons.Rounded.Add, "New conversation") }
+            IconButton(onClick = onNewChatClick) { Icon(Icons.Rounded.Add, "New chat") }
         } else Spacer(Modifier.size(48.dp))
     }
 }

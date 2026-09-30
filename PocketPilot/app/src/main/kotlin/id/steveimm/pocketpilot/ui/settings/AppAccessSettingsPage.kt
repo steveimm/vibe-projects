@@ -97,7 +97,7 @@ internal fun AppAccessSettingsPage(
     }
     val visibleRows = remember(rows, query, filter, overrides) { filterRows(rows, appClassifier, query, filter) }
     Column(Modifier.fillMaxSize()) {
-        DetailPageHeader(title = "App Access", onBack = onBack, onClose = onClose)
+        DetailPageHeader(title = "App access", onBack = onBack, onClose = onClose)
         OutlinedTextField(
             value = query, onValueChange = { query = it }, label = { Text("Search apps") }, singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),

@@ -61,13 +61,24 @@ fun SettingsSheet(
     approvalMode: ApprovalMode = ApprovalMode.SMART,
     onApprovalModeChange: (ApprovalMode) -> Unit = {},
 ) {
-    var settingsPage by rememberSaveable(initialPage) { mutableStateOf(initialPage) }
+    var pages by rememberSaveable(initialPage) {
+        mutableStateOf(if (initialPage == SettingsPage.HOME) listOf(initialPage) else listOf(SettingsPage.HOME, initialPage))
+    }
+    var navigatingForward by rememberSaveable { mutableStateOf(true) }
+    val settingsPage = pages.last()
+    val navigate: (SettingsPage) -> Unit = { page ->
+        if (page != pages.last()) {
+            navigatingForward = true
+            pages = pages + page
+        }
+    }
+    val goBack: () -> Unit = {
+        navigatingForward = false
+        if (pages.size > 1) pages = pages.dropLast(1) else onDismiss()
+    }
     val reducedMotion = PocketPilotMotion.reducedMotion()
 
-    BackHandler {
-        if (settingsPage != SettingsPage.HOME) settingsPage = SettingsPage.HOME
-        else onDismiss()
-    }
+    BackHandler(onBack = goBack)
 
     Box(
         modifier = modifier
@@ -86,20 +97,19 @@ fun SettingsSheet(
                 targetState = settingsPage,
                 transitionSpec = {
                     if (reducedMotion) {
-                        // D1 §8: page slide collapses to a 120ms fade under reduced motion.
                         val fade = tween<Float>(durationMillis = PocketPilotMotion.Quick)
                         fadeIn(fade) togetherWith fadeOut(fade)
                     } else {
-                        // D1 §5: 240ms page slide on EaseOutCubic. Sourced from PocketPilotMotion
-                        // so settings shares the same page-transition cadence as the rest of the app.
                         val spec = tween<androidx.compose.ui.unit.IntOffset>(
                             durationMillis = PocketPilotMotion.PageSlide,
                             easing = PocketPilotMotion.EaseOutCubic,
                         )
-                        if (targetState == SettingsPage.HOME) {
-                            slideInHorizontally(spec) { -it } togetherWith slideOutHorizontally(spec) { it }
+                        if (!navigatingForward) {
+                            (slideInHorizontally(spec) { -it / 10 } + fadeIn()) togetherWith
+                                (slideOutHorizontally(spec) { it / 10 } + fadeOut())
                         } else {
-                            slideInHorizontally(spec) { it } togetherWith slideOutHorizontally(spec) { -it }
+                            (slideInHorizontally(spec) { it / 10 } + fadeIn()) togetherWith
+                                (slideOutHorizontally(spec) { -it / 10 } + fadeOut())
                         }
                     }
                 },
@@ -115,12 +125,12 @@ fun SettingsSheet(
                         effectivePlatformMode = effectivePlatformMode,
                         appClassifier = appClassifier,
                         approvalMode = approvalMode,
-                        onNavigate = { settingsPage = it },
+                        onNavigate = navigate,
                         onDismiss = onDismiss
                     )
                     SettingsPage.MODEL_SERVER -> ModelServerSettingsPage(
                         settings = settings,
-                        onBack = { settingsPage = SettingsPage.HOME },
+                        onBack = goBack,
                         onClose = onDismiss,
                     )
                     SettingsPage.AGENT_BEHAVIOR -> AgentBehaviorSettingsPage(
@@ -129,8 +139,8 @@ fun SettingsSheet(
                         onPlatformModeChange = onPlatformModeChange,
                         approvalMode = approvalMode,
                         onApprovalModeChange = onApprovalModeChange,
-                        onNavigateToAppAccess = { settingsPage = SettingsPage.APP_ACCESS },
-                        onBack = { settingsPage = SettingsPage.HOME },
+                        onNavigateToAppAccess = { navigate(SettingsPage.APP_ACCESS) },
+                        onBack = goBack,
                         onClose = onDismiss,
                     )
                     SettingsPage.PERMISSIONS_ADVANCED -> PermissionsAdvancedSettingsPage(
@@ -142,17 +152,17 @@ fun SettingsSheet(
                         onDebugModeChange = onDebugModeChange,
                         traceEnabled = traceEnabled,
                         onTraceEnabledChange = onTraceEnabledChange,
-                        onBack = { settingsPage = SettingsPage.HOME },
+                        onBack = goBack,
                         onClose = onDismiss
                     )
                     SettingsPage.APP_ACCESS -> AppAccessSettingsPage(
                         appClassifier = appClassifier,
                         approvalMode = approvalMode,
-                        onBack = { settingsPage = SettingsPage.HOME },
+                        onBack = goBack,
                         onClose = onDismiss,
                     )
                     SettingsPage.OPEN_SOURCE_LICENSES -> OpenSourceLicensesPage(
-                        onBack = { settingsPage = SettingsPage.HOME },
+                        onBack = goBack,
                         onClose = onDismiss,
                     )
                 }

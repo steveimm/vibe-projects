@@ -53,6 +53,9 @@ class AgentService : AccessibilityService() {
                 serviceReference = WeakReference(value)
             }
 
+        private val _connected = MutableStateFlow(false)
+        val connected: StateFlow<Boolean> = _connected.asStateFlow()
+
         private val _statusFlow = MutableStateFlow<String>("")
         val statusFlow: StateFlow<String> = _statusFlow.asStateFlow()
     }
@@ -219,6 +222,7 @@ class AgentService : AccessibilityService() {
 
         registerDebugStopReceiverIfNeeded(this, stopReceiver)
         registerDebugExecReceiverIfNeeded(this, debugExecReceiver)
+        _connected.value = true
     }
 
     fun setCompactOverlaysEnabled(enabled: Boolean) {
@@ -249,6 +253,7 @@ class AgentService : AccessibilityService() {
         isServiceActive = false
         if (instance === this) {
             instance = null
+            _connected.value = false
             _statusFlow.value = ""
         }
 

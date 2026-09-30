@@ -427,6 +427,7 @@ class SessionRecordingService(
             val now = System.currentTimeMillis()
             val rowState = when (lastTaskOutcome) {
                 TaskOutcome.ERROR -> "error"
+                TaskOutcome.USER_STOPPED -> "stopped"
                 null -> null
                 else -> "complete"
             }

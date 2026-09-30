@@ -140,7 +140,7 @@ class ChatEventReducerTest {
         val agent = f.messages.last() as ChatMessage.Agent
         assertThat(agent.state).isEqualTo(AgentMessageState.Complete)
         val lastText = agent.contentBlocks.filterIsInstance<ContentBlock.Text>().last()
-        assertThat(lastText.text).isEqualTo("⚠️ boom")
+        assertThat(lastText.text).isEqualTo("boom")
     }
 
     @Test
@@ -223,7 +223,7 @@ class ChatEventReducerTest {
         assertThat(agent.state).isEqualTo(AgentMessageState.Complete)
         assertThat(agent.rowState).isEqualTo(RowState.Error)
         val lastText = agent.contentBlocks.filterIsInstance<ContentBlock.Text>().last()
-        assertThat(lastText.text).startsWith("⚠️")
+        assertThat(lastText.text).isEqualTo("something broke")
     }
 
     @Test

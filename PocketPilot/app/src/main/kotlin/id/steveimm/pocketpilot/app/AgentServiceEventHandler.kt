@@ -62,11 +62,11 @@ internal class AgentServiceEventHandler(
                 // Persist the closing answer as FinalText only when there IS one.
                 val realAnswer = event.result?.takeIf { it.isNotBlank() }
                 when {
-                    realAnswer != null && !event.outcome.isError() ->
+                    realAnswer != null && event.outcome == TaskOutcome.FINISHED ->
                         recordingService?.recordFinalAnswer(realAnswer)
                     event.outcome.isError() ->
                         recordingService?.recordErrorText(
-                            "⚠ ${realAnswer ?: defaultErrorText(event.outcome)}"
+                            realAnswer ?: defaultErrorText(event.outcome)
                         )
                 }
                 // Finalize the agent message buffer so the session file
@@ -118,7 +118,7 @@ internal class AgentServiceEventHandler(
                 // Record the error text + outcome to the active agent message before it finalizes, so the persisted row carries the actual
                 // error string instead of vanishing.
                 recordingService?.recordTaskOutcome(TaskOutcome.ERROR)
-                recordingService?.recordErrorText("⚠ ${event.message}")
+                recordingService?.recordErrorText(event.message)
                 recordingService?.completeAgentMessage()
                 updateStatus("❌ Error: ${event.message}")
                 overlay?.onSessionError(event.message)

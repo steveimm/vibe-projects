@@ -27,8 +27,8 @@ class SettingsNavTest {
         compose.setContent { TestSettingsSheet() }
 
         compose.onNodeWithText("Model server").assertExists()
-        compose.onNodeWithText("Agent Behavior").assertExists()
-        compose.onNodeWithText("System & Debug").assertExists()
+        compose.onNodeWithText("Automation").assertExists()
+        compose.onNodeWithText("Permissions & diagnostics").assertExists()
 
         // Sub-page unique markers must be absent on home.
         compose.onAllNodesWithText("Server URL").assertCountEquals(0)
@@ -58,8 +58,8 @@ class SettingsNavTest {
 
         // Home markers back, server form gone.
         compose.onAllNodesWithText("Server URL").assertCountEquals(0)
-        compose.onNodeWithText("Agent Behavior").assertExists()
-        compose.onNodeWithText("System & Debug").assertExists()
+        compose.onNodeWithText("Automation").assertExists()
+        compose.onNodeWithText("Permissions & diagnostics").assertExists()
     }
 
     // S4: Page state is rememberSaveable — survives config change (simulated via StateRestorationTester).
@@ -67,7 +67,7 @@ class SettingsNavTest {
         val restore = StateRestorationTester(compose)
         restore.setContent { TestSettingsSheet() }
 
-        compose.onNodeWithText("Agent Behavior").performClick()
+        compose.onNodeWithText("Automation").performClick()
         // "Approval" is a section title that only renders on the Agent Behavior sub-page.
         assertTrue(
             "Agent Behavior sub-page did not render 'Approval' row",
