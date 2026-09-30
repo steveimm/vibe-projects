@@ -10,7 +10,6 @@ PocketPilot is a Kotlin/Jetpack Compose Android automation app using a user-conf
 - [Sessions](infra/session.md): ownership, lifecycle, and checkpoints.
 - [Model server](infra/llm.md): endpoint configuration and transport.
 - [Settings](app/settings.md): user controls and app access.
-- [Termux](app/termux_shell.md): optional workspace commands.
 - [History](app/history/runtime.md): recording and restoration.
 - [Protocol](protocol/overview.md): configuration, operations, and events.
 - [State machines](state_machines/README.md): lifecycle details.

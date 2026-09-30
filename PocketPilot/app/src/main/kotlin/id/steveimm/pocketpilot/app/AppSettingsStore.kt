@@ -5,9 +5,6 @@ import id.steveimm.pocketpilot.protocol.ApprovalMode
 import id.steveimm.pocketpilot.protocol.AppTier
 import id.steveimm.pocketpilot.protocol.PlatformMode
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
@@ -17,7 +14,6 @@ data class AppSettings(
     val debugMode: Boolean = AppSettingsStore.DEFAULT_DEBUG_MODE,
     val platformMode: PlatformMode = AppSettingsStore.DEFAULT_PLATFORM_MODE,
     val traceEnabled: Boolean = AppSettingsStore.DEFAULT_TRACE_ENABLED,
-    val termuxShellEnabled: Boolean = AppSettingsStore.DEFAULT_TERMUX_SHELL_ENABLED,
     val approvalMode: ApprovalMode = AppSettingsStore.DEFAULT_APPROVAL_MODE,
 )
 
@@ -31,22 +27,18 @@ class AppSettingsStore(context: Context) {
         private const val KEY_PLATFORM_MODE = "platform_mode"
         private const val KEY_USER_APP_OVERRIDES = "user_app_overrides"
         private const val KEY_TRACE_ENABLED = "trace_enabled"
-        private const val KEY_TERMUX_SHELL_ENABLED = "termux_shell_enabled"
         private const val KEY_APPROVAL_MODE = "approval_mode"
         private const val KEY_COMPACT_OVERLAYS = "compact_overlays"
 
         const val DEFAULT_DEBUG_MODE = false
         val DEFAULT_PLATFORM_MODE = PlatformMode.ACCESSIBILITY
         const val DEFAULT_TRACE_ENABLED = false
-        const val DEFAULT_TERMUX_SHELL_ENABLED = true
         const val DEFAULT_COMPACT_OVERLAYS = true
         val DEFAULT_APPROVAL_MODE = ApprovalMode.SMART
     }
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    private val _termuxShellEnabled = MutableStateFlow(loadTermuxShellEnabled())
-    val termuxShellEnabled: StateFlow<Boolean> = _termuxShellEnabled.asStateFlow()
 
     fun load(): AppSettings {
         val url = prefs.getString(KEY_SERVER_BASE_URL, null)
@@ -61,7 +53,6 @@ class AppSettingsStore(context: Context) {
             debugMode = prefs.getBoolean(KEY_DEBUG_MODE, DEFAULT_DEBUG_MODE),
             platformMode = readEnum(KEY_PLATFORM_MODE, DEFAULT_PLATFORM_MODE),
             traceEnabled = prefs.getBoolean(KEY_TRACE_ENABLED, DEFAULT_TRACE_ENABLED),
-            termuxShellEnabled = loadTermuxShellEnabled(),
             approvalMode = readEnum(KEY_APPROVAL_MODE, DEFAULT_APPROVAL_MODE)
                 .takeUnless { it == ApprovalMode.ALWAYS_ASK } ?: DEFAULT_APPROVAL_MODE,
         )
@@ -74,16 +65,6 @@ class AppSettingsStore(context: Context) {
     private inline fun <reified T : Enum<T>> readEnum(key: String, default: T): T {
         val name = prefs.getString(key, default.name)
         return enumValues<T>().firstOrNull { it.name == name } ?: default
-    }
-
-    fun loadTermuxShellEnabled(): Boolean =
-        prefs.getBoolean(KEY_TERMUX_SHELL_ENABLED, DEFAULT_TERMUX_SHELL_ENABLED)
-
-    suspend fun setTermuxShellEnabled(value: Boolean) {
-        withContext(Dispatchers.IO) {
-            prefs.edit().putBoolean(KEY_TERMUX_SHELL_ENABLED, value).apply()
-        }
-        _termuxShellEnabled.value = value
     }
 
     fun saveDebugMode(value: Boolean) {

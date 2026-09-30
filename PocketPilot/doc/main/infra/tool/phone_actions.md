@@ -21,7 +21,7 @@ Taps and text entry require a current screenshot. The caller must tap a field be
 
 `parallel_tool_calls=false` requests serial calls. If a response still contains multiple calls, all are rejected before execution and each receives a correlated error. Invalid JSON, unavailable tools, missing fields, wrong types, unknown fields, enums, and numeric bounds produce explicit feedback. The runtime never executes malformed arguments as an empty default call.
 
-App-access policy and cancellation apply to every action. `back` and `home` remain available to leave blocked apps. The optional `termux_shell` tool keeps its separate bridge contract.
+App-access policy and cancellation apply to every action. `back` and `home` remain available to leave blocked apps.
 
 Owners: `TouchTools.kt`, `ToolParameters.kt`, `ToolRouter.kt`, `Turn.kt`, and `TurnExecutionPhaseRunner.kt`.
 

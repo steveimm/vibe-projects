@@ -10,7 +10,7 @@ sealed class ToolName(
         get() =
             when (this) {
                 Tap, LongPress, Swipe, TypeText, OpenApp, SystemButton -> true
-                ReadScreen, AskUser, TermuxShell -> false
+                ReadScreen, AskUser -> false
                 is Unknown -> true
             }
 
@@ -38,11 +38,6 @@ sealed class ToolName(
         canonical = "ask_user",
         displayName = "Ask user"
     )
-    data object TermuxShell : ToolName(
-        raw = "termux_shell",
-        canonical = "termux_shell",
-        displayName = "Termux shell"
-    )
     data class Unknown(private val name: String) : ToolName(
         raw = name,
         canonical = normalizeName(name),
@@ -60,7 +55,6 @@ sealed class ToolName(
                 ReadScreen.canonical -> ReadScreen
                 SystemButton.canonical -> SystemButton
                 AskUser.canonical -> AskUser
-                TermuxShell.canonical -> TermuxShell
                 else -> Unknown(raw)
             }
         }

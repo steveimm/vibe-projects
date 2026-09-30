@@ -1,6 +1,6 @@
 # Model request assembly
 
-`SessionAgentRunner` starts with `DefaultAgentDefinition.systemPrompt`, substitutes the current date, and adds workspace-command guidance only when Termux is available.
+`SessionAgentRunner` starts with `DefaultAgentDefinition.systemPrompt`, substitutes the current date, and exposes the native phone tools.
 
 `TurnPlanningPhaseRunner` captures one current observation and invokes `PromptBuilder`. The request contains:
 

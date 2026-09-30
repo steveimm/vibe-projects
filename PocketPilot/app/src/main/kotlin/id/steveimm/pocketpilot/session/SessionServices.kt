@@ -2,7 +2,6 @@ package id.steveimm.pocketpilot.session
 
 import android.content.Context
 import android.util.Log
-import id.steveimm.pocketpilot.app.AppSettingsStore
 import id.steveimm.pocketpilot.auth.ServerCredentialStore
 import id.steveimm.pocketpilot.history.HistoryManager
 import id.steveimm.pocketpilot.history.SessionRecordingService
@@ -12,35 +11,12 @@ import id.steveimm.pocketpilot.llm.ModelCatalog
 import id.steveimm.pocketpilot.llm.ModelCatalogRepositoryHolder
 import id.steveimm.pocketpilot.platform.AndroidPlatform
 import id.steveimm.pocketpilot.protocol.SessionConfig
-import id.steveimm.pocketpilot.termux.TermuxBridgeManager
-import id.steveimm.pocketpilot.termux.TermuxBridgeStatus
-import id.steveimm.pocketpilot.termux.TermuxCapabilitySnapshot
 import id.steveimm.pocketpilot.tool.AppClassifier
 import id.steveimm.pocketpilot.tool.PolicyEngine
 import id.steveimm.pocketpilot.tool.ToolRegistry
 import id.steveimm.pocketpilot.tool.ToolRouter
 import id.steveimm.pocketpilot.trace.TraceRecorder
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
-
-internal interface TermuxSessionBridge {
-    suspend fun healthCheck(): TermuxBridgeStatus
-    suspend fun ensureReadyForSession(timeoutMs: Long): TermuxBridgeStatus = healthCheck()
-    fun snapshot(enabled: Boolean): TermuxCapabilitySnapshot
-}
-
-private class TermuxBridgeManagerSessionBridge(
-        private val manager: TermuxBridgeManager
-) : TermuxSessionBridge {
-    override suspend fun healthCheck(): TermuxBridgeStatus = manager.healthCheck()
-
-    override suspend fun ensureReadyForSession(timeoutMs: Long): TermuxBridgeStatus =
-            manager.ensureReadyForSession(timeoutMs)
-
-    override fun snapshot(enabled: Boolean): TermuxCapabilitySnapshot = manager.snapshot(enabled)
-}
 
 /** SessionServices - Dependency Injection container for all session-scoped services. */
 class SessionServices internal constructor(
@@ -56,12 +32,10 @@ class SessionServices internal constructor(
         val llmClientFactory: LLMClientFactory,
         val traceRecorder: TraceRecorder,
         val recordingService: SessionRecordingService,
-        val termuxSnapshot: TermuxCapabilitySnapshot = TermuxCapabilitySnapshot.Unavailable,
         val userResponseChannel: UserResponseChannel = UserResponseChannel(),
 ) {
     companion object {
         private const val TAG = "SessionServices"
-        private const val TERMUX_HEALTH_CHECK_TIMEOUT_MS = 2_000L
 
         /** Create a new SessionServices container with all services initialized. */
         fun create(
@@ -86,18 +60,10 @@ class SessionServices internal constructor(
             val llmClient: LLMClient = llmBootstrap.llmClient
             Log.d(TAG, "Created LLMClient: ${llmClient.javaClass.simpleName}")
 
-            val settingsStore = AppSettingsStore(context)
-            val termuxManager = TermuxBridgeManager.get(context)
-            val termuxSnapshot = captureTermuxSnapshot(
-                    bridge = TermuxBridgeManagerSessionBridge(termuxManager),
-                    termuxShellEnabled = settingsStore.termuxShellEnabled.value
-            )
             val tooling = SessionToolingBootstrapper.create(
                 approvalMode = config.approvalMode,
                 appClassifier = appClassifier,
-                termuxSnapshot = termuxSnapshot,
                 excludedTools = config.excludedTools,
-                context = context.applicationContext
             )
             val policyEngine = tooling.policyEngine
             val toolRegistry = tooling.toolRegistry
@@ -120,26 +86,7 @@ class SessionServices internal constructor(
                     llmClientFactory = llmClientFactory,
                     traceRecorder = traceRecorder,
                     recordingService = recordingService,
-                    termuxSnapshot = termuxSnapshot,
             )
-        }
-
-        internal fun captureTermuxSnapshot(
-                bridge: TermuxSessionBridge,
-                termuxShellEnabled: Boolean,
-                timeoutMs: Long = TERMUX_HEALTH_CHECK_TIMEOUT_MS
-        ): TermuxCapabilitySnapshot {
-            runCatching {
-                runBlocking(Dispatchers.IO) {
-                    withTimeoutOrNull(timeoutMs) {
-                        bridge.ensureReadyForSession(timeoutMs)
-                    }
-                }
-            }.onFailure { error ->
-                Log.w(TAG, "Termux readiness probe before session snapshot failed", error)
-            }
-
-            return bridge.snapshot(termuxShellEnabled)
         }
 
     }

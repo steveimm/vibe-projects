@@ -32,7 +32,6 @@ private fun resolveToolDisplay(toolName: String): ToolDisplay {
         ToolName.ReadScreen -> ToolDisplay(tool.displayName, Icons.Rounded.HourglassEmpty)
         ToolName.SystemButton -> ToolDisplay(tool.displayName, Icons.Rounded.TouchApp)
         ToolName.AskUser -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
-        ToolName.TermuxShell -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
         is ToolName.Unknown -> ToolDisplay(tool.displayName, Icons.Rounded.Build)
     }
 }

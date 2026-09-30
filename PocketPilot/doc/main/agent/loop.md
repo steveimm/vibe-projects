@@ -23,7 +23,7 @@ PocketPilot runs one agent. Each new user message is sent unchanged with convers
 | `PromptBuilder` | Conversation history and current screen observation |
 | `AgentTrace` | Requests, responses, screenshots, tool outcomes and summary |
 
-App-access policy is enforced by `ToolRouter` and `PolicyEngine`. Screens from blocked apps are masked before model input. The optional Termux bridge is advertised only when available.
+App-access policy is enforced by `ToolRouter` and `PolicyEngine`. Screens from blocked apps are masked before model input.
 
 See [runtime state machine](../state_machines/agent_run_loop.md) and [tool roster](../infra/tools.md).
 

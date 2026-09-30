@@ -10,7 +10,7 @@ Enter an HTTP(S) API base URL or full Chat Completions URL, an exact model ID, a
 
 Perception options control the screen data provided to the model. Display options choose accessibility or the Shizuku-backed virtual display. Approval mode controls whether non-blocked app actions ask for approval.
 
-The only optional additional tool is Termux shell. Its settings show installation, permission, and bridge readiness. Enabling a preference alone does not expose an unavailable tool.
+Phone actions use Android directly. There is no external shell setup or command permission.
 
 ## App access
 

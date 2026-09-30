@@ -32,7 +32,7 @@ class SettingsNavTest {
 
         // Sub-page unique markers must be absent on home.
         compose.onAllNodesWithText("Server URL").assertCountEquals(0)
-        compose.onAllNodesWithText("Termux Shell").assertCountEquals(0)
+        compose.onAllNodesWithText("Approval").assertCountEquals(0)
         compose.onAllNodesWithText("Session Traces").assertCountEquals(0)
     }
 
@@ -68,10 +68,10 @@ class SettingsNavTest {
         restore.setContent { TestSettingsSheet() }
 
         compose.onNodeWithText("Agent Behavior").performClick()
-        // "Termux Shell" is a Tools-section row title that only renders on the Agent Behavior sub-page.
+        // "Approval" is a section title that only renders on the Agent Behavior sub-page.
         assertTrue(
-            "Agent Behavior sub-page did not render 'Termux Shell' row",
-            compose.onAllNodesWithText("Termux Shell").fetchSemanticsNodes().isNotEmpty()
+            "Agent Behavior sub-page did not render 'Approval' row",
+            compose.onAllNodesWithText("Approval").fetchSemanticsNodes().isNotEmpty()
         )
 
         restore.emulateSavedInstanceStateRestore()
@@ -79,7 +79,7 @@ class SettingsNavTest {
         // Still on Agent Behavior sub-page.
         assertTrue(
             "Sub-page state lost after restoration",
-            compose.onAllNodesWithText("Termux Shell").fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodesWithText("Approval").fetchSemanticsNodes().isNotEmpty()
         )
         assertTrue(
             "Back icon should persist across restoration",

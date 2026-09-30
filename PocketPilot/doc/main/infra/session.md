@@ -2,7 +2,7 @@
 
 `AgentSession` serializes lifecycle operations through its actor. A session owns conversation history, model clients, platform access, tool routing, approval policy, user-response handling, recording, and tracing. There is one agent per running task.
 
-`SessionServices.create()` resolves the configured server/model, snapshots Termux availability, registers the allowed tools, and creates history/recording services. No browser runtime, skill manager, planning state, or persistent-memory service is created.
+`SessionServices.create()` resolves the configured server/model, registers the allowed tools, and creates history/recording services. No browser runtime, skill manager, planning state, or persistent-memory service is created.
 
 `SessionAgentRunner` builds the agent configuration and runs `Agent`. It relays completion through the session's serialized lifecycle path. User input, pause, resume, stop, and approvals stay owned by the session.
 

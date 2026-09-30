@@ -52,7 +52,6 @@ internal fun AgentBehaviorSettingsPage(
                 onPlatformModeChange = onPlatformModeChange,
             )
             Spacer(modifier = Modifier.height(20.dp))
-            ToolsSection()
             Fleuron()
             Spacer(modifier = Modifier.height(32.dp))
         }

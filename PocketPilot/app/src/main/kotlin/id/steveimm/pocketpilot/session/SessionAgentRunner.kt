@@ -56,7 +56,6 @@ internal class SessionAgentRunner(
     fun start(taskInput: String, taskId: String) {
         val agentDef = DefaultAgentDefinition
         val resolvedAgentDef: ResolvedAgentDefinition = agentDef.resolve(
-            snapshot = services.termuxSnapshot,
             excludedTools = services.config.excludedTools.toToolNames()
         )
 

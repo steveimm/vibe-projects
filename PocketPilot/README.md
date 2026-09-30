@@ -52,7 +52,6 @@ PocketPilot is an open-source **agent harness for Android**. Give it a natural-l
 - 🧠 **A full on-device agent harness, in the making.** Built in Kotlin, native to Android. ReAct loop, no external orchestrator. The pieces:
   - 🔩 **Primitive toolset** — `tap`, `long_press`, `swipe`, `type_text`, `open_app` + `system_button` for navigation.
 - 🛠️ **Advanced agent-first tools.** Programmatic escapes from tap-and-swipe:
-  - 🐧 **`termux_shell`** — full Linux toolchain on the device: `python` / `git` / `curl` / `jq`, plus anything you `pkg install`. Needs [Termux](https://github.com/termux/termux-app).
 - 🪟 **Virtual display platform.** Hybrid background sessions via Shizuku — the agent operates a parallel Android display so the foreground stays yours.
 - 🔌 **Local model server.** Supply the server URL and model ID. Discover models from `/models` or enter an ID manually. Requests have no cloud default or fallback.
 - 👁️ **Visual phone control.** The assistant reads the screen when needed and after phone actions, with normalized touch coordinates. Use a local model that accepts images.
@@ -65,7 +64,7 @@ PocketPilot is an open-source **agent harness for Android**. Give it a natural-l
 
 - An Android device or emulator running **API 31+** (Android 12 or later)
 - A self-hosted **OpenAI-compatible Chat Completions server** reachable from the phone
-- *(Optional, for Power Tools)* [Shizuku](https://shizuku.rikka.app/) and/or [Termux from F-Droid](https://f-droid.org/packages/com.termux/)
+- *(Optional, for Power Tools)* [Shizuku](https://shizuku.rikka.app/)
 
 ### Install the app
 
@@ -101,14 +100,13 @@ PocketPilot gets noticeably more capable when you opt in to two optional integra
 > [!NOTE]
 
 > [!NOTE]
-> **Termux** (install from [F-Droid](https://f-droid.org/packages/com.termux/), *not* the Play Store version — it's outdated) — unlocks the **`termux_shell`** tool. After install, open Termux once, run `pkg install termux-api`, then enable the bridge in PocketPilot Settings. Details: [`doc/main/app/termux_shell.md`](doc/main/app/termux_shell.md).
 
 ## 🏗️ Architecture
 
 High-level layers:
 
 - **Agent loop** — Screen observation, native reasoning, tool execution, and conversation history
-- **Tools** — UI primitives (`tap`, `long_press`, `swipe`, `type_text`, `open_app`, `system_button`); user handoff and native final answers; optional `termux_shell` workspace commands
+- **Tools** — UI primitives (`tap`, `long_press`, `swipe`, `type_text`, `open_app`, `system_button`); user handoff and native final answers
 - **Platforms** — `AccessibilityPlatform` for normal use, `VirtualDisplayPlatform` (Shizuku) for hybrid background sessions
 - **LLM** — Chat Completions client for the configured server, optional model discovery, and bounded retries
 
@@ -132,7 +130,7 @@ See the [Privacy Policy](PRIVACY_POLICY.md). In brief:
 <!-- TODO(publish-contributing): link CONTRIBUTING.md once it lands. -->
 A `CONTRIBUTING.md` is on the way. Until then: open an issue to discuss non-trivial changes, follow Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`), and run `./gradlew clean assembleDebug lint test` before opening a PR.
 
-Good first contributions: new tools (look at how `termux_shell` are wired up), model-server compatibility, perception improvements, and Smart Capsule UX polish.
+Good first contributions: model-server compatibility, perception improvements, and Smart Capsule UX polish.
 
 ### Dev tools tour
 
