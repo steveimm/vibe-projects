@@ -64,10 +64,9 @@ internal fun AgentRow(
     ) {
         if (traceBlocks.isNotEmpty()) {
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().messageShadow(MaterialTheme.shapes.small),
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
                 shape = MaterialTheme.shapes.small,
-                shadowElevation = MaterialTheme.pocketPilot.elevation.card,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 Column {

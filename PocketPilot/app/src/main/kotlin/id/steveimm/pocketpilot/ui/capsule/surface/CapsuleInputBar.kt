@@ -271,7 +271,8 @@ internal fun CapsuleInputBar(
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             modifier = Modifier
                 .weight(1f)
-                .padding(horizontal = 4.dp, vertical = 12.dp)
+                .align(Alignment.CenterVertically)
+                .padding(horizontal = 4.dp, vertical = 14.dp)
                 .focusRequester(focusRequester)
                 .onFocusChanged { onInputFocusChanged(it.isFocused) }
                 .onPreviewKeyEvent { event ->

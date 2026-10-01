@@ -14,6 +14,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -64,10 +67,10 @@ private fun UserBubble(
         Surface(
             modifier = Modifier
                 .widthIn(max = maxWidth)
+                .messageShadow(UserBubbleShape)
                 .testTag("qa-user-bubble"),
             color = MaterialTheme.colorScheme.primaryContainer,
             shape = UserBubbleShape,
-            shadowElevation = MaterialTheme.pocketPilot.elevation.card,
             border = MaterialTheme.pocketPilot.surfaceBorder,
         ) {
             Column(
@@ -96,6 +99,15 @@ private fun UserBubble(
         }
     }
 }
+
+// Ambient shadows stay close to the edge even when a message is taller than the viewport.
+@Composable
+internal fun Modifier.messageShadow(shape: Shape): Modifier = shadow(
+    elevation = MaterialTheme.pocketPilot.elevation.card,
+    shape = shape,
+    clip = false,
+    spotColor = Color.Transparent,
+)
 
 // Use the platform's time format (respects user's 12/24h preference and locale).
 private fun formatTime(context: Context, timestamp: Long): String =
