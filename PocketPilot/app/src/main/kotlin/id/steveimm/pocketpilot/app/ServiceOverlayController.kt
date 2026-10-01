@@ -194,7 +194,7 @@ class ServiceOverlayController(
         if (overlaysDismissed || !screenAvailable || dataOperationInProgress) {
             onIndicatorsVisibilityChanged(false)
             capsuleManager.hide(immediate = true)
-            bubbleManager?.hide()
+            bubbleManager?.hide(immediate = !screenAvailable || dataOperationInProgress)
             edgeGlowManager.hideImmediately()
             return
         }
@@ -266,12 +266,13 @@ class ServiceOverlayController(
         applyVisibility()
     }
 
-    fun dismissOverlays(stopTask: Boolean = true) {
+    fun dismissOverlays(stopTask: Boolean = true, immediate: Boolean = false) {
         dragTakeover.cancel()
         showPreference = ShowPreference.BUBBLE
         openAppAfterTakeover = false
         overlaysDismissed = true
         if (stopTask && stateHolder.onStopRequested()) onStop()
+        bubbleManager?.hide(immediate)
         applyVisibility()
     }
 
@@ -333,7 +334,7 @@ class ServiceOverlayController(
         dragTakeover.cancel()
         capsuleManager.hide()
         edgeGlowManager.hideImmediately()
-        bubbleManager?.hide()
+        bubbleManager?.hide(immediate = true)
     }
 
     fun dispose() {

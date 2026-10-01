@@ -10,6 +10,8 @@ Drag uses absolute screen touch positions and Android's touch-slop threshold to 
 
 Dragging reveals a dismiss target at the bottom center. Dropping the bubble there stops active work and dismisses every overlay. Repositioning pauses active work during the drag and resumes only the pause that drag requested. Manual takeover, Stop, dismissal, locking, or opening MainActivity cancels that automatic resume. Plain taps open the controls.
 
+The dismiss target fades and slides upward when a drag starts, then fades downward when the drag ends or the bubble is dismissed. Reduced motion skips these transitions. Lock, Recents removal, data operations, and service teardown remove the target immediately.
+
 Tasks started from the main chat use the bubble; submitting through an open panel keeps the panel open. Completion and session expiry preserve the user’s expanded/minimized choice. Questions, approvals, and errors open the controls for attention, after which the user may minimize them. The bubble uses the app’s primary color; task status stays in the panel. The edge glow is limited to active tasks.
 
 Completed results remain in `CapsuleStateHolder` without an automatic hide timer, including after idle session expiry. Expanded controls show the result as scrollable Markdown, navigation, and a composer. Streaming Markdown keeps its last parsed content visible until the next update finishes parsing off the main thread, avoiding repeated layout changes between raw text and formatted text. The main chat returns directly to its idle composer after completion.

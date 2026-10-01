@@ -37,7 +37,9 @@ internal class DismissTargetOverlay(
     savedStateRegistryOwner: SavedStateRegistryOwner,
 ) {
     private val manager = service.getSystemService(WindowManager::class.java)
-    private val host = OverlayComposeHost(service, lifecycleOwner, savedStateRegistryOwner, manager, "DismissTargetOverlay")
+    private val host = OverlayComposeHost(
+        service, lifecycleOwner, savedStateRegistryOwner, manager, "DismissTargetOverlay", animateVisibility = true,
+    )
     private val highlighted = mutableStateOf(false)
     var center = PointF()
         private set
@@ -80,7 +82,10 @@ internal class DismissTargetOverlay(
 
     fun contains(x: Float, y: Float): Boolean = host.isShowing() && hypot(x - center.x, y - center.y) <= dp(64)
     fun highlight(value: Boolean) { highlighted.value = value }
-    fun hide() { highlighted.value = false; host.hideImmediately() }
+    fun hide(immediate: Boolean = false) {
+        highlighted.value = false
+        if (immediate) host.hideImmediately() else host.hide()
+    }
     fun suppressForScreenshot(): AutoCloseable = host.suppressForScreenshot()
     private fun dp(value: Int): Int = (value * service.resources.displayMetrics.density).roundToInt()
 }

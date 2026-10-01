@@ -301,7 +301,7 @@ class AgentService : AccessibilityService() {
 
         Log.i(TAG, "PocketPilot removed from Recents; dismissing controls and ending the session")
         val controller = overlayController
-        if (controller != null) controller.dismissOverlays(stopTask = false)
+        if (controller != null) controller.dismissOverlays(stopTask = false, immediate = true)
         else getSharedPreferences("overlay_bubble", MODE_PRIVATE).edit().putBoolean("dismissed", true).apply()
         newConversation()
         stopSelf()

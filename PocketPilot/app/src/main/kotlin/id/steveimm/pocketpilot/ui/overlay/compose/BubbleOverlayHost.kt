@@ -108,15 +108,15 @@ class BubbleOverlayHost(
         if (isShowing()) service.registerComponentCallbacks(configurationCallback)
     }
 
-    fun hide() {
-        cancelDrag()
+    fun hide(immediate: Boolean = false) {
+        cancelDrag(immediate)
         if (!isShowing()) return
         dockAnimation?.cancel()
         service.unregisterComponentCallbacks(configurationCallback)
         composeHost.hide()
     }
 
-    fun dispose() { hide() }
+    fun dispose() { hide(immediate = true) }
 
     private fun onTouch(event: MotionEvent): Boolean {
         when (event.actionMasked) {
@@ -172,12 +172,12 @@ class BubbleOverlayHost(
         return true
     }
 
-    private fun cancelDrag() {
+    private fun cancelDrag(immediate: Boolean = false) {
         val wasDragging = dragging
         gestureActive = false
         dragging = false
         overDismissTarget.value = false
-        dismissTarget.hide()
+        dismissTarget.hide(immediate)
         if (wasDragging) onDragFinished(false)
     }
 
