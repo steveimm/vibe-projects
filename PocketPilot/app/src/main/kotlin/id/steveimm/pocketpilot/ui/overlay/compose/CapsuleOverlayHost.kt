@@ -47,7 +47,6 @@ import id.steveimm.pocketpilot.ui.overlay.CapsuleStateHolder
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -87,12 +86,10 @@ class CapsuleOverlayHost(
         animateVisibility = true,
     )
 
-    private val transientThought = MutableStateFlow<String?>(null)
     private val interactionLocked = MutableStateFlow(false)
     private val inputFocused = MutableStateFlow(false)
 
     private var focusJob: Job? = null
-    private var transientThoughtJob: Job? = null
     private var lastButtonClickTime = 0L
     private var isFocusable = false
     private val gestureLeases = mutableListOf<GestureCoordinates>()
@@ -132,7 +129,6 @@ class CapsuleOverlayHost(
             val ctx by stateHolder.context.collectAsState()
             val platform by stateHolder.platformMode.collectAsState()
             val lockTouches by interactionLocked.collectAsState(initial = false)
-            val flashThought by transientThought.collectAsState(initial = null)
 
             val capsuleContent: @androidx.compose.runtime.Composable () -> Unit = {
                 val overlayContext = LocalContext.current
@@ -168,7 +164,6 @@ class CapsuleOverlayHost(
                         lastToolCall = lastToolCall,
                         platformMode = platform,
                         context = ctx,
-                        transientThought = flashThought,
                         onSend = { text -> debounced { onSend?.invoke(text) } },
                         onSupplement = { text -> debounced { onSupplement?.invoke(text) } },
                         onTakeover = { debounced { onTakeover?.invoke() } },
@@ -262,8 +257,6 @@ class CapsuleOverlayHost(
     }
 
     fun dispose() {
-        transientThoughtJob?.cancel()
-        transientThoughtJob = null
         hide()
         composeHost.dispose()
         gestureLeases.clear()
@@ -287,21 +280,6 @@ class CapsuleOverlayHost(
         params.gravity = if (locked) Gravity.TOP or Gravity.START else Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         params.setFitInsetsTypes(if (locked) WindowInsets.Type.systemBars()
             else WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout() or WindowInsets.Type.ime())
-    }
-
-    fun flashSupplementConfirmation(isAgentMidTurn: Boolean) {
-        val message = if (isAgentMidTurn) {
-            "✓ Received, will apply next step"
-        } else {
-            "✓ Received"
-        }
-        val durationMs = if (isAgentMidTurn) 2000L else 1500L
-        transientThoughtJob?.cancel()
-        transientThoughtJob = scope.launch {
-            transientThought.value = message
-            delay(durationMs)
-            transientThought.value = null
-        }
     }
 
     private fun startFocusObserver() {

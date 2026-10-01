@@ -43,10 +43,6 @@ class CapsuleStateHolder {
     private val _turnPhase = MutableStateFlow<TurnPhase?>(null)
     val turnPhase: StateFlow<TurnPhase?> = _turnPhase.asStateFlow()
 
-    /** True when agent is mid-turn (execution/planning). Used for supplement confirmation. */
-    private val _isAgentMidTurn = MutableStateFlow(false)
-    val isAgentMidTurn: StateFlow<Boolean> = _isAgentMidTurn.asStateFlow()
-
     /** Transient stop feedback flag. */
     private val _isStopPending = MutableStateFlow(false)
     val isStopPending: StateFlow<Boolean> = _isStopPending.asStateFlow()
@@ -75,7 +71,6 @@ class CapsuleStateHolder {
         inputDraft.value = ""
         responseDraft.value = ""
         _turnPhase.value = null
-        _isAgentMidTurn.value = false
         _isStopPending.value = false
         setMode(CapsuleMode.Hidden)
     }
@@ -105,8 +100,6 @@ class CapsuleStateHolder {
         commentary = ""
         _lastToolCall.value = null
     }
-
-    fun setAgentMidTurn(midTurn: Boolean) { _isAgentMidTurn.value = midTurn }
 
     fun setContext(ctx: CapsuleContext) { _context.value = ctx }
 
@@ -190,7 +183,6 @@ class CapsuleStateHolder {
             return
         }
         _turnPhase.value = null
-        _isAgentMidTurn.value = false
         setMode(CapsuleMode.Running(commentary))
     }
 

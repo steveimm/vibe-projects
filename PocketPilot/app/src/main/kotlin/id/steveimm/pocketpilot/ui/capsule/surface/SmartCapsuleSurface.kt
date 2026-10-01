@@ -75,7 +75,6 @@ fun SmartCapsuleSurface(
     onApprovalResponse: (String, ApprovalDecision, ApprovalScope, String) -> Unit = { _, _, _, _ -> },
     onNavigate: (NavAction) -> Unit,
     modifier: Modifier = Modifier,
-    transientThought: String? = null,
     onInputFocusChanged: (Boolean) -> Unit = {},
     onInputSubmitted: () -> Unit = {},
     autoFocusInput: Boolean = false,
@@ -89,10 +88,8 @@ fun SmartCapsuleSurface(
     onStartupErrorClick: (() -> Unit)? = null,
     voice: VoiceMicDeps? = null,
 ) {
-    val renderSpec = remember(mode, isStopPending, transientThought) {
-        val baseSpec = CapsuleRenderSpec.from(mode, isStopPending)
-        if (transientThought.isNullOrBlank()) baseSpec
-        else baseSpec.copy(thought = CapsuleRenderSpec.ThoughtSpec(transientThought))
+    val renderSpec = remember(mode, isStopPending) {
+        CapsuleRenderSpec.from(mode, isStopPending)
     }
     val navSpec = remember(context, platformMode, mode) {
         NavSpec.from(context, platformMode, mode = mode)

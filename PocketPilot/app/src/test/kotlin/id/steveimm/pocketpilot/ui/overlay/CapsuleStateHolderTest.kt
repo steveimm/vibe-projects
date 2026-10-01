@@ -28,7 +28,6 @@ class CapsuleStateHolderTest {
         holder.onTaskStarted("old", "private request")
         holder.inputDraft.value = "unsent request"
         holder.responseDraft.value = "private answer"
-        holder.setAgentMidTurn(true)
         holder.onStopRequested()
         holder.onTaskCompleted(TaskOutcome.FINISHED, "private result")
 
@@ -36,7 +35,6 @@ class CapsuleStateHolderTest {
         assertThat(holder.mode.value).isEqualTo(CapsuleMode.Hidden)
         assertThat(holder.inputDraft.value).isEmpty()
         assertThat(holder.responseDraft.value).isEmpty()
-        assertThat(holder.isAgentMidTurn.value).isFalse()
         assertThat(holder.isStopPending.value).isFalse()
         assertThat(holder.hasActiveTask).isFalse()
     }
@@ -153,17 +151,6 @@ class CapsuleStateHolderTest {
         val modeBefore = holder.mode.value
         holder.onResumed()
         assertThat(holder.mode.value).isEqualTo(modeBefore)
-    }
-
-    @Test
-    fun `onResumed resets isAgentMidTurn`() {
-        holder.onTaskStarted("task1", "input")
-        holder.setAgentMidTurn(true)
-        assertThat(holder.isAgentMidTurn.value).isTrue()
-        holder.onTakeoverRequested()
-        holder.onTakeoverConfirmed()
-        holder.onResumed()
-        assertThat(holder.isAgentMidTurn.value).isFalse()
     }
 
     @Test

@@ -147,7 +147,6 @@ internal class AgentServiceEventHandler(
                     "supplement-${event.timestamp}",
                     event.timestamp
                 )
-                overlay?.onSupplementReceived(event.text)
             }
             is AskUser -> {
                 Log.i(logTag, "AskUser: type=${event.type}, callId=${event.callId}")

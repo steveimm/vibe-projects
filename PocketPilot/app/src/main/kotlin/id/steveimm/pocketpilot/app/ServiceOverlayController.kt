@@ -381,7 +381,6 @@ class ServiceOverlayController(
 
     fun onTurnPhaseChanged(phase: TurnPhase) {
         stateHolder.setTurnPhase(phase)
-        stateHolder.setAgentMidTurn(phase == TurnPhase.EXECUTION || phase == TurnPhase.PLANNING)
         refreshGlowState()
     }
 
@@ -428,12 +427,6 @@ class ServiceOverlayController(
         if (bubbleManager?.isDragging() == true) onBubbleDragStarted()
         refreshGlowState()
         setScreenAvailable(screenAvailable)
-    }
-
-    fun onSupplementReceived(@Suppress("UNUSED_PARAMETER") text: String) {
-        if (capsuleManager.isShowing()) {
-            capsuleManager.flashSupplementConfirmation(stateHolder.isAgentMidTurn.value)
-        }
     }
 
     fun onAskUser(type: AskUserType, message: String, callId: String) {

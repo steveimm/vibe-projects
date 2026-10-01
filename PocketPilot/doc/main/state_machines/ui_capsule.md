@@ -44,8 +44,6 @@ orthogonal to the mode:
 
 - `isStopPending: StateFlow<Boolean>` — transient "Stopping…" disabled-button feedback.
   Cleared by every terminal event and by `onTaskStarted`.
-- `isAgentMidTurn: StateFlow<Boolean>` — drives supplement-confirmation UI.
-  Cleared on `onResumed`.
 - Separate task/note and answer drafts survive switching between chat and overlay.
 - `turnPhase: StateFlow<TurnPhase?>` — feeds glow derivation only, not capsule mode.
 
@@ -112,7 +110,7 @@ allowed source state, the event is silently logged and ignored. This is enforced
 | `setTurnPhase` | `Running` only | Silently dropped otherwise |
 | `onTakeoverRequested` | `Running` only | |
 | `onTakeoverConfirmed` | `Running`, `TakeoverPending` | Pending is the normal path |
-| `onResumed` | `Takeover`, `TakeoverPending` | Resets `turnPhase` and `isAgentMidTurn` |
+| `onResumed` | `Takeover`, `TakeoverPending` | Resets `turnPhase` |
 | `onUserResponseSent(callId)` | `WaitingForInput`, `WaitingForAction` | callId must match |
 | `onApprovalResolved(callId)` | `WaitingForApproval` | callId must match |
 | `onStopRequested` | Active modes only (`Running`, `TakeoverPending`, `Takeover`, `WaitingFor*`) | Returns `false` from `Hidden`/`Done`/`Error`; idempotent (second call returns `false`) |

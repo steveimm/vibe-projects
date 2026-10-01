@@ -54,7 +54,7 @@ Virtual-display navigation remains available in the expanded controls. Bubble ta
 
 ## Other overlays
 
-- `CapsuleOverlayHost`: focusable text input when idle, done, answering a question, or taking over. Binds shared drafts and owns transient confirmation UI.
+- `CapsuleOverlayHost`: focusable text input when idle, done, answering a question, or taking over. Binds shared drafts.
 - `GlowOverlayHost`: task activity feedback, controlled by Action indicators and removed after completion.
 - `VisualizerOverlayHost`: tap, long-press, and swipe feedback in complete display coordinates. Hidden when the user is not watching the controlled screen.
 - `ServiceLifecycleOwner`: lifecycle and saved-state ownership for service Compose views.

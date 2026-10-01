@@ -116,8 +116,7 @@ While agent is Running or Paused:
       ├─ Text injected into HistoryManager (visible to agent on next turn)
       ├─ Emit SupplementReceived
       ├─ Chat: user message bubble added
-      ├─ Recording: previous agent message finalized, user message recorded
-      └─ Capsule flash: "Received" (between turns) or "Received, will apply next step" (mid-turn)
+      └─ Recording: previous agent message finalized, user message recorded
 ```
 
 Supplements are passive — they don't interrupt the current turn.
