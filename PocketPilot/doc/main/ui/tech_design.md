@@ -22,6 +22,8 @@ PocketPilot uses Kotlin, Jetpack Compose, and Material 3. Dependency versions ar
 
 `RowState` distinguishes live, waiting, complete, stopped, and failed responses. Stopped responses retain partial output and persist their state. Final answers remain separate from native reasoning and tool results. User inspection or manual upward scrolling suspends automatic following. Latest returns to the bottom.
 
+Tapping elsewhere in chat clears message text selection. The screen handles the press before child controls without consuming it, preserving long-press selection and button actions. A focused composer keeps its cursor and keyboard.
+
 The main activity already handles orientation and theme changes in place. Font and display-size changes also retain the current interface. The saved instance state retains the composer draft and whether Settings was open.
 
 ## Floating controls

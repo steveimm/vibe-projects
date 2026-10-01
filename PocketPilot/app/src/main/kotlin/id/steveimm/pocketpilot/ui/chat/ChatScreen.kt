@@ -17,6 +17,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,6 +63,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalContext
@@ -137,6 +141,7 @@ fun ChatScreen(
 
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
+    var inputFocused by remember { mutableStateOf(false) }
     val hideInput: () -> Unit = { focusManager.clearFocus(force = true); keyboard?.hide() }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val drawerListState = rememberLazyListState()
@@ -243,7 +248,13 @@ fun ChatScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
+                .background(MaterialTheme.colorScheme.background)
+                .pointerInput(focusManager) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        if (!inputFocused) focusManager.clearFocus()
+                    }
+                },
         ) {
             Scaffold(
                 snackbarHost = { SnackbarHost(snackbarHost) },
@@ -286,6 +297,7 @@ fun ChatScreen(
                         }
                         CompositionLocalProvider(LocalVoiceFeedback provides reportVoiceFeedback) {
                             SmartCapsuleSurface(
+                                onInputFocusChanged = { inputFocused = it },
                                 mode = when (capsuleMode) {
                                     is CapsuleMode.Done, is CapsuleMode.Error -> CapsuleMode.Hidden
                                     else -> capsuleMode
