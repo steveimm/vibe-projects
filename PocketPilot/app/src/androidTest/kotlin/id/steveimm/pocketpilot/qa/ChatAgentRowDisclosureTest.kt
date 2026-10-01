@@ -75,7 +75,7 @@ class ChatAgentRowDisclosureTest {
         }
         compose.mainClock.autoAdvance = false
         compose.onNodeWithText("opening Settings").assertDoesNotExist()
-        compose.onNodeWithTag("qa-collapse-pill").performClick()
+        compose.onNodeWithTag("qa-activity-toggle").performClick()
         compose.mainClock.advanceTimeBy(300)
         compose.onNodeWithText("opening Settings").assertIsDisplayed()
     }
@@ -91,7 +91,7 @@ class ChatAgentRowDisclosureTest {
         }
 
         compose.mainClock.autoAdvance = false
-        compose.onNodeWithTag("qa-collapse-pill").performClick()
+        compose.onNodeWithTag("qa-activity-toggle").performClick()
         compose.mainClock.advanceTimeBy(300)
         rowState = RowState.Complete
         compose.mainClock.advanceTimeBy(300)
@@ -107,11 +107,11 @@ class ChatAgentRowDisclosureTest {
 
         // Default = collapsed; user expands via pill.
         assertCollapsed()
-        compose.onNodeWithTag("qa-collapse-pill").performClick()
+        compose.onNodeWithTag("qa-activity-toggle").performClick()
         compose.waitForIdle()
         assertExpanded()
 
-        compose.onNodeWithTag("qa-collapse-pill").performClick()
+        compose.onNodeWithTag("qa-activity-toggle").performClick()
         compose.waitForIdle()
         assertCollapsed()
     }
@@ -131,7 +131,7 @@ class ChatAgentRowDisclosureTest {
             PocketPilotTheme { MessageBubble(agent(RowState.Complete, withFinal = false)) }
         }
 
-        compose.onNodeWithTag("qa-collapse-pill").assertIsDisplayed()
+        compose.onNodeWithTag("qa-activity-toggle").assertIsDisplayed()
         compose.onNodeWithTag("qa-final-answer").assertDoesNotExist()
     }
 }

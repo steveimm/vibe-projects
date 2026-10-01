@@ -7,8 +7,9 @@ internal fun outcomeFooter(message: ChatMessage.Agent): String {
     val actionCount = countActions(message)
     val elapsed = formatElapsed(message)
     val parts = buildList {
-        add("Activity")
+        if (message.contentBlocks.any { it is ContentBlock.Reasoning }) add("Reasoning")
         if (actionCount > 0) add("$actionCount action${if (actionCount == 1) "" else "s"}")
+        if (isEmpty()) add("Activity")
         elapsed?.let { add(it) }
     }
     return parts.joinToString(separator = " · ")

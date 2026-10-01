@@ -6,11 +6,14 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Text
+import androidx.compose.material3.Surface
 import id.steveimm.pocketpilot.ui.settings.SettingsAlertCard
 import id.steveimm.pocketpilot.ui.settings.AlertTone
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +27,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.ui.chat.model.AgentMessageState
 import id.steveimm.pocketpilot.ui.chat.model.ChatMessage
 import id.steveimm.pocketpilot.ui.chat.model.ContentBlock
@@ -59,22 +63,31 @@ internal fun AgentRow(
         verticalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
         if (traceBlocks.isNotEmpty()) {
-            CollapsePill(
-                summary = outcomeFooter(message),
-                expanded = expanded,
-                onToggle = {
-                    if (!expanded) onInspect()
-                    expanded = !expanded
-                },
-            )
-            val rowTween = tween<IntSize>(PocketPilotMotion.RowExpand, easing = PocketPilotMotion.EaseInOutSine)
-            val fadeTween = tween<Float>(PocketPilotMotion.RowExpand, easing = PocketPilotMotion.EaseInOutSine)
-            AnimatedVisibility(
-                visible = expanded,
-                enter = expandVertically(animationSpec = rowTween) + fadeIn(animationSpec = fadeTween),
-                exit = shrinkVertically(animationSpec = rowTween) + fadeOut(animationSpec = fadeTween),
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                shape = MaterialTheme.shapes.small,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
-                ExpandedTrace(traceBlocks, message.state)
+                Column {
+                    ActivityDisclosureHeader(
+                        summary = outcomeFooter(message),
+                        expanded = expanded,
+                        onToggle = {
+                            if (!expanded) onInspect()
+                            expanded = !expanded
+                        },
+                    )
+                    val rowTween = tween<IntSize>(PocketPilotMotion.RowExpand, easing = PocketPilotMotion.EaseInOutSine)
+                    val fadeTween = tween<Float>(PocketPilotMotion.RowExpand, easing = PocketPilotMotion.EaseInOutSine)
+                    AnimatedVisibility(
+                        visible = expanded,
+                        enter = expandVertically(animationSpec = rowTween) + fadeIn(animationSpec = fadeTween),
+                        exit = shrinkVertically(animationSpec = rowTween) + fadeOut(animationSpec = fadeTween),
+                    ) {
+                        ExpandedTrace(traceBlocks, Modifier.padding(start = spacing.md, end = spacing.md, bottom = spacing.md))
+                    }
+                }
             }
         }
 
@@ -82,6 +95,9 @@ internal fun AgentRow(
             if (message.rowState == RowState.Error) {
                 SettingsAlertCard(message = preview.text, tone = AlertTone.Error)
             } else {
+                if (traceBlocks.isNotEmpty() && message.state == AgentMessageState.Streaming) {
+                    Text("Responding", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+                }
                 StreamingText(
                     text = preview.text,
                     isStreaming = message.state == AgentMessageState.Streaming,
@@ -94,7 +110,7 @@ internal fun AgentRow(
         }
 
         if (finalText != null) {
-            FinalAnswer(text = finalText.text)
+            FinalAnswer(text = finalText.text, showLabel = traceBlocks.isNotEmpty())
         }
 
         if (message.rowState == RowState.Complete && message.handoff != null) {
@@ -107,8 +123,12 @@ internal fun AgentRow(
 }
 
 @Composable
-private fun FinalAnswer(text: String) {
-    SelectionContainer(modifier = Modifier.fillMaxWidth().testTag("qa-final-answer")) {
-        ChatMarkdown(text)
+private fun FinalAnswer(text: String, showLabel: Boolean) {
+    Column(
+        modifier = Modifier.fillMaxWidth().testTag("qa-final-answer"),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.sm),
+    ) {
+        if (showLabel) Text("Answer", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurface)
+        SelectionContainer { ChatMarkdown(text) }
     }
 }

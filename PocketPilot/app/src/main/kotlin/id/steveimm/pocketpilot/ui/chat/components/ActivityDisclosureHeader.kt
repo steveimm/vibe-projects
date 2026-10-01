@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
@@ -11,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,7 +30,7 @@ import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
 import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
 @Composable
-fun CollapsePill(
+internal fun ActivityDisclosureHeader(
     summary: String,
     expanded: Boolean,
     onToggle: () -> Unit,
@@ -40,39 +40,33 @@ fun CollapsePill(
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 90f else 0f,
         animationSpec = tween(PocketPilotMotion.RowExpand, easing = PocketPilotMotion.EaseInOutSine),
-        label = "CollapsePillChevronRotation",
+        label = "ActivityChevronRotation",
     )
     val state = if (expanded) "expanded" else "collapsed"
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        shape = MaterialTheme.shapes.small,
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            .testTag("qa-collapse-pill")
+            .fillMaxWidth()
+            .testTag("qa-activity-toggle")
             .semantics {
                 role = Role.Button
                 stateDescription = state
             }
-            .clickable(onClick = onToggle),
+            .clickable(onClick = onToggle)
+            .defaultMinSize(minHeight = 48.dp)
+            .padding(horizontal = spacing.md, vertical = spacing.xs),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .defaultMinSize(minHeight = 48.dp)
-                .padding(horizontal = spacing.md, vertical = spacing.xs),
-        ) {
-            Icon(
-                imageVector = Lucide.ChevronRight,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(16.dp)
-                    .rotate(rotation),
-            )
-            Spacer(Modifier.width(spacing.sm))
-            Text(
-                text = summary,
-                style = MaterialTheme.typography.labelMedium,
-            )
-        }
+        Icon(
+            imageVector = Lucide.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp).rotate(rotation),
+        )
+        Spacer(Modifier.width(spacing.sm))
+        Text(
+            text = summary,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
