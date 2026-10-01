@@ -351,7 +351,10 @@ class CapsuleOverlayHost(
 
     private fun setGesturePassThrough(enabled: Boolean) {
         if (enabled == (gestureSuppression != null)) return
-        if (enabled) gestureSuppression = composeHost.suppressRendering()
+        if (enabled) {
+            Log.d(TAG, "Hiding controls for an overlapping gesture")
+            gestureSuppression = composeHost.suppressRendering()
+        }
         if (composeHost.isShowing()) {
             composeHost.updateLayoutParams { params ->
                 params.flags = if (enabled) params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
@@ -361,6 +364,7 @@ class CapsuleOverlayHost(
         if (!enabled) {
             gestureSuppression?.close()
             gestureSuppression = null
+            Log.d(TAG, "Restored controls after gesture")
         }
     }
 

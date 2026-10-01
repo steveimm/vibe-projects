@@ -40,6 +40,8 @@ Expanded accessibility controls may use the full-screen interaction shield durin
 
 **Action indicators** is independent and enabled by default. Four 40 dp edge windows draw a gradient from 70% opacity at the screen edge to transparent inward. A 64 dp moving window draws tap, long-press, and swipe feedback. These windows do not intercept input. Disable this setting if an OEM still rejects the overlays. Emulator verification does not establish OPPO compatibility.
 
+While the agent is running, the border gently expands from 26 to 40 dp and brightens from 50% to 70% opacity over a 1.8-second cycle. Its windows keep fixed bounds. Paused states and the system's reduced-motion setting use a steady glow, and hiding the border cancels its animation. Screenshot suppression remains independent of the pulse.
+
 ## Removing the app from Recents
 
 Removing PocketPilot's task dismisses all overlay windows immediately and ends the current session. Dismissal remains set through accessibility reconnection until the app is opened again. Home and ordinary app switching retain the overlay. Accessibility permission remains enabled.
