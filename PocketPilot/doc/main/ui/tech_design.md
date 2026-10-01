@@ -20,7 +20,7 @@ PocketPilot uses Kotlin, Jetpack Compose, and Material 3. Dependency versions ar
 | `ui/settings/ModelServerForm.kt` | Local endpoint, connection test, model selection, credentials |
 | `ui/onboarding/OnboardingScreen.kt` | Setup steps and Android Back handling |
 
-`RowState` distinguishes live, waiting, complete, stopped, and failed responses. Stopped responses retain partial output and persist their state. Final answers remain separate from native reasoning and tool results. User inspection or manual upward scrolling suspends automatic following. Latest returns to the bottom.
+`RowState` distinguishes live, waiting, complete, stopped, and failed responses. Stopped responses retain partial output and persist their state. Final answers remain separate from native reasoning and tool results. User inspection or manual upward scrolling suspends automatic following. The down-arrow button returns to the bottom.
 
 Tapping elsewhere in chat clears message text selection. The screen handles the press before child controls without consuming it, preserving long-press selection and button actions. A focused composer keeps its cursor and keyboard.
 
