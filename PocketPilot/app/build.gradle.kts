@@ -5,8 +5,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
-    // Generates open_source_licenses.{json,html} from runtime deps; copies the JSON into src/main/assets so the in-app "Open Source
-    // Licenses" page can render the live dependency graph at runtime.
+    // Bundle dependency license notices with the APK.
     id("com.jaredsburrows.license") version "0.9.8"
 }
 
@@ -99,8 +98,7 @@ android {
     }
 }
 
-// gradle-license-plugin config: emit JSON only and have the plugin copy it into src/main/assets/open_source_licenses.json so
-// OpenSourceLicensesPage can load it via AssetManager.
+// Include the dependency inventory in packaged assets.
 licenseReport {
     generateJsonReport = true
     generateHtmlReport = false

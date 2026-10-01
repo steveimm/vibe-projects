@@ -39,7 +39,6 @@ enum class SettingsPage {
     AGENT_BEHAVIOR,
     PERMISSIONS_ADVANCED,
     APP_ACCESS,
-    OPEN_SOURCE_LICENSES,
 }
 
 @Composable
@@ -168,10 +167,6 @@ fun SettingsSheet(
                     SettingsPage.APP_ACCESS -> AppAccessSettingsPage(
                         appClassifier = appClassifier,
                         approvalMode = approvalMode,
-                        onBack = goBack,
-                        onClose = close,
-                    )
-                    SettingsPage.OPEN_SOURCE_LICENSES -> OpenSourceLicensesPage(
                         onBack = goBack,
                         onClose = close,
                     )

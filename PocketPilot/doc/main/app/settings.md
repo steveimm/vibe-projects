@@ -1,6 +1,6 @@
 # Settings
 
-Settings contains Model server, Agent Behavior, App Access, System & Debug, and Open Source Licenses.
+Settings contains Model server, Automation, App access, and Permissions & diagnostics.
 
 ## Model server
 

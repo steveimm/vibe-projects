@@ -63,12 +63,6 @@ internal fun SettingsHomePage(
                 onClick = { onNavigate(SettingsPage.PERMISSIONS_ADVANCED) }
             )
 
-            SettingsNavigationRow(
-                title = "Open-source licenses",
-                onClick = { onNavigate(SettingsPage.OPEN_SOURCE_LICENSES) }
-            )
-
-
             Text(
                 text = "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                 style = MaterialTheme.pocketPilot.monoSmall,
