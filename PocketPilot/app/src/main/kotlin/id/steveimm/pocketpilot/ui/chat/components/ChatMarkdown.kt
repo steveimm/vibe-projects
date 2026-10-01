@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -12,9 +14,11 @@ import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.NoOpImageTransformerImpl
+import com.mikepenz.markdown.model.Input
+import com.mikepenz.markdown.model.MarkdownState
 import com.mikepenz.markdown.model.ReferenceLinkHandlerImpl
+import com.mikepenz.markdown.model.State
 import com.mikepenz.markdown.model.markdownAnimations
-import com.mikepenz.markdown.model.rememberMarkdownState
 import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
 import org.intellij.markdown.parser.MarkdownParser
 
@@ -26,12 +30,13 @@ internal fun ChatMarkdown(
     style: TextStyle = MaterialTheme.typography.bodyLarge,
 ) {
     val content = text.trim('\n', '\r')
-    val flavour = remember { GFMFlavourDescriptor() }
-    val parser = remember(content) { MarkdownParser(flavour) }
-    val links = remember(content) { ReferenceLinkHandlerImpl() }
-    val state = rememberMarkdownState(content, flavour = flavour, parser = parser, referenceLinkHandler = links)
+    // Keep the rendered text visible while the next streamed update parses off the main thread.
+    val state by produceState<State>(initialValue = State.Loading(), key1 = content) {
+        val flavour = GFMFlavourDescriptor()
+        value = MarkdownState(Input(content, true, flavour, MarkdownParser(flavour), ReferenceLinkHandlerImpl())).parse()
+    }
     Markdown(
-        markdownState = state,
+        state = state,
         modifier = modifier.fillMaxWidth(),
         colors = markdownColor(),
         typography = markdownTypography(

@@ -12,7 +12,7 @@ Dragging reveals a dismiss target at the bottom center. Dropping the bubble ther
 
 Tasks started from the main chat use the bubble; submitting through an open panel keeps the panel open. Completion and session expiry preserve the user’s expanded/minimized choice. Questions, approvals, and errors open the controls for attention, after which the user may minimize them. The bubble uses the app’s primary color; task status stays in the panel. The edge glow is limited to active tasks.
 
-Completed results remain in `CapsuleStateHolder` without an automatic hide timer, including after idle session expiry. Expanded controls show the result as scrollable Markdown, navigation, and a composer. Stopping a session retains a stopped result. The main chat returns directly to its idle composer after completion.
+Completed results remain in `CapsuleStateHolder` without an automatic hide timer, including after idle session expiry. Expanded controls show the result as scrollable Markdown, navigation, and a composer. Streaming Markdown keeps its last parsed content visible until the next update finishes parsing off the main thread, avoiding repeated layout changes between raw text and formatted text. Stopping a session retains a stopped result. The main chat returns directly to its idle composer after completion.
 
 The service state holder owns shared task/note and question-answer drafts. They survive minimizing and switching to chat. A new question clears only its answer draft. Sending a task from the overlay reuses a compatible session or creates one in the service without opening MainActivity. It submits `Op.UserInput(observeScreen = true)`, so the first model request includes the app already on screen. Startup failure or cancellation restores the draft.
 
@@ -36,7 +36,7 @@ Expanded accessibility controls may use the full-screen interaction shield durin
 
 **Touch protection** is off by default, retaining the saved compact-overlay preference. Enabling it adds the existing full-screen touch shield while active controls are expanded. This remains optional because the OPPO Find X8 previously revoked accessibility after full-screen overlays.
 
-**Action indicators** is independent and enabled by default. Four 2 dp edge windows draw the border. A 64 dp moving window draws tap, long-press, and swipe feedback. These windows do not intercept input. Disable this setting if an OEM still rejects the overlays. Emulator verification does not establish OPPO compatibility.
+**Action indicators** is independent and enabled by default. Four 40 dp edge windows draw a gradient from 70% opacity at the screen edge to transparent inward. A 64 dp moving window draws tap, long-press, and swipe feedback. These windows do not intercept input. Disable this setting if an OEM still rejects the overlays. Emulator verification does not establish OPPO compatibility.
 
 ## Removing the app from Recents
 
