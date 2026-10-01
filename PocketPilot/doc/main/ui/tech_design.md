@@ -6,7 +6,7 @@ PocketPilot uses Kotlin, Jetpack Compose, and Material 3. Dependency versions ar
 
 Message cards use ambient shadows without the directional spot shadow, keeping the shadow close to the edge even for very long reasoning. The composer uses 14 dp vertical text padding for both single and multiple lines, centering the field within the minimum-height button row.
 
-The fixed chat header and input area cast shadows over the scrolling message list to separate their edges from the conversation.
+The fixed chat header and input area cast shadows over the scrolling message list to separate their edges from the conversation. The conversation viewport clips drawing after the header and composer insets, including while reasoning expands or streams.
 
 ## Main surfaces
 
