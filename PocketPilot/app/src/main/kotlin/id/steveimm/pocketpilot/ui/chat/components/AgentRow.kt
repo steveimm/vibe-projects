@@ -67,6 +67,7 @@ internal fun AgentRow(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
                 shape = MaterialTheme.shapes.small,
+                shadowElevation = MaterialTheme.pocketPilot.elevation.card,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 Column {

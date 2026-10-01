@@ -85,7 +85,9 @@ internal fun PermissionsAdvancedSettingsPage(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.medium,
+                    shadowElevation = MaterialTheme.pocketPilot.elevation.card,
+                    border = MaterialTheme.pocketPilot.surfaceBorder,
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = MaterialTheme.pocketPilot.spacing.cardPadding, vertical = MaterialTheme.pocketPilot.spacing.md),
@@ -224,7 +226,9 @@ private fun DataStorageSection(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = MaterialTheme.shapes.medium
+                shape = MaterialTheme.shapes.medium,
+                shadowElevation = MaterialTheme.pocketPilot.elevation.card,
+                border = MaterialTheme.pocketPilot.surfaceBorder,
             ) {
                 Column(modifier = Modifier.padding(horizontal = MaterialTheme.pocketPilot.spacing.cardPadding, vertical = MaterialTheme.pocketPilot.spacing.md)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {

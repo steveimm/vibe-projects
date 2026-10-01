@@ -1,6 +1,5 @@
 package id.steveimm.pocketpilot.ui.chat.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -68,6 +67,8 @@ private fun UserBubble(
                 .testTag("qa-user-bubble"),
             color = MaterialTheme.colorScheme.primaryContainer,
             shape = UserBubbleShape,
+            shadowElevation = MaterialTheme.pocketPilot.elevation.card,
+            border = MaterialTheme.pocketPilot.surfaceBorder,
         ) {
             Column(
                 modifier = Modifier.padding(

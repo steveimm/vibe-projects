@@ -31,7 +31,7 @@ private val PocketPilotLightColorScheme = lightColorScheme(
     surfaceContainer = Color(0xFFEAF0F9), surfaceContainerHigh = SurfaceHighLight,
     surfaceContainerHighest = Color(0xFFDAE4F4),
     outline = OutlineLight, outlineVariant = DividerLight,
-    inverseSurface = SurfaceDark, inverseOnSurface = TextDark, inversePrimary = BlueDark,
+    inverseSurface = InverseSurfaceLight, inverseOnSurface = TextDark, inversePrimary = BlueDark,
     surfaceTint = BlueLight,
 )
 

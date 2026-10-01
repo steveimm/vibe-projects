@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
+import id.steveimm.pocketpilot.ui.theme.pocketPilot
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -50,7 +51,7 @@ internal fun OverlayBubbleCompose(
         }.pointerInteropFilter(onTouchEvent = onTouch),
         shape = CircleShape,
         color = MaterialTheme.colorScheme.primary,
-        shadowElevation = 4.dp,
+        shadowElevation = MaterialTheme.pocketPilot.elevation.floating,
     ) {
         Box(contentAlignment = Alignment.Center) {
             PilotMark(color = MaterialTheme.colorScheme.onPrimary, size = 26.dp)

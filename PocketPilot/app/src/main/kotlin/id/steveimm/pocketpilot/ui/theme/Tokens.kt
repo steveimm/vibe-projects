@@ -1,5 +1,6 @@
 package id.steveimm.pocketpilot.ui.theme
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -16,6 +17,15 @@ data class PocketPilotTokens(
     val monoBody: TextStyle,
     val monoSmall: TextStyle,
     val spacing: PocketPilotSpacing,
+    val elevation: PocketPilotElevation = PocketPilotElevation(),
+    val surfaceBorder: BorderStroke? = null,
+)
+
+@Immutable
+data class PocketPilotElevation(
+    val card: Dp = 1.dp,
+    val controls: Dp = 2.dp,
+    val floating: Dp = 4.dp,
 )
 
 @Immutable
@@ -51,4 +61,6 @@ internal fun darkPocketPilotTokens() = PocketPilotTokens(
     monoBody = MonoBodyStyle,
     monoSmall = MonoSmallStyle,
     spacing = PocketPilotSpacing(),
+    elevation = PocketPilotElevation(card = 3.dp, controls = 4.dp, floating = 6.dp),
+    surfaceBorder = BorderStroke(1.dp, TextDark.copy(alpha = 0.08f)),
 )

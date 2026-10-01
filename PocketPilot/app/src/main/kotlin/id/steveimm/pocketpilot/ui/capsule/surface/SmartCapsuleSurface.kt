@@ -103,6 +103,9 @@ fun SmartCapsuleSurface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = shape,
+        shadowElevation = if (context == CapsuleContext.MAIN_APP) MaterialTheme.pocketPilot.elevation.controls
+            else MaterialTheme.pocketPilot.elevation.floating,
+        border = MaterialTheme.pocketPilot.surfaceBorder,
     ) {
         Column(
             modifier = Modifier

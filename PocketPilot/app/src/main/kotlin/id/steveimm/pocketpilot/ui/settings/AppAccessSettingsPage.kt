@@ -133,7 +133,12 @@ internal fun AppAccessSettingsPage(
             items(visibleRows, key = { it.info.packageName }) { row ->
                 val pkg = row.info.packageName
                 val icon by produceState<ImageBitmap?>(null, pkg) { value = row.iconLoader() }
-                Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                Surface(
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    shadowElevation = MaterialTheme.pocketPilot.elevation.card,
+                    border = MaterialTheme.pocketPilot.surfaceBorder,
+                ) {
                     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             AppIcon(icon)

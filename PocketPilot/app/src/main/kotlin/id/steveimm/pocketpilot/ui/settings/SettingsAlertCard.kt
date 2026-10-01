@@ -35,6 +35,8 @@ internal fun SettingsAlertCard(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.small,
         color = bg,
+        shadowElevation = MaterialTheme.pocketPilot.elevation.card,
+        border = MaterialTheme.pocketPilot.surfaceBorder,
     ) {
         Row(
             modifier = Modifier.padding(MaterialTheme.pocketPilot.spacing.md),

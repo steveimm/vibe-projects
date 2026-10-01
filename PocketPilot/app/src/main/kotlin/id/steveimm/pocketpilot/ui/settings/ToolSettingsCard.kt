@@ -80,6 +80,8 @@ internal fun ToolSettingsCard(
         modifier = surfaceModifier,
         color = MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.medium,
+        shadowElevation = MaterialTheme.pocketPilot.elevation.card,
+        border = MaterialTheme.pocketPilot.surfaceBorder,
     ) {
         Column(modifier = Modifier.padding(horizontal = MaterialTheme.pocketPilot.spacing.cardPadding, vertical = MaterialTheme.pocketPilot.spacing.md)) {
             Row(

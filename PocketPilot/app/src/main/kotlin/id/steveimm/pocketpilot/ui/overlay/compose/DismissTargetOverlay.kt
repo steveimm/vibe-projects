@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LifecycleOwner
 import androidx.savedstate.SavedStateRegistryOwner
 import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
+import id.steveimm.pocketpilot.ui.theme.pocketPilot
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
@@ -67,7 +68,7 @@ internal class DismissTargetOverlay(
                 Surface(Modifier.size(56.dp).graphicsLayer { scaleX = scale; scaleY = scale }, shape = CircleShape,
                     color = if (active) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.surfaceContainerHigh,
                     border = BorderStroke(1.dp, if (active) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outlineVariant),
-                    shadowElevation = 6.dp) {
+                    shadowElevation = MaterialTheme.pocketPilot.elevation.floating) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(Icons.Rounded.Close, "Dismiss PocketPilot", Modifier.size(24.dp),
                             tint = if (active) MaterialTheme.colorScheme.onError else MaterialTheme.colorScheme.onSurface)

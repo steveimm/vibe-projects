@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -189,7 +190,7 @@ private fun DrawerSessionItem(
     val rowBorder = when {
         isCorrupted -> BorderStroke(1.dp, MaterialTheme.colorScheme.error)
         session.isActive -> BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
-        else -> null
+        else -> MaterialTheme.pocketPilot.surfaceBorder
     }
     val rowStateDescription = when {
         isCorrupted -> "Unreadable chat. Cannot open."
@@ -232,6 +233,7 @@ private fun DrawerSessionItem(
     Surface(
         modifier = modifier
             .fillMaxWidth()
+            .shadow(MaterialTheme.pocketPilot.elevation.card, rowShape, clip = false)
             .clip(rowShape)
             .then(
                 if (isCorrupted) {

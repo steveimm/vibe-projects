@@ -8,25 +8,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.ChevronRight
 import com.composables.icons.lucide.Lucide
@@ -58,11 +54,13 @@ internal fun SettingsRow(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .shadow(MaterialTheme.pocketPilot.elevation.card, MaterialTheme.shapes.medium, clip = false)
             .clip(MaterialTheme.shapes.medium)
             .clickable(onClick = onClick)
             ,
         color = MaterialTheme.colorScheme.surface,
-        shape = MaterialTheme.shapes.medium
+        shape = MaterialTheme.shapes.medium,
+        border = MaterialTheme.pocketPilot.surfaceBorder,
     ) {
         Row(
             modifier = Modifier.padding(MaterialTheme.pocketPilot.spacing.cardPadding),
@@ -115,11 +113,13 @@ internal fun SettingsNavigationRow(
     Surface(
         modifier = modifier
             .fillMaxWidth()
+            .shadow(MaterialTheme.pocketPilot.elevation.card, MaterialTheme.shapes.medium, clip = false)
             .clip(MaterialTheme.shapes.medium)
             .clickable(onClick = onClick)
             ,
         color = MaterialTheme.colorScheme.surface,
-        shape = MaterialTheme.shapes.medium
+        shape = MaterialTheme.shapes.medium,
+        border = MaterialTheme.pocketPilot.surfaceBorder,
     ) {
         Row(
             modifier = Modifier.padding(MaterialTheme.pocketPilot.spacing.cardPadding),
@@ -149,21 +149,6 @@ internal fun SettingsNavigationRow(
 }
 
 @Composable
-private fun RecommendedChip() {
-    Surface(
-        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f),
-        shape = MaterialTheme.shapes.small,
-    ) {
-        Text(
-            text = "Recommended",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.secondary,
-            modifier = Modifier.padding(horizontal = MaterialTheme.pocketPilot.spacing.sm, vertical = 2.dp),
-        )
-    }
-}
-
-@Composable
 internal fun SettingsNoticeCard(
     title: String,
     message: String,
@@ -177,6 +162,8 @@ internal fun SettingsNoticeCard(
             ,
         color = MaterialTheme.colorScheme.surface,
         shape = MaterialTheme.shapes.medium,
+        shadowElevation = MaterialTheme.pocketPilot.elevation.card,
+        border = MaterialTheme.pocketPilot.surfaceBorder,
     ) {
         Row(
             modifier = Modifier.padding(MaterialTheme.pocketPilot.spacing.cardPadding),

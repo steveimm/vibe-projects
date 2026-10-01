@@ -440,6 +440,7 @@ private fun MessageList(
         ) {
             Surface(
                 shape = CircleShape,
+                shadowElevation = MaterialTheme.pocketPilot.elevation.floating,
                 color = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),

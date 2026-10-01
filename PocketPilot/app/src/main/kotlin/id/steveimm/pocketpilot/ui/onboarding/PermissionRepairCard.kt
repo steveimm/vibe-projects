@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import id.steveimm.pocketpilot.onboarding.PermissionStateMonitor.PermissionRepairModel
+import id.steveimm.pocketpilot.ui.theme.pocketPilot
 
 @Composable
 fun PermissionRepairCard(
@@ -35,6 +36,8 @@ fun PermissionRepairCard(
         modifier = modifier.fillMaxWidth().padding(bottom = 8.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.medium,
+        shadowElevation = MaterialTheme.pocketPilot.elevation.card,
+        border = MaterialTheme.pocketPilot.surfaceBorder,
     ) {
         Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)) {
             Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

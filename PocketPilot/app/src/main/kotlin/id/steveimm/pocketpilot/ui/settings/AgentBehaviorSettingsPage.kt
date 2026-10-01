@@ -85,6 +85,8 @@ private fun ApprovalSection(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.surfaceVariant,
             shape = MaterialTheme.shapes.medium,
+            shadowElevation = MaterialTheme.pocketPilot.elevation.card,
+            border = MaterialTheme.pocketPilot.surfaceBorder,
         ) {
             Column(modifier = Modifier.padding(MaterialTheme.pocketPilot.spacing.cardPadding)) {
                 Row(
