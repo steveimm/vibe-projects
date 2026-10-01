@@ -49,12 +49,9 @@ internal fun ExpandedTrace(blocks: List<ContentBlock>, modifier: Modifier = Modi
 
 @Composable
 private fun ReasoningBlock(text: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.pocketPilot.spacing.xs)) {
-        Text("Reasoning", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        SelectionContainer {
-            Text(text.trim('\n', '\r'), style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+    SelectionContainer {
+        Text(text.trim('\n', '\r'), style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

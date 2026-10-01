@@ -180,4 +180,4 @@ subsequent user turn closes them — the error remains visible in history.
 
 ## Trace items: native reasoning
 
-Native `ReasoningDelta` events merge into `ContentBlock.Reasoning` per turn. Expanded traces render reasoning behind a "Show model reasoning" control. Tool actions remain chronological, without generated thought headings. The overlay uses execution phase status only.
+Native `ReasoningDelta` events merge into `ContentBlock.Reasoning` per turn. Expanded activity shows the model's reasoning text directly, separated from chronological tool actions. The overlay displays assistant updates and the latest tool call.
