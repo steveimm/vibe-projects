@@ -38,6 +38,12 @@ Expanded accessibility controls may use the full-screen interaction shield durin
 
 **Action indicators** is independent and enabled by default. Four 2 dp edge windows draw the border. A 64 dp moving window draws tap, long-press, and swipe feedback. These windows do not intercept input. Disable this setting if an OEM still rejects the overlays. Emulator verification does not establish OPPO compatibility.
 
+## Removing the app from Recents
+
+Removing PocketPilot's task dismisses all overlay windows immediately and ends the current session. Dismissal remains set through accessibility reconnection until the app is opened again. Home and ordinary app switching retain the overlay. Accessibility permission remains enabled.
+
+The connected accessibility service registers a started state so Android delivers `onTaskRemoved`; binding alone does not receive that callback. MainActivity renews tracking when reopened. The service uses `START_NOT_STICKY` and releases its started state on task removal or accessibility unbind, allowing normal accessibility cleanup. See [Android's task-removal dispatch](https://android.googlesource.com/platform/frameworks/base/+/refs/heads/android15-release/services/core/java/com/android/server/am/ActiveServices.java).
+
 ## MainActivity and virtual display
 
 `ServiceOverlayController` treats MainActivity's `onResume` and `onStop` as authoritative. It ignores stale non-self accessibility-window events while MainActivity is resumed. Its hidden callback changes location to another app only when the location was still MainActivity, preserving a concurrently opened virtual-display viewer.

@@ -188,6 +188,7 @@ class MainActivity : ComponentActivity() {
             val serviceConnected by AgentService.connected.collectAsStateWithLifecycle()
             LaunchedEffect(serviceConnected) {
                 val service = AgentService.instance
+                if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) service?.onMainAppVisible()
                 service?.capsuleStateHolder?.inputDraft?.let(viewModel::bindComposerDraft)
                 service?.conversationReset?.collect { reset ->
                     if (reset != null && reset != lastConversationReset) {
@@ -328,6 +329,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        AgentService.instance?.startTaskTracking()
         AgentService.instance?.onMainAppVisible()
         rebindActiveServiceSessionIfNeeded()
         retryPendingAutoStartGoalIfReady()

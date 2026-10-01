@@ -180,6 +180,7 @@ class AgentService : AccessibilityService() {
         super.onServiceConnected()
         isServiceActive = true
         instance = this
+        startTaskTracking()
         Log.i(TAG, "AgentService connected")
 
         val info = serviceInfo
@@ -281,6 +282,31 @@ class AgentService : AccessibilityService() {
         Log.w(TAG, "AgentService interrupted")
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_NOT_STICKY
+
+    fun startTaskTracking() {
+        // Task-removal callbacks require a started service, even while accessibility is bound.
+        startService(Intent(this, AgentService::class.java))
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        stopSelf()
+        return super.onUnbind(intent)
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        val rootActivity = rootIntent?.component?.className
+        if (rootActivity != null && rootActivity != MainActivity::class.java.name) return
+
+        Log.i(TAG, "PocketPilot removed from Recents; dismissing controls and ending the session")
+        val controller = overlayController
+        if (controller != null) controller.dismissOverlays(stopTask = false)
+        else getSharedPreferences("overlay_bubble", MODE_PRIVATE).edit().putBoolean("dismissed", true).apply()
+        newConversation()
+        stopSelf()
+    }
+
     override fun onDestroy() {
         screenState.stop()
         isServiceActive = false
@@ -338,7 +364,7 @@ class AgentService : AccessibilityService() {
     private var dataOperationInProgress = false
 
     fun newConversation(showControls: Boolean = false): Job {
-        conversationResetJob?.takeIf { it.isActive }?.let { return it }
+        val previousReset = conversationResetJob
         val starting = overlayStartJob
         val collector = eventCollectorJob
         val previousSession = session
@@ -353,6 +379,7 @@ class AgentService : AccessibilityService() {
         actionVisualizer?.hide()
         updateStatus("")
         val reset = serviceScope.launch {
+            previousReset?.join()
             starting?.join()
             previousSession?.submit(Op.Shutdown)
             collector?.join()
