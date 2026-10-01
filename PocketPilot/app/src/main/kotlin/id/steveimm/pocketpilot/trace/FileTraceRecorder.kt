@@ -142,6 +142,7 @@ internal class FileTraceRecorder(
         } catch (e: Exception) {
             Log.e(TAG, "Trace writer loop failed", e)
         } finally {
+            channel.close()
             try {
                 writer?.flush()
                 writer?.close()
@@ -178,8 +179,15 @@ internal class FileTraceRecorder(
 
     override suspend fun flush() {
         val done = CompletableDeferred<Unit>()
-        channel.send(WriteOp.Flush(done))
-        done.await()
+        val completion = writerJob.invokeOnCompletion { error ->
+            done.completeExceptionally(error ?: IllegalStateException("Trace writer is closed"))
+        }
+        try {
+            channel.send(WriteOp.Flush(done))
+            done.await()
+        } finally {
+            completion.dispose()
+        }
     }
 
     override suspend fun close() {

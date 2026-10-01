@@ -56,33 +56,6 @@ class SessionCheckpointCoordinatorTest {
     }
 
     @Test
-    fun `flushIdleReady builds snapshot from session state and forces checkpoint`() = runBlocking {
-        val recording = mockk<SessionRecordingService>(relaxed = true)
-        val captured = slot<SessionRuntimeSnapshot>()
-        coEvery { recording.forceCheckpoint(capture(captured)) } returns true
-        every { recording.getLastTaskOutcome() } returns TaskOutcome.FINISHED
-
-        val coordinator = buildCoordinator(
-            recording = recording,
-            sessionId = "abc-123"
-        )
-
-        val beforeMs = System.currentTimeMillis()
-        val success = coordinator.flushIdleReady()
-        val afterMs = System.currentTimeMillis()
-
-        assertThat(success).isTrue()
-        val snapshot = captured.captured
-        assertThat(snapshot.sessionId).isEqualTo("abc-123")
-        assertThat(snapshot.checkpointState).isEqualTo(CheckpointState.IDLE_READY)
-        assertThat(snapshot.historyItems).isEmpty()
-        assertThat(snapshot.lastTaskOutcome).isEqualTo("FINISHED")
-        assertThat(snapshot.lastCheckpointAt).isAtLeast(beforeMs)
-        assertThat(snapshot.lastCheckpointAt).isAtMost(afterMs)
-        assertThat(snapshot.config.mainModel).isEqualTo(SessionConfig().mainModel)
-    }
-
-    @Test
     fun `flushClosed emits CLOSED state and propagates failure`() = runBlocking {
         val recording = mockk<SessionRecordingService>(relaxed = true)
         val captured = slot<SessionRuntimeSnapshot>()
@@ -114,17 +87,6 @@ class SessionCheckpointCoordinatorTest {
             assertThat(provider.captured.invoke().checkpointState)
                 .isEqualTo(CheckpointState.RUNNING_DIRTY)
         }
-    }
-
-    @Test
-    fun `flushIdleReady reports failure when recording service rejects write`() = runBlocking {
-        val recording = mockk<SessionRecordingService>(relaxed = true)
-        coEvery { recording.forceCheckpoint(any()) } returns false
-        every { recording.getLastTaskOutcome() } returns null
-
-        val coordinator = buildCoordinator(recording)
-
-        assertThat(coordinator.flushIdleReady()).isFalse()
     }
 
     @Test

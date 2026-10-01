@@ -49,7 +49,7 @@ Created ──(UserInput)──► Running ──(Takeover)──► TakeoverPen
 |---------------|---------|-----------|---------|
 | `Created` | `Op.UserInput` | `Running` | init recording, `platform.start()`, emit `SessionStarted` + `TaskStarted`, start agent |
 | `Running` / `Paused` / `TakeoverPending` | `Op.UserInput` | — (rejected) | emit status "Agent is busy" |
-| `Running` | agent completes | `Idle` | emit `TaskCompleted`, flush checkpoint, `agentRunner.clear()`, schedule idle timeout (note: platform stays alive) |
+| `Running` | agent completes | `Idle` | emit `TaskCompleted`, enter idle, clear the runner, schedule checkpoint/trace saving and idle timeout (platform stays alive) |
 | `Running` | `Op.Takeover` | `TakeoverPending` → `Paused` | `agentRunner.pause()` then await deferred (mutex released); on confirm flip to `Paused` and emit `SessionTakeover` |
 | `Running` / `Paused` / `TakeoverPending` | `Op.Interrupt` | unchanged | cancel pending `ask_user`, `agentRunner.stop()` + `cancelJob()` |
 | `TakeoverPending` | `Op.Resume` | — (rejected) | log warn (agent hasn't reached pause-point) |
@@ -58,7 +58,7 @@ Created ──(UserInput)──► Running ──(Takeover)──► TakeoverPen
 | `Idle` | `Op.UserInput` + `platform.start()` fails (< 3 consecutive) | stays `Idle` | emit bootstrap-failure events, re-arm idle timeout, increment failure counter |
 | `Idle` | `Op.UserInput` + 3rd consecutive `platform.start()` failure | `Shutdown` | emit bootstrap-failure events, then `handleShutdown(ReacquireFailed)` → `SessionCompleted(INTERRUPTED)` |
 | `Idle` | idle timeout (5min) | `Shutdown` | via `handleShutdown()` |
-| Any | `Op.Shutdown` | `Shutdown` | cancel idle timeout, flush CLOSED checkpoint, `agentRunner.shutdown()`, `services.cleanup()`, emit `SessionCompleted` |
+| Any | `Op.Shutdown` | `Shutdown` | cancel idle timeout and agent, flush CLOSED checkpoint, `services.cleanup()`, emit `SessionCompleted` |
 | `Shutdown` | any Op | — (ignored) | idempotent guard |
 
 > Note: `Running → Idle` does **not** call `platform.stop()` — the platform stays alive across Hot Idle and is only released by `Shutdown` (`services.cleanup()`). See Section 7.
@@ -147,7 +147,7 @@ Idle + explicit Shutdown → cancel timeout, immediate cleanup
 
 | CheckpointState | Written when | Content |
 |-----------------|-------------|---------|
-| `IDLE_READY` | Task completion (`flushIdleReady()`) | History and configuration |
+| `IDLE_READY` | Debounced save after task completion | History and configuration |
 | `CLOSED` | Shutdown (`flushClosed()`) | Same data, marks session as finished |
 
 ### 6.2 Mutation-driven scheduling
@@ -191,3 +191,7 @@ All paths converge: first `Op.UserInput` triggers `Created → Running`.
 - [Session Infrastructure](../../infra/session.md) -- SessionServices, AgentRunner, UserResponseChannel
 - [Capsule State Machine](../capsule/state_machine.md) -- UI state machine (CapsuleMode)
 - [Protocol](../../protocol/overview.md) -- Op/Event definitions
+
+Task completion and Stop do not wait for diagnostic or checkpoint writes. The existing debounced checkpoint writer cancels stale saves when the next task changes history. Trace flushes run outside the session lifecycle lock, and writer failure releases pending flush requests. Job completion reports cancellation even if Stop arrives before the agent coroutine starts.
+
+The idle timer detaches itself before starting shutdown, so cancellation of pending timers cannot cancel shutdown halfway through storage or cleanup. New chat waits for the terminal session event before clearing the old recording.

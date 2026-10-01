@@ -22,9 +22,12 @@ import id.steveimm.pocketpilot.tool.AppClassifier
 import id.steveimm.pocketpilot.tool.PolicyEngine
 import id.steveimm.pocketpilot.tool.ToolRegistry
 import id.steveimm.pocketpilot.tool.ToolRouter
+import id.steveimm.pocketpilot.history.SessionRecordingService
+import id.steveimm.pocketpilot.trace.TraceRecorder
 import id.steveimm.pocketpilot.trace.NoopTraceRecorder
 import com.openai.models.responses.FunctionTool
 import com.openai.models.responses.ResponseInputItem
+import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.every
 import io.mockk.spyk
@@ -383,6 +386,68 @@ class AgentSessionTest {
                 assertThat(completed.reason).isEqualTo(SessionEndReason.IDLE_TIMEOUT)
 
                 job.cancel()
+        }
+
+        @Test
+        fun `idle expiry finishes cleanup when checkpoint storage suspends`() = runTest {
+                val recording = mockk<SessionRecordingService>(relaxed = true)
+                val writes = mutableListOf<CheckpointState>()
+                coEvery { recording.forceCheckpoint(any()) } coAnswers {
+                        delay(10)
+                        writes += firstArg<SessionRuntimeSnapshot>().checkpointState
+                        true
+                }
+                val session = buildSessionWith(this, FakeAndroidPlatform(), recordingService = recording)
+                val events = mutableListOf<AgentEvent>()
+                val collector = backgroundScope.launch { session.events.collect { events.add(it) } }
+                session.submit(Op.UserInput("first"))
+                advanceTimeBy(301_000)
+                runCurrent()
+
+                assertThat(writes).contains(CheckpointState.CLOSED)
+                assertThat(events.filterIsInstance<SessionCompleted>().single().reason).isEqualTo(SessionEndReason.IDLE_TIMEOUT)
+                session.submit(Op.Shutdown)
+                collector.cancel()
+        }
+
+        @Test
+        fun `stop immediately after send completes even before the agent coroutine starts`() = runTest {
+                val session = buildSession(this, captureDelayMs = 0, llmDelayMs = 60_000)
+                session.submit(Op.UserInput("first"))
+                session.submit(Op.Interrupt)
+                runCurrent()
+                assertThat(session.state.value).isEqualTo(SessionState.Idle)
+                val completed = session.events.replayCache.filterIsInstance<TaskCompleted>().single()
+                assertThat(completed.outcome).isEqualTo(TaskOutcome.USER_STOPPED)
+                session.submit(Op.Shutdown)
+        }
+
+        @Test
+        fun `stop and follow-up do not wait for trace persistence`() = runTest {
+                val flushGate = CompletableDeferred<Unit>()
+                val trace = object : TraceRecorder by NoopTraceRecorder {
+                        override suspend fun flush() { flushGate.await() }
+                }
+                val llm = SessionTestLLMClient(60_000)
+                val session = buildSessionWith(this, FakeAndroidPlatform(), llmClient = llm, traceRecorder = trace)
+                val events = mutableListOf<AgentEvent>()
+                val collector = backgroundScope.launch { session.events.collect { events.add(it) } }
+                session.submit(Op.UserInput("first"))
+                runCurrent()
+                session.submit(Op.Interrupt)
+                runCurrent()
+
+                assertThat(session.state.value).isEqualTo(SessionState.Idle)
+                assertThat(events.filterIsInstance<TaskCompleted>().single().outcome).isEqualTo(TaskOutcome.USER_STOPPED)
+                session.submit(Op.UserInput("follow-up"))
+                runCurrent()
+                assertThat(llm.requests).hasSize(2)
+                assertThat(llm.requests.last().map { it.toString() }.joinToString()).contains("first")
+                session.submit(Op.Interrupt)
+                runCurrent()
+                flushGate.complete(Unit)
+                session.submit(Op.Shutdown)
+                collector.cancel()
         }
 
         @Test
@@ -851,6 +916,12 @@ class AgentSessionTest {
                 runCurrent()
                 assertThat(session.state.value).isEqualTo(SessionState.Idle)
                 assertThat(events.filterIsInstance<TaskCompleted>().single().outcome).isEqualTo(TaskOutcome.USER_STOPPED)
+                session.submit(Op.UserInput("follow-up after takeover"))
+                runCurrent()
+                assertThat(llm.paused).isFalse()
+                assertThat(session.state.value).isEqualTo(SessionState.Running)
+                session.submit(Op.Interrupt)
+                runCurrent()
                 session.submit(Op.Shutdown)
                 advanceUntilIdle()
                 collector.cancel()
@@ -1175,7 +1246,9 @@ private fun buildSessionWith(
         scope: kotlinx.coroutines.CoroutineScope,
         platform: id.steveimm.pocketpilot.platform.AndroidPlatform,
         llmDelayMs: Long = 0L,
-        llmClient: LLMClient? = null
+        llmClient: LLMClient? = null,
+        recordingService: SessionRecordingService = mockk(relaxed = true),
+        traceRecorder: TraceRecorder = NoopTraceRecorder,
 ): AgentSession {
         val toolRegistry = ToolRegistry()
         val policyEngine = PolicyEngine(appClassifier = AppClassifier(emptyMap()))
@@ -1198,8 +1271,8 @@ private fun buildSessionWith(
                         llmClient = testLlm,
                         modelCatalog = testCatalog,
                         llmClientFactory = LLMClientFactory.forTest(testCatalog, testLlm),
-                        traceRecorder = NoopTraceRecorder,
-                        recordingService = mockk(relaxed = true)
+                        traceRecorder = traceRecorder,
+                        recordingService = recordingService
                 )
         val service = mockk<AccessibilityService>(relaxed = true)
         return AgentSession.createWithServices(
@@ -1294,6 +1367,9 @@ private class FailingStreamingSessionTestLLMClient : LLMClient() {
 /** LLM whose streaming flow blocks on a per-call [kotlinx.coroutines.CompletableDeferred] gate, allowing tests to deterministically
  * hold the agent inside a turn until release. */
 private class GatedStreamingLLMClient : LLMClient() {
+        var paused = false
+                private set
+        override fun setPaused(paused: Boolean) { this.paused = paused }
         val streamStarted = kotlinx.coroutines.CompletableDeferred<Unit>()
         private val gates = mutableListOf<kotlinx.coroutines.CompletableDeferred<Unit>>()
         private var callIndex = 0

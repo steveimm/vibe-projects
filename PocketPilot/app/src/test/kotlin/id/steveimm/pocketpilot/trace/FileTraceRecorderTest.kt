@@ -7,6 +7,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -32,6 +33,17 @@ class FileTraceRecorderTest {
         sessionId = "s1",
         type = "test"
     )
+
+    @Test
+    fun `failed writer releases current and future flush requests`() = runBlocking {
+        File(rootDir, "blocked").writeText("Not a directory")
+        val recorder = FileTraceRecorder(runId = "blocked", rootDir = rootDir)
+        repeat(2) {
+            val error = withTimeout(2_000) { runCatching { recorder.flush() }.exceptionOrNull() }
+            assertThat(error).isInstanceOf(IllegalStateException::class.java)
+        }
+        recorder.close()
+    }
 
     @Test
     fun `flush makes all previously recorded lines durable`() = runBlocking {

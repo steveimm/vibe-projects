@@ -33,17 +33,6 @@ internal class SessionCheckpointCoordinator(
         recordingService.scheduleCheckpoint { buildSnapshot(checkpointState) }
     }
 
-    suspend fun flushIdleReady(): Boolean {
-        val snapshot = buildSnapshot(CheckpointState.IDLE_READY)
-        val success = recordingService.forceCheckpoint(snapshot)
-        if (success) {
-            Log.d(TAG, "Flushed IDLE_READY checkpoint for $sessionId")
-        } else {
-            Log.e(TAG, "Failed to flush IDLE_READY checkpoint for $sessionId")
-        }
-        return success
-    }
-
     suspend fun flushClosed(): Boolean {
         val snapshot = buildSnapshot(CheckpointState.CLOSED)
         val success = recordingService.forceCheckpoint(snapshot)

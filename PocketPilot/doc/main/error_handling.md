@@ -25,13 +25,9 @@ Coroutine bodies that `catch (e: Exception)` must first re-raise `CancellationEx
 
 The seven sites below intentionally swallow or default on failure. When investigating "state looks wrong but no exception was thrown," start here.
 
-### (1) Checkpoint flush returns Boolean; caller logs only
+### (1) Checkpoint write failure keeps the session usable
 
-- `app/src/main/kotlin/id/steveimm/pocketpilot/session/SessionCheckpointCoordinator.kt:46-54` — `flushIdleReady()` returns `Boolean`; on `false` it logs `"Failed to flush IDLE_READY checkpoint"` but does not throw.
-- `app/src/main/kotlin/id/steveimm/pocketpilot/session/SessionCheckpointCoordinator.kt:57-64` — `flushClosed()` mirrors the same pattern for the CLOSED state.
-- `app/src/main/kotlin/id/steveimm/pocketpilot/session/AgentSession.kt:441-444` — Caller of `flushIdleReady()` checks the boolean, emits a status message (`"⚠️ Checkpoint save failed; session kept alive in memory."`), logs an error, and continues to transition the session to Idle. A failed checkpoint does not abort the task-completion flow; the session remains alive in memory and the user is told process-death recovery may not be available.
-
-**Why silent**: a failed disk write should not crash an otherwise-successful task. The user is told via a status message and may re-issue the task; in-memory state is preserved.
+`SessionRecordingService.scheduleCheckpoint()` saves task history in the background and logs write failures. `SessionCheckpointCoordinator.flushClosed()` returns a Boolean, which shutdown logs if saving fails. Neither failure discards the in-memory conversation. Stop and follow-up input do not wait for the background task-completion save.
 
 ### (2) Event collector catch-and-log
 

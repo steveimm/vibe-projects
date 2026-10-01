@@ -68,7 +68,7 @@ stateDiagram-v2
 
 Durable (via `SessionCheckpointCoordinator`):
 - History items → checkpointed on every mutation while `_state.value` is non-Shutdown (AgentSession.kt:256-258).
-- `flushIdleReady()` runs on `Running → Idle` (AgentSession.kt:459).
+- An `IDLE_READY` checkpoint is scheduled on `Running → Idle` through the existing debounced writer.
 - `flushClosed()` runs on any `→ Shutdown` (AgentSession.kt:670 region).
 
 Transient (lost on process death):
@@ -81,11 +81,11 @@ Transient (lost on process death):
 |---|---|
 | `Created → Running` (first task) | `recordingService.initializeNewSession`, `platform.start()`, emit `SessionStarted` + `TaskStarted`, agent runner `start` (AgentSession.kt:361-415) |
 | `Idle → Running` | `cancelIdleTimeout()`, idempotent `platform.start()`, emit `TaskStarted`, agent runner `start` (AgentSession.kt:380-415) |
-| `Running → Idle` | `traceRecorder.flush()`, emit `TaskCompleted`, `checkpointCoordinator.flushIdleReady()`, `agentRunner.clear()`, `scheduleIdleTimeout()` (AgentSession.kt:437-486) |
+| `Running → Idle` | Emit `TaskCompleted`, enter idle, clear the runner, schedule checkpoint saving and the idle timeout. Trace flushing runs outside the lifecycle lock. |
 | `Running → TakeoverPending` | `agentRunner.pause()` (returns Deferred); release mutex while awaiting (AgentSession.kt:504-518) |
 | `TakeoverPending → Paused` | Re-acquire mutex; emit `SessionTakeover` (AgentSession.kt:519-530) |
 | `Paused → Running` | `agentRunner.resume()`, emit `SessionResumed` (AgentSession.kt:543-550) |
-| any → `Shutdown` | If task active, emit `TaskCompleted(USER_STOPPED)`; `cancelIdleTimeout()`, `flushClosed()`, disable mutation listeners, cancel `userResponseChannel`, `agentRunner.shutdown()` + close completions channel, `services.cleanup()`, emit `SessionCompleted` with `SessionEndReason` derived from `ShutdownCause`: `UserRequested→USER_STOPPED`, `IdleTimeout→IDLE_TIMEOUT`, `ReacquireFailed→INTERRUPTED` (AgentSession.kt:593-700) |
+| any → `Shutdown` | If task active, emit `TaskCompleted(USER_STOPPED)`; Detach an expiring idle timer, cancel any pending timer, disable mutation listeners, cancel `userResponseChannel`, `agentRunner.shutdown()` + close completions channel, `flushClosed()`, `services.cleanup()`, emit `SessionCompleted` with `SessionEndReason` derived from `ShutdownCause`: `UserRequested→USER_STOPPED`, `IdleTimeout→IDLE_TIMEOUT`, `ReacquireFailed→INTERRUPTED` (AgentSession.kt:593-700) |
 
 ## Error / recovery paths
 

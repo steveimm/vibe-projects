@@ -100,32 +100,30 @@ internal class SessionAgentRunner(
             state = RunnerState(agent = newAgent, agentJob = null, cancellationSignal = signal)
         }
 
+        var outcome: AgentStopReason? = null
         val newAgentJob = scope.launch {
             try {
-                val result = newAgent.run()
-                deliverCompletion(result)
+                outcome = newAgent.run()
             } catch (e: CancellationException) {
-                if (signal.isCompleted) {
-                    Log.d(TAG, "Agent cancelled by user request")
-                    deliverCompletion(AgentStopReason.UserRequested)
-                } else {
-                    Log.e(TAG, "Agent cancelled unexpectedly", e)
-                    deliverCompletion(AgentStopReason.Error(e.message ?: "Agent cancelled"))
-                }
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "Agent error", e)
-                deliverCompletion(AgentStopReason.Error(e.message ?: "Unknown error"))
+                outcome = AgentStopReason.Error(e.message ?: "Unknown error")
             }
+        }
+        // This also runs if Stop cancels the job before its body starts.
+        newAgentJob.invokeOnCompletion { error ->
+            val reason = when {
+                signal.isCompleted -> AgentStopReason.UserRequested
+                else -> outcome ?: AgentStopReason.Error(error?.message ?: "Agent cancelled")
+            }
+            completions.trySend(reason)
         }
         synchronized(stateLock) {
             state = state.copy(agentJob = newAgentJob)
         }
 
         Log.d(TAG, "Started agent for task $taskId")
-    }
-
-    private fun deliverCompletion(reason: AgentStopReason) {
-        completions.trySend(reason)
     }
 
     private fun resolvePromptTemplates(prompt: String): String {

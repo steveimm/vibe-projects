@@ -381,15 +381,6 @@ private constructor(
                     else -> null
                 }
 
-        // 1. Flush trace to disk BEFORE signaling completion — guarantees all trace events (including session_stopped + run_summary) are
-        // on disk before the runner detects TaskCompleted in logcat and force-stops the process.
-        try {
-            services.traceRecorder.flush()
-        } catch (e: Exception) {
-            Log.w(TAG, "Trace flush failed (non-fatal): ${e.message}")
-        }
-
-        // 2. Emit TaskCompleted (per-task event, not session-level)
         emit(
                 TaskCompleted(
                         sessionId = sessionId,
@@ -401,22 +392,22 @@ private constructor(
                 )
         )
 
-        // 3. Flush checkpoint for process-death recovery
-        val checkpointed = checkpointCoordinator.flushIdleReady()
-        if (!checkpointed) {
-            emitStatus("⚠️ Checkpoint save failed; session kept alive in memory.")
-            Log.e(TAG, "Checkpoint save failed for task $taskId; session kept alive in memory")
-        }
-
-        // 4. Transition to Idle (Hot Idle)
         _state.value = SessionState.Idle
         currentTaskId = null
-
-        // 5. Release agent runner only; platform stays alive for follow-up tasks
         agentRunner.clear()
-
-        // 6. Schedule idle timeout (auto-shutdown after inactivity)
         scheduleIdleTimeout()
+
+        // Saving must not hold the lifecycle lock or delay Stop and follow-up messages.
+        checkpointCoordinator.scheduleCheckpoint(SessionState.Idle)
+        scope.launch {
+            try {
+                services.traceRecorder.flush()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Trace flush failed (non-fatal): ${e.message}")
+            }
+        }
 
         Log.i(TAG, "Task $taskId completed (outcome=$outcome). Session idle, awaiting follow-up.")
     }
@@ -565,16 +556,15 @@ private constructor(
 
         cancelIdleTimeout()
 
+        disableCheckpointMutationListeners()
+        services.userResponseChannel.cancel()
+        agentRunner.shutdown()
+        agentRunner.completions.close()
+
         val closedCheckpointSaved = checkpointCoordinator.flushClosed()
         if (!closedCheckpointSaved) {
             Log.w(TAG, "Failed to flush CLOSED checkpoint for $sessionId")
         }
-
-        disableCheckpointMutationListeners()
-        services.userResponseChannel.cancel()
-
-        agentRunner.shutdown()
-        agentRunner.completions.close()
 
         val cleanupResult = services.cleanup()
         if (cleanupResult is CleanupResult.PartialFailure) {
@@ -650,7 +640,11 @@ private constructor(
         idleTimeoutJob = scope.launch {
             delay(IDLE_TIMEOUT_MS)
             Log.i(TAG, "Idle timeout expired, auto-shutting down session $sessionId")
-            lifecycleMutex.withLock { handleShutdown(ShutdownCause.IdleTimeout) }
+            lifecycleMutex.withLock {
+                // Detach the timer before shutdown cancels pending idle work.
+                idleTimeoutJob = null
+                handleShutdown(ShutdownCause.IdleTimeout)
+            }
         }
     }
 
