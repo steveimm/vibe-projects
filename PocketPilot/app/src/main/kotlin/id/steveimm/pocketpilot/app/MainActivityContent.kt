@@ -54,6 +54,7 @@ private fun rememberCapsuleBinding(): CapsuleBinding {
             onApprovalResolved = { callId -> holder.onApprovalResolved(callId) },
             onUserResponseSent = { callId -> holder.onUserResponseSent(callId) },
             responseDraft = holder.responseDraft,
+            lastToolCall = holder.lastToolCall,
         )
     }
 }

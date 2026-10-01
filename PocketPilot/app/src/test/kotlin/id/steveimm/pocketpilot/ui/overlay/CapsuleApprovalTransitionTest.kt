@@ -59,7 +59,7 @@ class CapsuleApprovalTransitionTest {
         assertThat(accepted).isTrue()
         val mode = holder.mode.value
         assertThat(mode).isInstanceOf(CapsuleMode.Running::class.java)
-        assertThat((mode as CapsuleMode.Running).thought).isEqualTo("Processing...")
+        assertThat((mode as CapsuleMode.Running).thought).isEmpty()
     }
 
     @Test
@@ -93,7 +93,7 @@ class CapsuleApprovalTransitionTest {
         assertThat(accepted).isTrue()
         val mode = holder.mode.value
         assertThat(mode).isInstanceOf(CapsuleMode.Running::class.java)
-        assertThat((mode as CapsuleMode.Running).thought).isEqualTo("Processing response...")
+        assertThat((mode as CapsuleMode.Running).thought).isEmpty()
     }
 
     @Test
@@ -103,7 +103,7 @@ class CapsuleApprovalTransitionTest {
         holder.onTakeoverConfirmed()
         val mode = holder.mode.value
         assertThat(mode).isInstanceOf(CapsuleMode.Takeover::class.java)
-        assertThat((mode as CapsuleMode.Takeover).lastThought).isEqualTo("Thinking")
+        assertThat((mode as CapsuleMode.Takeover).lastThought).isEmpty()
     }
 
     @Test

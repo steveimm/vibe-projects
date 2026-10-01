@@ -261,7 +261,7 @@ class SessionRecordingService(
     }
 
     /** Mark session as completed. completedNormally derives from last task outcome. */
-    fun completeSession() {
+    fun completeSession(): Job? {
         val completedNormally = synchronized(stateLock) {
             lastTaskOutcome == TaskOutcome.FINISHED
         }
@@ -269,7 +269,7 @@ class SessionRecordingService(
                 synchronized(stateLock) {
                     // Finalize any pending agent message
                     finalizeCurrentAgentMessage()
-                    val session = currentSession ?: return
+                    val session = currentSession ?: return null
 
                     // Extract summary from first user message if not set
                     val summary =
@@ -302,7 +302,7 @@ class SessionRecordingService(
 
         // Cancel debounced save, then force immediate save under write mutex
         pendingSave?.cancel()
-        scope.launch {
+        return scope.launch {
             writeMutex.withLock { save() }
         }
     }

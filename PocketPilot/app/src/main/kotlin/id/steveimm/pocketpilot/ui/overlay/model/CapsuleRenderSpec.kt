@@ -13,7 +13,7 @@ data class CapsuleRenderSpec(
     /** Status dot configuration. null = dot hidden. */
     data class DotSpec(val status: GlowState, val pulsing: Boolean)
 
-    /** Status-line text (the agent's thought). */
+    /** Header status text. */
     data class ThoughtSpec(val text: String, val dimmed: Boolean = false)
 
     /** A single button in the control bar. The Compose layer chooses the icon. */
@@ -41,8 +41,8 @@ data class CapsuleRenderSpec(
             when (mode) {
                 is CapsuleMode.Running -> CapsuleRenderSpec(
                     dot = DotSpec(GlowState.Active, pulsing = true),
-                    thought = ThoughtSpec(mode.thought.ifEmpty { "Thinking..." }),
-                    expandedBody = null,
+                    thought = ThoughtSpec(if (mode.thought.isBlank()) "Thinking" else ""),
+                    expandedBody = mode.thought.takeIf { it.isNotBlank() },
                     buttons = ButtonsSpec(
                         primary = ButtonSpec("Takeover", enabled = !isStopPending),
                         stop = stopButtonSpec(isStopPending),
@@ -53,7 +53,7 @@ data class CapsuleRenderSpec(
                 is CapsuleMode.TakeoverPending -> CapsuleRenderSpec(
                     dot = DotSpec(GlowState.Paused, pulsing = false),
                     thought = ThoughtSpec("Handing over..."),
-                    expandedBody = null,
+                    expandedBody = mode.lastThought.takeIf { it.isNotBlank() },
                     buttons = ButtonsSpec(
                         primary = ButtonSpec("Handing over", enabled = false),
                         stop = stopButtonSpec(isStopPending),
@@ -67,7 +67,7 @@ data class CapsuleRenderSpec(
                         "Paused",
                         dimmed = true,
                     ),
-                    expandedBody = null,
+                    expandedBody = mode.lastThought.takeIf { it.isNotBlank() },
                     buttons = ButtonsSpec(
                         primary = ButtonSpec("Resume", enabled = !isStopPending),
                         stop = stopButtonSpec(isStopPending),

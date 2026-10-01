@@ -15,6 +15,7 @@ data class CapsuleBinding(
     val onApprovalResolved: (String) -> Boolean,
     val onUserResponseSent: (String) -> Boolean,
     val responseDraft: MutableState<String>? = null,
+    val lastToolCall: StateFlow<String?> = MutableStateFlow(null),
 )
 
 /** No-op binding used when the agent runtime is unbound. */

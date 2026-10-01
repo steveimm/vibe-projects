@@ -47,20 +47,41 @@ class CapsuleStateHolderTest {
     }
 
     @Test
-    fun `onTaskStarted sets Running mode with sanitized input`() {
-        holder.onTaskStarted("task1", "Open Taobao and search")
-        val mode = holder.mode.value
-        assertThat(mode).isInstanceOf(CapsuleMode.Running::class.java)
-        assertThat((mode as CapsuleMode.Running).thought).isEqualTo("Open Taobao and search")
+    fun `progress starts empty until assistant content arrives`() {
+        holder.onTaskStarted("task1", "Open Settings")
+        val mode = holder.mode.value as CapsuleMode.Running
+        assertThat(mode.thought).isEmpty()
+        assertThat(id.steveimm.pocketpilot.ui.overlay.model.CapsuleRenderSpec.from(mode).thought.text).isEqualTo("Thinking")
     }
 
     @Test
-    fun `onTaskStarted truncates long input`() {
-        val longInput = "a".repeat(100)
-        holder.onTaskStarted("task1", longInput)
-        val thought = (holder.mode.value as CapsuleMode.Running).thought
-        assertThat(thought).hasLength(83) // 80 + "..."
-        assertThat(thought).endsWith("...")
+    fun `commentary survives phase changes while tools remain separate`() {
+        holder.onTaskStarted("task1", "Open Settings")
+        holder.onMessageDelta("turn1", "I will open ")
+        holder.onMessageDelta("turn1", "Settings.")
+        holder.onActionProposed("open_app Settings")
+        holder.setTurnPhase(id.steveimm.pocketpilot.protocol.TurnPhase.EXECUTION)
+        assertThat((holder.mode.value as CapsuleMode.Running).thought).isEqualTo("I will open Settings.")
+        assertThat(holder.lastToolCall.value).isEqualTo("open_app Settings")
+        holder.setTurnPhase(id.steveimm.pocketpilot.protocol.TurnPhase.PLANNING)
+        assertThat((holder.mode.value as CapsuleMode.Running).thought).isEqualTo("I will open Settings.")
+        holder.onMessageDelta("turn2", "Now checking Display.")
+        assertThat((holder.mode.value as CapsuleMode.Running).thought).isEqualTo("Now checking Display.")
+    }
+
+    @Test
+    fun `new conversation drops commentary tools and late output`() {
+        holder.onTaskStarted("old", "old request")
+        holder.onMessageDelta("turn1", "Previous commentary")
+        holder.onActionProposed("tap [400, 600]")
+        holder.clearConversation()
+        holder.onMessageDelta("turn1", "late output")
+        holder.onActionProposed("late tool")
+        assertThat(holder.mode.value).isEqualTo(CapsuleMode.Hidden)
+        assertThat(holder.lastToolCall.value).isNull()
+        holder.onTaskStarted("new", "new request")
+        assertThat((holder.mode.value as CapsuleMode.Running).thought).isEmpty()
+        assertThat(holder.lastToolCall.value).isNull()
     }
 
     @Test
@@ -72,10 +93,10 @@ class CapsuleStateHolderTest {
     }
 
     @Test
-    fun `setTurnPhase changes thought in Running mode`() {
+    fun `phase changes keep the Thinking fallback without synthetic action text`() {
         holder.onTaskStarted("task1", "input")
         holder.setTurnPhase(id.steveimm.pocketpilot.protocol.TurnPhase.PLANNING)
-        assertThat((holder.mode.value as CapsuleMode.Running).thought).isEqualTo("Thinking")
+        assertThat((holder.mode.value as CapsuleMode.Running).thought).isEmpty()
     }
 
     @Test
@@ -94,7 +115,7 @@ class CapsuleStateHolderTest {
         holder.onTakeoverRequested()
         val mode = holder.mode.value
         assertThat(mode).isInstanceOf(CapsuleMode.TakeoverPending::class.java)
-        assertThat((mode as CapsuleMode.TakeoverPending).lastThought).isEqualTo("Thinking")
+        assertThat((mode as CapsuleMode.TakeoverPending).lastThought).isEmpty()
     }
 
     @Test
@@ -112,7 +133,7 @@ class CapsuleStateHolderTest {
         holder.onTakeoverConfirmed()
         val mode = holder.mode.value
         assertThat(mode).isInstanceOf(CapsuleMode.Takeover::class.java)
-        assertThat((mode as CapsuleMode.Takeover).lastThought).isEqualTo("Thinking")
+        assertThat((mode as CapsuleMode.Takeover).lastThought).isEmpty()
     }
 
     @Test
@@ -123,7 +144,7 @@ class CapsuleStateHolderTest {
         holder.onResumed()
         val mode = holder.mode.value
         assertThat(mode).isInstanceOf(CapsuleMode.Running::class.java)
-        assertThat((mode as CapsuleMode.Running).thought).isEqualTo("Thinking...")
+        assertThat((mode as CapsuleMode.Running).thought).isEmpty()
     }
 
     @Test
@@ -169,7 +190,7 @@ class CapsuleStateHolderTest {
         holder.onUserResponseSent("call1")
         val mode = holder.mode.value
         assertThat(mode).isInstanceOf(CapsuleMode.Running::class.java)
-        assertThat((mode as CapsuleMode.Running).thought).isEqualTo("Processing response...")
+        assertThat((mode as CapsuleMode.Running).thought).isEmpty()
     }
 
     @Test

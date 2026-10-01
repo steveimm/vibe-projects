@@ -75,12 +75,13 @@ class CapsuleLifecycleTest {
             )
         }
 
+        compose.onNodeWithContentDescription("New chat").performClick()
         compose.onNodeWithContentDescription("Minimize to bubble").performClick()
         compose.onNodeWithContentDescription("Open PocketPilot").performClick()
         compose.onNodeWithContentDescription("Open viewer").performClick()
 
         assertEquals(
-            listOf(NavAction.CLOSE_OVERLAY, NavAction.OPEN_APP, NavAction.OPEN_VIEWER),
+            listOf(NavAction.NEW_CONVERSATION, NavAction.CLOSE_OVERLAY, NavAction.OPEN_APP, NavAction.OPEN_VIEWER),
             fired,
         )
     }

@@ -16,7 +16,7 @@ Completed results remain in `CapsuleStateHolder` without an automatic hide timer
 
 The service state holder owns shared task/note and question-answer drafts. They survive minimizing and switching to chat. A new question clears only its answer draft. Sending a task from the overlay reuses a compatible session or creates one in the service without opening MainActivity. It submits `Op.UserInput(observeScreen = true)`, so the first model request includes the app already on screen. Startup failure or cancellation restores the draft.
 
-The panel header provides compact Open chat and Minimize icon buttons outside MainActivity. Open chat pauses active generation before opening the app. Minimize preserves the task and draft. Only dropping the bubble on the dismiss target stops and removes everything. Dismissal survives service reconnects and late task events until the user opens MainActivity.
+The panel header provides compact New chat, Open chat, and Minimize icon buttons outside MainActivity. Open chat pauses active generation before opening the app. New chat starts an empty conversation on the current screen and archives the previous chat. Minimize preserves the task and draft. Only dropping the bubble on the dismiss target stops and removes everything. Dismissal survives service reconnects and late task events until the user opens MainActivity.
 
 `DeviceScreenState` hides all controls and indicators immediately when the screen turns off or locks. Running work requests takeover, and pending overlay startup is canceled. Unlocking restores eligible overlays but never resumes paused work automatically.
 

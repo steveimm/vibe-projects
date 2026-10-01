@@ -37,6 +37,7 @@ class ServiceOverlayController(
     private var actionIndicatorsEnabled: Boolean,
     private val onStop: () -> Unit,
     private val onSend: (String) -> Unit,
+    private val onNewConversation: () -> Unit,
     private val onTakeover: () -> Unit,
     private val onResume: () -> Unit,
     private val onSupplement: (String) -> Unit,
@@ -110,6 +111,7 @@ class ServiceOverlayController(
             }
         }
         this.onOpenApp = { openMainAppAndHideOverlays() }
+        this.onNewConversation = { this@ServiceOverlayController.onNewConversation() }
         // Navigation callbacks
         this.onCloseOverlay = { minimizeControls() }
         this.onOpenViewer = { this@ServiceOverlayController.onOpenViewer?.invoke() }
@@ -256,10 +258,10 @@ class ServiceOverlayController(
         }
     }
 
-    fun clearConversation() {
+    fun clearConversation(showControls: Boolean = false) {
         dragTakeover.cancel()
         openAppAfterTakeover = false
-        showPreference = ShowPreference.BUBBLE
+        showPreference = if (showControls) ShowPreference.CAPSULE else ShowPreference.BUBBLE
         stateHolder.clearConversation()
         applyVisibility()
     }
@@ -387,6 +389,10 @@ class ServiceOverlayController(
         refreshGlowState()
         // applyVisibility not needed: active task state hasn't changed
     }
+
+    fun onMessageDelta(turnId: String, text: String) { stateHolder.onMessageDelta(turnId, text) }
+
+    fun onActionProposed(description: String) { stateHolder.onActionProposed(description) }
 
     fun onTaskCompleted(outcome: TaskOutcome, message: String?) {
         dragTakeover.cancel()

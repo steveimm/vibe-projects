@@ -2,6 +2,11 @@ package id.steveimm.pocketpilot.app
 
 import com.google.common.truth.Truth.assertThat
 import id.steveimm.pocketpilot.history.SessionRecordingService
+import id.steveimm.pocketpilot.protocol.SessionCompleted
+import id.steveimm.pocketpilot.protocol.SessionEndReason
+import id.steveimm.pocketpilot.protocol.MessageDelta
+import id.steveimm.pocketpilot.protocol.ReasoningDelta
+import id.steveimm.pocketpilot.protocol.ActionProposed
 import id.steveimm.pocketpilot.protocol.SessionError
 import id.steveimm.pocketpilot.protocol.SessionId
 import id.steveimm.pocketpilot.protocol.TaskCompleted
@@ -25,6 +30,28 @@ class AgentServiceEventHandlerTest {
         sessionCleared = { sessionClearedCount++ },
         overlayController = { overlay }
     )
+
+    @Test
+    fun `old session finishes saving without replacing the new conversation`() {
+        handler.handleEvent(TaskCompleted(sessionId, 2_000L, "old", "old answer", TaskOutcome.FINISHED), recording, updateUi = false)
+        handler.handleEvent(SessionCompleted(sessionId, 2_001L, SessionEndReason.USER_STOPPED), recording, updateUi = false)
+        verify { recording.recordFinalAnswer("old answer") }
+        verify { recording.completeSession() }
+        verify(exactly = 0) { overlay.onTaskCompleted(any(), any()) }
+        verify(exactly = 0) { overlay.onSessionCompleted(any()) }
+        assertThat(sessionClearedCount).isEqualTo(0)
+        assertThat(statusUpdates).isEmpty()
+    }
+
+    @Test
+    fun `progress receives assistant content and the latest tool separately from reasoning`() {
+        handler.handleEvent(ReasoningDelta(sessionId, 1_000L, "turn", "internal reasoning"), recording)
+        handler.handleEvent(MessageDelta(sessionId, 1_001L, "turn", "Opening Settings."), recording)
+        handler.handleEvent(ActionProposed(sessionId, 1_002L, "action", "open_app", "Open Settings"), recording)
+        verify(exactly = 1) { overlay.onMessageDelta("turn", "Opening Settings.") }
+        verify(exactly = 0) { overlay.onMessageDelta(any(), "internal reasoning") }
+        verify { overlay.onActionProposed("Open Settings") }
+    }
 
     @Test
     fun `TaskStarted records user message and notifies overlay`() {

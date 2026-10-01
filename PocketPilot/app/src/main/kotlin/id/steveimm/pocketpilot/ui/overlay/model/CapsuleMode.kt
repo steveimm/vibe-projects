@@ -3,7 +3,7 @@ package id.steveimm.pocketpilot.ui.overlay.model
 /** CapsuleMode — the single source of truth for Smart Capsule UI. */
 sealed interface CapsuleMode {
 
-    /** Agent is actively executing. Shows thought + controls. */
+    /** Agent is running. thought contains assistant response text, not native reasoning. */
     data class Running(val thought: String) : CapsuleMode
 
     /** User requested takeover, waiting for current action to finish. */
@@ -27,12 +27,12 @@ sealed interface CapsuleMode {
         val reason: String        // policy reason for logs/traces, not prompt copy
     ) : CapsuleMode
 
-    /** Task completed successfully. Auto-hides after 3s. */
+    /** Task completed. Retains the result until the conversation changes. */
     data class Done(val message: String, val stopped: Boolean = false) : CapsuleMode
 
     /** Error occurred. Stays until dismissed. */
     data class Error(val message: String) : CapsuleMode
 
-    /** No active task. Capsule hidden. */
+    /** No active task. The panel can accept a new request. */
     data object Hidden : CapsuleMode
 }

@@ -32,6 +32,42 @@ class SessionCoordinatorTest {
     }
 
     @Test
+    fun `new conversation clears a detached checkpoint and queued input`() = runTest {
+        val coordinator = SessionCoordinator(backgroundScope)
+        val old = fakeSession(MutableStateFlow(SessionState.Shutdown))
+        every { old.getServices().recordingService.getCurrentFileName() } returns "old.json"
+        coordinator.attachSession(old)
+        assertThat(coordinator.submit("old")).isEqualTo(SubmitResult.SESSION_DEAD)
+        coordinator.selectedSessionForReload = mockk(relaxed = true)
+        coordinator.enqueue("stale input")
+        coordinator.clearSession()
+        assertThat(coordinator.consumeDeadSessionFileName()).isNull()
+        assertThat(coordinator.selectedSessionForReload).isNull()
+        val fresh = fakeSession()
+        coordinator.createAndSubmit("new") { fresh }
+        coVerify(exactly = 0) { fresh.submit(Op.UserInput("stale input")) }
+    }
+
+    @Test
+    fun `new input waits for shared reset without shutting down a service-owned replacement`() = runTest {
+        val coordinator = SessionCoordinator(backgroundScope)
+        val replacement = fakeSession()
+        coordinator.attachSession(replacement)
+        val resetComplete = CompletableDeferred<Unit>()
+        val reset = launch { coordinator.clearSession(shutdownCurrent = false) { resetComplete.await() } }
+        runCurrent()
+        var submitted: SubmitResult? = null
+        val input = launch { submitted = coordinator.submit("new request") }
+        runCurrent()
+        assertThat(submitted).isNull()
+        resetComplete.complete(Unit)
+        reset.join()
+        input.join()
+        assertThat(submitted).isEqualTo(SubmitResult.NO_SESSION)
+        coVerify(exactly = 0) { replacement.submit(Op.Shutdown) }
+    }
+
+    @Test
     fun `submit with active idle session sends immediately`() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val scope = TestScope(dispatcher)

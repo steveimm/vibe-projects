@@ -133,6 +133,7 @@ fun ChatScreen(
     val capsuleMode by capsuleBinding.mode.collectAsStateWithLifecycle()
     val capsulePlatformMode by capsuleBinding.platformMode.collectAsStateWithLifecycle()
     val isStopPending by capsuleBinding.isStopPending.collectAsStateWithLifecycle()
+    val lastToolCall by capsuleBinding.lastToolCall.collectAsStateWithLifecycle()
 
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -321,6 +322,7 @@ fun ChatScreen(
                                     capsuleBinding.responseDraft ?: viewModel.inputDraft
                                 } else viewModel.inputDraft,
                                 inputActive = inputVisible,
+                                lastToolCall = lastToolCall,
                                 autoFocusInput = inputVisible && questionId != null && questionId == autoFocusQuestionId,
                                 pendingInputText = pendingInput.takeIf { inputVisible }.orEmpty(),
                                 onPendingInputConsumed = { viewModel.consumePendingInput() },

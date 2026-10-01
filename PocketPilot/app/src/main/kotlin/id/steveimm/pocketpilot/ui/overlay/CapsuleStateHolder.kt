@@ -25,6 +25,10 @@ class CapsuleStateHolder {
 
     val inputDraft = mutableStateOf("")
     val responseDraft = mutableStateOf("")
+    private var commentaryTurn: String? = null
+    private var commentary = ""
+    private val _lastToolCall = MutableStateFlow<String?>(null)
+    val lastToolCall: StateFlow<String?> = _lastToolCall.asStateFlow()
 
     private val _mode = MutableStateFlow<CapsuleMode>(CapsuleMode.Hidden)
     val mode: StateFlow<CapsuleMode> = _mode.asStateFlow()
@@ -67,6 +71,7 @@ class CapsuleStateHolder {
 
 
     fun clearConversation() {
+        clearProgress()
         inputDraft.value = ""
         responseDraft.value = ""
         _turnPhase.value = null
@@ -79,14 +84,26 @@ class CapsuleStateHolder {
 
     fun setTurnPhase(phase: TurnPhase) {
         _turnPhase.value = phase
-        if (_mode.value is CapsuleMode.Running) {
-            val status = when (phase) {
-                TurnPhase.PERCEPTION -> "Reading screen"
-                TurnPhase.PLANNING -> "Thinking"
-                TurnPhase.EXECUTION -> "Acting"
-            }
-            setMode(CapsuleMode.Running(status))
+    }
+
+    fun onMessageDelta(turnId: String, delta: String) {
+        if (!hasActiveTask || delta.isEmpty()) return
+        if (commentaryTurn != turnId) {
+            commentaryTurn = turnId
+            commentary = ""
         }
+        commentary += delta
+        if (_mode.value is CapsuleMode.Running && commentary.isNotBlank()) setMode(CapsuleMode.Running(commentary))
+    }
+
+    fun onActionProposed(description: String) {
+        if (hasActiveTask) _lastToolCall.value = description
+    }
+
+    private fun clearProgress() {
+        commentaryTurn = null
+        commentary = ""
+        _lastToolCall.value = null
     }
 
     fun setAgentMidTurn(midTurn: Boolean) { _isAgentMidTurn.value = midTurn }
@@ -95,9 +112,10 @@ class CapsuleStateHolder {
 
 
     fun onTaskStarted(taskId: String, input: String) {
+        clearProgress()
         _isStopPending.value = false
         _turnPhase.value = null
-        setMode(CapsuleMode.Running(compactThought(input)))
+        setMode(CapsuleMode.Running(""))
     }
 
     fun onError(message: String) {
@@ -141,7 +159,7 @@ class CapsuleStateHolder {
             Log.d(TAG, "Ignoring approval resolved: callId mismatch expected=${current.callId}, actual=$callId")
             return false
         }
-        setMode(CapsuleMode.Running("Processing..."))
+        setMode(CapsuleMode.Running(commentary))
         return true
     }
 
@@ -173,7 +191,7 @@ class CapsuleStateHolder {
         }
         _turnPhase.value = null
         _isAgentMidTurn.value = false
-        setMode(CapsuleMode.Running("Thinking..."))
+        setMode(CapsuleMode.Running(commentary))
     }
 
     fun onUserResponseSent(callId: String): Boolean {
@@ -190,7 +208,7 @@ class CapsuleStateHolder {
             Log.d(TAG, "Ignoring user response due to callId mismatch: expected=$expectedCallId, actual=$callId")
             return false
         }
-        setMode(CapsuleMode.Running("Processing response..."))
+        setMode(CapsuleMode.Running(commentary))
         return true
     }
 

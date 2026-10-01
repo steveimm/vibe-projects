@@ -72,6 +72,7 @@ class CapsuleOverlayHost(
     var onApprovalResponse: ((String, ApprovalDecision, ApprovalScope, String) -> Unit)? = null
     var onStop: (() -> Unit)? = null
     var onOpenApp: (() -> Unit)? = null
+    var onNewConversation: (() -> Unit)? = null
     var onCloseOverlay: (() -> Unit)? = null
     var onOpenViewer: (() -> Unit)? = null
     var onSend: ((String) -> Unit)? = null
@@ -127,6 +128,7 @@ class CapsuleOverlayHost(
         composeHost.show(createLayoutParams(interactionLocked.value)) {
             val mode by stateHolder.mode.collectAsState(initial = CapsuleMode.Hidden)
             val stopPending by stateHolder.isStopPending.collectAsState(initial = false)
+            val lastToolCall by stateHolder.lastToolCall.collectAsState()
             val ctx by stateHolder.context.collectAsState()
             val platform by stateHolder.platformMode.collectAsState()
             val lockTouches by interactionLocked.collectAsState(initial = false)
@@ -163,6 +165,7 @@ class CapsuleOverlayHost(
                         mode = mode,
                         inputDraft = if (mode is CapsuleMode.WaitingForInput) stateHolder.responseDraft else stateHolder.inputDraft,
                         isStopPending = stopPending,
+                        lastToolCall = lastToolCall,
                         platformMode = platform,
                         context = ctx,
                         transientThought = flashThought,
@@ -191,6 +194,7 @@ class CapsuleOverlayHost(
                         onNavigate = { action ->
                             debounced {
                                 when (action) {
+                                    NavAction.NEW_CONVERSATION -> onNewConversation?.invoke()
                                     NavAction.CLOSE_OVERLAY -> onCloseOverlay?.invoke()
                                     NavAction.OPEN_APP -> onOpenApp?.invoke()
                                     NavAction.OPEN_VIEWER -> onOpenViewer?.invoke()

@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.rounded.OpenInNew
@@ -78,6 +80,7 @@ fun SmartCapsuleSurface(
     onInputSubmitted: () -> Unit = {},
     autoFocusInput: Boolean = false,
     inputActive: Boolean = true,
+    lastToolCall: String? = null,
     inputDraft: MutableState<String>? = null,
     pendingInputText: String = "",
     onPendingInputConsumed: () -> Unit = {},
@@ -111,6 +114,11 @@ fun SmartCapsuleSurface(
         ) {
             if (isTaskActive || navSpec.showApp || navSpec.showWatch) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    if (navSpec.showApp) {
+                        IconButton(onClick = { onNavigate(NavAction.NEW_CONVERSATION) }) {
+                            Icon(Icons.Rounded.Add, "New chat", Modifier.size(20.dp))
+                        }
+                    }
                     Box(Modifier.weight(1f)) {
                         if (isTaskActive) CapsuleStatusLine(spec = renderSpec)
                     }
@@ -134,16 +142,28 @@ fun SmartCapsuleSurface(
                             CapsuleDivider()
                             CapsuleDetailBody(text = renderSpec.expandedBody)
                         }
-                        if (renderSpec.buttons.primary != null || renderSpec.buttons.stop != null) CapsuleControlBar(
-                            spec = renderSpec,
-                            mode = mode,
-                            onTakeover = onTakeover,
-                            onResume = onResume,
-                            onStop = onStop,
-                            onDone = { callId -> onUserResponse(callId, "done") },
-                            onApprovalResponse = onApprovalResponse,
-                        )
                     }
+                    if (!lastToolCall.isNullOrBlank() && mode !is CapsuleMode.Done && mode !is CapsuleMode.Error) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.Rounded.Terminal, "Last tool call", Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.width(8.dp))
+                            Text(lastToolCall, style = MaterialTheme.pocketPilot.monoBody,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                    if (renderSpec.buttons.primary != null || renderSpec.buttons.stop != null) CapsuleControlBar(
+                        spec = renderSpec,
+                        mode = mode,
+                        onTakeover = onTakeover,
+                        onResume = onResume,
+                        onStop = onStop,
+                        onDone = { callId -> onUserResponse(callId, "done") },
+                        onApprovalResponse = onApprovalResponse,
+                    )
                 }
             }
 

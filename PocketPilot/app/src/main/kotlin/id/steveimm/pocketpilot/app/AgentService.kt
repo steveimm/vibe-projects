@@ -12,6 +12,7 @@ import android.view.accessibility.AccessibilityEvent
 import id.steveimm.pocketpilot.debug.ActionDebugReceiver
 import id.steveimm.pocketpilot.platform.DeviceScreenState
 import id.steveimm.pocketpilot.protocol.SessionState
+import id.steveimm.pocketpilot.protocol.SessionCompleted
 import id.steveimm.pocketpilot.protocol.Op
 import id.steveimm.pocketpilot.protocol.PlatformMode
 import id.steveimm.pocketpilot.session.AgentSession
@@ -29,6 +30,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -207,6 +209,7 @@ class AgentService : AccessibilityService() {
                         actionIndicatorsEnabled = AppSettingsStore(this).loadActionIndicators(),
                         onStop = ::stopFromOverlay,
                         onSend = ::sendOverlayInput,
+                        onNewConversation = { newConversation(showControls = true) },
                         onTakeover = { submitOp(Op.Takeover) },
                         onResume = { submitOp(Op.Resume) },
                         onSupplement = { text -> submitOp(Op.Supplement(text)) },
@@ -329,7 +332,39 @@ class AgentService : AccessibilityService() {
     }
 
     private var overlayStartJob: Job? = null
+    private var conversationResetJob: Job? = null
+    private val _conversationReset = MutableStateFlow<String?>(null)
+    val conversationReset: StateFlow<String?> = _conversationReset.asStateFlow()
     private var dataOperationInProgress = false
+
+    fun newConversation(showControls: Boolean = false): Job {
+        conversationResetJob?.takeIf { it.isActive }?.let { return it }
+        val starting = overlayStartJob
+        val collector = eventCollectorJob
+        val previousSession = session
+        val previousRecording = observedRecordingService
+        starting?.cancel()
+        overlayStartJob = null
+        eventCollectorJob = null
+        session = null
+        observedRecordingService = null
+        _effectivePlatformMode.value = null
+        overlayController?.clearConversation(showControls)
+        actionVisualizer?.hide()
+        updateStatus("")
+        val reset = serviceScope.launch {
+            starting?.join()
+            previousSession?.submit(Op.Shutdown)
+            collector?.join()
+            previousRecording?.completeSession()?.join()
+            previousRecording?.clearSessionAndAwait()
+        }
+        conversationResetJob = reset
+        _conversationReset.value = java.util.UUID.randomUUID().toString()
+        return reset
+    }
+
+    suspend fun awaitConversationReset() { conversationResetJob?.join() }
 
     fun setDataOperationInProgress(active: Boolean) {
         dataOperationInProgress = active
@@ -339,6 +374,7 @@ class AgentService : AccessibilityService() {
     fun getRecordedSessionId(): String? = observedRecordingService?.getCurrentSessionId()
 
     suspend fun shutdownSessionForDataClear(): AgentSession? {
+        awaitConversationReset()
         overlayStartJob?.cancelAndJoin()
         overlayStartJob = null
         return session?.also { it.submit(Op.Shutdown) }
@@ -366,12 +402,13 @@ class AgentService : AccessibilityService() {
     private fun sendOverlayInput(text: String) {
         if (dataOperationInProgress || overlayStartJob?.isActive == true) return
         val controller = overlayController ?: return
-        controller.onTaskStarted("overlay-start", text)
         overlayStartJob = serviceScope.launch {
             var created: AgentSession? = null
             var attached = false
             var submitted = false
             try {
+                awaitConversationReset()
+                controller.onTaskStarted("overlay-start", text)
                 check(isScreenAvailable(this@AgentService)) { "Unlock the phone to continue." }
                 val targetMode = if (currentPlatformMode == PlatformMode.VIRTUAL_DISPLAY &&
                     controller.stateHolder.context.value == CapsuleContext.SCREEN_VIEWING) PlatformMode.VIRTUAL_DISPLAY
@@ -455,9 +492,9 @@ class AgentService : AccessibilityService() {
         eventCollectorJob =
                 serviceScope.launch {
                     try {
-                        agentSession.events.collect { event ->
+                        agentSession.events.takeWhile { event ->
                             try {
-                                eventHandler.handleEvent(event, recordingService)
+                                eventHandler.handleEvent(event, recordingService, updateUi = session === agentSession)
                             } catch (e: Exception) {
                                 Log.e(
                                         TAG,
@@ -465,7 +502,8 @@ class AgentService : AccessibilityService() {
                                         e
                                 )
                             }
-                        }
+                            event !is SessionCompleted
+                        }.collect {}
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {

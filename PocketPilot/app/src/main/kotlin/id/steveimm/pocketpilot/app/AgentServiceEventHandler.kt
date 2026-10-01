@@ -15,14 +15,15 @@ internal class AgentServiceEventHandler(
 ) {
     fun handleEvent(
         event: AgentEvent,
-        recordingService: SessionRecordingService? = null
+        recordingService: SessionRecordingService? = null,
+        updateUi: Boolean = true,
     ) {
         Log.d(logTag, "Received event: ${event::class.simpleName}")
-        val overlay = overlayController()
+        val overlay = if (updateUi) overlayController() else null
 
         when (event) {
             is StatusUpdate -> {
-                updateStatus(event.status)
+                if (updateUi) updateStatus(event.status)
             }
             is SessionStarted -> {
                 Log.i(logTag, "Session started: ${event.sessionId}, goal: ${event.goal}")
@@ -40,6 +41,7 @@ internal class AgentServiceEventHandler(
             }
             is MessageDelta -> {
                 recordingService?.appendTextDelta(event.turnId, event.delta)
+                overlay?.onMessageDelta(event.turnId, event.delta)
             }
             is ReasoningDelta -> recordingService?.appendReasoningDelta(event.turnId, event.delta)
             is TurnPhaseChanged -> {
@@ -75,6 +77,7 @@ internal class AgentServiceEventHandler(
                 overlay?.onTaskCompleted(event.outcome, event.result)
             }
             is ActionProposed -> {
+                overlay?.onActionProposed(event.description.ifBlank { event.toolName })
                 recordingService?.recordAction(
                     actionId = event.actionId,
                     toolName = event.toolName,
@@ -109,9 +112,9 @@ internal class AgentServiceEventHandler(
                     SessionEndReason.INTERRUPTED -> "🛑 Session interrupted"
                     SessionEndReason.IDLE_TIMEOUT -> "💤 Session timed out"
                 }
-                updateStatus(statusMessage)
+                if (updateUi) updateStatus(statusMessage)
                 overlay?.onSessionCompleted(event.reason)
-                sessionCleared()
+                if (updateUi) sessionCleared()
             }
             is SessionError -> {
                 Log.e(logTag, "Session error: ${event.message}")
@@ -120,7 +123,7 @@ internal class AgentServiceEventHandler(
                 recordingService?.recordTaskOutcome(TaskOutcome.ERROR)
                 recordingService?.recordErrorText(event.message)
                 recordingService?.completeAgentMessage()
-                updateStatus("❌ Error: ${event.message}")
+                if (updateUi) updateStatus("❌ Error: ${event.message}")
                 overlay?.onSessionError(event.message)
             }
             is SessionTakeover -> {

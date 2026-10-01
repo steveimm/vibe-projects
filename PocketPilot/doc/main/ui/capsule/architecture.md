@@ -1,6 +1,6 @@
 # Capsule architecture
 
-`CapsuleStateHolder` owns mode, context, platform mode, turn phase, Stop feedback, and shared drafts. `ServiceOverlayController` owns panel visibility, persisted dismissal, and returning to MainActivity. See [overlay behavior](../overlay.md) for window ownership and capture details, and [state transitions](../../state_machines/ui_capsule.md) for mode guards.
+`CapsuleStateHolder` owns mode, context, platform mode, turn phase, assistant response text, latest tool call, Stop feedback, and shared drafts. `ServiceOverlayController` owns panel visibility, persisted dismissal, and returning to MainActivity. See [overlay behavior](../overlay.md) for window ownership and capture details, and [state transitions](../../state_machines/ui_capsule.md) for mode guards.
 
 `SmartCapsuleSurface` renders both the embedded chat controls and the floating panel. It derives `CapsuleRenderSpec` and `NavSpec`, then renders a header, optional scrollable detail, action buttons, and input. Navigation stays in the header even for questions, approvals, and errors. The bubble opens the panel and hides while it is expanded. The panel’s X minimizes without stopping the task; dragging the bubble to the dismiss target stops and removes the floating controls.
 
@@ -32,8 +32,10 @@ New overlay tasks are created by the service without opening MainActivity. They 
 
 ## Runtime controls
 
-Takeover cancels active model transport, waits for execution to reach its pause boundary, and prevents queued model actions from executing. Resume performs a fresh observation. Open chat requests this handover before launching MainActivity. Stop cancels work from both Running and Paused states. Close dispatches Stop when necessary and immediately removes the windows.
+Takeover cancels active model transport, waits for execution to reach its pause boundary, and prevents queued model actions from executing. Resume performs a fresh observation. Open chat requests this handover before launching MainActivity. Stop cancels work from both Running and Paused states. The panel’s X minimizes without stopping. Dragging the bubble onto its dismiss target stops and removes the windows.
 
 Dragging the bubble owns a temporary takeover and resumes only that pause after repositioning. Dismissal, lock, Stop, manual takeover, and opening MainActivity revoke that ownership. Screen-off and lock hide every overlay immediately; unlocking does not resume work. [Overlay behavior](../overlay.md) defines gesture priority, touch protection, and screenshot exclusion.
 
-Phase status comes from `TurnPhaseChanged`. Native reasoning is streamed and retained in chat separately, with no model-generated capsule heading. An interrupted stream cannot become a completed answer.
+Progress uses `MessageDelta` content, with Thinking as the fallback before response text arrives. `ActionProposed` supplies a separate latest-tool line. Phase changes do not replace the response text. Native reasoning stays in the expandable chat activity panel, and the final answer remains outside that panel. An interrupted stream cannot become a completed answer.
+
+New chat in either surface calls the service-owned conversation reset. The old session finishes recording without updating the new UI. Main clears reload targets and queued input, and future input waits for reset completion. Reset notifications preserve drafts typed afterward when switching between surfaces.

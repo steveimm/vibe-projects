@@ -64,6 +64,8 @@ import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineStart
+import id.steveimm.pocketpilot.protocol.Op
 import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
@@ -74,6 +76,7 @@ class MainActivity : ComponentActivity() {
         private const val KEY_PENDING_GOAL_CONFIRMATION = "pending_goal_confirmation"
         private const val KEY_INPUT_DRAFT = "input_draft"
         private const val KEY_SETTINGS_OPEN = "settings_open"
+        private const val KEY_CONVERSATION_RESET = "conversation_reset"
         const val EXTRA_SERVER_BASE_URL = "server_base_url"
         const val EXTRA_SERVER_MODEL_ID = "server_model_id"
         const val EXTRA_SERVER_API_KEY = "server_api_key"
@@ -103,6 +106,7 @@ class MainActivity : ComponentActivity() {
     private var dataOperationLabel by mutableStateOf<String?>(null)
     private val clearingStoredData get() = dataOperationLabel != null
     private var pendingGoalForConfirmation by mutableStateOf<String?>(null)
+    private var lastConversationReset: String? = null
     private var intentPayloadConsumed = false
     private lateinit var sessionHistoryManager: SessionHistoryManager
     private lateinit var viewModel: ChatViewModel
@@ -137,6 +141,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         intentPayloadConsumed = savedInstanceState?.getBoolean(KEY_INTENT_PAYLOAD_CONSUMED, false) ?: false
+        lastConversationReset = savedInstanceState?.getString(KEY_CONVERSATION_RESET)
         pendingGoalForConfirmation = savedInstanceState?.getString(KEY_PENDING_GOAL_CONFIRMATION)
         settingsState = AppSettingsState.create(applicationContext)
         settingsState.load()
@@ -182,7 +187,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             val serviceConnected by AgentService.connected.collectAsStateWithLifecycle()
             LaunchedEffect(serviceConnected) {
-                AgentService.instance?.capsuleStateHolder?.inputDraft?.let(viewModel::bindComposerDraft)
+                val service = AgentService.instance
+                service?.capsuleStateHolder?.inputDraft?.let(viewModel::bindComposerDraft)
+                service?.conversationReset?.collect { reset ->
+                    if (reset != null && reset != lastConversationReset) {
+                        lastConversationReset = reset
+                        resetMainConversation(service, preserveOverlayDraft = true)
+                        rebindActiveServiceSessionIfNeeded()
+                    }
+                }
             }
             if (onboardingRequired) {
                 val vm = onboardingViewModel!!
@@ -244,11 +257,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     },
-                    onNewSession = {
-                        coordinator.selectedSessionForReload = null
-                        lifecycleScope.launch { coordinator.clearSession() }
-                        viewModel.startNewSession(settingsState.serverModelId, BuildConfig.VERSION_NAME)
-                    },
+                    onNewSession = ::startNewConversation,
                     onDeleteSession = { info ->
                         lifecycleScope.launch {
                             deleteSavedSession(info).onFailure { viewModel.reportHistoryError("Could not delete this chat. Try again.") }
@@ -350,6 +359,7 @@ class MainActivity : ComponentActivity() {
         super.onSaveInstanceState(outState)
         outState.putBoolean(KEY_INTENT_PAYLOAD_CONSUMED, intentPayloadConsumed)
         outState.putBoolean(KEY_SETTINGS_OPEN, showSettings)
+        outState.putString(KEY_CONVERSATION_RESET, lastConversationReset)
         if (::viewModel.isInitialized) outState.putString(KEY_INPUT_DRAFT, viewModel.inputDraft.value)
         pendingGoalForConfirmation?.let {
             outState.putString(KEY_PENDING_GOAL_CONFIRMATION, it)
@@ -413,6 +423,32 @@ class MainActivity : ComponentActivity() {
                     pendingGoalForConfirmation = goal
                 }
             }
+        }
+    }
+
+    private fun startNewConversation() {
+        val service = AgentService.instance
+        if (service != null) {
+            service.newConversation()
+            return
+        }
+        lifecycleScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            resetMainConversation(null, preserveOverlayDraft = false)
+        }
+    }
+
+    private suspend fun resetMainConversation(service: AgentService?, preserveOverlayDraft: Boolean) {
+        pendingGoalRunnable?.let { window.decorView.removeCallbacks(it) }
+        pendingGoalRunnable = null
+        pendingAutoStartGoal = null
+        pendingGoalForConfirmation = null
+        val draft = if (preserveOverlayDraft) service?.capsuleStateHolder?.inputDraft?.value.orEmpty() else ""
+        viewModel.startNewSession()
+        viewModel.inputDraft.value = draft
+        sessionHistoryManager.setActiveSessionId(null)
+        coordinator.clearSession(shutdownCurrent = service == null) {
+            service?.awaitConversationReset()
+            sessionHistoryManager.getRecordingService().clearSessionAndAwait()
         }
     }
 
@@ -553,7 +589,10 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        val conversation = service.conversationReset.value
         lifecycleScope.launch {
+            service.awaitConversationReset()
+            if (conversation != service.conversationReset.value) return@launch
             if (clearingStoredData) {
                 viewModel.reportStartupFailure(text, "Wait for data deletion to finish, then try again.")
                 return@launch
@@ -632,6 +671,7 @@ class MainActivity : ComponentActivity() {
             launchPolicy: SessionLaunchPolicy,
             autoReload: Boolean = false
     ): AgentSession? {
+        val conversation = service.conversationReset.value
         val visualizer = service.getActionVisualizer()
         val touchGate = service.getOverlayTouchGate()
         val selectedForReload =
@@ -670,6 +710,10 @@ class MainActivity : ComponentActivity() {
         pendingEvalTurnBudget = null
         pendingAutoStartGoal = null
 
+        if (conversation != service.conversationReset.value) {
+            session.submit(Op.Shutdown)
+            return null
+        }
         sessionHistoryManager.setActiveSessionId(session.sessionId.value)
         viewModel.startEventCollection(session)
         service.observeExternalSession(session, session.getServices().platform.mode)

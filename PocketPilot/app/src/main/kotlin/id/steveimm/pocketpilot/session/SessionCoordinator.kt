@@ -6,7 +6,7 @@ import id.steveimm.pocketpilot.protocol.Op
 import id.steveimm.pocketpilot.protocol.SessionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -16,7 +16,6 @@ class SessionCoordinator(private val scope: CoroutineScope) {
 
     companion object {
         private const val TAG = "SessionCoordinator"
-        private const val SHUTDOWN_GRACE_DELAY_MS = 100L
     }
 
     private val mutex = Mutex()
@@ -119,19 +118,22 @@ class SessionCoordinator(private val scope: CoroutineScope) {
     }
 
     /** Shutdown and clear the current session. */
-    suspend fun clearSession() {
+    suspend fun clearSession(shutdownCurrent: Boolean = true, afterClear: suspend () -> Unit = {}) {
         mutex.lock()
         try {
-            val session = currentSession ?: return
             try {
-                session.submit(Op.Shutdown)
-                delay(SHUTDOWN_GRACE_DELAY_MS)
+                if (shutdownCurrent) currentSession?.submit(Op.Shutdown)
                 Log.d(TAG, "Session shutdown completed")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.w(TAG, "Error shutting down session: ${e.message}")
+            } finally {
+                teardownLocked()
+                selectedSessionForReload = null
+                lastDeadSessionFileName = null
             }
-            teardownLocked()
-            lastDeadSessionFileName = null
+            afterClear()
         } finally {
             mutex.unlock()
         }
