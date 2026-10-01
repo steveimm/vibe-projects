@@ -2,13 +2,13 @@
 
 ## Outside PocketPilot
 
-The floating bubble stays available over other apps. Tap it to expand the task controls, and tap it again to collapse them. Drag it to reposition it; release docks it to the nearest side. Dropping it on the bottom-center dismiss target stops active work and removes the overlays. Its preferred position survives toggling, task completion, and service restarts.
+The floating bubble stays available over other apps. Tap it to open the task controls; the bubble hides while the panel is open. Use the panel’s X to return to the bubble. Drag it to reposition it; release docks it to the nearest side. Dropping it on the bottom-center dismiss target stops active work and removes the overlays. Its preferred position survives toggling, task completion, and service restarts.
 
 During a task, the expanded controls retain Takeover, Resume, Stop, notes, questions, and approval actions. A question or approval initially expands the controls. Minimizing does not answer or dismiss a pending request.
 
 After completion, the bubble remains and the red activity glow stops. Expanding shows the last result as scrollable Markdown, a new-request composer, and app navigation. Draft text survives minimization. New requests reuse a compatible session or create one in the service without opening MainActivity. Their first model request includes the current app's screen, so the user can navigate to an app before asking for work.
 
-Stopping leaves a stopped result in the bubble. Session idle expiry does not clear the last result. Close uses the same stop-and-dismiss path as the drag target. Dismissal survives service reconnects and late task events until MainActivity opens. Errors retain their explanation and accept a new request.
+Stopping leaves a stopped result in the bubble. Session idle expiry does not clear the last result. The panel’s X only minimizes; drag-to-dismiss stops and removes the floating controls. Dismissal survives service reconnects and late task events until MainActivity opens. Errors retain their explanation and accept a new request.
 
 Screen-off or lock immediately hides all overlays and pauses running work. Unlocking does not resume it. Repositioning a bubble can resume the pause that drag requested, but cannot resume a manual takeover or a task paused by locking the phone.
 
@@ -18,7 +18,7 @@ Floating controls are hidden while MainActivity is resumed. Completed answers re
 
 ## Virtual display
 
-The bubble toggles task controls without implicitly opening the viewer. Every expanded panel provides Open chat and Close. Open viewer is available where applicable. Open chat pauses running work first. Viewer lifecycle and idle-finish rules remain in ServiceOverlayController.
+The bubble opens task controls without implicitly opening the viewer. Every expanded panel provides Open chat and Minimize icon buttons. Open viewer is available where applicable. Open chat pauses running work first. Viewer lifecycle and idle-finish rules remain in ServiceOverlayController.
 
 ## Screenshot and gesture interaction
 

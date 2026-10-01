@@ -25,7 +25,7 @@ class CapsuleLifecycleTest {
     @get:Rule val compose = createComposeRule()
 
     // K12
-    @Test fun error_overlay_can_be_closed() {
+    @Test fun error_overlay_can_be_minimized() {
         var dismissed = false
         compose.setContent {
             TestCapsule(
@@ -36,8 +36,8 @@ class CapsuleLifecycleTest {
         }
 
         compose.onNodeWithText("Something broke").assertExists()
-        compose.onNodeWithContentDescription("Close overlay").performClick()
-        assertTrue("Close did not dispatch dismissal", dismissed)
+        compose.onNodeWithContentDescription("Minimize to bubble").performClick()
+        assertTrue("Minimize did not dispatch navigation", dismissed)
     }
 
     // K13 — isStopPending replaces Stop with disabled "Stopping..."
@@ -75,7 +75,7 @@ class CapsuleLifecycleTest {
             )
         }
 
-        compose.onNodeWithContentDescription("Stop and close").performClick()
+        compose.onNodeWithContentDescription("Minimize to bubble").performClick()
         compose.onNodeWithContentDescription("Open PocketPilot").performClick()
         compose.onNodeWithContentDescription("Open viewer").performClick()
 

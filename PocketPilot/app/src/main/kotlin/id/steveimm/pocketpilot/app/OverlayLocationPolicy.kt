@@ -105,9 +105,10 @@ internal fun deriveOverlayVisibility(
     val needsAttention = mode is CapsuleMode.WaitingForInput || mode is CapsuleMode.WaitingForAction ||
         mode is CapsuleMode.WaitingForApproval || mode is CapsuleMode.Error
     val attentionInMain = platformMode == PlatformMode.VIRTUAL_DISPLAY && !outsideMain && needsAttention
+    val showCapsule = outsideMain && showPreference == ShowPreference.CAPSULE || attentionInMain
     return OverlayVisibilityDecision(
-        showCapsule = outsideMain && showPreference == ShowPreference.CAPSULE || attentionInMain,
-        showBubble = outsideMain,
+        showCapsule = showCapsule,
+        showBubble = outsideMain && !showCapsule,
         showGlow = hasActiveTask && when (platformMode) {
             PlatformMode.ACCESSIBILITY -> outsideMain
             PlatformMode.VIRTUAL_DISPLAY -> location == OverlayUserLocation.VD_VIEWER || attentionInMain

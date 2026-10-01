@@ -123,33 +123,19 @@ class OverlayLocationPolicyTest {
     }
 
     @Test
-    fun `bubble remains visible alongside expanded controls`() {
-        val cases = listOf(
-            deriveOverlayVisibility(
-                platformMode = PlatformMode.VIRTUAL_DISPLAY,
-                location = OverlayUserLocation.OTHER_APP,
-                mode = CapsuleMode.Running("thinking"),
-                hasActiveTask = true,
-                showPreference = ShowPreference.CAPSULE,
-            ),
-            deriveOverlayVisibility(
-                platformMode = PlatformMode.VIRTUAL_DISPLAY,
-                location = OverlayUserLocation.OTHER_APP,
-                mode = CapsuleMode.Running("thinking"),
-                hasActiveTask = true,
-                showPreference = ShowPreference.BUBBLE,
-            ),
-            deriveOverlayVisibility(
-                platformMode = PlatformMode.ACCESSIBILITY,
-                location = OverlayUserLocation.OTHER_APP,
-                mode = CapsuleMode.Running("thinking"),
-                hasActiveTask = true,
-                showPreference = ShowPreference.BUBBLE,
-            ),
-        )
-
-        cases.forEach { decision ->
-            assertThat(decision.showBubble).isTrue()
+    fun `expanded controls replace the bubble and minimizing brings it back`() {
+        for (platform in PlatformMode.entries) {
+            for (preference in ShowPreference.entries) {
+                val decision = deriveOverlayVisibility(
+                    platformMode = platform,
+                    location = OverlayUserLocation.OTHER_APP,
+                    mode = CapsuleMode.Running("thinking"),
+                    hasActiveTask = true,
+                    showPreference = preference,
+                )
+                assertThat(decision.showCapsule).isEqualTo(preference == ShowPreference.CAPSULE)
+                assertThat(decision.showBubble).isEqualTo(preference == ShowPreference.BUBBLE)
+            }
         }
     }
 
@@ -316,7 +302,7 @@ class OverlayLocationPolicyTest {
     }
 
     @Test
-    fun `completed overlays keep the bubble without an active control glow`() {
+    fun `expanded completed overlays show the result without a duplicate bubble or control glow`() {
         val doneDecision = deriveOverlayVisibility(
             platformMode = PlatformMode.ACCESSIBILITY,
             location = OverlayUserLocation.OTHER_APP,
@@ -333,9 +319,9 @@ class OverlayLocationPolicyTest {
         )
 
         assertThat(doneDecision.showGlow).isFalse()
-        assertThat(doneDecision.showBubble).isTrue()
+        assertThat(doneDecision.showBubble).isFalse()
         assertThat(errorDecision.showGlow).isFalse()
-        assertThat(errorDecision.showBubble).isTrue()
+        assertThat(errorDecision.showBubble).isFalse()
     }
 
     @Test

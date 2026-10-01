@@ -2,7 +2,7 @@
 
 `CapsuleStateHolder` owns mode, context, platform mode, turn phase, Stop feedback, and shared drafts. `ServiceOverlayController` owns panel visibility, persisted dismissal, and returning to MainActivity. See [overlay behavior](../overlay.md) for window ownership and capture details, and [state transitions](../../state_machines/ui_capsule.md) for mode guards.
 
-`SmartCapsuleSurface` renders both the embedded chat controls and the floating panel. It derives `CapsuleRenderSpec` and `NavSpec`, then renders a header, optional scrollable detail, action buttons, and input. Navigation stays in the header even for questions, approvals, and errors. The bubble supplies minimize/expand and drag-to-dismiss. Close uses the same dismissal path.
+`SmartCapsuleSurface` renders both the embedded chat controls and the floating panel. It derives `CapsuleRenderSpec` and `NavSpec`, then renders a header, optional scrollable detail, action buttons, and input. Navigation stays in the header even for questions, approvals, and errors. The bubble opens the panel and hides while it is expanded. The panel’s X minimizes without stopping the task; dragging the bubble to the dismiss target stops and removes the floating controls.
 
 `CapsuleControlBar` renders Takeover, Resume, Done, approval choices, and Stop. `CapsuleInputBar` binds the supplied mutable draft. `CapsuleBinding` connects chat to service flows and guarded response callbacks without owning another task state.
 

@@ -19,11 +19,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.LifecycleOwner
 import androidx.savedstate.SavedStateRegistryOwner
-import id.steveimm.pocketpilot.ui.capsule.surface.toStatusColor
 import id.steveimm.pocketpilot.platform.GestureCoordinates
 import id.steveimm.pocketpilot.ui.overlay.CapsuleStateHolder
 import id.steveimm.pocketpilot.ui.overlay.model.CapsuleMode
-import id.steveimm.pocketpilot.ui.overlay.model.deriveGlowState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -43,7 +41,6 @@ class BubbleOverlayHost(
     private val overDismissTarget = MutableStateFlow(false)
     private var gestureActive = false
     private val preferences = service.getSharedPreferences("overlay_bubble", Context.MODE_PRIVATE)
-    private val expanded = MutableStateFlow(false)
     private var stateHolder: CapsuleStateHolder? = null
     private var rightEdge = preferences.getBoolean("right_edge", true)
     private var heightFraction = preferences.getFloat("height_fraction", 0.3f)
@@ -56,19 +53,12 @@ class BubbleOverlayHost(
     private var dragging = false
     private var dockAnimation: ValueAnimator? = null
     private val injectedGestures = mutableListOf<GestureCoordinates>()
-    private var panelTop: Int? = null
     private val configurationCallback = object : ComponentCallbacks {
         override fun onConfigurationChanged(newConfig: Configuration) { cancelDrag(); placeAtEdge() }
         override fun onLowMemory() = Unit
     }
 
     fun startObserving(holder: CapsuleStateHolder) { stateHolder = holder }
-    fun setPanelTop(top: Int?) {
-        if (panelTop == top) return
-        panelTop = top
-        if (isShowing() && !gestureActive) placeAtEdge()
-    }
-    fun setExpanded(value: Boolean) { expanded.value = value }
     fun isShowing(): Boolean = composeHost.isShowing()
     fun isDragging(): Boolean = dragging
     fun suppressForScreenshot(): AutoCloseable {
@@ -100,11 +90,8 @@ class BubbleOverlayHost(
         placeAtEdge()
         composeHost.show(createLayoutParams()) {
             val mode by holder.mode.collectAsState()
-            val phase by holder.turnPhase.collectAsState()
-            val isExpanded by expanded.collectAsState()
             val captured by overDismissTarget.collectAsState()
             OverlayBubbleCompose(
-                expanded = isExpanded,
                 capturedForDismissal = captured,
                 onDismiss = onDismiss,
                 status = when (mode) {
@@ -114,7 +101,6 @@ class BubbleOverlayHost(
                     is CapsuleMode.Running -> "Working"
                     else -> "Waiting for you"
                 },
-                statusColor = deriveGlowState(mode, phase).toStatusColor(),
                 onToggle = onToggleCapsule,
                 onTouch = ::onTouch,
             )
@@ -170,7 +156,7 @@ class BubbleOverlayHost(
                     dismissTarget.hide()
                     overDismissTarget.value = false
                     if (dismiss) { onDragFinished(false); onDismiss(); return true }
-                    val bounds = movementBounds(avoidPanel = false)
+                    val bounds = movementBounds()
                     rightEdge = x >= (bounds.left + bounds.right) / 2f
                     heightFraction = ((y - bounds.top) / bounds.height().coerceAtLeast(1)).coerceIn(0f, 1f)
                     preferences.edit().putBoolean("right_edge", rightEdge).putFloat("height_fraction", heightFraction).apply()
@@ -195,13 +181,13 @@ class BubbleOverlayHost(
         if (wasDragging) onDragFinished(false)
     }
 
-    private fun movementBounds(avoidPanel: Boolean = true): Rect {
+    private fun movementBounds(): Rect {
         val metrics = windowManager.currentWindowMetrics
         val insets = metrics.windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
         val margin = dp(8)
         val left = insets.left + margin
         val top = insets.top + margin
-        val bottom = minOf(metrics.bounds.height() - insets.bottom, if (avoidPanel) panelTop ?: Int.MAX_VALUE else Int.MAX_VALUE) - margin - dp(60)
+        val bottom = metrics.bounds.height() - insets.bottom - margin - dp(60)
         return Rect(left, top, (metrics.bounds.width() - insets.right - margin - dp(60)).coerceAtLeast(left), bottom.coerceAtLeast(top))
     }
 
@@ -210,7 +196,7 @@ class BubbleOverlayHost(
         dockAnimation?.cancel()
         val bounds = movementBounds()
         val targetX = if (rightEdge) bounds.right.toFloat() else bounds.left.toFloat()
-        val targetY = (bounds.top + movementBounds(avoidPanel = false).height() * heightFraction).coerceAtMost(bounds.bottom.toFloat())
+        val targetY = (bounds.top + bounds.height() * heightFraction).coerceAtMost(bounds.bottom.toFloat())
         if (injectedGestures.isNotEmpty()) {
             if (isClearOfGestures(targetX, targetY)) moveTo(targetX, targetY)
             else moveClearOfGestures()
@@ -233,8 +219,8 @@ class BubbleOverlayHost(
         }
     }
 
-    private fun moveTo(nextX: Float, nextY: Float, avoidPanel: Boolean = !dragging) {
-        val bounds = movementBounds(avoidPanel)
+    private fun moveTo(nextX: Float, nextY: Float) {
+        val bounds = movementBounds()
         x = nextX.coerceIn(bounds.left.toFloat(), bounds.right.toFloat())
         y = nextY.coerceIn(bounds.top.toFloat(), bounds.bottom.toFloat())
         composeHost.updateLayoutParams { it.x = x.roundToInt(); it.y = y.roundToInt() }
@@ -247,7 +233,7 @@ class BubbleOverlayHost(
 
     private fun moveClearOfGestures() {
         if (gestureActive || isClearOfGestures(x, y)) return
-        val bounds = movementBounds(avoidPanel = false)
+        val bounds = movementBounds()
         val candidates = buildList {
             for (edge in listOf(bounds.left.toFloat(), bounds.right.toFloat())) {
                 add(edge to y)
@@ -263,7 +249,7 @@ class BubbleOverlayHost(
         }
         val position = candidates.filter { (left, top) -> isClearOfGestures(left, top) }
             .minByOrNull { (left, top) -> (left - x) * (left - x) + (top - y) * (top - y) } ?: return
-        moveTo(position.first, position.second, avoidPanel = false)
+        moveTo(position.first, position.second)
     }
 
     @SuppressLint("RtlHardcoded")

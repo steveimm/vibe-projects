@@ -34,7 +34,7 @@ class CapsuleRenderingTest {
         }
 
         // No Row2-right nav icons.
-        listOf("Stop and close", "Open PocketPilot", "Open viewer").forEach { cd ->
+        listOf("Minimize to bubble", "Open PocketPilot", "Open viewer").forEach { cd ->
             compose.onAllNodesWithContentDescription(cd).assertCountEquals(0)
         }
 

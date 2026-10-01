@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.IconButton
@@ -116,19 +115,15 @@ fun SmartCapsuleSurface(
                         if (isTaskActive) CapsuleStatusLine(spec = renderSpec)
                     }
                     if (navSpec.showApp) {
-                        TextButton(onClick = { onNavigate(NavAction.OPEN_APP) },
-                            modifier = Modifier.semantics { contentDescription = "Open PocketPilot" }) {
-                            Icon(Icons.Rounded.OpenInNew, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Open chat", style = MaterialTheme.typography.labelMedium)
+                        IconButton(onClick = { onNavigate(NavAction.OPEN_APP) }) {
+                            Icon(Icons.Rounded.OpenInNew, "Open PocketPilot", Modifier.size(20.dp))
                         }
                     }
                     if (navSpec.showWatch) IconButton(onClick = { onNavigate(NavAction.OPEN_VIEWER) }) {
                         Icon(Icons.Rounded.Visibility, "Open viewer", Modifier.size(20.dp))
                     }
                     if (navSpec.showClose) IconButton(onClick = { onNavigate(NavAction.CLOSE_OVERLAY) }) {
-                        val active = mode !is CapsuleMode.Hidden && mode !is CapsuleMode.Done && mode !is CapsuleMode.Error
-                        Icon(Icons.Rounded.Close, if (active) "Stop and close" else "Close overlay", Modifier.size(20.dp))
+                        Icon(Icons.Rounded.Close, "Minimize to bubble", Modifier.size(20.dp))
                     }
                 }
             }

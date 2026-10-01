@@ -28,7 +28,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.LifecycleOwner
 import androidx.savedstate.SavedStateRegistryOwner
@@ -75,7 +74,6 @@ class CapsuleOverlayHost(
     var onOpenApp: (() -> Unit)? = null
     var onCloseOverlay: (() -> Unit)? = null
     var onOpenViewer: (() -> Unit)? = null
-    var onPanelTopChanged: ((Int?) -> Unit)? = null
     var onSend: ((String) -> Unit)? = null
 
     private val windowManager = service.getSystemService(WindowManager::class.java)
@@ -161,10 +159,7 @@ class CapsuleOverlayHost(
                     },
                 ) {
                     SmartCapsuleSurface(
-                        modifier = Modifier.onGloballyPositioned { coordinates ->
-                            onPanelTopChanged?.invoke(composeHost.topOnScreen() + coordinates.positionInWindow().y.toInt())
-                            updateGesturePassThrough()
-                        },
+                        modifier = Modifier.onGloballyPositioned { updateGesturePassThrough() },
                         mode = mode,
                         inputDraft = if (mode is CapsuleMode.WaitingForInput) stateHolder.responseDraft else stateHolder.inputDraft,
                         isStopPending = stopPending,
@@ -260,7 +255,6 @@ class CapsuleOverlayHost(
         setOverlayFocusable(false)
         if (immediate || gestureLeases.isNotEmpty()) composeHost.hideImmediately() else composeHost.hide()
         setGesturePassThrough(false)
-        onPanelTopChanged?.invoke(null)
     }
 
     fun dispose() {

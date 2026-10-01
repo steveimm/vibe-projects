@@ -8,21 +8,16 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import id.steveimm.pocketpilot.ui.theme.PocketPilotMotion
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -36,15 +31,13 @@ import id.steveimm.pocketpilot.ui.common.PilotMark
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 internal fun OverlayBubbleCompose(
-    expanded: Boolean,
     capturedForDismissal: Boolean,
     onDismiss: () -> Unit,
     status: String,
-    statusColor: Color,
     onToggle: () -> Unit,
     onTouch: (MotionEvent) -> Boolean,
 ) {
-    val action = if (expanded) "Minimize PocketPilot controls" else "Expand PocketPilot controls"
+    val action = "Expand PocketPilot controls"
     val scale by animateFloatAsState(if (capturedForDismissal) 0.65f else 1f,
         tween(if (PocketPilotMotion.reducedMotion()) 0 else PocketPilotMotion.Quick), label = "Dismiss bubble")
     Surface(
@@ -56,13 +49,11 @@ internal fun OverlayBubbleCompose(
             onClick(action) { onToggle(); true }
         }.pointerInteropFilter(onTouchEvent = onTouch),
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(2.dp, statusColor),
+        color = MaterialTheme.colorScheme.primary,
         shadowElevation = 4.dp,
     ) {
         Box(contentAlignment = Alignment.Center) {
-            if (expanded) Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = null, tint = statusColor)
-            else PilotMark(color = statusColor, size = 26.dp)
+            PilotMark(color = MaterialTheme.colorScheme.onPrimary, size = 26.dp)
         }
     }
 }

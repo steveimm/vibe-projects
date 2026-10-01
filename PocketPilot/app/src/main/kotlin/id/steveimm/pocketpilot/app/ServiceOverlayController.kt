@@ -81,7 +81,6 @@ class ServiceOverlayController(
         lifecycleOwner = lifecycleOwner,
         savedStateRegistryOwner = savedStateRegistryOwner,
     ).apply {
-        this.onPanelTopChanged = { bubbleManager?.setPanelTop(it) }
         this.onSend = this@ServiceOverlayController.onSend
         this.onStop = {
             dragTakeover.cancel()
@@ -112,7 +111,7 @@ class ServiceOverlayController(
         }
         this.onOpenApp = { openMainAppAndHideOverlays() }
         // Navigation callbacks
-        this.onCloseOverlay = { dismissOverlays() }
+        this.onCloseOverlay = { minimizeControls() }
         this.onOpenViewer = { this@ServiceOverlayController.onOpenViewer?.invoke() }
     }
 
@@ -229,7 +228,6 @@ class ServiceOverlayController(
             capsuleManager.hide()
         }
 
-        bubbleManager?.setExpanded(decision.showCapsule)
         if (decision.showBubble) {
             if (bubbleManager?.isShowing() != true) bubbleManager?.show()
         } else {
@@ -276,7 +274,12 @@ class ServiceOverlayController(
     }
 
     fun onBubbleTapped() {
-        showPreference = if (showPreference == ShowPreference.CAPSULE) ShowPreference.BUBBLE else ShowPreference.CAPSULE
+        showPreference = ShowPreference.CAPSULE
+        applyVisibility()
+    }
+
+    private fun minimizeControls() {
+        showPreference = ShowPreference.BUBBLE
         applyVisibility()
     }
 
@@ -369,7 +372,7 @@ class ServiceOverlayController(
     fun onTaskStarted(taskId: String, input: String) {
         dragTakeover.cancel()
         stateHolder.onTaskStarted(taskId, input)
-        showPreference = ShowPreference.BUBBLE
+        if (userLocation == OverlayUserLocation.MAIN_APP) showPreference = ShowPreference.BUBBLE
         setScreenAvailable(screenAvailable)
         if (bubbleManager?.isDragging() == true) onBubbleDragStarted()
     }
