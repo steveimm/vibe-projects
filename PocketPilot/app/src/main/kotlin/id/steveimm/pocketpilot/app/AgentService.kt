@@ -422,7 +422,7 @@ class AgentService : AccessibilityService() {
     private fun stopFromOverlay() {
         overlayStartJob?.cancel()
         overlayStartJob = null
-        if (session != null) submitOp(Op.Shutdown)
+        if (session != null) submitOp(Op.Interrupt)
         else overlayController?.onTaskCompleted(TaskOutcome.USER_STOPPED, "Stopped")
     }
 
