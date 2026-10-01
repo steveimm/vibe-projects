@@ -59,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -259,6 +260,9 @@ fun ChatScreen(
                 containerColor = Color.Transparent,
                 topBar = {
                     ChatHeader(
+                        modifier = Modifier
+                            .shadow(MaterialTheme.pocketPilot.elevation.floating, clip = false)
+                            .background(MaterialTheme.colorScheme.surface),
                         onMenuClick = {
                             hideInput()
                             scope.launch { drawerState.open() }
@@ -272,6 +276,8 @@ fun ChatScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .shadow(MaterialTheme.pocketPilot.elevation.floating, clip = false)
+                            .background(MaterialTheme.colorScheme.surface)
                             .imePadding()
                             .navigationBarsPadding()
                             .smartCapsuleHostPadding()

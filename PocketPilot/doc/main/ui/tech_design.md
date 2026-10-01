@@ -4,6 +4,8 @@ PocketPilot uses Kotlin, Jetpack Compose, and Material 3. Dependency versions ar
 
 `PocketPilotElevation` uses 1/2/4 dp for cards, composer, and floating controls in light mode, and 3/4/6 dp in dark mode. Dark surfaces also use a faint edge and slightly lighter fills so their depth remains visible. Shadows sit outside rounded clipping, and nested tool rows and text remain flat.
 
+The fixed chat header and input area cast shadows over the scrolling message list to separate their edges from the conversation.
+
 ## Main surfaces
 
 | Source | Responsibility |
