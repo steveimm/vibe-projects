@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../shared/widgets.dart';
 
 import '../../core/database/tables.dart';
 import '../../core/providers.dart';
@@ -11,11 +13,19 @@ import '../../core/util/format.dart';
 /// day with its category-color dots (mirrors FitNotes). Tapping a selectable
 /// day calls [onSelectDay].
 class WorkoutCalendar extends StatefulWidget {
-  const WorkoutCalendar({super.key, required this.dayColors, required this.onSelectDay, this.initialMonth, this.selectable});
+  const WorkoutCalendar({
+    super.key,
+    required this.dayColors,
+    required this.onSelectDay,
+    this.initialMonth,
+    this.selectable,
+    this.firstDayOfWeek = 1,
+  });
 
   final Map<String, List<int>> dayColors;
   final void Function(String isoDate) onSelectDay;
   final String? initialMonth;
+  final int firstDayOfWeek;
   final bool Function(String isoDate)? selectable;
 
   @override
@@ -57,8 +67,8 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
       if (d.isBefore(minD)) minD = d;
       if (d.isAfter(maxD)) maxD = d;
     }
-    final start = DateTime(minD.year, minD.month);
-    final end = DateTime(maxD.year, maxD.month + 2); // small future buffer
+    final start = DateTime(minD.year, minD.month - 12);
+    final end = DateTime(maxD.year, maxD.month + 12); // small future buffer
     final out = <DateTime>[];
     var m = start;
     while (!m.isAfter(end)) {
@@ -70,7 +80,7 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
 
   int _weeks(DateTime m) {
     final days = DateTime(m.year, m.month + 1, 0).day;
-    final leading = DateTime(m.year, m.month, 1).weekday - 1; // Mon = 0
+    final leading = (DateTime(m.year, m.month, 1).weekday - widget.firstDayOfWeek + 7) % 7; // Mon = 0
     return ((leading + days) / 7).ceil();
   }
 
@@ -99,7 +109,7 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
     final theme = Theme.of(context);
     final weeks = _weeks(m);
     final days = DateTime(m.year, m.month + 1, 0).day;
-    final leading = DateTime(m.year, m.month, 1).weekday - 1;
+    final leading = (DateTime(m.year, m.month, 1).weekday - widget.firstDayOfWeek + 7) % 7;
     final cells = <int?>[...List.filled(leading, null), for (var d = 1; d <= days; d++) d];
     while (cells.length < weeks * 7) {
       cells.add(null);
@@ -116,7 +126,7 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
           height: _weekdayH,
           child: Row(
             children: [
-              for (final w in _weekdays)
+              for (final w in List.generate(7, (i) => _weekdays[(widget.firstDayOfWeek - 1 + i) % 7]))
                 Expanded(
                   child: Center(
                     child: Text(w, style: TextStyle(fontSize: 11, color: theme.hintColor)),
@@ -181,43 +191,151 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
     );
 
     if (!canSelect) return content;
-    return InkWell(onTap: () => widget.onSelectDay(dateStr), child: content);
+    return Semantics(
+      label: '${Dates.longDate(dateStr)}${colors.isEmpty ? '' : ', workout day'}',
+      button: true,
+      child: InkWell(onTap: () => widget.onSelectDay(dateStr), child: content),
+    );
   }
 }
 
-class _CalendarScreen extends StatefulWidget {
+class _CalendarScreen extends ConsumerStatefulWidget {
   const _CalendarScreen({required this.dayColors, required this.initialDate, required this.onDayTap, this.selectable});
-
   final Map<String, List<int>> dayColors;
   final String initialDate;
   final bool Function(String)? selectable;
   final void Function(BuildContext, String) onDayTap;
-
   @override
-  State<_CalendarScreen> createState() => _CalendarScreenState();
+  ConsumerState<_CalendarScreen> createState() => _CalendarScreenState();
 }
 
-class _CalendarScreenState extends State<_CalendarScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${widget.dayColors.length} workouts'), duration: const Duration(seconds: 2)));
+class _CalendarScreenState extends ConsumerState<_CalendarScreen> {
+  late Map<String, List<int>> _colors = widget.dayColors;
+  int? _category, _exercise;
+  bool _loading = false;
+  int _request = 0;
+  Future<void> _filter() async {
+    final request = ++_request;
+    setState(() => _loading = true);
+    final ok = await attempt(context, () async {
+      final colors = await ref
+          .read(workoutRepositoryProvider)
+          .workoutDayCategoryColors(categoryId: _category, exerciseId: _exercise);
+      if (mounted && request == _request) setState(() => _colors = colors);
     });
+    if (mounted && request == _request) {
+      setState(() {
+        _loading = false;
+        if (!ok) _colors = {};
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final firstDay = ref.watch(settingsProvider).asData?.value.firstDayOfWeek ?? 1;
+    final categories = ref.watch(categoriesProvider).asData?.value ?? [];
+    final exercises = ref.watch(allExercisesProvider).asData?.value ?? [];
+    final count = _colors.keys.where((d) => widget.selectable?.call(d) ?? true).length;
     return Scaffold(
-      appBar: AppBar(title: const Text('Calendar')),
-      body: WorkoutCalendar(
-        dayColors: widget.dayColors,
-        initialMonth: widget.initialDate,
-        selectable: widget.selectable,
-        onSelectDay: (d) => widget.onDayTap(context, d),
+      appBar: AppBar(
+        title: Text(widget.selectable == null ? 'Calendar' : 'Choose a source day'),
+        actions: [
+          IconButton(
+            tooltip: 'Jump to date',
+            icon: const Icon(Icons.date_range_outlined),
+            onPressed: () async {
+              final date = await showDatePicker(
+                context: context,
+                initialDate: Dates.parse(widget.initialDate),
+                firstDate: DateTime(1900),
+                lastDate: DateTime(2100),
+                selectableDayPredicate: widget.selectable == null ? null : (d) => widget.selectable!(Dates.iso(d)),
+              );
+              if (date != null && context.mounted) widget.onDayTap(context, Dates.iso(date));
+            },
+          ),
+        ],
+      ),
+      body: ContentWidth(
+        child: Column(
+          children: [
+            if (widget.selectable == null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 12, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        initialValue: _category ?? 0,
+                        key: ValueKey(_category),
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Category', isDense: true),
+                        items: [
+                          const DropdownMenuItem(value: 0, child: Text('All categories')),
+                          for (final c in categories) DropdownMenuItem(value: c.id, child: Text(c.name)),
+                        ],
+                        onChanged: (v) {
+                          _category = v == 0 ? null : v;
+                          _exercise = null;
+                          _filter();
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Filter by exercise',
+                      icon: const Icon(Icons.filter_list_rounded),
+                      onPressed: () async {
+                        final id = await context.push<int>('/pick-exercise?return=1');
+                        if (id != null && mounted) {
+                          _exercise = id;
+                          _category = null;
+                          _filter();
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '$count workout ${count == 1 ? 'day' : 'days'}',
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                  if (_exercise != null)
+                    Flexible(
+                      child: InputChip(
+                        label: Text(
+                          exercises.where((e) => e.id == _exercise).firstOrNull?.name ?? 'Exercise',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onDeleted: () {
+                          _exercise = null;
+                          _filter();
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (_loading) const LinearProgressIndicator(minHeight: 2),
+            Expanded(
+              child: WorkoutCalendar(
+                key: ValueKey('$firstDay:$_category:$_exercise'),
+                dayColors: _colors,
+                initialMonth: widget.initialDate,
+                firstDayOfWeek: firstDay,
+                selectable: widget.selectable,
+                onSelectDay: (d) => widget.onDayTap(context, d),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -273,12 +391,13 @@ Future<bool?> _showDayDetail(BuildContext context, WidgetRef ref, String date) a
   if (!context.mounted) return null;
   return showDialog<bool>(
     context: context,
-    builder: (_) => _DayDetailDialog(date: date, sets: sets),
+    builder: (_) => _DayDetailDialog(date: date, sets: sets, units: ref.read(unitsProvider)),
   );
 }
 
 class _DayDetailDialog extends StatelessWidget {
-  const _DayDetailDialog({required this.date, required this.sets});
+  const _DayDetailDialog({required this.date, required this.sets, required this.units});
+  final Units units;
   final String date;
   final List<LoggedSet> sets;
 
@@ -365,5 +484,6 @@ class _DayDetailDialog extends StatelessWidget {
     reps: s.set.reps,
     distance: s.set.distance,
     seconds: s.set.durationSeconds,
+    units: units,
   );
 }

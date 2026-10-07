@@ -11,15 +11,19 @@ class Units {
   double distanceFromMeters(double meters) => meters / (imperial ? 1609.344 : 1000);
   double distanceToMeters(double value) => value * (imperial ? 1609.344 : 1000);
   String weight(double kg) => '${Fmt.number(weightFromKg(kg))} $weightLabel';
-  String distance(double meters) => '${Fmt.number(distanceFromMeters(meters))} $distanceLabel';
+  String distance(double meters) => imperial
+      ? '${Fmt.number(distanceFromMeters(meters), precision: 5)} mi'
+      : meters < 1000
+      ? '${Fmt.number(meters)} m'
+      : '${Fmt.number(meters / 1000, precision: 3)} km';
 }
 
 class Fmt {
   Fmt._();
 
-  static String number(double value) {
+  static String number(double value, {int precision = 2}) {
     if (!value.isFinite) return '0';
-    return value.toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '');
+    return value.toStringAsFixed(precision).replaceFirst(RegExp(r'\.?0+$'), '');
   }
 
   static String weightValue(double value) => number(value);
@@ -53,7 +57,7 @@ List<(String, String)> setColumns({
 }) => [
   if (type.hasWeight) (Fmt.number(units.weightFromKg(weight)), units.weightLabel),
   if (type.hasReps) ('$reps', 'reps'),
-  if (type.hasDistance) (Fmt.number(units.distanceFromMeters(distance)), units.distanceLabel),
+  if (type.hasDistance) (Fmt.number(units.distanceFromMeters(distance), precision: units.imperial ? 5 : 3), units.distanceLabel),
   if (type.hasTime) (Fmt.duration(seconds), ''),
 ];
 

@@ -5,196 +5,187 @@ import 'package:go_router/go_router.dart';
 import '../../core/database/tables.dart';
 import '../../core/providers.dart';
 import '../../core/repositories/workout_repository.dart';
-import '../../core/util/dates.dart';
 import '../../core/util/format.dart';
+import '../../shared/widgets.dart';
 import 'workout_calendar.dart';
 
-/// Step 2 of copy: granular selection (Select All / per-exercise / per-set)
-/// for a chosen source day. The day is picked via a calendar (step 1) before
-/// arriving here, and can be changed from the header.
 class CopyWorkoutScreen extends ConsumerStatefulWidget {
-  const CopyWorkoutScreen({
-    super.key,
-    required this.targetDate,
-    required this.sourceDate,
-  });
-
-  final String targetDate;
-  final String sourceDate;
-
+  const CopyWorkoutScreen({super.key, required this.targetDate, required this.sourceDate});
+  final String targetDate, sourceDate;
   @override
   ConsumerState<CopyWorkoutScreen> createState() => _CopyWorkoutScreenState();
 }
 
 class _CopyWorkoutScreenState extends ConsumerState<CopyWorkoutScreen> {
   late String _source = widget.sourceDate;
-  bool _loading = true;
+  bool _loading = true, _failed = false, _copying = false;
   List<LoggedSet> _sets = [];
   final Set<int> _selected = {};
-
-  WorkoutRepository get _repo => ref.read(workoutRepositoryProvider);
-
   @override
   void initState() {
     super.initState();
-    _loadSource(_source);
+    _load(_source);
   }
 
-  Future<void> _loadSource(String date) async {
-    setState(() => _loading = true);
-    final sets = await _repo.dayLog(date);
-    if (!mounted) return;
+  Future<void> _load(String date) async {
     setState(() {
-      _source = date;
-      _sets = sets;
-      _selected
-        ..clear()
-        ..addAll(sets.map((s) => s.set.id));
-      _loading = false;
+      _loading = true;
+      _failed = false;
     });
+    try {
+      final sets = await ref.read(workoutRepositoryProvider).dayLog(date);
+      if (!mounted) return;
+      setState(() {
+        _source = date;
+        _sets = sets;
+        _selected
+          ..clear()
+          ..addAll(sets.map((s) => s.set.id));
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _failed = true;
+        });
+      }
+    }
   }
 
   Future<void> _changeSource() async {
-    final priors = await _repo.workoutDatesBefore(widget.targetDate);
-    if (priors.isEmpty || !mounted) return;
-    final picked = await pickCopyDay(context, ref,
-        initialDate: _source, selectableDays: priors.toSet());
-    if (picked != null) await _loadSource(picked);
+    final dates = await ref.read(workoutRepositoryProvider).workoutDatesBefore(widget.targetDate);
+    if (!mounted) return;
+    final date = await pickCopyDay(context, ref, initialDate: _source, selectableDays: dates.toSet());
+    if (date != null && mounted) await _load(date);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Copy Workout')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _sets.isEmpty
-              ? Center(
-                  child: Text('That workout has no sets',
-                      style: TextStyle(color: Theme.of(context).hintColor)))
-              : _content(),
-      bottomNavigationBar: _bottomBar(),
-    );
-  }
-
-  Widget _content() {
-    final order = <int>[];
     final groups = <int, List<LoggedSet>>{};
     for (final s in _sets) {
-      groups.putIfAbsent(s.set.exerciseId, () {
-        order.add(s.set.exerciseId);
-        return <LoggedSet>[];
-      }).add(s);
+      (groups[s.set.exerciseId] ??= []).add(s);
     }
-    final allIds = _sets.map((s) => s.set.id).toSet();
-    final allSelected = allIds.isNotEmpty && _selected.length == allIds.length;
-
-    return Column(
-      children: [
-        ListTile(
-          leading: const Icon(Icons.event),
-          title: Text('From ${Dates.navLabel(_source)}'),
-          trailing: const Icon(Icons.edit_calendar_outlined),
-          onTap: _changeSource,
-        ),
-        const Divider(height: 1),
-        CheckboxListTile(
-          title: const Text('Select All',
-              style: TextStyle(fontWeight: FontWeight.w600)),
-          value: allSelected,
-          onChanged: (v) => setState(() {
-            _selected.clear();
-            if (v == true) _selected.addAll(allIds);
-          }),
-        ),
-        const Divider(height: 1),
-        Expanded(
-          child: ListView(
-            children: [
-              for (final id in order) ..._exerciseSection(groups[id]!),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  List<Widget> _exerciseSection(List<LoggedSet> exSets) {
-    final type = ExerciseType.values[exSets.first.exerciseType];
-    final ids = exSets.map((s) => s.set.id).toList();
-    final allSel = ids.every(_selected.contains);
-    return [
-      Container(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: CheckboxListTile(
-          dense: true,
-          title: Text(exSets.first.exerciseName.toUpperCase(),
-              style: const TextStyle(fontWeight: FontWeight.bold)),
-          value: allSel,
-          onChanged: (v) => setState(() {
-            if (v == true) {
-              _selected.addAll(ids);
-            } else {
-              _selected.removeAll(ids);
-            }
-          }),
-        ),
-      ),
-      for (final s in exSets)
-        CheckboxListTile(
-          dense: true,
-          title: Text(describeSet(
-            type: type,
-            effectiveWeight: s.effectiveWeight,
-            reps: s.set.reps,
-            distance: s.set.distance,
-            durationSeconds: s.set.durationSeconds,
-          )),
-          value: _selected.contains(s.set.id),
-          onChanged: (v) => setState(() {
-            if (v == true) {
-              _selected.add(s.set.id);
-            } else {
-              _selected.remove(s.set.id);
-            }
-          }),
-        ),
-    ];
-  }
-
-  Widget _bottomBar() {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                  onPressed: () => context.pop(), child: const Text('Cancel')),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: FilledButton(
-                onPressed: _selected.isEmpty ? null : _copy,
-                child: Text('Copy (${_selected.length})'),
+    final units = ref.watch(unitsProvider);
+    return Scaffold(
+      appBar: AppBar(title: const Text('Copy workout')),
+      body: ContentWidth(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _failed
+            ? ErrorState(onRetry: () => _load(_source))
+            : ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  Text('Start from a previous session', style: Theme.of(context).textTheme.headlineMedium),
+                  const SizedBox(height: 16),
+                  Card(
+                    child: Column(
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.history_rounded),
+                          title: Text('From $_source'),
+                          trailing: const Icon(Icons.edit_calendar_outlined),
+                          onTap: _copying ? null : _changeSource,
+                        ),
+                        const Divider(indent: 16, endIndent: 16),
+                        ListTile(leading: const Icon(Icons.event_available_outlined), title: Text('To ${widget.targetDate}')),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Copied sets are added as planned. Complete them as you train.',
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Select all · ${_sets.length} sets'),
+                    value: _sets.isNotEmpty && _selected.length == _sets.length,
+                    onChanged: _copying
+                        ? null
+                        : (v) => setState(() {
+                            _selected.clear();
+                            if (v == true) _selected.addAll(_sets.map((s) => s.set.id));
+                          }),
+                  ),
+                  for (final group in groups.values)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Card(
+                        child: Column(
+                          children: [
+                            CheckboxListTile(
+                              title: Text(group.first.exerciseName, style: const TextStyle(fontWeight: FontWeight.w700)),
+                              value: group.every((s) => _selected.contains(s.set.id)),
+                              onChanged: _copying
+                                  ? null
+                                  : (v) => setState(() {
+                                      final ids = group.map((s) => s.set.id);
+                                      if (v == true) {
+                                        _selected.addAll(ids);
+                                      } else {
+                                        _selected.removeAll(ids);
+                                      }
+                                    }),
+                            ),
+                            const Divider(indent: 16, endIndent: 16),
+                            for (final s in group)
+                              CheckboxListTile(
+                                title: Text(
+                                  describeSet(
+                                    type: ExerciseType.values[s.exerciseType],
+                                    effectiveWeight: s.effectiveWeight,
+                                    reps: s.set.reps,
+                                    distance: s.set.distance,
+                                    durationSeconds: s.set.durationSeconds,
+                                    units: units,
+                                  ),
+                                ),
+                                value: _selected.contains(s.set.id),
+                                onChanged: _copying
+                                    ? null
+                                    : (v) => setState(() {
+                                        if (v == true) {
+                                          _selected.add(s.set.id);
+                                        } else {
+                                          _selected.remove(s.set.id);
+                                        }
+                                      }),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ),
-          ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+          child: FilledButton.icon(
+            onPressed: _selected.isEmpty || _copying || _loading ? null : _copy,
+            icon: const Icon(Icons.copy_rounded),
+            label: Text(_copying ? 'Copying…' : 'Copy ${_selected.length} sets'),
+          ),
         ),
       ),
     );
   }
 
   Future<void> _copy() async {
-    final messenger = ScaffoldMessenger.of(context);
-    final nav = Navigator.of(context);
-    // Preserve the source workout's order.
-    final ids = _sets
-        .where((s) => _selected.contains(s.set.id))
-        .map((s) => s.set.id)
-        .toList();
-    final n = await _repo.copySetsToDate(ids, widget.targetDate);
-    messenger.showSnackBar(SnackBar(content: Text('Copied $n sets')));
-    nav.pop();
+    setState(() => _copying = true);
+    final ok = await attempt(context, () async {
+      final ids = _sets.where((s) => _selected.contains(s.set.id)).map((s) => s.set.id).toList();
+      final count = await ref.read(workoutRepositoryProvider).copySetsToDate(ids, widget.targetDate);
+      if (mounted) notice(context, '$count planned sets copied');
+    });
+    if (!mounted) return;
+    if (ok) {
+      ref.read(selectedDateProvider.notifier).set(widget.targetDate);
+      context.pop();
+    } else {
+      setState(() => _copying = false);
+    }
   }
 }

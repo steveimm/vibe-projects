@@ -112,3 +112,8 @@ final measurementsProvider = StreamProvider.autoDispose.family<List<Measurement>
 final goalsProvider = StreamProvider.autoDispose.family<List<ExerciseGoal>, int>(
   (ref, id) => ref.watch(progressRepositoryProvider).watchGoals(id),
 );
+
+final allExercisesProvider = StreamProvider((ref) {
+  final db = ref.watch(databaseProvider);
+  return db.select(db.exercises).watch();
+});

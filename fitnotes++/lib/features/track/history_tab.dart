@@ -1,73 +1,98 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/database/database.dart';
 import '../../core/providers.dart';
 import '../../core/util/dates.dart';
 import '../../core/util/format.dart';
+import '../../shared/widgets.dart';
 
-/// HISTORY tab: every set for an exercise, grouped by day (newest first), with
-/// PR-setting sets flagged.
 class HistoryTab extends ConsumerWidget {
   const HistoryTab({super.key, required this.exercise});
-
   final Exercise exercise;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final histAsync = ref.watch(exerciseHistoryProvider(exercise.id));
-    final prIds = ref.watch(prSetIdsProvider(exercise.id));
-
-    return histAsync.when(
+    final history = ref.watch(exerciseHistoryProvider(exercise.id));
+    final prs = ref.watch(prSetIdsProvider(exercise.id));
+    final units = ref.watch(unitsProvider);
+    return history.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('$e')),
+      error: (_, _) => ErrorState(onRetry: () => ref.invalidate(exerciseHistoryProvider(exercise.id))),
       data: (sets) {
         if (sets.isEmpty) {
-          return Center(
-            child: Text('No history yet',
-                style: TextStyle(color: Theme.of(context).hintColor)),
+          return const SingleChildScrollView(
+            child: EmptyState(
+              icon: Icons.history_rounded,
+              title: 'Your history starts here',
+              message: 'Log your first set to build a record of each session.',
+            ),
           );
         }
-        final children = <Widget>[];
-        String? currentDate;
+        final days = <String, List<WorkoutSet>>{};
         for (final s in sets) {
-          if (s.date != currentDate) {
-            currentDate = s.date;
-            children.add(Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-              child: Text(
-                Dates.sectionHeader(s.date),
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.primary),
-              ),
-            ));
-            children.add(const Divider(height: 1));
-          }
-          final isPr = prIds.contains(s.id);
-          children.add(ListTile(
-            dense: true,
-            title: Row(
-              children: [
-                if (isPr) ...[
-                  const Icon(Icons.emoji_events, size: 16, color: Colors.amber),
-                  const SizedBox(width: 6),
-                ],
-                Text(describeSet(
-                  type: exercise.type,
-                  effectiveWeight: s.rawWeight * s.weightMultiplier,
-                  reps: s.reps,
-                  distance: s.distance,
-                  durationSeconds: s.durationSeconds,
-                )),
-              ],
-            ),
-            subtitle:
-                (s.note != null && s.note!.isNotEmpty) ? Text(s.note!) : null,
-          ));
+          (days[s.date] ??= []).add(s);
         }
-        return ListView(children: children);
+        final entries = days.entries.toList();
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          itemCount: entries.length,
+          itemBuilder: (_, i) {
+            final entry = entries[i];
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionTitle(
+                  DateFormat('EEE, d MMM yyyy').format(Dates.parse(entry.key)),
+                  trailing: TextButton(
+                    onPressed: () => context.pushReplacement('/log/${exercise.id}?date=${entry.key}'),
+                    child: const Text('Open'),
+                  ),
+                ),
+                Card(
+                  child: Column(
+                    children: [
+                      for (var j = 0; j < entry.value.length; j++) ...[
+                        if (j > 0) const Divider(indent: 16, endIndent: 16),
+                        ListTile(
+                          leading: Text(
+                            '${j + 1}'.padLeft(2, '0'),
+                            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                          ),
+                          title: Text(
+                            describeSet(
+                              type: exercise.type,
+                              effectiveWeight: entry.value[j].rawWeight * entry.value[j].weightMultiplier,
+                              reps: entry.value[j].reps,
+                              distance: entry.value[j].distance,
+                              durationSeconds: entry.value[j].durationSeconds,
+                              units: units,
+                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: entry.value[j].isPlanned
+                              ? const Text('Planned')
+                              : entry.value[j].note?.isNotEmpty == true
+                              ? Text(entry.value[j].note!)
+                              : entry.value[j].rpe == null
+                              ? null
+                              : Text('RPE ${Fmt.number(entry.value[j].rpe!)}'),
+                          trailing: prs.contains(entry.value[j].id)
+                              ? const Tooltip(
+                                  message: 'Personal record',
+                                  child: Icon(Icons.emoji_events_outlined, color: Color(0xFFAE7A25), size: 20),
+                                )
+                              : null,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        );
       },
     );
   }

@@ -1,186 +1,377 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../core/database/database.dart';
+import '../../core/import/csv_importer.dart';
 import '../../core/import/fitnotes_importer.dart';
 import '../../core/providers.dart';
+import '../../core/services/backup_service.dart';
+import '../../core/services/device_service.dart';
+import '../../core/services/rest_timer.dart';
+import '../../core/util/dates.dart';
+import '../../core/util/format.dart';
+import '../../shared/widgets.dart';
 
-class SettingsScreen extends ConsumerWidget {
+Future<File> _recoveryFile() async => File('${(await getApplicationDocumentsDirectory()).path}/fitnotes-before-restore.sqlite');
+final _recoveryProvider = FutureProvider.autoDispose((ref) async => (await _recoveryFile()).exists());
+
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
-
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final settingsAsync = ref.watch(settingsProvider);
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  String? _busy;
+  @override
+  Widget build(BuildContext context) {
+    final settings = ref.watch(settingsProvider);
+    final units = ref.watch(unitsProvider);
+    final season = ref.watch(seasonsProvider).asData?.value.firstOrNull;
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: settingsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
-        data: (s) => ListView(
-          children: [
-            _header(context, 'SETTINGS'),
-            ListTile(
-              title: const Text('Theme'),
-              subtitle: Text(_themeLabel(s.themeMode)),
-              onTap: () async {
-                final v = await _pickOption<int>(context, 'Theme',
-                    const {0: 'System', 1: 'Light', 2: 'Dark'}, s.themeMode);
-                if (v != null) {
-                  _update(ref, AppSettingsCompanion(themeMode: Value(v)));
-                }
-              },
-            ),
-            const ListTile(
-              title: Text('Unit System'),
-              subtitle: Text('Metric (kg)'),
-              enabled: false,
-            ),
-            ListTile(
-              title: const Text('Calendar Week Start'),
-              subtitle: Text(s.firstDayOfWeek == 7 ? 'Sunday' : 'Monday'),
-              onTap: () => _update(ref,
-                  AppSettingsCompanion(
-                      firstDayOfWeek: Value(s.firstDayOfWeek == 7 ? 1 : 7))),
-            ),
-            ListTile(
-              title: const Text('Default Weight Increment'),
-              subtitle: Text('${s.defaultWeightIncrement} kg'),
-              onTap: () async {
-                final v = await _pickOption<double>(
-                  context,
-                  'Default Weight Increment',
-                  {
-                    0.5: '0.5 kg',
-                    1.0: '1 kg',
-                    1.25: '1.25 kg',
-                    2.5: '2.5 kg',
-                    5.0: '5 kg',
-                  },
-                  s.defaultWeightIncrement,
-                );
-                if (v != null) {
-                  _update(ref,
-                      AppSettingsCompanion(defaultWeightIncrement: Value(v)));
-                }
-              },
-            ),
-            ListTile(
-              title: const Text('Rest Timer'),
-              subtitle: Text('${s.restTimerSeconds}s'),
-              onTap: () async {
-                final v = await _pickOption<int>(
-                  context,
-                  'Rest Timer',
-                  const {
-                    30: '30s',
-                    60: '60s',
-                    90: '90s',
-                    120: '2:00',
-                    180: '3:00',
-                    300: '5:00',
-                  },
-                  s.restTimerSeconds,
-                );
-                if (v != null) {
-                  _update(ref, AppSettingsCompanion(restTimerSeconds: Value(v)));
-                }
-              },
-            ),
-            SwitchListTile(
-              title: const Text('Rest Timer Vibrate'),
-              value: s.restTimerVibrate,
-              onChanged: (v) => _update(
-                  ref, AppSettingsCompanion(restTimerVibrate: Value(v))),
-            ),
-            SwitchListTile(
-              title: const Text('Rest Timer Auto-Start'),
-              subtitle: const Text('Start the timer after saving a set'),
-              value: s.restTimerAutoStart,
-              onChanged: (v) => _update(
-                  ref, AppSettingsCompanion(restTimerAutoStart: Value(v))),
-            ),
-            SwitchListTile(
-              title: const Text('Track Personal Records'),
-              subtitle: const Text('Flag record sets with a trophy'),
-              value: s.trackPersonalRecords,
-              onChanged: (v) => _update(
-                  ref, AppSettingsCompanion(trackPersonalRecords: Value(v))),
-            ),
-            SwitchListTile(
-              title: const Text('Mark Sets Complete'),
-              subtitle: const Text('Show a checkbox on each set'),
-              value: s.markSetsComplete,
-              onChanged: (v) => _update(
-                  ref, AppSettingsCompanion(markSetsComplete: Value(v))),
-            ),
-            SwitchListTile(
-              title: const Text('Keep Screen On'),
-              value: s.keepScreenOn,
-              onChanged: (v) =>
-                  _update(ref, AppSettingsCompanion(keepScreenOn: Value(v))),
-            ),
-            _header(context, 'DATA'),
-            ListTile(
-              leading: const Icon(Icons.file_download_outlined),
-              title: const Text('Import FitNotes Backup'),
-              subtitle: const Text('Load a .fitnotes SQLite backup'),
-              onTap: () => _import(context, ref),
-            ),
-          ],
+      body: ContentWidth(
+        child: settings.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, _) => ErrorState(onRetry: () => ref.invalidate(settingsProvider)),
+          data: (s) => ListView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+            children: [
+              const SectionTitle('Make it yours'),
+              Card(
+                child: Column(
+                  children: [
+                    _tile(
+                      Icons.palette_outlined,
+                      'Appearance',
+                      const ['Follow system', 'Light', 'Dark'][s.themeMode.clamp(0, 2)],
+                      () async {
+                        final choice = await _pick('Appearance', const {0: 'Follow system', 1: 'Light', 2: 'Dark'}, s.themeMode);
+                        if (choice != null) await _update(AppSettingsCompanion(themeMode: Value(choice)));
+                      },
+                    ),
+                    const Divider(indent: 56, endIndent: 16),
+                    _tile(
+                      Icons.straighten_rounded,
+                      'Units',
+                      s.useImperial ? 'Pounds & miles' : 'Kilograms & kilometers',
+                      () async {
+                        final choice = await _pick('Units', const {
+                          false: 'Kilograms & kilometers',
+                          true: 'Pounds & miles',
+                        }, s.useImperial);
+                        if (choice != null) await _update(AppSettingsCompanion(useImperial: Value(choice)));
+                      },
+                    ),
+                    const Divider(indent: 56, endIndent: 16),
+                    _tile(
+                      Icons.calendar_view_week_outlined,
+                      'Week starts on',
+                      s.firstDayOfWeek == 7 ? 'Sunday' : 'Monday',
+                      () async {
+                        final choice = await _pick('Week starts on', const {1: 'Monday', 7: 'Sunday'}, s.firstDayOfWeek);
+                        if (choice != null) await _update(AppSettingsCompanion(firstDayOfWeek: Value(choice)));
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SectionTitle('Logging'),
+              Card(
+                child: Column(
+                  children: [
+                    _tile(Icons.exposure_plus_1_rounded, 'Weight increment', units.weight(s.defaultWeightIncrement), () async {
+                      final value = await prompt(
+                        context,
+                        title: 'Weight increment',
+                        label: 'Increment (${units.weightLabel})',
+                        value: Fmt.number(units.weightFromKg(s.defaultWeightIncrement)),
+                        maxLength: 8,
+                        keyboard: const TextInputType.numberWithOptions(decimal: true),
+                        validate: (v) {
+                          final n = double.tryParse(v);
+                          return n != null && n.isFinite && n > 0 && n <= 100 ? null : 'Use a number greater than 0, up to 100.';
+                        },
+                      );
+                      if (value != null) {
+                        await _update(AppSettingsCompanion(defaultWeightIncrement: Value(units.weightToKg(double.parse(value)))));
+                      }
+                    }),
+                    _switch(
+                      'Personal records',
+                      'Highlight record-setting sets',
+                      s.trackPersonalRecords,
+                      (v) => _update(AppSettingsCompanion(trackPersonalRecords: Value(v))),
+                    ),
+                    _switch(
+                      'Completion checkboxes',
+                      'Mark logged sets complete or planned',
+                      s.markSetsComplete,
+                      (v) => _update(AppSettingsCompanion(markSetsComplete: Value(v))),
+                    ),
+                    _switch(
+                      'Keep screen on',
+                      'While FitNotes++ is open',
+                      s.keepScreenOn,
+                      (v) => _update(AppSettingsCompanion(keepScreenOn: Value(v))),
+                    ),
+                    _tile(
+                      Icons.auto_graph_rounded,
+                      '1RM rep limit',
+                      s.estimated1rmMaxReps == 0 ? 'No cap (up to 36 reps)' : 'Include sets up to ${s.estimated1rmMaxReps} reps',
+                      () async {
+                        final value = await _pick('1RM rep limit', const {
+                          0: 'No cap (up to 36 reps)',
+                          8: '8 reps',
+                          10: '10 reps',
+                          12: '12 reps',
+                          15: '15 reps',
+                          20: '20 reps',
+                        }, s.estimated1rmMaxReps);
+                        if (value != null) await _update(AppSettingsCompanion(estimated1rmMaxReps: Value(value)));
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SectionTitle('Rest timer'),
+              Card(
+                child: Column(
+                  children: [
+                    _tile(Icons.timer_outlined, 'Default duration', Fmt.duration(s.restTimerSeconds), () async {
+                      final value = await prompt(
+                        context,
+                        title: 'Rest duration',
+                        label: 'Time (m:ss or seconds)',
+                        value: Fmt.duration(s.restTimerSeconds),
+                        maxLength: 8,
+                        keyboard: TextInputType.datetime,
+                        validate: (v) => (Fmt.parseDuration(v) ?? 0) >= 1 && (Fmt.parseDuration(v) ?? 3601) <= 3600
+                            ? null
+                            : 'Use 1 second to 60 minutes.',
+                      );
+                      if (value != null) await _update(AppSettingsCompanion(restTimerSeconds: Value(Fmt.parseDuration(value)!)));
+                    }),
+                    _switch(
+                      'Auto-start',
+                      'Start resting after logging or completing a set',
+                      s.restTimerAutoStart,
+                      (v) => _update(AppSettingsCompanion(restTimerAutoStart: Value(v))),
+                    ),
+                    _switch(
+                      'Sound',
+                      'Play a tone when rest ends',
+                      s.restTimerSound,
+                      (v) => _update(AppSettingsCompanion(restTimerSound: Value(v))),
+                    ),
+                    _switch(
+                      'Vibration',
+                      'Vibrate when rest ends',
+                      s.restTimerVibrate,
+                      (v) => _update(AppSettingsCompanion(restTimerVibrate: Value(v))),
+                    ),
+                  ],
+                ),
+              ),
+              const SectionTitle('Personal record seasons'),
+              Card(
+                child: _tile(
+                  Icons.emoji_events_outlined,
+                  'Manage seasons',
+                  season == null
+                      ? 'Tracking all-time records'
+                      : '${season.note?.isNotEmpty == true ? season.note : 'Current season'} · since ${season.date}',
+                  () => context.push('/seasons'),
+                ),
+              ),
+              const SectionTitle('Your data'),
+              Text(
+                'Everything stays on this device. Save a full backup to keep your history, routines, and preferences.',
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 12),
+              if (_busy != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(children: [const LinearProgressIndicator(), const SizedBox(height: 8), Text(_busy!)]),
+                ),
+              Card(
+                child: Column(
+                  children: [
+                    _tile(
+                      Icons.save_alt_rounded,
+                      'Save full backup',
+                      'Workouts, routines, measurements, and settings',
+                      _busy == null ? () => _export(false) : null,
+                    ),
+                    _tile(
+                      Icons.table_view_outlined,
+                      'Export workout CSV',
+                      'Logged sets in FitNotes-compatible format',
+                      _busy == null ? () => _export(true) : null,
+                    ),
+                    _tile(
+                      Icons.restore_rounded,
+                      'Restore full backup',
+                      'Replace data from a .fitnotesplus file',
+                      _busy == null ? () => _import('restore') : null,
+                    ),
+                    if (ref.watch(_recoveryProvider).asData?.value == true)
+                      _tile(
+                        Icons.undo_rounded,
+                        'Undo last restore',
+                        'Recover the data saved before your last restore',
+                        _busy == null ? _undoRestore : null,
+                      ),
+                    _tile(
+                      Icons.file_download_outlined,
+                      'Import FitNotes backup',
+                      'Merge an original Android .fitnotes file',
+                      _busy == null ? () => _import('fitnotes') : null,
+                    ),
+                    _tile(
+                      Icons.upload_file_outlined,
+                      'Import workout CSV',
+                      'FitNotes 10-column or legacy 8-column CSV',
+                      _busy == null ? () => _import('csv') : null,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+              Center(
+                child: Text(
+                  'FitNotes++  ·  Offline by design',
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _header(BuildContext context, String text) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-        child: Text(text,
-            style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-                letterSpacing: 0.5)),
+  Widget _tile(IconData icon, String title, String subtitle, VoidCallback? tap) => ListTile(
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    leading: Icon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
+    title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+    subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
+    trailing: const Icon(Icons.chevron_right_rounded, size: 19),
+    onTap: tap,
+    enabled: tap != null,
+  );
+  Widget _switch(String title, String subtitle, bool value, ValueChanged<bool> change) => SwitchListTile(
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+    title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+    subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
+    value: value,
+    onChanged: change,
+  );
+  Future<void> _update(AppSettingsCompanion changes) =>
+      attempt(context, () => ref.read(settingsRepositoryProvider).update(changes));
+  Future<T?> _pick<T>(String title, Map<T, String> options, T current) => showDialog<T>(
+    context: context,
+    builder: (context) => SimpleDialog(
+      title: Text(title),
+      children: [
+        for (final option in options.entries)
+          ListTile(
+            title: Text(option.value),
+            trailing: option.key == current ? const Icon(Icons.check_rounded) : null,
+            onTap: () => Navigator.pop(context, option.key),
+          ),
+      ],
+    ),
+  );
+
+  Future<void> _export(bool csv) async {
+    setState(() => _busy = csv ? 'Preparing CSV…' : 'Preparing backup…');
+    final backup = BackupService(ref.read(databaseProvider));
+    await attempt(context, () async {
+      final bytes = csv ? await backup.csv() : await backup.backup();
+      final saved = await DeviceService.saveFile(
+        'FitNotes-${Dates.today()}.${csv ? 'csv' : 'fitnotesplus'}',
+        bytes,
+        mime: csv ? 'text/csv' : 'application/octet-stream',
       );
-
-  String _themeLabel(int mode) =>
-      switch (mode) { 1 => 'Light', 2 => 'Dark', _ => 'System' };
-
-  void _update(WidgetRef ref, AppSettingsCompanion changes) =>
-      ref.read(settingsRepositoryProvider).update(changes);
-
-  Future<T?> _pickOption<T>(BuildContext context, String title,
-      Map<T, String> options, T current) {
-    return showDialog<T>(
-      context: context,
-      builder: (_) => SimpleDialog(
-        title: Text(title),
-        children: [
-          for (final e in options.entries)
-            ListTile(
-              title: Text(e.value),
-              trailing: e.key == current ? const Icon(Icons.check) : null,
-              onTap: () => Navigator.pop(context, e.key),
-            ),
-        ],
-      ),
-    );
+      if (saved && mounted) notice(context, csv ? 'Workout CSV saved' : 'Full backup saved');
+    });
+    if (mounted) setState(() => _busy = null);
   }
 
-  Future<void> _import(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
+  Future<void> _import(String kind) async {
+    final db = ref.read(databaseProvider);
+    final service = BackupService(db);
     final file = await openFile();
-    if (file == null) return;
-    final path = file.path;
-    messenger.showSnackBar(const SnackBar(content: Text('Importing…')));
-    try {
-      final res = await FitNotesImporter(ref.read(databaseProvider))
-          .importFromFile(path);
-      messenger.showSnackBar(SnackBar(
-          content: Text(
-              'Imported ${res.exercises} exercises and ${res.sets} sets')));
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Import failed: $e')));
+    if (file == null || !mounted) return;
+    setState(() => _busy = 'Reading ${file.name}…');
+    await attempt(context, () async {
+      if (kind == 'csv') {
+        final bytes = await file.readAsBytes();
+        final result = await CsvImporter(db).import(utf8.decode(bytes));
+        if (mounted) notice(context, '${result.sets} sets imported');
+        return;
+      }
+      final directory = await getTemporaryDirectory();
+      final temp = File('${directory.path}/fitnotes-import-${DateTime.now().microsecondsSinceEpoch}.sqlite');
+      try {
+        await temp.writeAsBytes(await file.readAsBytes());
+        if (kind == 'fitnotes') {
+          final result = await FitNotesImporter(db).importFromFile(temp.path);
+          if (mounted) notice(context, '${result.sets} sets and ${result.exercises} exercises imported');
+        } else {
+          final counts = await service.inspect(temp.path);
+          if (!mounted ||
+              !await confirm(
+                context,
+                title: 'Restore this backup?',
+                message:
+                    'Replace the current data with ${counts['workout_sets']} sets, ${counts['routines']} routines, and ${counts['measurements']} measurements? A recovery copy will let you undo this restore.',
+                action: 'Restore',
+              ) ||
+              !mounted) {
+            return;
+          }
+          final recovery = await _recoveryFile();
+          await recovery.writeAsBytes(await service.backup());
+          await service.restore(temp.path);
+          ref.read(restTimerProvider.notifier).stop();
+          ref.invalidate(_recoveryProvider);
+          if (mounted) notice(context, 'Backup restored');
+        }
+      } finally {
+        if (await temp.exists()) await temp.delete();
+      }
+    });
+    if (mounted) setState(() => _busy = null);
+  }
+
+  Future<void> _undoRestore() async {
+    if (!await confirm(
+          context,
+          title: 'Undo last restore?',
+          message: 'Return to the data saved immediately before the last restore? Changes made since then will be replaced.',
+          action: 'Recover',
+        ) ||
+        !mounted) {
+      return;
     }
+    setState(() => _busy = 'Recovering previous data…');
+    await attempt(context, () async {
+      final recovery = await _recoveryFile();
+      await BackupService(ref.read(databaseProvider)).restore(recovery.path);
+      await recovery.delete();
+      ref.invalidate(_recoveryProvider);
+      if (mounted) notice(context, 'Previous data recovered');
+    });
+    if (mounted) setState(() => _busy = null);
   }
 }

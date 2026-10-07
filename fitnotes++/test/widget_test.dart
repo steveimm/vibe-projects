@@ -32,6 +32,9 @@ void main() {
         overrides: [
           settingsProvider.overrideWith((ref) => Stream.value(settings)),
           dayLogProvider(Dates.today()).overrideWith((ref) => Stream.value(const <LoggedSet>[])),
+          allLogProvider.overrideWith((ref) => Stream.value(const <LoggedSet>[])),
+          dayNoteProvider(Dates.today()).overrideWith((ref) => Stream.value(null)),
+          sessionProvider(Dates.today()).overrideWith((ref) => Stream.value(null)),
         ],
         child: const FitNotesApp(),
       ),
@@ -40,6 +43,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('FitNotes++'), findsOneWidget);
-    expect(find.text('Workout Log Empty'), findsOneWidget);
+    expect(find.text('Make room for your next session'), findsOneWidget);
+    expect(find.text('Routines'), findsOneWidget);
   });
 }

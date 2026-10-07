@@ -1,491 +1,672 @@
-import 'dart:async';
-
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/database/database.dart';
 import '../../core/database/tables.dart';
+import '../../core/models/set_values.dart';
 import '../../core/providers.dart';
-import '../../core/repositories/workout_repository.dart';
+import '../../core/services/rest_timer.dart';
+import '../../core/util/dates.dart';
 import '../../core/util/format.dart';
+import '../../shared/rest_timer_bar.dart';
+import '../../shared/widgets.dart';
 import 'graph_tab.dart';
 import 'history_tab.dart';
 
-double? _parseDuration(String text) => Fmt.parseDuration(text)?.toDouble();
-
-/// Exercise detail with TRACK / HISTORY / GRAPH tabs.
 class ExerciseDetailScreen extends ConsumerWidget {
-  const ExerciseDetailScreen({super.key, required this.exerciseId, required this.date});
-
+  const ExerciseDetailScreen({super.key, required this.exerciseId, required this.date, this.initialTab = 0});
   final int exerciseId;
+  final int initialTab;
   final String date;
-
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final exAsync = ref.watch(exerciseProvider(exerciseId));
-    return exAsync.when(
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, _) => Scaffold(
-        appBar: AppBar(),
-        body: Center(child: Text('$e')),
-      ),
-      data: (ex) => DefaultTabController(
-        length: 3,
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text(ex.name),
-            actions: [
-              IconButton(
-                tooltip: 'Edit exercise',
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: () => context.push('/exercises/edit?id=${ex.id}'),
-              ),
-            ],
-            bottom: const TabBar(
-              tabs: [
-                Tab(text: 'TRACK'),
-                Tab(text: 'HISTORY'),
-                Tab(text: 'GRAPH'),
+  Widget build(BuildContext context, WidgetRef ref) => ref
+      .watch(exerciseProvider(exerciseId))
+      .when(
+        loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+        error: (_, _) => Scaffold(
+          appBar: AppBar(),
+          body: ErrorState(onRetry: () => ref.invalidate(exerciseProvider(exerciseId))),
+        ),
+        data: (exercise) => DefaultTabController(
+          length: 3,
+          initialIndex: initialTab,
+          child: Scaffold(
+            appBar: AppBar(
+              title: Text(exercise.name, maxLines: 2, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              actions: [
+                IconButton(
+                  tooltip: 'Edit exercise',
+                  icon: const Icon(Icons.tune_rounded),
+                  onPressed: () => context.push('/exercises/edit?id=$exerciseId'),
+                ),
               ],
+              bottom: const TabBar(
+                tabs: [
+                  Tab(text: 'Log'),
+                  Tab(text: 'History'),
+                  Tab(text: 'Progress'),
+                ],
+              ),
             ),
-          ),
-          body: TabBarView(
-            children: [
-              _TrackTab(exercise: ex, date: date),
-              HistoryTab(exercise: ex),
-              GraphTab(exercise: ex),
-            ],
+            body: ContentWidth(
+              child: TabBarView(
+                children: [
+                  _TrackTab(exercise: exercise, date: date),
+                  HistoryTab(exercise: exercise),
+                  GraphTab(exercise: exercise),
+                ],
+              ),
+            ),
+            bottomNavigationBar: const SafeArea(top: false, child: RestTimerBar()),
           ),
         ),
-      ),
-    );
-  }
+      );
 }
 
 class _TrackTab extends ConsumerStatefulWidget {
   const _TrackTab({required this.exercise, required this.date});
-
   final Exercise exercise;
   final String date;
-
   @override
   ConsumerState<_TrackTab> createState() => _TrackTabState();
 }
 
-class _TrackTabState extends ConsumerState<_TrackTab> {
-  double _weight = 20;
-  int _reps = 10;
-  double _distance = 0;
-  int _duration = 0;
-  int? _editingId;
-  bool _prefilled = false;
-
-  // Pulled from settings on each build.
-  double _inc = 2.5;
-  bool _markComplete = false;
-  int _restSeconds = 60;
-  bool _restAutoStart = false;
-  bool _restVibrate = false;
-
-  Timer? _restTimer;
-  int _restRemaining = 0;
-
-  WorkoutRepository get _repo => ref.read(workoutRepositoryProvider);
+class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveClientMixin {
+  final _weight = TextEditingController(text: '0');
+  final _reps = TextEditingController(text: '10');
+  final _distance = TextEditingController(text: '1');
+  final _time = TextEditingController(text: '1:00');
+  final _rpe = TextEditingController();
+  WorkoutSet? _editing;
+  WorkoutSet? _previous;
+  bool _saving = false, _touched = false;
+  String? _error;
+  @override
+  bool get wantKeepAlive => true;
+  @override
+  void initState() {
+    super.initState();
+    _prefill();
+  }
 
   @override
   void dispose() {
-    _restTimer?.cancel();
+    for (final c in [_weight, _reps, _distance, _time, _rpe]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final settings = ref.watch(settingsProvider).asData?.value;
-    _inc = settings?.defaultWeightIncrement ?? 2.5;
-    _markComplete = settings?.markSetsComplete ?? false;
-    _restSeconds = settings?.restTimerSeconds ?? 60;
-    _restAutoStart = settings?.restTimerAutoStart ?? false;
-    _restVibrate = settings?.restTimerVibrate ?? false;
-
-    final setsAsync = ref.watch(exerciseSetsProvider((exerciseId: widget.exercise.id, date: widget.date)));
-    return setsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('$e')),
-      data: (sets) {
-        _maybePrefill(sets);
-        final prIds = ref.watch(prSetIdsProvider(widget.exercise.id));
-        return Column(
-          children: [
-            _inputArea(),
-            const Divider(height: 1),
-            Expanded(child: _setList(sets, prIds)),
-          ],
-        );
-      },
-    );
-  }
-
-  void _maybePrefill(List<WorkoutSet> sets) {
-    if (_prefilled || _editingId != null) return;
-    if (sets.isNotEmpty) {
-      final last = sets.last;
-      _weight = last.rawWeight;
-      _reps = last.reps;
-      _distance = last.distance;
-      _duration = last.durationSeconds;
-    }
-    _prefilled = true;
-  }
-
-  Widget _inputArea() {
-    final fields = <Widget>[];
-    final type = widget.exercise.type;
-    if (type.hasWeight) {
-      fields.add(
-        _NumberStepper(
-          label: 'WEIGHT (kg)',
-          value: _weight,
-          step: _inc,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          format: Fmt.weightValue,
-          parse: (t) => double.tryParse(t.trim()),
-          onChanged: (v) => setState(() => _weight = v),
-        ),
-      );
-    }
-    if (type.hasReps) {
-      fields.add(
-        _NumberStepper(
-          label: 'REPS',
-          value: _reps.toDouble(),
-          step: 1,
-          keyboardType: TextInputType.number,
-          format: (v) => v.round().toString(),
-          parse: (t) => int.tryParse(t.trim())?.toDouble(),
-          onChanged: (v) => setState(() => _reps = v.round()),
-        ),
-      );
-    }
-    if (type.hasDistance) {
-      fields.add(
-        _NumberStepper(
-          label: 'DISTANCE (m)',
-          value: _distance,
-          step: 50,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          format: Fmt.number,
-          parse: (t) => double.tryParse(t.trim()),
-          onChanged: (v) => setState(() => _distance = v),
-        ),
-      );
-    }
-    if (type.hasTime) {
-      fields.add(
-        _NumberStepper(
-          label: 'TIME (m:ss)',
-          value: _duration.toDouble(),
-          step: 15,
-          keyboardType: TextInputType.text,
-          format: (v) => Fmt.duration(v.round()),
-          parse: _parseDuration,
-          onChanged: (v) => setState(() => _duration = v.round()),
-        ),
-      );
-    }
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-      child: Column(
-        children: [
-          ...fields,
-          const SizedBox(height: 4),
-          _restBar(),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton(onPressed: _save, child: Text(_editingId == null ? 'SAVE' : 'UPDATE')),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton(onPressed: _editingId == null ? null : _clear, child: const Text('CLEAR')),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _setList(List<WorkoutSet> sets, Set<int> prIds) {
-    if (sets.isEmpty) {
-      return Center(
-        child: Text('No sets yet', style: TextStyle(color: Theme.of(context).hintColor)),
-      );
-    }
-    return ListView.separated(
-      itemCount: sets.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (_, i) {
-        final s = sets[i];
-        final hasNote = s.note != null && s.note!.isNotEmpty;
-        return ListTile(
-          selected: s.id == _editingId,
-          leading: CircleAvatar(radius: 14, child: Text('${i + 1}', style: const TextStyle(fontSize: 13))),
-          title: Row(
-            children: [
-              if (prIds.contains(s.id)) ...[
-                const Icon(Icons.emoji_events, size: 16, color: Colors.amber),
-                const SizedBox(width: 6),
-              ],
-              Expanded(
-                child: Text(
-                  describeSet(
-                    type: widget.exercise.type,
-                    effectiveWeight: s.rawWeight * s.weightMultiplier,
-                    reps: s.reps,
-                    distance: s.distance,
-                    durationSeconds: s.durationSeconds,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          subtitle: hasNote ? Text(s.note!) : null,
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(icon: Icon(hasNote ? Icons.chat_bubble : Icons.chat_bubble_outline), onPressed: () => _editNote(s)),
-              if (_markComplete) Checkbox(value: s.isComplete, onChanged: (v) => _repo.setComplete(s.id, v ?? false)),
-            ],
-          ),
-          onTap: () => setState(() {
-            _editingId = s.id;
-            _weight = s.rawWeight;
-            _reps = s.reps;
-            _distance = s.distance;
-            _duration = s.durationSeconds;
-          }),
-          onLongPress: () => _confirmDelete(s),
-        );
-      },
-    );
-  }
-
-  Future<void> _save() async {
-    if (_editingId == null) {
-      await _repo.addSet(
-        exerciseId: widget.exercise.id,
-        date: widget.date,
-        rawWeight: _weight,
-        reps: _reps,
-        distance: _distance,
-        durationSeconds: _duration,
-      );
-      if (_restAutoStart) _startRest();
-    } else {
-      await _repo.updateSet(_editingId!, rawWeight: _weight, reps: _reps, distance: _distance, durationSeconds: _duration);
-      setState(() => _editingId = null);
-    }
-  }
-
-  void _clear() => setState(() => _editingId = null);
-
-  Widget _restBar() {
-    if (_restRemaining <= 0) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: TextButton.icon(
-          icon: const Icon(Icons.timer_outlined),
-          label: const Text('Start rest timer'),
-          onPressed: () => _startRest(),
-        ),
-      );
-    }
-    return Card(
-      color: Theme.of(context).colorScheme.secondaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        child: Row(
-          children: [
-            const Icon(Icons.timer),
-            const SizedBox(width: 8),
-            Text('Rest  ${Fmt.duration(_restRemaining)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-            const Spacer(),
-            TextButton(onPressed: () => _addRest(15), child: const Text('+15s')),
-            IconButton(onPressed: _stopRest, icon: const Icon(Icons.stop)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _startRest([int? seconds]) {
-    _restTimer?.cancel();
-    setState(() => _restRemaining = seconds ?? _restSeconds);
-    _restTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (_restRemaining <= 1) {
-        t.cancel();
-        setState(() => _restRemaining = 0);
-        if (_restVibrate) HapticFeedback.vibrate();
-      } else {
-        setState(() => _restRemaining -= 1);
-      }
+  Future<void> _prefill() async {
+    final previous = await ref.read(workoutRepositoryProvider).lastSet(widget.exercise.id, widget.date);
+    if (!mounted) return;
+    setState(() {
+      _previous = previous;
+      if (!_touched && previous != null) _fill(previous);
     });
   }
 
-  void _stopRest() {
-    _restTimer?.cancel();
-    setState(() => _restRemaining = 0);
-  }
-
-  void _addRest(int s) => setState(() => _restRemaining += s);
-
-  Future<void> _editNote(WorkoutSet s) async {
-    final ctrl = TextEditingController(text: s.note ?? '');
-    final result = await showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Set note'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          minLines: 1,
-          maxLines: 3,
-          decoration: const InputDecoration(hintText: 'e.g. last rep partial'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, ctrl.text), child: const Text('Save')),
-        ],
-      ),
-    );
-    if (result != null) {
-      await _repo.setNote(s.id, result.trim().isEmpty ? null : result.trim());
-    }
-  }
-
-  Future<void> _confirmDelete(WorkoutSet s) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete set?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
-        ],
-      ),
-    );
-    if (ok == true) {
-      if (_editingId == s.id) setState(() => _editingId = null);
-      await _repo.deleteSet(s.id);
-    }
-  }
-}
-
-/// A label + inline-editable number with tight −/+ buttons either side.
-class _NumberStepper extends StatefulWidget {
-  const _NumberStepper({
-    required this.label,
-    required this.value,
-    required this.step,
-    required this.format,
-    required this.parse,
-    required this.onChanged,
-    required this.keyboardType,
-  });
-
-  final String label;
-  final double value;
-  final double step;
-  final String Function(double) format;
-  final double? Function(String) parse;
-  final ValueChanged<double> onChanged;
-  final TextInputType keyboardType;
-
-  @override
-  State<_NumberStepper> createState() => _NumberStepperState();
-}
-
-class _NumberStepperState extends State<_NumberStepper> {
-  late final TextEditingController _controller = TextEditingController(text: widget.format(widget.value));
-
-  @override
-  void didUpdateWidget(covariant _NumberStepper old) {
-    super.didUpdateWidget(old);
-    // Resync only when the value changed externally (buttons / prefill / edit),
-    // never while the user is typing the same value.
-    if (widget.value != old.value && widget.parse(_controller.text) != widget.value) {
-      _controller.text = widget.format(widget.value);
-      _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _bump(double delta) {
-    final v = widget.value + delta;
-    widget.onChanged(v < 0 ? 0 : v);
+  void _fill(WorkoutSet s) {
+    final units = ref.read(unitsProvider);
+    _weight.text = Fmt.number(units.weightFromKg(s.rawWeight));
+    _reps.text = '${s.reps}';
+    _distance.text = Fmt.number(units.distanceFromMeters(s.distance), precision: 6);
+    _time.text = Fmt.duration(s.durationSeconds);
+    _rpe.text = s.rpe == null ? '' : Fmt.number(s.rpe!);
+    _error = null;
   }
 
   @override
   Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            widget.label,
-            style: TextStyle(color: accent, fontWeight: FontWeight.bold, fontSize: 12),
-          ),
-          Divider(color: accent, thickness: 1.2, height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _btn(Icons.remove, () => _bump(-widget.step)),
-              const SizedBox(width: 14),
-              SizedBox(
-                width: 150,
-                child: TextField(
-                  controller: _controller,
-                  textAlign: TextAlign.center,
-                  keyboardType: widget.keyboardType,
-                  style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
-                  decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 6)),
-                  onChanged: (t) {
-                    final v = widget.parse(t);
-                    if (v != null) widget.onChanged(v < 0 ? 0 : v);
-                  },
+    super.build(context);
+    final units = ref.watch(unitsProvider);
+    final settings = ref.watch(settingsProvider).asData?.value;
+    final sets = ref.watch(exerciseSetsProvider((exerciseId: widget.exercise.id, date: widget.date)));
+    final prs = ref.watch(prSetIdsProvider(widget.exercise.id));
+    final factors = ref.watch(multipliersProvider(widget.exercise.id)).asData?.value ?? [];
+    final multiplier = _editing?.weightMultiplier ?? factors.where((m) => m.enabled).fold<double>(1, (v, m) => v * m.factor);
+    final type = widget.exercise.type;
+    final fields = <Widget>[
+      if (type.hasWeight)
+        _StepField(
+          label: 'Weight',
+          unit: units.weightLabel,
+          controller: _weight,
+          step: units.weightFromKg(widget.exercise.weightIncrement ?? settings?.defaultWeightIncrement ?? 2.5),
+          onChanged: _changed,
+        ),
+      if (type.hasReps) _StepField(label: 'Reps', controller: _reps, step: 1, integer: true, onChanged: _changed),
+      if (type.hasDistance)
+        _StepField(label: 'Distance', unit: units.distanceLabel, controller: _distance, step: 0.1, onChanged: _changed),
+      if (type.hasTime) _StepField(label: 'Time', unit: 'm:ss', controller: _time, step: 15, duration: true, onChanged: _changed),
+    ];
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+      children: [
+        Row(
+          children: [
+            Icon(Icons.event_outlined, size: 16, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 7),
+            Text(
+              DateFormat('EEE, d MMM yyyy').format(Dates.parse(widget.date)),
+              style: TextStyle(fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.primary),
+            ),
+            const Spacer(),
+            IconButton(
+              tooltip: 'Calculators',
+              onPressed: () => context.push('/tools'),
+              icon: const Icon(Icons.calculate_outlined, size: 21),
+            ),
+          ],
+        ),
+        if (widget.exercise.archived)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Card(
+              child: ListTile(
+                title: const Text('Archived exercise'),
+                trailing: TextButton(
+                  onPressed: () =>
+                      attempt(context, () => ref.read(exerciseRepositoryProvider).setArchived(widget.exercise.id, false)),
+                  child: const Text('Restore'),
                 ),
               ),
-              const SizedBox(width: 14),
-              _btn(Icons.add, () => _bump(widget.step)),
+            ),
+          ),
+        if (widget.exercise.notes?.isNotEmpty == true)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              title: const Text('Technique notes'),
+              leading: const Icon(Icons.lightbulb_outline_rounded),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Align(alignment: Alignment.centerLeft, child: Text(widget.exercise.notes!)),
+                ),
+              ],
+            ),
+          ),
+        if (_editing != null)
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.fromLTRB(14, 4, 4, 4),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.edit_outlined, size: 18),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text('Editing a set', style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+                TextButton(onPressed: _cancelEdit, child: const Text('Cancel')),
+              ],
+            ),
+          ),
+        LayoutBuilder(
+          builder: (context, constraints) =>
+              fields.length == 1 || constraints.maxWidth < 320 || MediaQuery.textScalerOf(context).scale(1) > 1.4
+              ? Column(
+                  children: [for (final field in fields) Padding(padding: const EdgeInsets.only(bottom: 10), child: field)],
+                )
+              : Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var i = 0; i < fields.length; i++) ...[if (i > 0) const SizedBox(width: 12), Expanded(child: fields[i])],
+                  ],
+                ),
+        ),
+        if (type.hasWeight && multiplier != 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(
+              '× ${Fmt.number(multiplier)} multiplier · ${units.weight(units.weightToKg(double.tryParse(_weight.text) ?? 0) * multiplier)} effective',
+              style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 12),
+            ),
+          ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            SizedBox(
+              width: 116,
+              child: TextField(
+                controller: _rpe,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Effort / 10', hintText: 'Optional', isDense: true),
+                onChanged: (_) => _changed(),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'How hard was this set?\nOptional RPE, from 1 to 10.',
+                style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            ),
+          ],
+        ),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _saving ? null : () => _save(multiplier),
+                icon: Icon(_editing == null ? Icons.add_rounded : Icons.check_rounded),
+                label: Text(
+                  _saving
+                      ? 'Saving…'
+                      : _editing == null
+                      ? 'Log set'
+                      : 'Update set',
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            OutlinedButton(onPressed: _saving ? null : _reset, child: const Text('Reset')),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              child: TextButton.icon(
+                onPressed: _startRest,
+                icon: const Icon(Icons.timer_outlined, size: 19),
+                label: Text('Rest · ${Fmt.duration(widget.exercise.defaultRestTimeSeconds ?? settings?.restTimerSeconds ?? 60)}'),
+              ),
+            ),
+            if (_previous != null)
+              TextButton(
+                onPressed: () => setState(() {
+                  _fill(_previous!);
+                  _editing = null;
+                  _touched = true;
+                }),
+                child: const Text('Last values'),
+              ),
+          ],
+        ),
+        if (_previous != null && _previous!.date != widget.date)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(
+              'Last time · ${DateFormat('d MMM').format(Dates.parse(_previous!.date))} · ${describeSet(type: type, effectiveWeight: _previous!.rawWeight * _previous!.weightMultiplier, reps: _previous!.reps, distance: _previous!.distance, durationSeconds: _previous!.durationSeconds, units: units)}',
+              style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+          ),
+        SectionTitle(
+          'This session',
+          trailing: Text(
+            '${sets.asData?.value.length ?? 0} sets',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+        ),
+        sets.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (_, _) => ErrorState(
+            onRetry: () => ref.invalidate(exerciseSetsProvider((exerciseId: widget.exercise.id, date: widget.date))),
+          ),
+          data: (items) => items.isEmpty
+              ? const EmptyState(
+                  icon: Icons.playlist_add_check_rounded,
+                  title: 'Ready for set one',
+                  message: 'Log a set above. Tap a saved set to edit it, or use its menu for notes and more.',
+                )
+              : Column(
+                  children: [
+                    for (var i = 0; i < items.length; i++) _setCard(items[i], i, prs, units, settings?.markSetsComplete ?? false),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+
+  void _changed() => setState(() {
+    _touched = true;
+    _error = null;
+  });
+  void _reset() => setState(() {
+    _editing = null;
+    _weight.text = '0';
+    _reps.text = '0';
+    _distance.text = '0';
+    _time.text = '0:00';
+    _rpe.clear();
+    _error = null;
+    _touched = true;
+  });
+  void _cancelEdit() => setState(() {
+    _editing = null;
+    _error = null;
+    if (_previous != null) _fill(_previous!);
+  });
+
+  void _startRest() {
+    final settings = ref.read(settingsProvider).asData?.value;
+    ref
+        .read(restTimerProvider.notifier)
+        .start(
+          widget.exercise.defaultRestTimeSeconds ?? settings?.restTimerSeconds ?? 60,
+          label: widget.exercise.name,
+          sound: settings?.restTimerSound ?? true,
+          vibrate: settings?.restTimerVibrate ?? false,
+        );
+  }
+
+  Future<void> _save(double multiplier) async {
+    final type = widget.exercise.type;
+    final units = ref.read(unitsProvider);
+    final weight = type.hasWeight ? double.tryParse(_weight.text.replaceAll(',', '.')) : 0.0;
+    final reps = type.hasReps ? int.tryParse(_reps.text) : 0;
+    final distance = type.hasDistance ? double.tryParse(_distance.text.replaceAll(',', '.')) : 0.0;
+    final time = type.hasTime ? Fmt.parseDuration(_time.text) : 0;
+    final rpe = _rpe.text.trim().isEmpty ? null : double.tryParse(_rpe.text);
+    if (weight == null || reps == null || distance == null || time == null || (_rpe.text.isNotEmpty && rpe == null)) {
+      setState(() => _error = 'Check the numbers above. Use m:ss or h:mm:ss for time.');
+      return;
+    }
+    final values = SetValues(
+      weight: units.weightToKg(weight),
+      reps: reps,
+      distance: units.distanceToMeters(distance),
+      seconds: time,
+      rpe: rpe,
+    );
+    try {
+      values.validate(type);
+    } on FormatException catch (e) {
+      setState(() => _error = e.message);
+      return;
+    }
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _saving = true);
+    final editing = _editing;
+    final repo = ref.read(workoutRepositoryProvider);
+    final ok = await attempt(context, () async {
+      if (editing != null) {
+        await repo.updateSet(
+          editing.id,
+          rawWeight: values.weight,
+          reps: values.reps,
+          distance: values.distance,
+          durationSeconds: values.seconds,
+          rpe: Value(rpe),
+        );
+      } else {
+        final id = await repo.addSet(
+          exerciseId: widget.exercise.id,
+          date: widget.date,
+          rawWeight: values.weight,
+          weightMultiplier: multiplier,
+          reps: values.reps,
+          distance: values.distance,
+          durationSeconds: values.seconds,
+          rpe: rpe,
+        );
+        if (mounted) {
+          notice(
+            context,
+            'Set logged',
+            action: SnackBarAction(label: 'Undo', onPressed: () => attempt(context, () => repo.deleteSet(id))),
+          );
+        }
+      }
+    });
+    if (!mounted) return;
+    setState(() {
+      _saving = false;
+      if (ok) {
+        _editing = null;
+        _touched = false;
+      }
+    });
+    if (ok) {
+      HapticFeedback.lightImpact();
+      if (editing == null && (ref.read(settingsProvider).asData?.value.restTimerAutoStart ?? false)) _startRest();
+      _previous = await repo.lastSet(widget.exercise.id, widget.date);
+    }
+  }
+
+  Widget _setCard(WorkoutSet s, int index, Set<int> prs, Units units, bool markComplete) {
+    final colors = Theme.of(context).colorScheme;
+    final type = widget.exercise.type;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        decoration: BoxDecoration(
+          color: _editing?.id == s.id ? colors.primaryContainer : colors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _editing?.id == s.id ? colors.primary : colors.outlineVariant),
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.fromLTRB(12, 5, 4, 5),
+          leading: CircleAvatar(
+            radius: 16,
+            backgroundColor: colors.surfaceContainerHighest,
+            child: Text(
+              '${index + 1}',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: colors.onSurface),
+            ),
+          ),
+          title: Text(
+            describeSet(
+              type: type,
+              effectiveWeight: s.rawWeight * s.weightMultiplier,
+              reps: s.reps,
+              distance: s.distance,
+              durationSeconds: s.durationSeconds,
+              units: units,
+            ),
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (s.isPlanned || prs.contains(s.id) || s.rpe != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    [
+                      if (s.isPlanned) 'Planned',
+                      if (prs.contains(s.id)) 'Personal record',
+                      if (s.rpe != null) 'RPE ${Fmt.number(s.rpe!)}',
+                    ].join(' · '),
+                    style: TextStyle(fontSize: 11, color: colors.primary),
+                  ),
+                ),
+              if (s.note?.isNotEmpty == true) Text(s.note!),
+              if (s.groupName?.isNotEmpty == true)
+                Text('Superset · ${s.groupName}', style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant)),
             ],
           ),
-        ],
+          onTap: () => setState(() {
+            _editing = s;
+            _fill(s);
+            _touched = true;
+          }),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (markComplete || s.isPlanned)
+                Checkbox(
+                  value: !s.isPlanned,
+                  onChanged: (value) async {
+                    final ok = await attempt(context, () => ref.read(workoutRepositoryProvider).setComplete(s.id, value!));
+                    if (ok && mounted && value == true && (ref.read(settingsProvider).asData?.value.restTimerAutoStart ?? false)) {
+                      _startRest();
+                    }
+                  },
+                ),
+              PopupMenuButton<String>(
+                tooltip: 'Set options',
+                onSelected: (action) => _setAction(s, action),
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('Edit set')),
+                  PopupMenuItem(value: 'values', child: Text('Use values for next set')),
+                  PopupMenuItem(value: 'note', child: Text('Set note')),
+                  PopupMenuItem(value: 'group', child: Text('Superset name')),
+                  PopupMenuItem(value: 'delete', child: Text('Delete set')),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _btn(IconData icon, VoidCallback onTap) {
-    return SizedBox(
-      width: 56,
-      height: 48,
-      child: FilledButton.tonal(
-        onPressed: onTap,
-        style: FilledButton.styleFrom(
-          padding: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-        child: Icon(icon),
-      ),
-    );
+  Future<void> _setAction(WorkoutSet s, String action) async {
+    final repo = ref.read(workoutRepositoryProvider);
+    switch (action) {
+      case 'edit':
+        setState(() {
+          _editing = s;
+          _fill(s);
+          _touched = true;
+        });
+      case 'values':
+        setState(() {
+          _editing = null;
+          _fill(s);
+          _touched = true;
+        });
+      case 'note':
+        final note = await prompt(
+          context,
+          title: 'Set note',
+          label: 'Technique, effort, or adjustments',
+          value: s.note ?? '',
+          optional: true,
+          lines: 3,
+          maxLength: 1000,
+        );
+        if (note != null && mounted) await attempt(context, () => repo.setNote(s.id, note.isEmpty ? null : note));
+      case 'group':
+        final group = await prompt(
+          context,
+          title: 'Superset',
+          label: 'Use the same name for grouped exercises',
+          value: s.groupName ?? '',
+          optional: true,
+          maxLength: 40,
+        );
+        if (group != null && mounted) {
+          await attempt(context, () => repo.setGroup(widget.exercise.id, widget.date, group.isEmpty ? null : group));
+        }
+      case 'delete':
+        await attempt(context, () async {
+          await repo.deleteSet(s.id);
+          if (!mounted) return;
+          if (_editing?.id == s.id) setState(() => _editing = null);
+          notice(
+            context,
+            'Set deleted',
+            action: SnackBarAction(label: 'Undo', onPressed: () => attempt(context, () => repo.restoreSets([s]))),
+          );
+        });
+    }
   }
+}
+
+class _StepField extends StatelessWidget {
+  const _StepField({
+    required this.label,
+    required this.controller,
+    required this.step,
+    required this.onChanged,
+    this.unit = '',
+    this.integer = false,
+    this.duration = false,
+  });
+  final String label, unit;
+  final TextEditingController controller;
+  final double step;
+  final bool integer, duration;
+  final VoidCallback onChanged;
+  void _bump(double delta) {
+    final value = duration ? Fmt.parseDuration(controller.text)?.toDouble() : double.tryParse(controller.text);
+    final next = ((value?.isFinite == true ? value! : 0) + delta).clamp(0.0, duration ? 604800.0 : 10000.0);
+    controller.text = duration
+        ? Fmt.duration(next.round())
+        : integer
+        ? next.round().toString()
+        : Fmt.number(next);
+    onChanged();
+    HapticFeedback.selectionClick();
+  }
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(2, 14, 2, 6),
+      child: Column(
+        children: [
+          Text(
+            '$label${unit.isEmpty ? '' : ' · $unit'}',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              IconButton(
+                tooltip: 'Decrease $label',
+                onPressed: () => _bump(-step),
+                icon: const Icon(Icons.remove_rounded, size: 19),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  textAlign: TextAlign.center,
+                  keyboardType: duration ? TextInputType.datetime : TextInputType.numberWithOptions(decimal: !integer),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                      RegExp(
+                        duration
+                            ? '[0-9:]'
+                            : integer
+                            ? '[0-9]'
+                            : '[0-9.,]',
+                      ),
+                    ),
+                  ],
+                  style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    filled: false,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    hintText: '0',
+                    semanticCounterText: label,
+                  ),
+                  onChanged: (_) => onChanged(),
+                  onTap: () => controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length),
+                ),
+              ),
+              IconButton(tooltip: 'Increase $label', onPressed: () => _bump(step), icon: const Icon(Icons.add_rounded, size: 19)),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
 }
