@@ -76,6 +76,7 @@ class _TrackTab extends ConsumerStatefulWidget {
 }
 
 class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveClientMixin {
+  final _scroll = ScrollController();
   final _weight = TextEditingController(text: '0');
   final _reps = TextEditingController(text: '10');
   final _distance = TextEditingController(text: '1');
@@ -95,6 +96,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
 
   @override
   void dispose() {
+    _scroll.dispose();
     for (final c in [_weight, _reps, _distance, _time, _rpe]) {
       c.dispose();
     }
@@ -145,6 +147,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
       if (type.hasTime) _StepField(label: 'Time', unit: 'm:ss', controller: _time, step: 15, duration: true, onChanged: _changed),
     ];
     return ListView(
+      controller: _scroll,
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       children: [
         Row(
@@ -240,7 +243,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
               child: TextField(
                 controller: _rpe,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Effort / 10', hintText: 'Optional', isDense: true),
+                decoration: const InputDecoration(labelText: 'RPE', suffixText: '/10', hintText: 'Optional', isDense: true),
                 onChanged: (_) => _changed(),
               ),
             ),
@@ -263,7 +266,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           children: [
             Expanded(
               child: FilledButton.icon(
-                onPressed: _saving ? null : () => _save(multiplier),
+                onPressed: _saving || widget.exercise.archived ? null : () => _save(multiplier),
                 icon: Icon(_editing == null ? Icons.add_rounded : Icons.check_rounded),
                 label: Text(
                   _saving
@@ -310,7 +313,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
         SectionTitle(
           'This session',
           trailing: Text(
-            '${sets.asData?.value.length ?? 0} sets',
+            '${sets.asData?.value.length ?? 0} ${(sets.asData?.value.length ?? 0) == 1 ? 'set' : 'sets'}',
             style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
         ),
@@ -438,6 +441,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
       }
     });
     if (ok) {
+      if (editing != null) notice(context, 'Set updated');
       HapticFeedback.lightImpact();
       if (editing == null && (ref.read(settingsProvider).asData?.value.restTimerAutoStart ?? false)) _startRest();
       _previous = await repo.lastSet(widget.exercise.id, widget.date);
@@ -497,11 +501,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
                 Text('Superset · ${s.groupName}', style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant)),
             ],
           ),
-          onTap: () => setState(() {
-            _editing = s;
-            _fill(s);
-            _touched = true;
-          }),
+          onTap: () => _selectSet(s, editing: true),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -510,7 +510,10 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
                   value: !s.isPlanned,
                   onChanged: (value) async {
                     final ok = await attempt(context, () => ref.read(workoutRepositoryProvider).setComplete(s.id, value!));
-                    if (ok && mounted && value == true && (ref.read(settingsProvider).asData?.value.restTimerAutoStart ?? false)) {
+                    if (ok &&
+                        mounted &&
+                        value == true &&
+                        (ref.read(settingsProvider).asData?.value.restTimerAutoStart ?? false)) {
                       _startRest();
                     }
                   },
@@ -533,21 +536,28 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
     );
   }
 
+  void _selectSet(WorkoutSet set, {required bool editing}) {
+    setState(() {
+      _editing = editing ? set : null;
+      _fill(set);
+      _touched = true;
+    });
+    if (_scroll.hasClients) {
+      _scroll.animateTo(
+        0,
+        duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
   Future<void> _setAction(WorkoutSet s, String action) async {
     final repo = ref.read(workoutRepositoryProvider);
     switch (action) {
       case 'edit':
-        setState(() {
-          _editing = s;
-          _fill(s);
-          _touched = true;
-        });
+        _selectSet(s, editing: true);
       case 'values':
-        setState(() {
-          _editing = null;
-          _fill(s);
-          _touched = true;
-        });
+        _selectSet(s, editing: false);
       case 'note':
         final note = await prompt(
           context,
@@ -602,7 +612,9 @@ class _StepField extends StatelessWidget {
   final bool integer, duration;
   final VoidCallback onChanged;
   void _bump(double delta) {
-    final value = duration ? Fmt.parseDuration(controller.text)?.toDouble() : double.tryParse(controller.text);
+    final value = duration
+        ? Fmt.parseDuration(controller.text)?.toDouble()
+        : double.tryParse(controller.text.replaceAll(',', '.'));
     final next = ((value?.isFinite == true ? value! : 0) + delta).clamp(0.0, duration ? 604800.0 : 10000.0);
     controller.text = duration
         ? Fmt.duration(next.round())
@@ -632,34 +644,38 @@ class _StepField extends StatelessWidget {
                 icon: const Icon(Icons.remove_rounded, size: 19),
               ),
               Expanded(
-                child: TextField(
-                  controller: controller,
-                  textAlign: TextAlign.center,
-                  keyboardType: duration ? TextInputType.datetime : TextInputType.numberWithOptions(decimal: !integer),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(
-                      RegExp(
-                        duration
-                            ? '[0-9:]'
-                            : integer
-                            ? '[0-9]'
-                            : '[0-9.,]',
+                child: Semantics(
+                  label: '$label $unit',
+                  textField: true,
+                  container: true,
+                  child: TextField(
+                    controller: controller,
+                    textAlign: TextAlign.center,
+                    keyboardType: duration ? TextInputType.datetime : TextInputType.numberWithOptions(decimal: !integer),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(
+                          duration
+                              ? '[0-9:-]'
+                              : integer
+                              ? '[0-9-]'
+                              : '[0-9.,-]',
+                        ),
                       ),
+                    ],
+                    style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      filled: false,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      hintText: '0',
                     ),
-                  ],
-                  style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800, letterSpacing: -0.5),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    filled: false,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                    hintText: '0',
-                    semanticCounterText: label,
+                    onChanged: (_) => onChanged(),
+                    onTap: () => controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length),
                   ),
-                  onChanged: (_) => onChanged(),
-                  onTap: () => controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length),
                 ),
               ),
               IconButton(tooltip: 'Increase $label', onPressed: () => _bump(step), icon: const Icon(Icons.add_rounded, size: 19)),

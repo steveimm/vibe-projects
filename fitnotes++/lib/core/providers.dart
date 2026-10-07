@@ -36,7 +36,13 @@ class SelectedDateNotifier extends Notifier<String> {
   void set(String isoDate) => state = isoDate;
   void next() => state = Dates.shift(state, 1);
   void previous() => state = Dates.shift(state, -1);
+  String _lastToday = Dates.today();
   void goToday() => state = Dates.today();
+  void refreshToday() {
+    final today = Dates.today();
+    if (state == _lastToday) state = today;
+    _lastToday = today;
+  }
 }
 
 final selectedDateProvider = NotifierProvider<SelectedDateNotifier, String>(SelectedDateNotifier.new);

@@ -10,17 +10,10 @@ void main() {
   final fixture = [
     'ref/FitNotes_Backup.fitnotes',
     '../ref/FitNotes_Backup.fitnotes',
-  ].map(File.new).firstWhere(
-        (f) => f.existsSync(),
-        orElse: () => File('ref/FitNotes_Backup.fitnotes'),
-      );
+  ].map(File.new).firstWhere((f) => f.existsSync(), orElse: () => File('ref/FitNotes_Backup.fitnotes'));
 
   test('imports the real FitNotes backup with the expected counts', () async {
-    expect(
-      fixture.existsSync(),
-      isTrue,
-      reason: 'Missing backup fixture at ${fixture.absolute.path}',
-    );
+    expect(fixture.existsSync(), isTrue, reason: 'Missing backup fixture at ${fixture.absolute.path}');
 
     final db = AppDatabase.memory();
     addTearDown(db.close);

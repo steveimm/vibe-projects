@@ -17,13 +17,25 @@ class FitNotesApp extends ConsumerStatefulWidget {
   ConsumerState<FitNotesApp> createState() => _FitNotesAppState();
 }
 
-class _FitNotesAppState extends ConsumerState<FitNotesApp> {
+class _FitNotesAppState extends ConsumerState<FitNotesApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     ref.listenManual(settingsProvider, (_, settings) {
       DeviceService.call('keepAwake', {'enabled': settings.asData?.value.keepScreenOn ?? false});
     }, fireImmediately: true);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) ref.read(selectedDateProvider.notifier).refreshToday();
   }
 
   @override

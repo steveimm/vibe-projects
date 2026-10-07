@@ -8,6 +8,7 @@ import '../../core/database/tables.dart';
 import '../../core/providers.dart';
 import '../../core/repositories/workout_repository.dart';
 import '../../core/util/dates.dart';
+import '../../core/services/rest_timer.dart';
 import '../../core/util/format.dart';
 import '../../shared/widgets.dart';
 import 'workout_calendar.dart';
@@ -355,7 +356,7 @@ class _SessionCard extends ConsumerWidget {
                 ),
               ),
               const Spacer(),
-              const Icon(Icons.north_east_rounded, color: Colors.white54, size: 22),
+              const Icon(Icons.fitness_center_rounded, color: Colors.white54, size: 22),
             ],
           ),
           const SizedBox(height: 24),
@@ -388,12 +389,24 @@ class _SessionCard extends ConsumerWidget {
                 if (session?.endedAt == null)
                   TextButton(
                     style: TextButton.styleFrom(foregroundColor: AppTheme.lime, minimumSize: const Size(64, 36)),
-                    onPressed: () => attempt(
-                      context,
-                      () => running
-                          ? ref.read(workoutRepositoryProvider).finishSession(date)
-                          : ref.read(workoutRepositoryProvider).startSession(date),
-                    ),
+                    onPressed: () => attempt(context, () async {
+                      if (running) {
+                        final planned = sets.where((s) => s.set.isPlanned).length;
+                        if (planned > 0 &&
+                            !await confirm(
+                              context,
+                              title: 'Finish this session?',
+                              message: '$planned planned sets remain. They will stay planned and won’t count toward progress.',
+                              action: 'Finish session',
+                            )) {
+                          return;
+                        }
+                        await ref.read(workoutRepositoryProvider).finishSession(date);
+                        ref.read(restTimerProvider.notifier).stop();
+                      } else {
+                        await ref.read(workoutRepositoryProvider).startSession(date);
+                      }
+                    }),
                     child: Text(running ? 'Finish session' : 'Start timer'),
                   ),
               ],

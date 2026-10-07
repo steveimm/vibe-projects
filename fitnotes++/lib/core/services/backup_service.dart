@@ -114,10 +114,10 @@ class BackupService {
         s.date,
         row.read<String>('exercise'),
         row.read<String>('category'),
-        type.hasWeight ? Fmt.number(s.rawWeight * s.weightMultiplier) : '',
+        type.hasWeight ? Fmt.number(s.rawWeight * s.weightMultiplier, precision: 6) : '',
         type.hasWeight ? 'kgs' : '',
         type.hasReps ? s.reps : '',
-        type.hasDistance ? Fmt.number(s.distance) : '',
+        type.hasDistance ? Fmt.number(s.distance, precision: 6) : '',
         type.hasDistance ? 'm' : '',
         type.hasTime
             ? '${s.durationSeconds ~/ 3600}:${((s.durationSeconds % 3600) ~/ 60).toString().padLeft(2, '0')}:${(s.durationSeconds % 60).toString().padLeft(2, '0')}'

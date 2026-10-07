@@ -27,10 +27,25 @@ class CsvImporter {
     final exercises = {
       for (final e in await db.select(db.exercises).get()) '${e.name.toLowerCase()}:${e.categoryId}:${e.type.index}': e.id,
     };
+    final saved = await db.select(db.workoutSets).get();
     final existing = {
-      for (final s in await db.select(db.workoutSets).get())
-        if (s.sourceKey != null) s.sourceKey!: s.id,
+      for (final s in saved)
+        if (s.sourceKey != null) s.sourceKey!: s,
     };
+    String signature(String date, int exerciseId, double weight, int reps, double distance, int seconds) =>
+        '$date:$exerciseId:${weight.toStringAsFixed(6)}:$reps:${distance.toStringAsFixed(6)}:$seconds';
+    final matching = <String, List<WorkoutSet>>{};
+    for (final set in saved.where((s) => !s.isPlanned)) {
+      final key = signature(
+        set.date,
+        set.exerciseId,
+        set.rawWeight * set.weightMultiplier,
+        set.reps,
+        set.distance,
+        set.durationSeconds,
+      );
+      (matching[key] ??= []).add(set);
+    }
     final occurrences = <String, int>{};
     final importedExercises = <int>{};
     var createdCategories = 0;
@@ -100,14 +115,21 @@ class CsvImporter {
         exercises[key] = exerciseId;
       }
       importedExercises.add(exerciseId);
-      final signature = '$date:${name.toLowerCase()}:$weight:$reps:$distance:$seconds';
-      final occurrence = occurrences.update(signature, (n) => n + 1, ifAbsent: () => 0);
-      final sourceKey = 'csv:$signature:$occurrence';
+      final keySignature = signature(date, exerciseId, weight, reps, distance, seconds);
+      final occurrence = occurrences.update(keySignature, (n) => n + 1, ifAbsent: () => 0);
+      final sourceKey = 'csv:$keySignature:$occurrence';
+      final previous = existing[sourceKey];
+      if (previous == null && (matching[keySignature]?.length ?? 0) > occurrence) {
+        count++;
+        continue;
+      }
       await db
           .into(db.workoutSets)
           .insert(
             WorkoutSetsCompanion.insert(
-              id: existing[sourceKey] == null ? const Value.absent() : Value(existing[sourceKey]!),
+              id: previous == null ? const Value.absent() : Value(previous.id),
+              rpe: Value(previous?.rpe),
+              groupName: Value(previous?.groupName),
               exerciseId: exerciseId,
               date: date,
               createdAt: Dates.parse(date).add(Duration(seconds: i)),

@@ -18,8 +18,7 @@ void main() {
     final fixture = [
       'ref/FitNotes_Backup.fitnotes',
       '../ref/FitNotes_Backup.fitnotes',
-    ].map(File.new).firstWhere((f) => f.existsSync(),
-        orElse: () => File('ref/FitNotes_Backup.fitnotes'));
+    ].map(File.new).firstWhere((f) => f.existsSync(), orElse: () => File('ref/FitNotes_Backup.fitnotes'));
     if (!fixture.existsSync()) {
       markTestSkipped('backup fixture not found');
       return;
@@ -35,18 +34,14 @@ void main() {
     final deadlift = deadlifts.first;
 
     final allSets = await db.select(db.workoutSets).get();
-    final sets =
-        allSets.where((s) => s.exerciseId == deadlift.id).toList();
+    final sets = allSets.where((s) => s.exerciseId == deadlift.id).toList();
     expect(sets, isNotEmpty);
 
     final prs = Stats.personalRecordSetIds(sets);
     expect(prs, isNotEmpty);
 
     // The single heaviest set must be a PR for its rep-count.
-    final heaviest = sets.reduce((a, b) =>
-        (a.rawWeight * a.weightMultiplier) >= (b.rawWeight * b.weightMultiplier)
-            ? a
-            : b);
+    final heaviest = sets.reduce((a, b) => (a.rawWeight * a.weightMultiplier) >= (b.rawWeight * b.weightMultiplier) ? a : b);
     expect(prs.contains(heaviest.id), isTrue);
   });
 }
