@@ -101,7 +101,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         },
                       );
                       if (value != null) {
-                        await _update(AppSettingsCompanion(defaultWeightIncrement: Value(units.weightToKg(double.parse(value)))));
+                        await _update(
+                          AppSettingsCompanion(
+                            defaultWeightIncrement: Value(
+                              value == Fmt.number(units.weightFromKg(s.defaultWeightIncrement))
+                                  ? s.defaultWeightIncrement
+                                  : units.weightToKg(double.parse(value)),
+                            ),
+                          ),
+                        );
                       }
                     }),
                     _switch(
@@ -180,6 +188,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ],
                 ),
               ),
+              if (DeviceService.nativeTimers)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Card(
+                    child: _tile(
+                      Icons.notifications_outlined,
+                      'Timer notifications',
+                      'Countdown and alerts while the app is in the background',
+                      () => attempt(context, () async {
+                        await DeviceService.call('notificationSettings');
+                      }),
+                    ),
+                  ),
+                ),
               const SectionTitle('Personal record seasons'),
               Card(
                 child: _tile(
@@ -193,7 +215,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const SectionTitle('Your data'),
               Text(
-                'Everything stays on this device. Save a full backup to keep your history, routines, and preferences.',
+                'Your data is stored on this device. Save a full backup to keep your history, routines, and preferences.',
                 style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 12),

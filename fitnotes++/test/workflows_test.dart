@@ -114,6 +114,26 @@ void main() {
     );
   });
 
+  test('cardio permits time-only intervals from original backups but rejects empty intervals', () async {
+    final cardio = (await db.select(db.exercises).get()).firstWhere((e) => e.type == ExerciseType.distanceAndTime);
+    final id = await workouts.addSet(exerciseId: cardio.id, date: '2026-01-01', durationSeconds: 1800);
+    await workouts.updateSet(id, durationSeconds: 1900);
+    expect((await workouts.dayLog('2026-01-01')).single.set.durationSeconds, 1900);
+    await expectLater(workouts.addSet(exerciseId: cardio.id, date: '2026-01-01'), throwsFormatException);
+    final history = await workouts.watchExerciseHistory(cardio.id).first;
+    expect(Stats.graph(history, GraphMetric.maxSpeed), isEmpty);
+    expect(Stats.graph(history, GraphMetric.maxDistance), isEmpty);
+    expect(Stats.personalRecordSetIds(history, type: cardio.type), {id});
+    expect(Stats.graph(history, GraphMetric.totalTime).single.value, 1900);
+  });
+
+  test('planned sets do not count as performed workouts in the library', () async {
+    await workouts.addSet(exerciseId: bench.id, date: '2026-01-01', rawWeight: 30, reps: 10, planned: true);
+    final items = await exercises.watchExercises(search: bench.name).first;
+    expect(items.single.workoutCount, 0);
+    expect(items.single.lastDate, null);
+  });
+
   test('units and durations round trip and dates use calendar days', () {
     const units = Units(true);
     expect(units.weightToKg(units.weightFromKg(42.5)), closeTo(42.5, 0.000001));

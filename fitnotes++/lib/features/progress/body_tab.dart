@@ -54,10 +54,41 @@ class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClient
                     onChanged: (id) => setState(() => _typeId = id),
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Custom measurement',
-                  onPressed: _addType,
-                  icon: const Icon(Icons.add_circle_outline_rounded),
+                PopupMenuButton<String>(
+                  tooltip: 'Measurement options',
+                  onSelected: (action) async {
+                    if (action == 'add') {
+                      await _addType();
+                      return;
+                    }
+                    if (action == 'rename') {
+                      final name = await prompt(
+                        context,
+                        title: 'Rename measurement',
+                        label: 'Name',
+                        value: type.name,
+                        maxLength: 80,
+                      );
+                      if (name != null && context.mounted) {
+                        await attempt(context, () => ref.read(progressRepositoryProvider).renameType(type.id, name));
+                      }
+                      return;
+                    }
+                    if (action == 'delete' &&
+                        await confirm(
+                          context,
+                          title: 'Delete measurement type?',
+                          message: 'Remove ${type.name} and all of its recorded values?',
+                        ) &&
+                        context.mounted) {
+                      await attempt(context, () => ref.read(progressRepositoryProvider).deleteType(type.id));
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'add', child: Text('Custom measurement')),
+                    PopupMenuItem(value: 'rename', child: Text('Rename measurement')),
+                    PopupMenuItem(value: 'delete', child: Text('Delete measurement type')),
+                  ],
                 ),
               ],
             ),
@@ -264,7 +295,11 @@ class _MeasurementDialogState extends ConsumerState<_MeasurementDialog> {
                   if (!_form.currentState!.validate()) return;
                   setState(() => _busy = true);
                   final input = double.parse(_value.text);
-                  final value = widget.type.unit == 'kg'
+                  final unchanged =
+                      widget.record != null && _value.text == Fmt.number(_display(widget.record!.value, widget.type.unit, units));
+                  final value = unchanged
+                      ? widget.record!.value
+                      : widget.type.unit == 'kg'
                       ? units.weightToKg(input)
                       : widget.type.unit == 'cm' && units.imperial
                       ? input * 2.54

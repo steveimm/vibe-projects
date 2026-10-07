@@ -60,9 +60,9 @@ class ExerciseRepository {
       SELECT e.id, e.name, e.category_id, e.type, e.is_favourite,
              c.name AS category_name, c.color_argb AS color_argb,
              (SELECT COUNT(DISTINCT s.date) FROM workout_sets s
-                WHERE s.exercise_id = e.id) AS workout_count,
+                WHERE s.exercise_id = e.id AND s.is_planned = 0) AS workout_count,
              (SELECT MAX(s.date) FROM workout_sets s
-                WHERE s.exercise_id = e.id) AS last_date
+                WHERE s.exercise_id = e.id AND s.is_planned = 0) AS last_date
       FROM exercises e
       JOIN categories c ON c.id = e.category_id
       WHERE ${where.join(' AND ')}

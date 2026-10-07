@@ -100,8 +100,14 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
                 child: points.isEmpty
                     ? EmptyState(
                         icon: Icons.show_chart_rounded,
-                        title: 'No logged sets in this range',
-                        message: 'Planned sets appear here after you complete them.',
+                        title: logged.isEmpty ? 'No logged sets yet' : 'No matching data',
+                        message: _metric == GraphMetric.maxSpeed || _metric == GraphMetric.bestPace
+                            ? 'Speed and pace need both distance and time in the same set.'
+                            : _metric == GraphMetric.estimated1rm
+                            ? 'Estimates need a positive weight and reps within your configured limit.'
+                            : _metric == GraphMetric.weightAtReps
+                            ? 'No logged sets with $_atReps reps in this range.'
+                            : 'Try a wider date range. Planned sets appear after you complete them.',
                         action: _days == 0
                             ? null
                             : TextButton(onPressed: () => setState(() => _days = 0), child: const Text('Show all time')),

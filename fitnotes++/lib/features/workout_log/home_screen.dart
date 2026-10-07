@@ -42,7 +42,7 @@ class HomeScreen extends ConsumerWidget {
               child: const Icon(Icons.add_rounded, color: AppTheme.lime, size: 24),
             ),
             const SizedBox(width: 10),
-            const Text('FitNotes++'),
+            const Flexible(child: Text('FitNotes++', maxLines: 1, overflow: TextOverflow.ellipsis)),
           ],
         ),
         actions: [
@@ -152,7 +152,8 @@ class HomeScreen extends ConsumerWidget {
 }
 
 Future<void> _editDayNote(BuildContext context, WidgetRef ref, String date) async {
-  final current = ref.read(dayNoteProvider(date)).asData?.value?.comment ?? '';
+  final current = (await ref.read(workoutRepositoryProvider).watchDayNote(date).first)?.comment ?? '';
+  if (!context.mounted) return;
   final result = await prompt(
     context,
     title: 'Workout note',
@@ -291,7 +292,10 @@ class _DayView extends ConsumerWidget {
             if (groups.isNotEmpty)
               SectionTitle(
                 '${groups.length} ${groups.length == 1 ? 'exercise' : 'exercises'}',
-                trailing: Text('${sets.length} sets', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                trailing: Text(
+                  '${sets.length} ${sets.length == 1 ? 'set' : 'sets'}',
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
               ),
             for (final entry in groups.entries)
               Padding(

@@ -129,7 +129,7 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
               for (final w in List.generate(7, (i) => _weekdays[(widget.firstDayOfWeek - 1 + i) % 7]))
                 Expanded(
                   child: Center(
-                    child: Text(w, style: TextStyle(fontSize: 11, color: theme.hintColor)),
+                    child: Text(w, style: TextStyle(fontSize: 11, height: 1, color: theme.hintColor)),
                   ),
                 ),
             ],
@@ -152,19 +152,26 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
     final colors = widget.dayColors[dateStr] ?? const <int>[];
     final isToday = dateStr == Dates.today();
     final canSelect = widget.selectable?.call(dateStr) ?? true;
+    final selected = canSelect && dateStr == (widget.initialMonth ?? Dates.today());
 
     final content = Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          width: 30,
-          height: 30,
+          width: 34,
+          height: 34,
           alignment: Alignment.center,
-          decoration: isToday ? BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle) : null,
+          decoration: BoxDecoration(
+            color: selected ? theme.colorScheme.primary : null,
+            shape: BoxShape.circle,
+            border: isToday && !selected && canSelect ? Border.all(color: theme.colorScheme.primary) : null,
+          ),
           child: Text(
             '$day',
             style: TextStyle(
-              color: isToday ? theme.colorScheme.onPrimary : (canSelect ? theme.colorScheme.onSurface : theme.disabledColor),
+              fontSize: 14,
+              height: 1,
+              color: selected ? theme.colorScheme.onPrimary : (canSelect ? theme.colorScheme.onSurface : theme.disabledColor),
             ),
           ),
         ),
@@ -190,11 +197,16 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
       ],
     );
 
-    if (!canSelect) return content;
     return Semantics(
-      label: '${Dates.longDate(dateStr)}${colors.isEmpty ? '' : ', workout day'}',
+      container: true,
       button: true,
-      child: InkWell(onTap: () => widget.onSelectDay(dateStr), child: content),
+      enabled: canSelect,
+      selected: selected,
+      label: '${Dates.longDate(dateStr)}${colors.isEmpty ? '' : ', workout day'}',
+      onTap: canSelect ? () => widget.onSelectDay(dateStr) : null,
+      child: ExcludeSemantics(
+        child: canSelect ? InkWell(onTap: () => widget.onSelectDay(dateStr), child: content) : content,
+      ),
     );
   }
 }

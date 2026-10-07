@@ -27,6 +27,10 @@ class ProgressRepository {
           .watch();
   Future<int> addType(String name, String unit) =>
       db.into(db.measurementTypes).insert(MeasurementTypesCompanion.insert(name: name.trim(), unit: unit));
+  Future<void> renameType(int id, String name) =>
+      (db.update(db.measurementTypes)..where((t) => t.id.equals(id))).write(MeasurementTypesCompanion(name: Value(name.trim())));
+  Future<void> deleteType(int id) => (db.delete(db.measurementTypes)..where((t) => t.id.equals(id))).go();
+
   Future<void> saveMeasurement(int typeId, String date, double value, String note) async {
     Dates.validate(date);
     if (!value.isFinite || value <= 0) throw const FormatException('Enter a value greater than zero.');

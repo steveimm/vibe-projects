@@ -66,7 +66,7 @@ class ProgressChart extends StatelessWidget {
                 getTooltipItems: (spots) => [
                   for (final spot in spots)
                     LineTooltipItem(
-                      '${DateFormat('d MMM yyyy').format(Dates.parse(points[spot.spotIndex].date))}\n${label(spot.y)}',
+                      '${DateFormat('d MMM yyyy').format(Dates.parse(points[spot.spotIndex.clamp(0, points.length - 1)].date))}\n${label(spot.y)}',
                       const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                 ],

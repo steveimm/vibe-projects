@@ -1,14 +1,12 @@
 package com.steveimm.fitnotes_plus
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.app.Activity
 import android.content.Intent
-import android.media.AudioManager
-import android.media.ToneGenerator
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
-import android.os.VibrationEffect
-import android.os.Vibrator
+import android.net.Uri
+import android.provider.Settings
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -18,8 +16,6 @@ class MainActivity : FlutterActivity() {
     private val channelName = "fitnotes/device"
     private var pendingSave: MethodChannel.Result? = null
     private var pendingBytes: ByteArray? = null
-    private val handler = Handler(Looper.getMainLooper())
-    private var timerAction: Runnable? = null
     private val preferences by lazy { getSharedPreferences("fitnotes_timer", MODE_PRIVATE) }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -29,6 +25,13 @@ class MainActivity : FlutterActivity() {
                 "keepAwake" -> {
                     if (call.argument<Boolean>("enabled") == true) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                     else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    result.success(null)
+                }
+                "notificationSettings" -> {
+                    val intent = if (Build.VERSION.SDK_INT >= 26) Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                    else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))
+                    startActivity(intent)
                     result.success(null)
                 }
                 "saveFile" -> {
@@ -45,31 +48,41 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 "scheduleRest" -> {
-                    timerAction?.let(handler::removeCallbacks)
-                    val deadline = call.argument<Number>("deadline")!!.toLong()
-                    val sound = call.argument<Boolean>("sound") == true
-                    val vibrate = call.argument<Boolean>("vibrate") == true
-                    preferences.edit().putLong("deadline", deadline)
+                    preferences.edit().putLong("deadline", call.argument<Number>("deadline")!!.toLong())
                         .putInt("total", call.argument<Number>("total")!!.toInt())
                         .putString("label", call.argument<String>("label"))
-                        .putBoolean("sound", sound).putBoolean("vibrate", vibrate).apply()
-                    scheduleAlert(deadline, sound, vibrate)
+                        .putBoolean("sound", call.argument<Boolean>("sound") == true)
+                        .putBoolean("vibrate", call.argument<Boolean>("vibrate") == true)
+                        .putBoolean("paused", false).putBoolean("finished", false).apply()
+                    RestTimerService.start(this)
+                    requestTimerNotifications()
+                    result.success(null)
+                }
+                "pauseRest" -> {
+                    preferences.edit().putBoolean("paused", true).putBoolean("finished", false)
+                        .putInt("remaining", call.argument<Number>("remaining")!!.toInt())
+                        .putInt("total", call.argument<Number>("total")!!.toInt())
+                        .putString("label", call.argument<String>("label"))
+                        .putBoolean("sound", call.argument<Boolean>("sound") == true)
+                        .putBoolean("vibrate", call.argument<Boolean>("vibrate") == true).apply()
+                    RestTimerService.stop(this, clear = false)
                     result.success(null)
                 }
                 "cancelRest" -> {
-                    timerAction?.let(handler::removeCallbacks)
-                    preferences.edit().clear().apply()
+                    RestTimerService.stop(this)
                     result.success(null)
                 }
                 "getRest" -> {
                     val deadline = preferences.getLong("deadline", 0)
-                    if (deadline <= System.currentTimeMillis()) result.success(null)
+                    val paused = preferences.getBoolean("paused", false)
+                    val finished = preferences.getBoolean("finished", false) || (!paused && deadline > 0 && deadline <= System.currentTimeMillis())
+                    if (deadline <= 0 && !paused && !finished) result.success(null)
                     else {
-                        val sound = preferences.getBoolean("sound", true)
-                        val vibrate = preferences.getBoolean("vibrate", false)
-                        scheduleAlert(deadline, sound, vibrate)
+                        if (!paused && !finished) RestTimerService.start(this)
                         result.success(mapOf("deadline" to deadline, "total" to preferences.getInt("total", 60),
-                            "label" to preferences.getString("label", "Rest"), "sound" to sound, "vibrate" to vibrate))
+                            "remaining" to preferences.getInt("remaining", 0), "paused" to paused, "finished" to finished,
+                            "label" to preferences.getString("label", "Rest"), "sound" to preferences.getBoolean("sound", true),
+                            "vibrate" to preferences.getBoolean("vibrate", false)))
                     }
                 }
                 else -> result.notImplemented()
@@ -77,24 +90,13 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun scheduleAlert(deadline: Long, sound: Boolean, vibrate: Boolean) {
-        timerAction?.let(handler::removeCallbacks)
-        timerAction = Runnable {
-            if (sound) {
-                try {
-                    val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
-                    tone.startTone(ToneGenerator.TONE_PROP_ACK, 600)
-                    handler.postDelayed({ tone.release() }, 900)
-                } catch (_: RuntimeException) { }
-            }
-            if (vibrate) {
-                val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
-                if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
-                else @Suppress("DEPRECATION") vibrator.vibrate(500)
-            }
-            preferences.edit().clear().apply()
+    private fun requestTimerNotifications() {
+        val consent = getSharedPreferences("fitnotes_permissions", MODE_PRIVATE)
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            && !consent.getBoolean("notifications_requested", false)) {
+            consent.edit().putBoolean("notifications_requested", true).apply()
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 72)
         }
-        handler.postDelayed(timerAction!!, (deadline - System.currentTimeMillis()).coerceAtLeast(0))
     }
 
     @Deprecated("Deprecated in Java")

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 class DeviceService {
   static const channel = MethodChannel('fitnotes/device');
+  static bool get nativeTimers => Platform.isAndroid;
 
   static Future<T?> call<T>(String method, [Map<String, Object?>? arguments]) async {
     if (!Platform.isAndroid) return null;

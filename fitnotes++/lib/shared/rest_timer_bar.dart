@@ -28,11 +28,13 @@ class RestTimerBar extends ConsumerWidget {
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          CircularProgressIndicator(
-                            value: timer.total == 0 ? 0 : (timer.remaining / timer.total).clamp(0, 1),
-                            strokeWidth: 3,
-                            color: color.onSecondaryContainer,
-                            backgroundColor: color.onSecondaryContainer.withValues(alpha: 0.15),
+                          ExcludeSemantics(
+                            child: CircularProgressIndicator(
+                              value: timer.total == 0 ? 0 : (timer.remaining / timer.total).clamp(0, 1),
+                              strokeWidth: 3,
+                              color: color.onSecondaryContainer,
+                              backgroundColor: color.onSecondaryContainer.withValues(alpha: 0.15),
+                            ),
                           ),
                           Icon(
                             timer.status == RestStatus.finished ? Icons.check_rounded : Icons.timer_outlined,
@@ -45,6 +47,7 @@ class RestTimerBar extends ConsumerWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
@@ -68,7 +71,7 @@ class RestTimerBar extends ConsumerWidget {
                         onPressed: control.pauseOrResume,
                         icon: Icon(timer.status == RestStatus.paused ? Icons.play_arrow_rounded : Icons.pause_rounded),
                       ),
-                    TextButton(onPressed: () => control.add(15), child: const Text('+15s')),
+                    TextButton(onPressed: timer.remaining >= 3600 ? null : () => control.add(15), child: const Text('+15s')),
                     IconButton(tooltip: 'Dismiss timer', onPressed: control.stop, icon: const Icon(Icons.close_rounded)),
                   ],
                 ),

@@ -391,9 +391,22 @@ class _PresetDialogState extends ConsumerState<_PresetDialog> {
     final units = ref.read(unitsProvider);
     final weight = double.tryParse(_weight.text), distance = double.tryParse(_distance.text);
     final changes = RoutineSetsCompanion(
-      rawWeight: Value(weight == null ? null : units.weightToKg(weight)),
+      rawWeight: Value(
+        weight == null
+            ? null
+            : widget.set.rawWeight != null && _weight.text == Fmt.number(units.weightFromKg(widget.set.rawWeight!))
+            ? widget.set.rawWeight
+            : units.weightToKg(weight),
+      ),
       reps: Value(int.tryParse(_reps.text)),
-      distance: Value(distance == null ? null : units.distanceToMeters(distance)),
+      distance: Value(
+        distance == null
+            ? null
+            : widget.set.distance != null &&
+                  _distance.text == Fmt.number(units.distanceFromMeters(widget.set.distance!), precision: 6)
+            ? widget.set.distance
+            : units.distanceToMeters(distance),
+      ),
       durationSeconds: Value(_time.text.isEmpty ? null : Fmt.parseDuration(_time.text)),
       groupName: Value(_group.text.trim().isEmpty ? null : _group.text.trim()),
     );

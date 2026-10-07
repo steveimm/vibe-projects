@@ -82,6 +82,8 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
   final _distance = TextEditingController(text: '1');
   final _time = TextEditingController(text: '1:00');
   final _rpe = TextEditingController();
+  double? _loadedWeight, _loadedDistance;
+  String? _loadedWeightText, _loadedDistanceText;
   WorkoutSet? _editing;
   WorkoutSet? _previous;
   bool _saving = false, _touched = false;
@@ -104,6 +106,8 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
   }
 
   Future<void> _prefill() async {
+    await ref.read(settingsProvider.future);
+    if (!mounted) return;
     final previous = await ref.read(workoutRepositoryProvider).lastSet(widget.exercise.id, widget.date);
     if (!mounted) return;
     setState(() {
@@ -116,8 +120,12 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
     final units = ref.read(unitsProvider);
     _weight.text = Fmt.number(units.weightFromKg(s.rawWeight));
     _reps.text = '${s.reps}';
-    _distance.text = Fmt.number(units.distanceFromMeters(s.distance), precision: 6);
+    _distance.text = Fmt.number(units.distanceFromMeters(s.distance), precision: 3);
     _time.text = Fmt.duration(s.durationSeconds);
+    _loadedWeight = s.rawWeight;
+    _loadedDistance = s.distance;
+    _loadedWeightText = _weight.text;
+    _loadedDistanceText = _distance.text;
     _rpe.text = s.rpe == null ? '' : Fmt.number(s.rpe!);
     _error = null;
   }
@@ -139,11 +147,19 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           unit: units.weightLabel,
           controller: _weight,
           step: units.weightFromKg(widget.exercise.weightIncrement ?? settings?.defaultWeightIncrement ?? 2.5),
+          onStep: (delta) => _stepCanonical(delta, weight: true),
           onChanged: _changed,
         ),
       if (type.hasReps) _StepField(label: 'Reps', controller: _reps, step: 1, integer: true, onChanged: _changed),
       if (type.hasDistance)
-        _StepField(label: 'Distance', unit: units.distanceLabel, controller: _distance, step: 0.1, onChanged: _changed),
+        _StepField(
+          label: 'Distance',
+          unit: units.distanceLabel,
+          controller: _distance,
+          step: 0.1,
+          onChanged: _changed,
+          onStep: (delta) => _stepCanonical(delta, weight: false),
+        ),
       if (type.hasTime) _StepField(label: 'Time', unit: 'm:ss', controller: _time, step: 15, duration: true, onChanged: _changed),
     ];
     return ListView(
@@ -249,9 +265,12 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                'How hard was this set?\nOptional RPE, from 1 to 10.',
-                style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              child: Semantics(
+                container: true,
+                child: Text(
+                  'How hard was this set?\nOptional RPE, from 1 to 10.',
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
               ),
             ),
           ],
@@ -266,7 +285,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           children: [
             Expanded(
               child: FilledButton.icon(
-                onPressed: _saving || widget.exercise.archived ? null : () => _save(multiplier),
+                onPressed: _saving || settings == null || widget.exercise.archived ? null : () => _save(multiplier),
                 icon: Icon(_editing == null ? Icons.add_rounded : Icons.check_rounded),
                 label: Text(
                   _saving
@@ -341,6 +360,35 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
     );
   }
 
+  void _stepCanonical(double delta, {required bool weight}) {
+    final units = ref.read(unitsProvider);
+    final controller = weight ? _weight : _distance;
+    final originalText = weight ? _loadedWeightText : _loadedDistanceText;
+    final original = weight ? _loadedWeight : _loadedDistance;
+    final typed = double.tryParse(controller.text.replaceAll(',', '.')) ?? 0;
+    final raw = controller.text == originalText && original != null
+        ? original
+        : weight
+        ? units.weightToKg(typed)
+        : units.distanceToMeters(typed);
+    final changed = ((raw.isFinite ? raw : 0) + (weight ? units.weightToKg(delta) : units.distanceToMeters(delta))).clamp(
+      0.0,
+      weight ? 10000.0 : 10000000.0,
+    );
+    controller.text = Fmt.number(
+      weight ? units.weightFromKg(changed) : units.distanceFromMeters(changed),
+      precision: weight ? 2 : 3,
+    );
+    if (weight) {
+      _loadedWeight = changed;
+      _loadedWeightText = controller.text;
+    } else {
+      _loadedDistance = changed;
+      _loadedDistanceText = controller.text;
+    }
+    _changed();
+  }
+
   void _changed() => setState(() {
     _touched = true;
     _error = null;
@@ -386,9 +434,11 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
       return;
     }
     final values = SetValues(
-      weight: units.weightToKg(weight),
+      weight: _weight.text == _loadedWeightText && _loadedWeight != null ? _loadedWeight! : units.weightToKg(weight),
       reps: reps,
-      distance: units.distanceToMeters(distance),
+      distance: _distance.text == _loadedDistanceText && _loadedDistance != null
+          ? _loadedDistance!
+          : units.distanceToMeters(distance),
       seconds: time,
       rpe: rpe,
     );
@@ -505,28 +555,17 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (markComplete || s.isPlanned)
-                Checkbox(
-                  value: !s.isPlanned,
-                  onChanged: (value) async {
-                    final ok = await attempt(context, () => ref.read(workoutRepositoryProvider).setComplete(s.id, value!));
-                    if (ok &&
-                        mounted &&
-                        value == true &&
-                        (ref.read(settingsProvider).asData?.value.restTimerAutoStart ?? false)) {
-                      _startRest();
-                    }
-                  },
-                ),
+              if (markComplete || s.isPlanned) Checkbox(value: !s.isPlanned, onChanged: (value) => _completion(s, value!)),
               PopupMenuButton<String>(
                 tooltip: 'Set options',
                 onSelected: (action) => _setAction(s, action),
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'edit', child: Text('Edit set')),
-                  PopupMenuItem(value: 'values', child: Text('Use values for next set')),
-                  PopupMenuItem(value: 'note', child: Text('Set note')),
-                  PopupMenuItem(value: 'group', child: Text('Superset name')),
-                  PopupMenuItem(value: 'delete', child: Text('Delete set')),
+                itemBuilder: (_) => [
+                  PopupMenuItem(value: 'completion', child: Text(s.isPlanned ? 'Mark complete' : 'Mark as planned')),
+                  const PopupMenuItem(value: 'edit', child: Text('Edit set')),
+                  const PopupMenuItem(value: 'values', child: Text('Use values for next set')),
+                  const PopupMenuItem(value: 'note', child: Text('Set note')),
+                  const PopupMenuItem(value: 'group', child: Text('Superset name')),
+                  const PopupMenuItem(value: 'delete', child: Text('Delete set')),
                 ],
               ),
             ],
@@ -534,6 +573,17 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
         ),
       ),
     );
+  }
+
+  Future<void> _completion(WorkoutSet set, bool complete) async {
+    final repo = ref.read(workoutRepositoryProvider);
+    if (!await attempt(context, () => repo.setComplete(set.id, complete)) || !mounted) return;
+    notice(
+      context,
+      complete ? 'Set completed' : 'Set marked as planned',
+      action: SnackBarAction(label: 'Undo', onPressed: () => attempt(context, () => repo.setComplete(set.id, !complete))),
+    );
+    if (complete && (ref.read(settingsProvider).asData?.value.restTimerAutoStart ?? false)) _startRest();
   }
 
   void _selectSet(WorkoutSet set, {required bool editing}) {
@@ -554,6 +604,8 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
   Future<void> _setAction(WorkoutSet s, String action) async {
     final repo = ref.read(workoutRepositoryProvider);
     switch (action) {
+      case 'completion':
+        await _completion(s, s.isPlanned);
       case 'edit':
         _selectSet(s, editing: true);
       case 'values':
@@ -602,6 +654,7 @@ class _StepField extends StatelessWidget {
     required this.controller,
     required this.step,
     required this.onChanged,
+    this.onStep,
     this.unit = '',
     this.integer = false,
     this.duration = false,
@@ -611,7 +664,13 @@ class _StepField extends StatelessWidget {
   final double step;
   final bool integer, duration;
   final VoidCallback onChanged;
+  final ValueChanged<double>? onStep;
   void _bump(double delta) {
+    if (onStep != null) {
+      onStep!(delta);
+      HapticFeedback.selectionClick();
+      return;
+    }
     final value = duration
         ? Fmt.parseDuration(controller.text)?.toDouble()
         : double.tryParse(controller.text.replaceAll(',', '.'));
@@ -646,7 +705,6 @@ class _StepField extends StatelessWidget {
               Expanded(
                 child: Semantics(
                   label: '$label $unit',
-                  textField: true,
                   container: true,
                   child: TextField(
                     controller: controller,

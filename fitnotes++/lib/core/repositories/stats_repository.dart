@@ -60,6 +60,15 @@ class Stats {
     final ids = <int>{};
     for (final s in _chronological(sets)) {
       if (s.isPlanned || s.date.compareTo(sinceDate) < 0) continue;
+      if (type == ExerciseType.distanceAndTime) {
+        for (final metric in {0: s.distance, 1: s.durationSeconds.toDouble()}.entries) {
+          if (metric.value > (best[metric.key] ?? 0)) {
+            ids.add(s.id);
+            best[metric.key] = metric.value;
+          }
+        }
+        continue;
+      }
       final value = type.hasWeight
           ? effective(s)
           : type.hasDistance
@@ -105,13 +114,15 @@ class Stats {
         final weight = effective(s);
         final double? value = switch (metric) {
           GraphMetric.estimated1rm =>
-            s.reps > 0 && s.reps < 37 && (max1rmReps == 0 || s.reps <= max1rmReps) ? OneRm.brzycki(weight, s.reps) : null,
+            weight > 0 && s.reps > 0 && s.reps < 37 && (max1rmReps == 0 || s.reps <= max1rmReps)
+                ? OneRm.brzycki(weight, s.reps)
+                : null,
           GraphMetric.maxWeight => weight,
           GraphMetric.workoutVolume => weight * s.reps,
           GraphMetric.totalReps || GraphMetric.maxReps => s.reps.toDouble(),
           GraphMetric.weightAtReps => s.reps == atReps ? weight : null,
-          GraphMetric.maxDistance || GraphMetric.totalDistance => s.distance,
-          GraphMetric.maxTime || GraphMetric.totalTime => s.durationSeconds.toDouble(),
+          GraphMetric.maxDistance || GraphMetric.totalDistance => s.distance > 0 ? s.distance : null,
+          GraphMetric.maxTime || GraphMetric.totalTime => s.durationSeconds > 0 ? s.durationSeconds.toDouble() : null,
           GraphMetric.maxSpeed => s.durationSeconds > 0 && s.distance > 0 ? s.distance / s.durationSeconds : null,
           GraphMetric.bestPace => s.durationSeconds > 0 && s.distance > 0 ? s.durationSeconds / (s.distance / 1000) : null,
         };

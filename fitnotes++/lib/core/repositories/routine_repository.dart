@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../database/database.dart';
 import '../database/tables.dart';
+import '../models/set_values.dart';
 import 'workout_repository.dart';
 
 class RoutineRepository {
@@ -50,8 +51,18 @@ class RoutineRepository {
     });
   }
 
-  Future<void> updateSet(int id, RoutineSetsCompanion changes) =>
-      (db.update(db.routineSets)..where((s) => s.id.equals(id))).write(changes);
+  Future<void> updateSet(int id, RoutineSetsCompanion changes) async {
+    final preset = await (db.select(db.routineSets)..where((s) => s.id.equals(id))).getSingle();
+    final exercise = await (db.select(db.exercises)..where((e) => e.id.equals(preset.exerciseId))).getSingle();
+    SetValues(
+      weight: (changes.rawWeight.present ? changes.rawWeight.value : preset.rawWeight) ?? 0,
+      reps: (changes.reps.present ? changes.reps.value : preset.reps) ?? 10,
+      distance: (changes.distance.present ? changes.distance.value : preset.distance) ?? 1000,
+      seconds: (changes.durationSeconds.present ? changes.durationSeconds.value : preset.durationSeconds) ?? 60,
+    ).validate(exercise.type);
+    await (db.update(db.routineSets)..where((s) => s.id.equals(id))).write(changes);
+  }
+
   Future<void> deleteSet(int id) => (db.delete(db.routineSets)..where((s) => s.id.equals(id))).go();
   Future<void> reorder(List<int> ids) => db.batch((b) {
     for (var i = 0; i < ids.length; i++) {

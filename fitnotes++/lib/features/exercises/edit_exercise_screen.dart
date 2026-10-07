@@ -23,6 +23,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
   final _rest = TextEditingController();
   final _increment = TextEditingController();
   int? _category;
+  Exercise? _original;
   ExerciseType _type = ExerciseType.weightAndReps;
   bool _loading = false, _saving = false, _failed = false;
   @override
@@ -40,6 +41,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
     try {
       final ex = await ref.read(exerciseRepositoryProvider).getExercise(widget.exerciseId!);
       if (!mounted) return;
+      _original = ex;
       final units = ref.read(unitsProvider);
       _name.text = ex.name;
       _notes.text = ex.notes ?? '';
@@ -234,7 +236,12 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
       final repo = ref.read(exerciseRepositoryProvider);
       final notes = _notes.text.trim().isEmpty ? null : _notes.text.trim();
       final increment = double.tryParse(_increment.text);
-      final kg = increment == null ? null : ref.read(unitsProvider).weightToKg(increment);
+      final units = ref.read(unitsProvider);
+      final kg = increment == null
+          ? null
+          : _original?.weightIncrement != null && _increment.text == Fmt.number(units.weightFromKg(_original!.weightIncrement!))
+          ? _original!.weightIncrement
+          : units.weightToKg(increment);
       if (id == null) {
         id = await repo.createExercise(
           name: _name.text.trim(),
