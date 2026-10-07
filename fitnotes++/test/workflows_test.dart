@@ -35,8 +35,9 @@ void main() {
     raw.execute("INSERT INTO exercises (id,name,category_id) VALUES (1,'My press',1)");
     raw.execute("INSERT INTO workout_sets (exercise_id,date,raw_weight,reps,created_at) VALUES (1,'2026-01-01',40,8,1)");
     raw.execute('INSERT INTO app_settings (id,theme_mode) VALUES (1,2)');
-    final migrated = AppDatabase(NativeDatabase.opened(raw));
-    addTearDown(migrated.close);
+    await db.close();
+    db = AppDatabase(NativeDatabase.opened(raw));
+    final migrated = db;
     final sets = await migrated.select(migrated.workoutSets).get();
     expect(sets.single.rawWeight, 40);
     expect(sets.single.isPlanned, false);
