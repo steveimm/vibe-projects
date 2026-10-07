@@ -6,7 +6,8 @@ class OneRm {
   /// Accurate for ~2–10 reps; reps are clamped to a sane range to avoid the
   /// asymptote at 37 reps.
   static double brzycki(double weight, int reps) {
-    if (reps <= 1) return weight;
+    if (!weight.isFinite || weight <= 0 || reps <= 0 || reps >= 37) return 0;
+    if (reps == 1) return weight;
     final r = reps >= 37 ? 36 : reps;
     return weight * 36 / (37 - r);
   }

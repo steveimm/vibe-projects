@@ -11,19 +11,15 @@ import 'workout_calendar.dart';
 
 /// Copy flow: pick a source day from the shared dotted calendar (only days with
 /// a prior workout are selectable), then open the granular copy screen.
-Future<void> startCopyWorkout(
-    BuildContext context, WidgetRef ref, String date) async {
+Future<void> startCopyWorkout(BuildContext context, WidgetRef ref, String date) async {
   final messenger = ScaffoldMessenger.of(context);
-  final priors =
-      await ref.read(workoutRepositoryProvider).workoutDatesBefore(date);
+  final priors = await ref.read(workoutRepositoryProvider).workoutDatesBefore(date);
   if (priors.isEmpty) {
-    messenger.showSnackBar(
-        const SnackBar(content: Text('No previous workouts to copy')));
+    messenger.showSnackBar(const SnackBar(content: Text('No previous workouts to copy')));
     return;
   }
   if (!context.mounted) return;
-  final picked = await pickCopyDay(context, ref,
-      initialDate: priors.first, selectableDays: priors.toSet());
+  final picked = await pickCopyDay(context, ref, initialDate: priors.first, selectableDays: priors.toSet());
   if (picked == null || !context.mounted) return;
   context.push('/copy?date=$date&source=$picked');
 }
@@ -65,15 +61,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.listen<String>(selectedDateProvider, (_, next) {
       if (!_controller.hasClients) return;
       final target = _pageFor(next);
-      final current =
-          (_controller.page ?? _controller.initialPage.toDouble()).round();
+      final current = (_controller.page ?? _controller.initialPage.toDouble()).round();
       if (current == target) return;
       if ((current - target).abs() > 1) {
         _controller.jumpToPage(target);
       } else {
-        _controller.animateToPage(target,
-            duration: const Duration(milliseconds: 260),
-            curve: Curves.easeInOut);
+        _controller.animateToPage(target, duration: const Duration(milliseconds: 260), curve: Curves.easeInOut);
       }
     });
 
@@ -82,11 +75,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         title: const Text('FitNotes++'),
         actions: [
-          IconButton(
-            tooltip: 'Calendar',
-            icon: const Icon(Icons.calendar_month_outlined),
-            onPressed: () => _openCalendar(date),
-          ),
+          IconButton(tooltip: 'Calendar', icon: const Icon(Icons.calendar_month_outlined), onPressed: () => _openCalendar(date)),
           IconButton(
             tooltip: 'Add exercise',
             icon: const Icon(Icons.add),
@@ -118,8 +107,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Expanded(
             child: PageView.builder(
               controller: _controller,
-              onPageChanged: (p) =>
-                  ref.read(selectedDateProvider.notifier).set(_dateFor(p)),
+              onPageChanged: (p) => ref.read(selectedDateProvider.notifier).set(_dateFor(p)),
               itemBuilder: (_, page) => _DayPage(date: _dateFor(page)),
             ),
           ),
@@ -145,20 +133,16 @@ class _DateBar extends ConsumerWidget {
     final notifier = ref.read(selectedDateProvider.notifier);
     return Row(
       children: [
-        IconButton(
-            icon: const Icon(Icons.chevron_left), onPressed: notifier.previous),
+        IconButton(icon: const Icon(Icons.chevron_left), onPressed: notifier.previous),
         Expanded(
           child: Center(
             child: TextButton(
               onPressed: notifier.goToday,
-              child: Text(Dates.navLabel(date),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+              child: Text(Dates.navLabel(date), style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
             ),
           ),
         ),
-        IconButton(
-            icon: const Icon(Icons.chevron_right), onPressed: notifier.next),
+        IconButton(icon: const Icon(Icons.chevron_right), onPressed: notifier.next),
       ],
     );
   }
@@ -177,12 +161,10 @@ class _DayPage extends ConsumerWidget {
       error: (e, _) => Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child:
-              Text('Could not load workout:\n$e', textAlign: TextAlign.center),
+          child: Text('Could not load workout:\n$e', textAlign: TextAlign.center),
         ),
       ),
-      data: (sets) =>
-          sets.isEmpty ? _EmptyLog(date: date) : _DayLog(date: date, sets: sets),
+      data: (sets) => sets.isEmpty ? _EmptyLog(date: date) : _DayLog(date: date, sets: sets),
     );
   }
 }
@@ -197,11 +179,7 @@ class _EmptyLog extends ConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Workout Log Empty',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(color: Theme.of(context).hintColor)),
+          Text('Workout Log Empty', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Theme.of(context).hintColor)),
           const SizedBox(height: 32),
           FilledButton.tonalIcon(
             icon: const Icon(Icons.add),
@@ -230,24 +208,22 @@ class _DayLog extends StatelessWidget {
     final order = <int>[];
     final groups = <int, List<LoggedSet>>{};
     for (final s in sets) {
-      groups.putIfAbsent(s.set.exerciseId, () {
-        order.add(s.set.exerciseId);
-        return <LoggedSet>[];
-      }).add(s);
+      groups
+          .putIfAbsent(s.set.exerciseId, () {
+            order.add(s.set.exerciseId);
+            return <LoggedSet>[];
+          })
+          .add(s);
     }
     return ListView(
       padding: const EdgeInsets.fromLTRB(0, 4, 0, 80),
-      children: [
-        for (final id in order)
-          _ExerciseGroup(date: date, exerciseId: id, sets: groups[id]!),
-      ],
+      children: [for (final id in order) _ExerciseGroup(date: date, exerciseId: id, sets: groups[id]!)],
     );
   }
 }
 
 class _ExerciseGroup extends ConsumerWidget {
-  const _ExerciseGroup(
-      {required this.date, required this.exerciseId, required this.sets});
+  const _ExerciseGroup({required this.date, required this.exerciseId, required this.sets});
   final String date;
   final int exerciseId;
   final List<LoggedSet> sets;
@@ -259,10 +235,8 @@ class _ExerciseGroup extends ConsumerWidget {
     final first = sets.first;
     final type = ExerciseType.values[first.exerciseType];
     final accent = Theme.of(context).colorScheme.primary;
-    final trackPr =
-        ref.watch(settingsProvider).asData?.value.trackPersonalRecords ?? true;
-    final prIds =
-        trackPr ? ref.watch(prSetIdsProvider(exerciseId)) : const <int>{};
+    final trackPr = ref.watch(settingsProvider).asData?.value.trackPersonalRecords ?? true;
+    final prIds = trackPr ? ref.watch(prSetIdsProvider(exerciseId)) : const <int>{};
     final shown = sets.length > _maxShown ? sets.sublist(0, _maxShown) : sets;
     final extra = sets.length - shown.length;
 
@@ -276,32 +250,26 @@ class _ExerciseGroup extends ConsumerWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-              child: Text(first.exerciseName,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w600)),
+              child: Text(
+                first.exerciseName,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
             ),
             Container(height: 1.5, color: accent),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
               child: Column(
                 children: [
-                  for (final s in shown)
-                    _SetRow(
-                        type: type,
-                        logged: s,
-                        accent: accent,
-                        isPr: prIds.contains(s.set.id)),
+                  for (final s in shown) _SetRow(type: type, logged: s, accent: accent, isPr: prIds.contains(s.set.id)),
                   if (extra > 0)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Align(
                         alignment: Alignment.centerRight,
-                        child: Text('$extra more',
-                            style: TextStyle(
-                                color: Theme.of(context).hintColor,
-                                fontStyle: FontStyle.italic)),
+                        child: Text(
+                          '$extra more',
+                          style: TextStyle(color: Theme.of(context).hintColor, fontStyle: FontStyle.italic),
+                        ),
                       ),
                     ),
                 ],
@@ -315,11 +283,7 @@ class _ExerciseGroup extends ConsumerWidget {
 }
 
 class _SetRow extends StatelessWidget {
-  const _SetRow(
-      {required this.type,
-      required this.logged,
-      required this.accent,
-      required this.isPr});
+  const _SetRow({required this.type, required this.logged, required this.accent, required this.isPr});
   final ExerciseType type;
   final LoggedSet logged;
   final Color accent;
@@ -331,56 +295,37 @@ class _SetRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
-          SizedBox(
-            width: 30,
-            child: isPr
-                ? Icon(Icons.emoji_events, size: 20, color: accent)
-                : null,
-          ),
-          for (final col in _columns())
-            Expanded(child: _valueUnit(context, col.$1, col.$2)),
+          SizedBox(width: 30, child: isPr ? Icon(Icons.emoji_events, size: 20, color: accent) : null),
+          for (final col in _columns()) Expanded(child: _valueUnit(context, col.$1, col.$2)),
         ],
       ),
     );
   }
 
-  List<(String, String)> _columns() {
-    final s = logged.set;
-    switch (type) {
-      case ExerciseType.weightAndReps:
-        return [
-          (Fmt.weightValue(logged.effectiveWeight), 'kgs'),
-          ('${s.reps}', 'reps'),
-        ];
-      case ExerciseType.repsOnly:
-        return [('${s.reps}', 'reps')];
-      case ExerciseType.distanceAndTime:
-        final km = s.distance >= 1000;
-        return [
-          (Fmt.weightValue(km ? s.distance / 1000 : s.distance), km ? 'km' : 'm'),
-          (Fmt.duration(s.durationSeconds), ''),
-        ];
-      case ExerciseType.timeOnly:
-        return [(Fmt.duration(s.durationSeconds), '')];
-    }
-  }
+  List<(String, String)> _columns() => setColumns(
+    type: type,
+    weight: logged.effectiveWeight,
+    reps: logged.set.reps,
+    distance: logged.set.distance,
+    seconds: logged.set.durationSeconds,
+  );
 
   Widget _valueUnit(BuildContext context, String value, String unit) {
     final scheme = Theme.of(context).colorScheme;
     return Text.rich(
-      TextSpan(children: [
-        TextSpan(
-            text: value,
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: scheme.onSurface)),
-        if (unit.isNotEmpty)
+      TextSpan(
+        children: [
           TextSpan(
+            text: value,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: scheme.onSurface),
+          ),
+          if (unit.isNotEmpty)
+            TextSpan(
               text: ' $unit',
-              style:
-                  TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
-      ]),
+              style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor),
+            ),
+        ],
+      ),
       textAlign: TextAlign.right,
     );
   }

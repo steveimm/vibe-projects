@@ -11,13 +11,7 @@ import '../../core/util/format.dart';
 /// day with its category-color dots (mirrors FitNotes). Tapping a selectable
 /// day calls [onSelectDay].
 class WorkoutCalendar extends StatefulWidget {
-  const WorkoutCalendar({
-    super.key,
-    required this.dayColors,
-    required this.onSelectDay,
-    this.initialMonth,
-    this.selectable,
-  });
+  const WorkoutCalendar({super.key, required this.dayColors, required this.onSelectDay, this.initialMonth, this.selectable});
 
   final Map<String, List<int>> dayColors;
   final void Function(String isoDate) onSelectDay;
@@ -80,13 +74,11 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
     return ((leading + days) / 7).ceil();
   }
 
-  double _monthHeight(DateTime m) =>
-      _headerH + _weekdayH + _weeks(m) * _cellH + _padH;
+  double _monthHeight(DateTime m) => _headerH + _weekdayH + _weeks(m) * _cellH + _padH;
 
   int _initialIndex() {
     final ref = Dates.parse(widget.initialMonth ?? Dates.today());
-    final i = _months
-        .indexWhere((m) => m.year == ref.year && m.month == ref.month);
+    final i = _months.indexWhere((m) => m.year == ref.year && m.month == ref.month);
     return i < 0 ? 0 : i;
   }
 
@@ -100,11 +92,7 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      controller: _controller,
-      itemCount: _months.length,
-      itemBuilder: (_, i) => _monthBlock(_months[i]),
-    );
+    return ListView.builder(controller: _controller, itemCount: _months.length, itemBuilder: (_, i) => _monthBlock(_months[i]));
   }
 
   Widget _monthBlock(DateTime m) {
@@ -112,10 +100,7 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
     final weeks = _weeks(m);
     final days = DateTime(m.year, m.month + 1, 0).day;
     final leading = DateTime(m.year, m.month, 1).weekday - 1;
-    final cells = <int?>[
-      ...List.filled(leading, null),
-      for (var d = 1; d <= days; d++) d,
-    ];
+    final cells = <int?>[...List.filled(leading, null), for (var d = 1; d <= days; d++) d];
     while (cells.length < weeks * 7) {
       cells.add(null);
     }
@@ -124,9 +109,7 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
         SizedBox(
           height: _headerH,
           child: Center(
-            child: Text(Dates.monthLabel(m),
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            child: Text(Dates.monthLabel(m), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
           ),
         ),
         SizedBox(
@@ -136,9 +119,7 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
               for (final w in _weekdays)
                 Expanded(
                   child: Center(
-                    child: Text(w,
-                        style:
-                            TextStyle(fontSize: 11, color: theme.hintColor)),
+                    child: Text(w, style: TextStyle(fontSize: 11, color: theme.hintColor)),
                   ),
                 ),
             ],
@@ -147,12 +128,7 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
         for (var i = 0; i < cells.length; i += 7)
           SizedBox(
             height: _cellH,
-            child: Row(
-              children: [
-                for (var j = i; j < i + 7; j++)
-                  Expanded(child: _cell(m, cells[j])),
-              ],
-            ),
+            child: Row(children: [for (var j = i; j < i + 7; j++) Expanded(child: _cell(m, cells[j]))]),
           ),
         const SizedBox(height: _padH),
       ],
@@ -174,17 +150,13 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
           width: 30,
           height: 30,
           alignment: Alignment.center,
-          decoration: isToday
-              ? BoxDecoration(
-                  color: theme.colorScheme.primary, shape: BoxShape.circle)
-              : null,
-          child: Text('$day',
-              style: TextStyle(
-                  color: isToday
-                      ? theme.colorScheme.onPrimary
-                      : (canSelect
-                          ? theme.colorScheme.onSurface
-                          : theme.disabledColor))),
+          decoration: isToday ? BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle) : null,
+          child: Text(
+            '$day',
+            style: TextStyle(
+              color: isToday ? theme.colorScheme.onPrimary : (canSelect ? theme.colorScheme.onSurface : theme.disabledColor),
+            ),
+          ),
         ),
         const SizedBox(height: 3),
         SizedBox(
@@ -199,8 +171,7 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
                   child: Container(
                     width: 5,
                     height: 5,
-                    decoration:
-                        BoxDecoration(color: Color(c), shape: BoxShape.circle),
+                    decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle),
                   ),
                 ),
             ],
@@ -215,12 +186,7 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
 }
 
 class _CalendarScreen extends StatefulWidget {
-  const _CalendarScreen({
-    required this.dayColors,
-    required this.initialDate,
-    required this.onDayTap,
-    this.selectable,
-  });
+  const _CalendarScreen({required this.dayColors, required this.initialDate, required this.onDayTap, this.selectable});
 
   final Map<String, List<int>> dayColors;
   final String initialDate;
@@ -237,10 +203,9 @@ class _CalendarScreenState extends State<_CalendarScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('${widget.dayColors.length} workouts'),
-        duration: const Duration(seconds: 2),
-      ));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${widget.dayColors.length} workouts'), duration: const Duration(seconds: 2)));
     });
   }
 
@@ -261,13 +226,8 @@ class _CalendarScreenState extends State<_CalendarScreen> {
 /// Browse calendar (top-bar icon). Tapping a workout day shows its workout with
 /// a Go To action; tapping an empty day jumps straight there. Returns the day
 /// to navigate to (or null).
-Future<String?> openWorkoutCalendar(
-  BuildContext context,
-  WidgetRef ref, {
-  required String initialDate,
-}) async {
-  final colors =
-      await ref.read(workoutRepositoryProvider).workoutDayCategoryColors();
+Future<String?> openWorkoutCalendar(BuildContext context, WidgetRef ref, {required String initialDate}) async {
+  final colors = await ref.read(workoutRepositoryProvider).workoutDayCategoryColors();
   if (!context.mounted) return null;
   return Navigator.of(context).push<String>(
     MaterialPageRoute(
@@ -294,8 +254,7 @@ Future<String?> pickCopyDay(
   required String initialDate,
   required Set<String> selectableDays,
 }) async {
-  final colors =
-      await ref.read(workoutRepositoryProvider).workoutDayCategoryColors();
+  final colors = await ref.read(workoutRepositoryProvider).workoutDayCategoryColors();
   if (!context.mounted) return null;
   return Navigator.of(context).push<String>(
     MaterialPageRoute(
@@ -309,8 +268,7 @@ Future<String?> pickCopyDay(
   );
 }
 
-Future<bool?> _showDayDetail(
-    BuildContext context, WidgetRef ref, String date) async {
+Future<bool?> _showDayDetail(BuildContext context, WidgetRef ref, String date) async {
   final sets = await ref.read(workoutRepositoryProvider).dayLog(date);
   if (!context.mounted) return null;
   return showDialog<bool>(
@@ -330,10 +288,12 @@ class _DayDetailDialog extends StatelessWidget {
     final order = <int>[];
     final groups = <int, List<LoggedSet>>{};
     for (final s in sets) {
-      groups.putIfAbsent(s.set.exerciseId, () {
-        order.add(s.set.exerciseId);
-        return <LoggedSet>[];
-      }).add(s);
+      groups
+          .putIfAbsent(s.set.exerciseId, () {
+            order.add(s.set.exerciseId);
+            return <LoggedSet>[];
+          })
+          .add(s);
     }
     return AlertDialog(
       title: Text(Dates.longDate(date), style: TextStyle(color: accent)),
@@ -346,32 +306,23 @@ class _DayDetailDialog extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final id in order)
-                      ..._exerciseBlock(context, groups[id]!, accent),
-                  ],
+                  children: [for (final id in order) ..._exerciseBlock(context, groups[id]!, accent)],
                 ),
               ),
       ),
       actions: [
-        TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel')),
-        FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Go To')),
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Go To')),
       ],
     );
   }
 
-  List<Widget> _exerciseBlock(
-      BuildContext context, List<LoggedSet> ex, Color accent) {
+  List<Widget> _exerciseBlock(BuildContext context, List<LoggedSet> ex, Color accent) {
     final type = ExerciseType.values[ex.first.exerciseType];
     return [
       Padding(
         padding: const EdgeInsets.only(top: 14, bottom: 4),
-        child: Text(ex.first.exerciseName.toUpperCase(),
-            style: const TextStyle(fontWeight: FontWeight.bold)),
+        child: Text(ex.first.exerciseName.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
       Container(height: 1.5, color: accent),
       for (final s in ex)
@@ -382,20 +333,23 @@ class _DayDetailDialog extends StatelessWidget {
               for (final col in _columns(type, s))
                 Expanded(
                   child: Text.rich(
-                    TextSpan(children: [
-                      TextSpan(
+                    TextSpan(
+                      children: [
+                        TextSpan(
                           text: col.$1,
                           style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Theme.of(context).colorScheme.onSurface)),
-                      if (col.$2.isNotEmpty)
-                        TextSpan(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        if (col.$2.isNotEmpty)
+                          TextSpan(
                             text: ' ${col.$2}',
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).hintColor)),
-                    ]),
+                            style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor),
+                          ),
+                      ],
+                    ),
                     textAlign: TextAlign.right,
                   ),
                 ),
@@ -405,24 +359,11 @@ class _DayDetailDialog extends StatelessWidget {
     ];
   }
 
-  List<(String, String)> _columns(ExerciseType type, LoggedSet s) {
-    switch (type) {
-      case ExerciseType.weightAndReps:
-        return [
-          (Fmt.weightValue(s.effectiveWeight), 'kgs'),
-          ('${s.set.reps}', 'reps'),
-        ];
-      case ExerciseType.repsOnly:
-        return [('${s.set.reps}', 'reps')];
-      case ExerciseType.distanceAndTime:
-        final km = s.set.distance >= 1000;
-        return [
-          (Fmt.weightValue(km ? s.set.distance / 1000 : s.set.distance),
-              km ? 'km' : 'm'),
-          (Fmt.duration(s.set.durationSeconds), ''),
-        ];
-      case ExerciseType.timeOnly:
-        return [(Fmt.duration(s.set.durationSeconds), '')];
-    }
-  }
+  List<(String, String)> _columns(ExerciseType type, LoggedSet s) => setColumns(
+    type: type,
+    weight: s.effectiveWeight,
+    reps: s.set.reps,
+    distance: s.set.distance,
+    seconds: s.set.durationSeconds,
+  );
 }

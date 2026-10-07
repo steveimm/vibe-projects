@@ -33,19 +33,19 @@ class ExerciseRepository {
 
   final AppDatabase db;
 
-  Stream<List<Category>> watchCategories() => (db.select(db.categories)
-        ..orderBy([(c) => OrderingTerm(expression: c.name)]))
-      .watch();
+  Stream<List<Category>> watchCategories() =>
+      (db.select(db.categories)..orderBy([(c) => OrderingTerm(expression: c.name)])).watch();
 
-  Future<List<Category>> getCategories() => (db.select(db.categories)
-        ..orderBy([(c) => OrderingTerm(expression: c.name)]))
-      .get();
+  Future<List<Category>> getCategories() => (db.select(db.categories)..orderBy([(c) => OrderingTerm(expression: c.name)])).get();
 
   Stream<List<ExerciseListItem>> watchExercises({
     String? search,
     int? categoryId,
+    bool archived = false,
+    bool favourites = false,
   }) {
-    final where = <String>['e.archived = 0'];
+    final where = <String>['e.archived = ${archived ? 1 : 0}'];
+    if (favourites) where.add('e.is_favourite = 1');
     final vars = <Variable>[];
     if (search != null && search.trim().isNotEmpty) {
       where.add("e.name LIKE '%' || ? || '%'"); // LIKE is case-insensitive (ASCII)
@@ -55,7 +55,8 @@ class ExerciseRepository {
       where.add('e.category_id = ?');
       vars.add(Variable.withInt(categoryId));
     }
-    final sql = '''
+    final sql =
+        '''
       SELECT e.id, e.name, e.category_id, e.type, e.is_favourite,
              c.name AS category_name, c.color_argb AS color_argb,
              (SELECT COUNT(DISTINCT s.date) FROM workout_sets s
@@ -68,12 +69,12 @@ class ExerciseRepository {
       ORDER BY e.name COLLATE NOCASE
     ''';
     return db
-        .customSelect(sql,
-            variables: vars,
-            readsFrom: {db.exercises, db.categories, db.workoutSets})
+        .customSelect(sql, variables: vars, readsFrom: {db.exercises, db.categories, db.workoutSets})
         .watch()
-        .map((rows) => rows
-            .map((r) => ExerciseListItem(
+        .map(
+          (rows) => rows
+              .map(
+                (r) => ExerciseListItem(
                   id: r.read<int>('id'),
                   name: r.read<String>('name'),
                   categoryId: r.read<int>('category_id'),
@@ -83,28 +84,35 @@ class ExerciseRepository {
                   isFavourite: r.read<int>('is_favourite') == 1,
                   workoutCount: r.read<int>('workout_count'),
                   lastDate: r.readNullable<String>('last_date'),
-                ))
-            .toList());
+                ),
+              )
+              .toList(),
+        );
   }
 
-  Future<Exercise> getExercise(int id) =>
-      (db.select(db.exercises)..where((e) => e.id.equals(id))).getSingle();
+  Future<Exercise> getExercise(int id) => (db.select(db.exercises)..where((e) => e.id.equals(id))).getSingle();
 
-  Stream<Exercise> watchExercise(int id) =>
-      (db.select(db.exercises)..where((e) => e.id.equals(id))).watchSingle();
+  Stream<Exercise> watchExercise(int id) => (db.select(db.exercises)..where((e) => e.id.equals(id))).watchSingle();
 
   Future<int> createExercise({
     required String name,
     required int categoryId,
     required ExerciseType type,
     String? notes,
-  }) =>
-      db.into(db.exercises).insert(ExercisesCompanion.insert(
-            name: name,
-            categoryId: categoryId,
-            type: Value(type),
-            notes: Value(notes),
-          ));
+    int? restSeconds,
+    double? weightIncrement,
+  }) => db
+      .into(db.exercises)
+      .insert(
+        ExercisesCompanion.insert(
+          name: name,
+          categoryId: categoryId,
+          type: Value(type),
+          notes: Value(notes),
+          defaultRestTimeSeconds: Value(restSeconds),
+          weightIncrement: Value(weightIncrement),
+        ),
+      );
 
   Future<void> updateExercise({
     required int id,
@@ -112,18 +120,95 @@ class ExerciseRepository {
     required int categoryId,
     required ExerciseType type,
     String? notes,
-  }) =>
-      (db.update(db.exercises)..where((e) => e.id.equals(id))).write(
-        ExercisesCompanion(
-          name: Value(name),
-          categoryId: Value(categoryId),
-          type: Value(type),
-          notes: Value(notes),
-        ),
-      );
+    int? restSeconds,
+    double? weightIncrement,
+  }) async {
+    final old = await getExercise(id);
+    if (old.type != type) {
+      final sets =
+          await (db.select(db.workoutSets)
+                ..where((s) => s.exerciseId.equals(id))
+                ..limit(1))
+              .get();
+      final templates =
+          await (db.select(db.routineSets)
+                ..where((s) => s.exerciseId.equals(id))
+                ..limit(1))
+              .get();
+      if (sets.isNotEmpty || templates.isNotEmpty) {
+        throw const FormatException('This exercise has logged sets or templates. Create a new exercise to use a different type.');
+      }
+    }
+    await (db.update(db.exercises)..where((e) => e.id.equals(id))).write(
+      ExercisesCompanion(
+        name: Value(name.trim()),
+        categoryId: Value(categoryId),
+        type: Value(type),
+        notes: Value(notes),
+        defaultRestTimeSeconds: Value(restSeconds),
+        weightIncrement: Value(weightIncrement),
+      ),
+    );
+  }
+
+  Future<void> setFavourite(int id, bool value) =>
+      (db.update(db.exercises)..where((e) => e.id.equals(id))).write(ExercisesCompanion(isFavourite: Value(value)));
+
+  Future<void> setArchived(int id, bool value) =>
+      (db.update(db.exercises)..where((e) => e.id.equals(id))).write(ExercisesCompanion(archived: Value(value)));
+
+  Future<void> updateCategory(int id, String name, int color) => (db.update(
+    db.categories,
+  )..where((c) => c.id.equals(id))).write(CategoriesCompanion(name: Value(name.trim()), colorArgb: Value(color)));
+
+  Future<void> deleteCategory(int id) async {
+    final exercises =
+        await (db.select(db.exercises)
+              ..where((e) => e.categoryId.equals(id))
+              ..limit(1))
+            .get();
+    if (exercises.isNotEmpty) {
+      throw const FormatException('Move the exercises to another category first, including archived exercises.');
+    }
+    await (db.delete(db.categories)..where((c) => c.id.equals(id))).go();
+  }
+
+  Stream<List<ExerciseMultiplier>> watchMultipliers(int exerciseId) =>
+      (db.select(db.exerciseMultipliers)
+            ..where((m) => m.exerciseId.equals(exerciseId))
+            ..orderBy([(m) => OrderingTerm.asc(m.id)]))
+          .watch();
+
+  Future<void> saveMultiplier({
+    int? id,
+    required int exerciseId,
+    required String label,
+    required double factor,
+    bool enabled = true,
+  }) async {
+    if (label.trim().isEmpty || !factor.isFinite || factor <= 0 || factor > 100) {
+      throw const FormatException('Enter a name and a multiplier between 0 and 100.');
+    }
+    final existing = await watchMultipliers(exerciseId).first;
+    final product = existing.where((m) => m.enabled && m.id != id).fold<double>(enabled ? factor : 1, (v, m) => v * m.factor);
+    if (!product.isFinite || product > 10000 || product < 0.0001) {
+      throw const FormatException('Combined multiplier is outside the supported range.');
+    }
+    final entry = ExerciseMultipliersCompanion(
+      exerciseId: Value(exerciseId),
+      label: Value(label.trim()),
+      factor: Value(factor),
+      enabled: Value(enabled),
+    );
+    if (id == null) {
+      await db.into(db.exerciseMultipliers).insert(entry);
+    } else {
+      await (db.update(db.exerciseMultipliers)..where((m) => m.id.equals(id))).write(entry);
+    }
+  }
+
+  Future<void> deleteMultiplier(int id) => (db.delete(db.exerciseMultipliers)..where((m) => m.id.equals(id))).go();
 
   Future<int> createCategory({required String name, required int colorArgb}) =>
-      db.into(db.categories).insert(
-            CategoriesCompanion.insert(name: name, colorArgb: Value(colorArgb)),
-          );
+      db.into(db.categories).insert(CategoriesCompanion.insert(name: name, colorArgb: Value(colorArgb)));
 }

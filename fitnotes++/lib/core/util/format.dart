@@ -1,62 +1,87 @@
 import '../database/tables.dart';
 
-/// Display formatting helpers (kg-only weights in v1).
+class Units {
+  const Units([this.imperial = false]);
+  final bool imperial;
+  String get weightLabel => imperial ? 'lb' : 'kg';
+  String get distanceLabel => imperial ? 'mi' : 'km';
+  String get lengthLabel => imperial ? 'in' : 'cm';
+  double weightFromKg(double kg) => imperial ? kg / 0.45359237 : kg;
+  double weightToKg(double value) => imperial ? value * 0.45359237 : value;
+  double distanceFromMeters(double meters) => meters / (imperial ? 1609.344 : 1000);
+  double distanceToMeters(double value) => value * (imperial ? 1609.344 : 1000);
+  String weight(double kg) => '${Fmt.number(weightFromKg(kg))} $weightLabel';
+  String distance(double meters) => '${Fmt.number(distanceFromMeters(meters))} $distanceLabel';
+}
+
 class Fmt {
   Fmt._();
 
-  /// Trim trailing `.0` (20.0 -> "20", 122.5 -> "122.5").
-  static String number(double v) =>
-      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
-
-  /// Weight value with at least one decimal, trimming only the needless
-  /// trailing zeros (20 -> "20.0", 122.5 -> "122.5", 1.25 -> "1.25").
-  static String weightValue(double kg) {
-    var s = kg.toStringAsFixed(3);
-    if (s.contains('.')) {
-      s = s.replaceFirst(RegExp(r'0+$'), '');
-      if (s.endsWith('.')) s += '0';
-    }
-    return s;
+  static String number(double value) {
+    if (!value.isFinite) return '0';
+    return value.toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '');
   }
 
-  static String weight(double kg) => '${weightValue(kg)} kg';
+  static String weightValue(double value) => number(value);
+  static String weight(double kg) => Units().weight(kg);
+  static String distance(double meters) => Units().distance(meters);
 
   static String duration(int seconds) {
     final h = seconds ~/ 3600;
     final m = (seconds % 3600) ~/ 60;
-    final s = seconds % 60;
-    final mm = m.toString().padLeft(2, '0');
-    final ss = s.toString().padLeft(2, '0');
-    return h > 0 ? '$h:$mm:$ss' : '$m:$ss';
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return h > 0 ? '$h:${m.toString().padLeft(2, '0')}:$s' : '$m:$s';
   }
 
-  static String distance(double meters) =>
-      meters >= 1000 ? '${number(meters / 1000)} km' : '${number(meters)} m';
+  static int? parseDuration(String text) {
+    final parts = text.trim().split(':');
+    if (parts.isEmpty || parts.length > 3) return null;
+    final values = parts.map(int.tryParse).toList();
+    if (values.any((v) => v == null || v < 0)) return null;
+    if (values.skip(1).any((v) => v! >= 60)) return null;
+    return values.fold<int>(0, (sum, v) => sum * 60 + v!);
+  }
 }
 
-/// One-line summary of a set, depending on the exercise type.
+List<(String, String)> setColumns({
+  required ExerciseType type,
+  required double weight,
+  required int reps,
+  required double distance,
+  required int seconds,
+  Units units = const Units(),
+}) => [
+  if (type.hasWeight) (Fmt.number(units.weightFromKg(weight)), units.weightLabel),
+  if (type.hasReps) ('$reps', 'reps'),
+  if (type.hasDistance) (Fmt.number(units.distanceFromMeters(distance)), units.distanceLabel),
+  if (type.hasTime) (Fmt.duration(seconds), ''),
+];
+
 String describeSet({
   required ExerciseType type,
   required double effectiveWeight,
   required int reps,
   required double distance,
   required int durationSeconds,
-}) {
-  switch (type) {
-    case ExerciseType.weightAndReps:
-      return '${Fmt.weight(effectiveWeight)}  ×  $reps';
-    case ExerciseType.repsOnly:
-      return '$reps reps';
-    case ExerciseType.distanceAndTime:
-      return '${Fmt.distance(distance)}  •  ${Fmt.duration(durationSeconds)}';
-    case ExerciseType.timeOnly:
-      return Fmt.duration(durationSeconds);
-  }
-}
+  Units units = const Units(),
+}) => setColumns(
+  type: type,
+  weight: effectiveWeight,
+  reps: reps,
+  distance: distance,
+  seconds: durationSeconds,
+  units: units,
+).map((v) => '${v.$1}${v.$2.isEmpty ? '' : ' ${v.$2}'}').join(' × ');
 
 String exerciseTypeLabel(ExerciseType type) => switch (type) {
-      ExerciseType.weightAndReps => 'Weight & Reps',
-      ExerciseType.repsOnly => 'Reps Only',
-      ExerciseType.distanceAndTime => 'Distance & Time',
-      ExerciseType.timeOnly => 'Time Only',
-    };
+  ExerciseType.weightAndReps => 'Weight & reps',
+  ExerciseType.distanceAndTime => 'Distance & time',
+  ExerciseType.repsOnly => 'Reps only',
+  ExerciseType.timeOnly => 'Time only',
+  ExerciseType.weightOnly => 'Weight only',
+  ExerciseType.distanceOnly => 'Distance only',
+  ExerciseType.weightAndDistance => 'Weight & distance',
+  ExerciseType.weightAndTime => 'Weight & time',
+  ExerciseType.repsAndDistance => 'Reps & distance',
+  ExerciseType.repsAndTime => 'Reps & time',
+};

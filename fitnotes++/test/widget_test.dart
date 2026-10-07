@@ -24,14 +24,14 @@ void main() {
       markSetsComplete: false,
       keepScreenOn: false,
       estimated1rmMaxReps: 0,
+      useImperial: false,
     );
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           settingsProvider.overrideWith((ref) => Stream.value(settings)),
-          dayLogProvider(Dates.today())
-              .overrideWith((ref) => Stream.value(const <LoggedSet>[])),
+          dayLogProvider(Dates.today()).overrideWith((ref) => Stream.value(const <LoggedSet>[])),
         ],
         child: const FitNotesApp(),
       ),

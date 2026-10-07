@@ -33,6 +33,13 @@ const _seedCategories = <(String, int)>[
     WorkoutDayNotes,
     PrResetMarkers,
     AppSettings,
+    Routines,
+    RoutineDays,
+    RoutineSets,
+    MeasurementTypes,
+    Measurements,
+    ExerciseGoals,
+    WorkoutSessions,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -42,38 +49,147 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-          await _seed();
-        },
-        beforeOpen: (details) async {
-          await customStatement('PRAGMA foreign_keys = ON');
-        },
+    onCreate: (m) async {
+      await m.createAll();
+      await _seed();
+      await _seedExercises();
+      await _seedMeasurements();
+      await _indexes();
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(exercises, exercises.weightIncrement);
+        await m.addColumn(workoutSets, workoutSets.sourceKey);
+        await m.addColumn(workoutSets, workoutSets.isPlanned);
+        await m.addColumn(workoutSets, workoutSets.rpe);
+        await m.addColumn(workoutSets, workoutSets.groupName);
+        await m.addColumn(appSettings, appSettings.useImperial);
+        for (final table in <TableInfo>[
+          routines,
+          routineDays,
+          routineSets,
+          measurementTypes,
+          measurements,
+          exerciseGoals,
+          workoutSessions,
+        ]) {
+          await m.createTable(table);
+        }
+        await _seedExercises();
+        await _seedMeasurements();
+        await _indexes();
+      }
+    },
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+    },
+  );
+
+  Future<void> _indexes() async {
+    await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS workout_source_key ON workout_sets(source_key)');
+    await customStatement('CREATE INDEX IF NOT EXISTS workout_exercise_date ON workout_sets(exercise_id, date)');
+    await customStatement('CREATE INDEX IF NOT EXISTS workout_date ON workout_sets(date)');
+  }
+
+  Future<void> _seedExercises() async {
+    if ((await (select(exercises)..limit(1)).get()).isNotEmpty) return;
+    final cats = {for (final c in await select(categories).get()) c.name: c.id};
+    const defaults = {
+      'Abs': ['Crunch', 'Cable Crunch', 'Hanging Leg Raise', 'Plank', 'Side Plank'],
+      'Back': ['Deadlift', 'Barbell Row', 'Dumbbell Row', 'Lat Pulldown', 'Seated Cable Row', 'Pull Up', 'Chin Up'],
+      'Biceps': ['Barbell Curl', 'Dumbbell Curl', 'Dumbbell Hammer Curl', 'EZ-Bar Curl'],
+      'Cardio': [
+        'Cycling',
+        'Walking',
+        'Rowing Machine',
+        'Stationary Bike',
+        'Swimming',
+        'Running (Treadmill)',
+        'Running (Outdoor)',
+      ],
+      'Chest': [
+        'Flat Barbell Bench Press',
+        'Flat Dumbbell Bench Press',
+        'Incline Dumbbell Bench Press',
+        'Cable Crossover',
+        'Push Up',
+      ],
+      'Forearm': ['Barbell Wrist Curl', 'Dumbbell Wrist Curl'],
+      'Legs': [
+        'Barbell Squat',
+        'Barbell Front Squat',
+        'Leg Press',
+        'Leg Extension',
+        'Lying Leg Curl Machine',
+        'Romanian Deadlift',
+        'Hip Thrust',
+        'Dumbbell Lunge',
+      ],
+      'Shoulders': ['Overhead Press', 'Seated Dumbbell Press', 'Lateral Dumbbell Raise', 'Cable Face Pull'],
+      'Triceps': ['Close Grip Barbell Bench Press', 'Rope Push Down', 'Cable Overhead Triceps Extension', 'EZ-Bar Skullcrusher'],
+    };
+    await batch((b) {
+      for (final entry in defaults.entries) {
+        final category = cats[entry.key];
+        if (category == null) continue;
+        for (final name in entry.value) {
+          final type = entry.key == 'Cardio'
+              ? ExerciseType.distanceAndTime
+              : name.contains('Plank')
+              ? ExerciseType.timeOnly
+              : ['Crunch', 'Hanging Leg Raise', 'Pull Up', 'Chin Up', 'Push Up'].contains(name)
+              ? ExerciseType.repsOnly
+              : ExerciseType.weightAndReps;
+          b.insert(exercises, ExercisesCompanion.insert(name: name, categoryId: category, type: Value(type)));
+        }
+      }
+    });
+  }
+
+  Future<void> _seedMeasurements() async {
+    for (final name in [
+      'Bodyweight',
+      'Body fat',
+      'Neck',
+      'Shoulders',
+      'Chest',
+      'Waist',
+      'Hips',
+      'Left upper arm',
+      'Right upper arm',
+      'Left forearm',
+      'Right forearm',
+      'Left thigh',
+      'Right thigh',
+      'Left calf',
+      'Right calf',
+    ]) {
+      await into(measurementTypes).insert(
+        MeasurementTypesCompanion.insert(
+          name: name,
+          unit: name == 'Bodyweight'
+              ? 'kg'
+              : name == 'Body fat'
+              ? '%'
+              : 'cm',
+        ),
       );
+    }
+  }
 
   Future<void> _seed() async {
     await batch((b) {
       for (var i = 0; i < _seedCategories.length; i++) {
         final (name, color) = _seedCategories[i];
-        b.insert(
-          categories,
-          CategoriesCompanion.insert(
-            name: name,
-            colorArgb: Value(color),
-            sortOrder: Value(i),
-          ),
-        );
+        b.insert(categories, CategoriesCompanion.insert(name: name, colorArgb: Value(color), sortOrder: Value(i)));
       }
     });
     // Single settings row with column defaults.
-    await into(appSettings).insert(
-      const AppSettingsCompanion(id: Value(1)),
-      mode: InsertMode.insertOrIgnore,
-    );
+    await into(appSettings).insert(const AppSettingsCompanion(id: Value(1)), mode: InsertMode.insertOrIgnore);
   }
 }
 
