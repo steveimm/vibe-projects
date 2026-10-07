@@ -250,17 +250,15 @@ class _MeasurementDialogState extends ConsumerState<_MeasurementDialog> {
                 contentPadding: EdgeInsets.zero,
                 title: Text(_date),
                 trailing: const Icon(Icons.event_outlined),
-                onTap: widget.record != null
-                    ? null
-                    : () async {
-                        final day = await showDatePicker(
-                          context: context,
-                          initialDate: Dates.parse(_date),
-                          firstDate: DateTime(1900),
-                          lastDate: DateTime(2100),
-                        );
-                        if (day != null && mounted) setState(() => _date = Dates.iso(day));
-                      },
+                onTap: () async {
+                  final day = await showDatePicker(
+                    context: context,
+                    initialDate: Dates.parse(_date),
+                    firstDate: DateTime(1900),
+                    lastDate: DateTime(2100),
+                  );
+                  if (day != null && mounted) setState(() => _date = Dates.iso(day));
+                },
               ),
               TextFormField(
                 controller: _value,
@@ -306,7 +304,9 @@ class _MeasurementDialogState extends ConsumerState<_MeasurementDialog> {
                       : input;
                   final ok = await attempt(
                     context,
-                    () => ref.read(progressRepositoryProvider).saveMeasurement(widget.type.id, _date, value, _note.text),
+                    () => ref
+                        .read(progressRepositoryProvider)
+                        .saveMeasurement(widget.type.id, _date, value, _note.text, id: widget.record?.id),
                   );
                   if (!context.mounted) return;
                   if (ok) {

@@ -59,8 +59,7 @@ class Exercises extends Table {
   RealColumn get weightIncrement => real().nullable()();
 }
 
-/// FEATURE 1 (dormant in v1): named multipliers per exercise. The effective
-/// weight of a set is `rawWeight * product(enabled multipliers)`.
+/// Named factors are multiplied together when adding a workout set.
 @DataClassName('ExerciseMultiplier')
 class ExerciseMultipliers extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -82,7 +81,7 @@ class WorkoutSets extends Table {
   /// The number the user actually entered (before any multiplier).
   RealColumn get rawWeight => real().withDefault(const Constant(0))();
 
-  /// Product of the exercise's multipliers applied at log time. 1.0 in v1.
+  /// Product of enabled factors captured when the set was added.
   /// `effectiveWeight = rawWeight * weightMultiplier`.
   RealColumn get weightMultiplier => real().withDefault(const Constant(1.0))();
   IntColumn get reps => integer().withDefault(const Constant(0))();
@@ -104,10 +103,7 @@ class WorkoutDayNotes extends Table {
   TextColumn get comment => text()();
 }
 
-/// FEATURE 2 (dormant in v1): a global PR "reset" marker. PR queries take a
-/// `sinceDate`; in v1 it's the epoch (all-time). Later, the latest reset date
-/// becomes the `sinceDate` for the "current period", while all-time stays
-/// queryable. Old records are never deleted.
+/// PR windows start at the most recent reset date. Historical sets remain intact.
 @DataClassName('PrResetMarker')
 class PrResetMarkers extends Table {
   IntColumn get id => integer().autoIncrement()();

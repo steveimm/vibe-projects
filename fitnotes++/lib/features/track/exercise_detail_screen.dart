@@ -256,11 +256,14 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           children: [
             SizedBox(
               width: 116,
-              child: TextField(
-                controller: _rpe,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'RPE', suffixText: '/10', hintText: 'Optional', isDense: true),
-                onChanged: (_) => _changed(),
+              child: Semantics(
+                container: true,
+                child: TextField(
+                  controller: _rpe,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'RPE', suffixText: '/10', hintText: 'Optional', isDense: true),
+                  onChanged: (_) => _changed(),
+                ),
               ),
             ),
             const SizedBox(width: 12),

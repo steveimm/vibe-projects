@@ -207,7 +207,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
                         if (widget.exerciseId != null && _type.hasWeight) ...[
                           const SectionTitle('Weight multipliers'),
                           Text(
-                            'Record the number on the equipment. Enabled factors multiply together to calculate effective weight. Past sets keep their original factor.',
+                            'Record the number on the equipment. Enabled factors multiply together to calculate effective weight. Existing sets keep their original factor.',
                             style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                           ),
                           const SizedBox(height: 12),

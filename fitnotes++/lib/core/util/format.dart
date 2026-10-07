@@ -20,6 +20,7 @@ class Units {
 
 class Fmt {
   Fmt._();
+  static String count(int value, String word) => '$value $word${value == 1 ? '' : 's'}';
 
   static String number(double value, {int precision = 2}) {
     if (!value.isFinite) return '0';

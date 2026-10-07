@@ -31,9 +31,22 @@ class ProgressRepository {
       (db.update(db.measurementTypes)..where((t) => t.id.equals(id))).write(MeasurementTypesCompanion(name: Value(name.trim())));
   Future<void> deleteType(int id) => (db.delete(db.measurementTypes)..where((t) => t.id.equals(id))).go();
 
-  Future<void> saveMeasurement(int typeId, String date, double value, String note) async {
+  Future<void> saveMeasurement(int typeId, String date, double value, String note, {int? id}) => db.transaction(() async {
     Dates.validate(date);
     if (!value.isFinite || value <= 0) throw const FormatException('Enter a value greater than zero.');
+    if (id != null) {
+      final conflict = await (db.select(
+        db.measurements,
+      )..where((m) => m.typeId.equals(typeId) & m.date.equals(date))).getSingleOrNull();
+      if (conflict != null && conflict.id != id) {
+        throw const FormatException('That day already has an entry. Choose another date or edit that entry.');
+      }
+      final changed = await (db.update(db.measurements)..where((m) => m.id.equals(id) & m.typeId.equals(typeId))).write(
+        MeasurementsCompanion(date: Value(date), value: Value(value), note: Value(note.trim())),
+      );
+      if (changed == 0) throw const FormatException('This measurement is no longer available.');
+      return;
+    }
     await db
         .into(db.measurements)
         .insert(
@@ -43,7 +56,7 @@ class ProgressRepository {
             target: [db.measurements.typeId, db.measurements.date],
           ),
         );
-  }
+  });
 
   Future<void> deleteMeasurement(int id) => (db.delete(db.measurements)..where((m) => m.id.equals(id))).go();
   Stream<List<ExerciseGoal>> watchGoals(int exerciseId) =>

@@ -34,13 +34,17 @@ class SectionTitle extends StatelessWidget {
   final String title;
   final Widget? trailing;
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 20, bottom: 12),
-    child: Row(
-      children: [
-        Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
-        ?trailing,
-      ],
+  Widget build(BuildContext context) => Semantics(
+    header: true,
+    container: true,
+    child: Padding(
+      padding: const EdgeInsets.only(top: 20, bottom: 12),
+      child: Row(
+        children: [
+          Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
+          ?trailing,
+        ],
+      ),
     ),
   );
 }

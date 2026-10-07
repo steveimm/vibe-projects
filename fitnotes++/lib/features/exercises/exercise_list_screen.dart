@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers.dart';
 import '../../core/repositories/exercise_repository.dart';
 import '../../core/util/dates.dart';
+import '../../core/util/format.dart';
 import '../../shared/widgets.dart';
 
 final _libraryProvider = StreamProvider.autoDispose
@@ -175,7 +176,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              '${e.categoryName} · ${e.workoutCount == 0 ? 'Not logged yet' : '${e.workoutCount} workouts'}',
+                              '${e.categoryName} · ${e.workoutCount == 0 ? 'Not logged yet' : Fmt.count(e.workoutCount, 'workout')}',
                               style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
                             ),
                           ),

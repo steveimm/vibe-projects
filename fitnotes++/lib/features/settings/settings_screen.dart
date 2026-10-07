@@ -255,7 +255,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _tile(
                       Icons.file_download_outlined,
                       'Import FitNotes backup',
-                      'Merge an original Android .fitnotes file',
+                      'Merge exercises, sets, and workout notes',
                       _busy == null ? () => _import('fitnotes') : null,
                     ),
                     _tile(
@@ -281,14 +281,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _tile(IconData icon, String title, String subtitle, VoidCallback? tap) => ListTile(
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-    leading: Icon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
-    title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-    subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
-    trailing: const Icon(Icons.chevron_right_rounded, size: 19),
-    onTap: tap,
-    enabled: tap != null,
+  Widget _tile(IconData icon, String title, String subtitle, VoidCallback? tap) => Semantics(
+    container: true,
+    child: ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Icon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
+      title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
+      trailing: const Icon(Icons.chevron_right_rounded, size: 19),
+      onTap: tap,
+      enabled: tap != null,
+    ),
   );
   Widget _switch(String title, String subtitle, bool value, ValueChanged<bool> change) => SwitchListTile(
     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -332,9 +335,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _import(String kind) async {
     final db = ref.read(databaseProvider);
     final service = BackupService(db);
+    final timer = ref.read(restTimerProvider.notifier);
     final file = await openFile();
     if (file == null || !mounted) return;
-    setState(() => _busy = 'Reading ${file.name}…');
+    setState(() => _busy = kind == 'csv' ? 'Importing CSV…' : 'Reading backup…');
     await attempt(context, () async {
       if (kind == 'csv') {
         final bytes = await file.readAsBytes();
@@ -356,7 +360,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 context,
                 title: 'Restore this backup?',
                 message:
-                    'Replace the current data with ${counts['workout_sets']} sets, ${counts['routines']} routines, and ${counts['measurements']} measurements? A recovery copy will let you undo this restore.',
+                    'Replace the current data with ${Fmt.count(counts['workout_sets']!, 'set')}, ${Fmt.count(counts['routines']!, 'routine')}, and ${Fmt.count(counts['measurements']!, 'measurement')}? A recovery copy will let you undo this restore.',
                 action: 'Restore',
               ) ||
               !mounted) {
@@ -365,8 +369,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           final recovery = await _recoveryFile();
           await recovery.writeAsBytes(await service.backup());
           await service.restore(temp.path);
-          ref.read(restTimerProvider.notifier).stop();
-          ref.invalidate(_recoveryProvider);
+          timer.stop();
+          if (mounted) ref.invalidate(_recoveryProvider);
           if (mounted) notice(context, 'Backup restored');
         }
       } finally {

@@ -9,6 +9,7 @@ import 'package:fitnotes_plus/core/database/tables.dart';
 import 'package:fitnotes_plus/core/import/fitnotes_importer.dart';
 import 'package:fitnotes_plus/core/repositories/exercise_repository.dart';
 import 'package:fitnotes_plus/core/repositories/routine_repository.dart';
+import 'package:fitnotes_plus/core/repositories/progress_repository.dart';
 import 'package:fitnotes_plus/core/repositories/stats_repository.dart';
 import 'package:fitnotes_plus/core/repositories/workout_repository.dart';
 import 'package:fitnotes_plus/core/util/dates.dart';
@@ -132,6 +133,53 @@ void main() {
     final items = await exercises.watchExercises(search: bench.name).first;
     expect(items.single.workoutCount, 0);
     expect(items.single.lastDate, null);
+  });
+
+  test('measurement dates can move without overwriting another entry', () async {
+    final progress = ProgressRepository(db);
+    final type = (await db.select(db.measurementTypes).get()).first;
+    await progress.saveMeasurement(type.id, '2026-01-01', 75, 'First');
+    await progress.saveMeasurement(type.id, '2026-01-03', 74, 'Next');
+    final first = (await progress.watchMeasurements(type.id).first).last;
+    await progress.saveMeasurement(type.id, '2026-01-02', 75, 'Corrected date', id: first.id);
+    expect((await progress.watchMeasurements(type.id).first).map((m) => m.date), ['2026-01-03', '2026-01-02']);
+    await expectLater(progress.saveMeasurement(type.id, '2026-01-03', 80, '', id: first.id), throwsFormatException);
+    expect((await progress.watchMeasurements(type.id).first).first.value, 74);
+    await progress.deleteType(type.id);
+    expect(await progress.watchMeasurements(type.id).first, isEmpty);
+  });
+
+  test('PR seasons reset comparison without changing all-time history', () async {
+    final old = await workouts.addSet(exerciseId: bench.id, date: '2026-01-01', rawWeight: 100, reps: 5);
+    final first = await workouts.addSet(exerciseId: bench.id, date: '2026-02-01', rawWeight: 90, reps: 5);
+    final next = await workouts.addSet(exerciseId: bench.id, date: '2026-02-02', rawWeight: 95, reps: 5);
+    final history = await workouts.watchExerciseHistory(bench.id).first;
+    expect(Stats.personalRecordSetIds(history), {old});
+    expect(Stats.personalRecordSetIds(history, sinceDate: '2026-02-01'), {first, next});
+    expect(Stats.repMaxes(history)[5], 100);
+    expect(Stats.repMaxes(history, sinceDate: '2026-02-01')[5], 95);
+    expect((await workouts.watchExerciseHistory(bench.id).first).length, 3);
+  });
+
+  test('all recording types persist only their relevant components', () async {
+    const cases = [
+      (ExerciseType.weightAndReps, 12.5, 8, 0.0, 0),
+      (ExerciseType.distanceAndTime, 0.0, 0, 1000.0, 60),
+      (ExerciseType.repsOnly, 0.0, 8, 0.0, 0),
+      (ExerciseType.timeOnly, 0.0, 0, 0.0, 60),
+      (ExerciseType.weightOnly, 12.5, 0, 0.0, 0),
+      (ExerciseType.distanceOnly, 0.0, 0, 1000.0, 0),
+      (ExerciseType.weightAndDistance, 12.5, 0, 1000.0, 0),
+      (ExerciseType.weightAndTime, 12.5, 0, 0.0, 60),
+      (ExerciseType.repsAndDistance, 0.0, 8, 1000.0, 0),
+      (ExerciseType.repsAndTime, 0.0, 8, 0.0, 60),
+    ];
+    for (final entry in cases) {
+      final id = await exercises.createExercise(name: 'Test ${entry.$1.name}', categoryId: bench.categoryId, type: entry.$1);
+      await workouts.addSet(exerciseId: id, date: '2026-01-01', rawWeight: 12.5, reps: 8, distance: 1000, durationSeconds: 60);
+      final set = (await workouts.watchExerciseHistory(id).first).single;
+      expect((set.rawWeight, set.reps, set.distance, set.durationSeconds), (entry.$2, entry.$3, entry.$4, entry.$5));
+    }
   });
 
   test('units and durations round trip and dates use calendar days', () {
