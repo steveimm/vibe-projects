@@ -80,9 +80,8 @@ class HomeScreen extends ConsumerWidget {
                     child: Text(
                       Dates.navLabel(date) == 'TODAY'
                           ? 'Today’s workout'
-                          : DateFormat(
-                              Dates.parse(date).year == DateTime.now().year ? 'EEE, d MMM' : 'EEE, d MMM yyyy',
-                            ).format(Dates.parse(date)),
+                          : DateFormat(Dates.parse(date).year == DateTime.now().year ? 'EEE, d MMM' : 'EEE, d MMM yyyy')
+                                .format(Dates.parse(date)),
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                   ),

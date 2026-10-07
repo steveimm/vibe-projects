@@ -44,8 +44,10 @@ class ExerciseDetailScreen extends ConsumerWidget {
                   onPressed: () => context.push('/exercises/edit?id=$exerciseId'),
                 ),
               ],
-              bottom: const TabBar(
-                tabs: [
+              bottom: TabBar(
+                isScrollable: MediaQuery.textScalerOf(context).scale(1) > 1.4,
+                tabAlignment: MediaQuery.textScalerOf(context).scale(1) > 1.4 ? TabAlignment.start : TabAlignment.fill,
+                tabs: const [
                   Tab(text: 'Log'),
                   Tab(text: 'History'),
                   Tab(text: 'Progress'),
@@ -255,7 +257,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
         Row(
           children: [
             SizedBox(
-              width: 116,
+              width: MediaQuery.textScalerOf(context).scale(1) > 1.4 ? 160 : 116,
               child: Semantics(
                 container: true,
                 child: TextField(

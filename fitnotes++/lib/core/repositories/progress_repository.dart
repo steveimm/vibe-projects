@@ -61,12 +61,18 @@ class ProgressRepository {
   Future<void> deleteMeasurement(int id) => (db.delete(db.measurements)..where((m) => m.id.equals(id))).go();
   Stream<List<ExerciseGoal>> watchGoals(int exerciseId) =>
       (db.select(db.exerciseGoals)..where((g) => g.exerciseId.equals(exerciseId))).watch();
-  Future<void> saveGoal(int exerciseId, String metric, double target, String? date) async {
+  Future<void> saveGoal(int exerciseId, String metric, double target, String? date, {int? id}) async {
     if (!target.isFinite || target <= 0) throw const FormatException('Enter a target greater than zero.');
     if (date != null) Dates.validate(date);
-    await db
-        .into(db.exerciseGoals)
-        .insert(ExerciseGoalsCompanion.insert(exerciseId: exerciseId, metric: metric, target: target, targetDate: Value(date)));
+    if (id == null) {
+      await db
+          .into(db.exerciseGoals)
+          .insert(ExerciseGoalsCompanion.insert(exerciseId: exerciseId, metric: metric, target: target, targetDate: Value(date)));
+    } else {
+      await (db.update(db.exerciseGoals)..where((g) => g.id.equals(id) & g.exerciseId.equals(exerciseId))).write(
+        ExerciseGoalsCompanion(metric: Value(metric), target: Value(target), targetDate: Value(date)),
+      );
+    }
   }
 
   Future<void> deleteGoal(int id) => (db.delete(db.exerciseGoals)..where((g) => g.id.equals(id))).go();

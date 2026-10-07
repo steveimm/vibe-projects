@@ -264,6 +264,14 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
                                       ),
                                     ),
                                     IconButton(
+                                      tooltip: 'Edit goal',
+                                      icon: const Icon(Icons.edit_outlined, size: 18),
+                                      onPressed: () => showDialog(
+                                        context: context,
+                                        builder: (_) => _GoalDialog(exercise: widget.exercise, goal: goal),
+                                      ),
+                                    ),
+                                    IconButton(
                                       tooltip: 'Delete goal',
                                       icon: const Icon(Icons.close_rounded, size: 18),
                                       onPressed: () async {
@@ -301,17 +309,26 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
 }
 
 class _GoalDialog extends ConsumerStatefulWidget {
-  const _GoalDialog({required this.exercise});
+  const _GoalDialog({required this.exercise, this.goal});
   final Exercise exercise;
+  final ExerciseGoal? goal;
   @override
   ConsumerState<_GoalDialog> createState() => _GoalDialogState();
 }
 
 class _GoalDialogState extends ConsumerState<_GoalDialog> {
-  late GraphMetric _metric = GraphMetric.forType(widget.exercise.type).first;
-  final _target = TextEditingController();
+  late GraphMetric _metric =
+      GraphMetric.values.where((m) => m.name == widget.goal?.metric).firstOrNull ??
+      GraphMetric.forType(widget.exercise.type).first;
+  late final _target = TextEditingController(text: _initialTarget());
+  String _initialTarget() {
+    if (widget.goal == null) return '';
+    final value = metricDisplayValue(_metric, widget.goal!.target, ref.read(unitsProvider));
+    return _metric.isTime || _metric == GraphMetric.bestPace ? Fmt.duration(value.round()) : Fmt.number(value);
+  }
+
   final _form = GlobalKey<FormState>();
-  String? _date;
+  late String? _date = widget.goal?.targetDate;
   bool _busy = false;
   @override
   void dispose() {
@@ -324,7 +341,7 @@ class _GoalDialogState extends ConsumerState<_GoalDialog> {
     final units = ref.watch(unitsProvider);
     final time = _metric.isTime || _metric == GraphMetric.bestPace;
     return AlertDialog(
-      title: const Text('Set a goal'),
+      title: Text(widget.goal == null ? 'Set a goal' : 'Edit goal'),
       content: SingleChildScrollView(
         child: Form(
           key: _form,
@@ -358,11 +375,17 @@ class _GoalDialogState extends ConsumerState<_GoalDialog> {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(_date ?? 'Target date (optional)'),
-                trailing: const Icon(Icons.event_outlined),
+                trailing: _date == null
+                    ? const Icon(Icons.event_outlined)
+                    : IconButton(
+                        tooltip: 'Clear target date',
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => setState(() => _date = null),
+                      ),
                 onTap: () async {
                   final date = await showDatePicker(
                     context: context,
-                    initialDate: DateTime.now().add(const Duration(days: 90)),
+                    initialDate: _date == null ? DateTime.now().add(const Duration(days: 90)) : Dates.parse(_date!),
                     firstDate: DateTime(2000),
                     lastDate: DateTime(2100),
                   );
@@ -386,7 +409,15 @@ class _GoalDialogState extends ConsumerState<_GoalDialog> {
                     context,
                     () => ref
                         .read(progressRepositoryProvider)
-                        .saveGoal(widget.exercise.id, _metric.name, metricCanonicalValue(_metric, value, units), _date),
+                        .saveGoal(
+                          widget.exercise.id,
+                          _metric.name,
+                          widget.goal != null && widget.goal!.metric == _metric.name && _target.text == _initialTarget()
+                              ? widget.goal!.target
+                              : metricCanonicalValue(_metric, value, units),
+                          _date,
+                          id: widget.goal?.id,
+                        ),
                   );
                   if (!context.mounted) return;
                   if (ok) {

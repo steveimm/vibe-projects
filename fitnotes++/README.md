@@ -33,7 +33,7 @@ Schema version 2 migrates existing version 1 databases without discarding their 
 
 ## Development
 
-The project uses Flutter, Drift/SQLite, Riverpod, go_router, and fl_chart. Native Android code handles document export, keep-screen-on, and the foreground rest-timer service.
+The project requires Flutter 3.47 or newer (Dart 3.13+) and uses Drift/SQLite, Riverpod, go_router, and fl_chart. Native Android code handles document export, keep-screen-on, and the foreground rest-timer service.
 
 ```bash
 flutter pub get
@@ -54,3 +54,9 @@ APK outputs are in `build/app/outputs/flutter-apk/`. The existing Android releas
 - `test/`: migration, import, backup, analytics, workflow, calendar, and timer regression checks.
 
 Android background rest timing uses a bounded wake lock and a user-visible foreground service. Its declaration follows the [Android foreground-service documentation](https://developer.android.com/develop/background-work/services/fgs/service-types#special-use). Notification access can be managed from Settings → Timer notifications.
+
+## Verification
+
+The 1.1.0 update was exercised through ADB on an ARM64 Android 16/API 36 emulator. The walkthrough covered logging and validation, edits and notes, selective copying, delete/undo, routine creation and reordering, favorites and archive/restore, categories, multipliers and RPE, seasons and goals, measurements, calculators, units, calendar preferences, full backup/restore/recovery, CSV and repeated FitNotes imports, background timer completion, and paused-timer recovery.
+
+Light/dark appearance and 200% text scaling were visually checked. The test suite includes regression checks for migration, canonical data preservation, planned-versus-performed sets, all ten recording types, PR windows, backup/CSV round trips, and calendar/timer/layout behavior.

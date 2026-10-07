@@ -275,8 +275,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
     if (!await confirm(
           context,
           title: 'Archive exercise?',
-          message:
-              'This hides it from the active library. Your workouts and records remain, and you can restore it from the library menu.',
+          message: 'This hides it from the active library. Your workouts and records remain, and you can restore it from the library menu.',
           action: 'Archive',
         ) ||
         !mounted) {

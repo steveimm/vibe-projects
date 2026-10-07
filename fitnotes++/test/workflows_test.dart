@@ -182,6 +182,19 @@ void main() {
     }
   });
 
+  test('goals can be updated without creating duplicate targets', () async {
+    final progress = ProgressRepository(db);
+    await progress.saveGoal(bench.id, GraphMetric.maxWeight.name, 100, null);
+    final goal = (await progress.watchGoals(bench.id).first).single;
+    await progress.saveGoal(bench.id, GraphMetric.maxWeight.name, 120, '2026-12-31', id: goal.id);
+    final updated = (await progress.watchGoals(bench.id).first).single;
+    expect(updated.id, goal.id);
+    expect(updated.target, 120);
+    expect(updated.targetDate, '2026-12-31');
+    await progress.deleteGoal(goal.id);
+    expect(await progress.watchGoals(bench.id).first, isEmpty);
+  });
+
   test('units and durations round trip and dates use calendar days', () {
     const units = Units(true);
     expect(units.weightToKg(units.weightFromKg(42.5)), closeTo(42.5, 0.000001));

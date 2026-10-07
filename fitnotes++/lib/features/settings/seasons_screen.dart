@@ -57,8 +57,7 @@ class SeasonsScreen extends ConsumerWidget {
                                       if (await confirm(
                                             context,
                                             title: 'Remove this reset?',
-                                            message:
-                                                'The previous season will apply if this is the current reset. Your workouts remain unchanged.',
+                                            message: 'The previous season will apply if this is the current reset. Your workouts remain unchanged.',
                                             action: 'Remove',
                                           ) &&
                                           context.mounted) {

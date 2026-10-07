@@ -104,32 +104,38 @@ class StatValue extends StatelessWidget {
   final String value;
   final bool inverse;
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.centerLeft,
-        child: AnimatedSwitcher(
-          duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180),
-          child: Text(
-            value,
-            key: ValueKey(value),
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-              color: inverse ? Colors.white : Theme.of(context).colorScheme.onSurface,
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(right: 10),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: AnimatedSwitcher(
+              duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180),
+              child: Text(
+                value,
+                key: ValueKey(value),
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  color: inverse ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
             ),
           ),
         ),
-      ),
-      const SizedBox(height: 3),
-      Text(
-        label,
-        style: TextStyle(fontSize: 12, color: inverse ? Colors.white70 : Theme.of(context).colorScheme.onSurfaceVariant),
-      ),
-    ],
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: inverse ? Colors.white70 : Theme.of(context).colorScheme.onSurfaceVariant),
+        ),
+      ],
+    ),
   );
 }
 
@@ -137,7 +143,15 @@ void notice(BuildContext context, String message, {SnackBarAction? action}) {
   if (!context.mounted) return;
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message), action: action));
+    ..showSnackBar(
+      SnackBar(
+        content: Text(message),
+        action: action,
+        duration: Duration(seconds: action == null ? 4 : 8),
+        persist: action != null && MediaQuery.accessibleNavigationOf(context),
+        showCloseIcon: action != null && MediaQuery.accessibleNavigationOf(context),
+      ),
+    );
 }
 
 Future<bool> attempt(BuildContext context, Future<void> Function() action, {String? success}) async {

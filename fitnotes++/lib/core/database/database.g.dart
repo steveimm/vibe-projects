@@ -4824,10 +4824,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ]);
 }
 
-typedef $$CategoriesTableCreateCompanionBuilder =
-    CategoriesCompanion Function({Value<int> id, required String name, Value<int> colorArgb, Value<int> sortOrder});
-typedef $$CategoriesTableUpdateCompanionBuilder =
-    CategoriesCompanion Function({Value<int> id, Value<String> name, Value<int> colorArgb, Value<int> sortOrder});
+typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
+  Value<int> id,
+  required String name,
+  Value<int> colorArgb,
+  Value<int> sortOrder,
+});
+typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
+  Value<int> id,
+  Value<String> name,
+  Value<int> colorArgb,
+  Value<int> sortOrder,
+});
 
 final class $$CategoriesTableReferences extends BaseReferences<_$AppDatabase, $CategoriesTable, Category> {
   $$CategoriesTableReferences(super.$_db, super.$_table, super.$_typedResult);
@@ -4958,20 +4966,18 @@ class $$CategoriesTableTableManager
           createFilteringComposer: () => $$CategoriesTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () => $$CategoriesTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () => $$CategoriesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<String> name = const Value.absent(),
-                Value<int> colorArgb = const Value.absent(),
-                Value<int> sortOrder = const Value.absent(),
-              }) => CategoriesCompanion(id: id, name: name, colorArgb: colorArgb, sortOrder: sortOrder),
-          createCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                required String name,
-                Value<int> colorArgb = const Value.absent(),
-                Value<int> sortOrder = const Value.absent(),
-              }) => CategoriesCompanion.insert(id: id, name: name, colorArgb: colorArgb, sortOrder: sortOrder),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<int> colorArgb = const Value.absent(),
+            Value<int> sortOrder = const Value.absent(),
+          }) => CategoriesCompanion(id: id, name: name, colorArgb: colorArgb, sortOrder: sortOrder),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String name,
+            Value<int> colorArgb = const Value.absent(),
+            Value<int> sortOrder = const Value.absent(),
+          }) => CategoriesCompanion.insert(id: id, name: name, colorArgb: colorArgb, sortOrder: sortOrder),
           withReferenceMapper: (p0) =>
               p0.map((e) => (e.readTable<$CategoriesTable, Category>(table), $$CategoriesTableReferences(db, table, e))).toList(),
           prefetchHooksCallback: ({exercisesRefs = false}) {
@@ -5012,32 +5018,30 @@ typedef $$CategoriesTableProcessedTableManager =
       Category,
       PrefetchHooks Function({bool exercisesRefs})
     >;
-typedef $$ExercisesTableCreateCompanionBuilder =
-    ExercisesCompanion Function({
-      Value<int> id,
-      required String name,
-      required int categoryId,
-      Value<ExerciseType> type,
-      Value<String?> notes,
-      Value<int?> defaultRestTimeSeconds,
-      Value<bool> isFavourite,
-      Value<bool> archived,
-      Value<int> sortOrder,
-      Value<double?> weightIncrement,
-    });
-typedef $$ExercisesTableUpdateCompanionBuilder =
-    ExercisesCompanion Function({
-      Value<int> id,
-      Value<String> name,
-      Value<int> categoryId,
-      Value<ExerciseType> type,
-      Value<String?> notes,
-      Value<int?> defaultRestTimeSeconds,
-      Value<bool> isFavourite,
-      Value<bool> archived,
-      Value<int> sortOrder,
-      Value<double?> weightIncrement,
-    });
+typedef $$ExercisesTableCreateCompanionBuilder = ExercisesCompanion Function({
+  Value<int> id,
+  required String name,
+  required int categoryId,
+  Value<ExerciseType> type,
+  Value<String?> notes,
+  Value<int?> defaultRestTimeSeconds,
+  Value<bool> isFavourite,
+  Value<bool> archived,
+  Value<int> sortOrder,
+  Value<double?> weightIncrement,
+});
+typedef $$ExercisesTableUpdateCompanionBuilder = ExercisesCompanion Function({
+  Value<int> id,
+  Value<String> name,
+  Value<int> categoryId,
+  Value<ExerciseType> type,
+  Value<String?> notes,
+  Value<int?> defaultRestTimeSeconds,
+  Value<bool> isFavourite,
+  Value<bool> archived,
+  Value<int> sortOrder,
+  Value<double?> weightIncrement,
+});
 
 final class $$ExercisesTableReferences extends BaseReferences<_$AppDatabase, $ExercisesTable, Exercise> {
   $$ExercisesTableReferences(super.$_db, super.$_table, super.$_typedResult);
@@ -5511,14 +5515,12 @@ class $$ExercisesTableTableManager
                         >
                       >(state) {
                         if (categoryId) {
-                          state =
-                              state.withJoin(
-                                    currentTable: table,
-                                    currentColumn: table.categoryId,
-                                    referencedTable: $$ExercisesTableReferences._categoryIdTable(db),
-                                    referencedColumn: $$ExercisesTableReferences._categoryIdTable(db).id,
-                                  )
-                                  as T;
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.categoryId,
+                            referencedTable: $$ExercisesTableReferences._categoryIdTable(db),
+                            referencedColumn: $$ExercisesTableReferences._categoryIdTable(db).id,
+                          ) as T;
                         }
 
                         return state;
@@ -5589,24 +5591,22 @@ typedef $$ExercisesTableProcessedTableManager =
         bool exerciseGoalsRefs,
       })
     >;
-typedef $$ExerciseMultipliersTableCreateCompanionBuilder =
-    ExerciseMultipliersCompanion Function({
-      Value<int> id,
-      required int exerciseId,
-      required String label,
-      Value<double> factor,
-      Value<bool> enabled,
-      Value<int> sortOrder,
-    });
-typedef $$ExerciseMultipliersTableUpdateCompanionBuilder =
-    ExerciseMultipliersCompanion Function({
-      Value<int> id,
-      Value<int> exerciseId,
-      Value<String> label,
-      Value<double> factor,
-      Value<bool> enabled,
-      Value<int> sortOrder,
-    });
+typedef $$ExerciseMultipliersTableCreateCompanionBuilder = ExerciseMultipliersCompanion Function({
+  Value<int> id,
+  required int exerciseId,
+  required String label,
+  Value<double> factor,
+  Value<bool> enabled,
+  Value<int> sortOrder,
+});
+typedef $$ExerciseMultipliersTableUpdateCompanionBuilder = ExerciseMultipliersCompanion Function({
+  Value<int> id,
+  Value<int> exerciseId,
+  Value<String> label,
+  Value<double> factor,
+  Value<bool> enabled,
+  Value<int> sortOrder,
+});
 
 final class $$ExerciseMultipliersTableReferences
     extends BaseReferences<_$AppDatabase, $ExerciseMultipliersTable, ExerciseMultiplier> {
@@ -5821,14 +5821,12 @@ class $$ExerciseMultipliersTableTableManager
                     >
                   >(state) {
                     if (exerciseId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.exerciseId,
-                                referencedTable: $$ExerciseMultipliersTableReferences._exerciseIdTable(db),
-                                referencedColumn: $$ExerciseMultipliersTableReferences._exerciseIdTable(db).id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.exerciseId,
+                        referencedTable: $$ExerciseMultipliersTableReferences._exerciseIdTable(db),
+                        referencedColumn: $$ExerciseMultipliersTableReferences._exerciseIdTable(db).id,
+                      ) as T;
                     }
 
                     return state;
@@ -5856,42 +5854,40 @@ typedef $$ExerciseMultipliersTableProcessedTableManager =
       ExerciseMultiplier,
       PrefetchHooks Function({bool exerciseId})
     >;
-typedef $$WorkoutSetsTableCreateCompanionBuilder =
-    WorkoutSetsCompanion Function({
-      Value<int> id,
-      required int exerciseId,
-      required String date,
-      Value<double> rawWeight,
-      Value<double> weightMultiplier,
-      Value<int> reps,
-      Value<double> distance,
-      Value<int> durationSeconds,
-      Value<bool> isComplete,
-      Value<String?> note,
-      required DateTime createdAt,
-      Value<String?> sourceKey,
-      Value<bool> isPlanned,
-      Value<double?> rpe,
-      Value<String?> groupName,
-    });
-typedef $$WorkoutSetsTableUpdateCompanionBuilder =
-    WorkoutSetsCompanion Function({
-      Value<int> id,
-      Value<int> exerciseId,
-      Value<String> date,
-      Value<double> rawWeight,
-      Value<double> weightMultiplier,
-      Value<int> reps,
-      Value<double> distance,
-      Value<int> durationSeconds,
-      Value<bool> isComplete,
-      Value<String?> note,
-      Value<DateTime> createdAt,
-      Value<String?> sourceKey,
-      Value<bool> isPlanned,
-      Value<double?> rpe,
-      Value<String?> groupName,
-    });
+typedef $$WorkoutSetsTableCreateCompanionBuilder = WorkoutSetsCompanion Function({
+  Value<int> id,
+  required int exerciseId,
+  required String date,
+  Value<double> rawWeight,
+  Value<double> weightMultiplier,
+  Value<int> reps,
+  Value<double> distance,
+  Value<int> durationSeconds,
+  Value<bool> isComplete,
+  Value<String?> note,
+  required DateTime createdAt,
+  Value<String?> sourceKey,
+  Value<bool> isPlanned,
+  Value<double?> rpe,
+  Value<String?> groupName,
+});
+typedef $$WorkoutSetsTableUpdateCompanionBuilder = WorkoutSetsCompanion Function({
+  Value<int> id,
+  Value<int> exerciseId,
+  Value<String> date,
+  Value<double> rawWeight,
+  Value<double> weightMultiplier,
+  Value<int> reps,
+  Value<double> distance,
+  Value<int> durationSeconds,
+  Value<bool> isComplete,
+  Value<String?> note,
+  Value<DateTime> createdAt,
+  Value<String?> sourceKey,
+  Value<bool> isPlanned,
+  Value<double?> rpe,
+  Value<String?> groupName,
+});
 
 final class $$WorkoutSetsTableReferences extends BaseReferences<_$AppDatabase, $WorkoutSetsTable, WorkoutSet> {
   $$WorkoutSetsTableReferences(super.$_db, super.$_table, super.$_typedResult);
@@ -6202,14 +6198,12 @@ class $$WorkoutSetsTableTableManager
                     >
                   >(state) {
                     if (exerciseId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.exerciseId,
-                                referencedTable: $$WorkoutSetsTableReferences._exerciseIdTable(db),
-                                referencedColumn: $$WorkoutSetsTableReferences._exerciseIdTable(db).id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.exerciseId,
+                        referencedTable: $$WorkoutSetsTableReferences._exerciseIdTable(db),
+                        referencedColumn: $$WorkoutSetsTableReferences._exerciseIdTable(db).id,
+                      ) as T;
                     }
 
                     return state;
@@ -6237,10 +6231,16 @@ typedef $$WorkoutSetsTableProcessedTableManager =
       WorkoutSet,
       PrefetchHooks Function({bool exerciseId})
     >;
-typedef $$WorkoutDayNotesTableCreateCompanionBuilder =
-    WorkoutDayNotesCompanion Function({Value<int> id, required String date, required String comment});
-typedef $$WorkoutDayNotesTableUpdateCompanionBuilder =
-    WorkoutDayNotesCompanion Function({Value<int> id, Value<String> date, Value<String> comment});
+typedef $$WorkoutDayNotesTableCreateCompanionBuilder = WorkoutDayNotesCompanion Function({
+  Value<int> id,
+  required String date,
+  required String comment,
+});
+typedef $$WorkoutDayNotesTableUpdateCompanionBuilder = WorkoutDayNotesCompanion Function({
+  Value<int> id,
+  Value<String> date,
+  Value<String> comment,
+});
 
 class $$WorkoutDayNotesTableFilterComposer extends Composer<_$AppDatabase, $WorkoutDayNotesTable> {
   $$WorkoutDayNotesTableFilterComposer({
@@ -6310,12 +6310,11 @@ class $$WorkoutDayNotesTableTableManager
           createFilteringComposer: () => $$WorkoutDayNotesTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () => $$WorkoutDayNotesTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () => $$WorkoutDayNotesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<String> date = const Value.absent(),
-                Value<String> comment = const Value.absent(),
-              }) => WorkoutDayNotesCompanion(id: id, date: date, comment: comment),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> date = const Value.absent(),
+            Value<String> comment = const Value.absent(),
+          }) => WorkoutDayNotesCompanion(id: id, date: date, comment: comment),
           createCompanionCallback: ({Value<int> id = const Value.absent(), required String date, required String comment}) =>
               WorkoutDayNotesCompanion.insert(id: id, date: date, comment: comment),
           withReferenceMapper: (p0) => p0
@@ -6345,10 +6344,18 @@ typedef $$WorkoutDayNotesTableProcessedTableManager =
       WorkoutDayNote,
       PrefetchHooks Function()
     >;
-typedef $$PrResetMarkersTableCreateCompanionBuilder =
-    PrResetMarkersCompanion Function({Value<int> id, required String date, Value<String?> note, required DateTime createdAt});
-typedef $$PrResetMarkersTableUpdateCompanionBuilder =
-    PrResetMarkersCompanion Function({Value<int> id, Value<String> date, Value<String?> note, Value<DateTime> createdAt});
+typedef $$PrResetMarkersTableCreateCompanionBuilder = PrResetMarkersCompanion Function({
+  Value<int> id,
+  required String date,
+  Value<String?> note,
+  required DateTime createdAt,
+});
+typedef $$PrResetMarkersTableUpdateCompanionBuilder = PrResetMarkersCompanion Function({
+  Value<int> id,
+  Value<String> date,
+  Value<String?> note,
+  Value<DateTime> createdAt,
+});
 
 class $$PrResetMarkersTableFilterComposer extends Composer<_$AppDatabase, $PrResetMarkersTable> {
   $$PrResetMarkersTableFilterComposer({
@@ -6426,20 +6433,18 @@ class $$PrResetMarkersTableTableManager
           createFilteringComposer: () => $$PrResetMarkersTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () => $$PrResetMarkersTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () => $$PrResetMarkersTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<String> date = const Value.absent(),
-                Value<String?> note = const Value.absent(),
-                Value<DateTime> createdAt = const Value.absent(),
-              }) => PrResetMarkersCompanion(id: id, date: date, note: note, createdAt: createdAt),
-          createCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                required String date,
-                Value<String?> note = const Value.absent(),
-                required DateTime createdAt,
-              }) => PrResetMarkersCompanion.insert(id: id, date: date, note: note, createdAt: createdAt),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> date = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+          }) => PrResetMarkersCompanion(id: id, date: date, note: note, createdAt: createdAt),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String date,
+            Value<String?> note = const Value.absent(),
+            required DateTime createdAt,
+          }) => PrResetMarkersCompanion.insert(id: id, date: date, note: note, createdAt: createdAt),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
@@ -6467,38 +6472,36 @@ typedef $$PrResetMarkersTableProcessedTableManager =
       PrResetMarker,
       PrefetchHooks Function()
     >;
-typedef $$AppSettingsTableCreateCompanionBuilder =
-    AppSettingsCompanion Function({
-      Value<int> id,
-      Value<int> themeMode,
-      Value<int> firstDayOfWeek,
-      Value<double> defaultWeightIncrement,
-      Value<int> restTimerSeconds,
-      Value<bool> restTimerVibrate,
-      Value<bool> restTimerSound,
-      Value<bool> restTimerAutoStart,
-      Value<bool> trackPersonalRecords,
-      Value<bool> markSetsComplete,
-      Value<bool> keepScreenOn,
-      Value<int> estimated1rmMaxReps,
-      Value<bool> useImperial,
-    });
-typedef $$AppSettingsTableUpdateCompanionBuilder =
-    AppSettingsCompanion Function({
-      Value<int> id,
-      Value<int> themeMode,
-      Value<int> firstDayOfWeek,
-      Value<double> defaultWeightIncrement,
-      Value<int> restTimerSeconds,
-      Value<bool> restTimerVibrate,
-      Value<bool> restTimerSound,
-      Value<bool> restTimerAutoStart,
-      Value<bool> trackPersonalRecords,
-      Value<bool> markSetsComplete,
-      Value<bool> keepScreenOn,
-      Value<int> estimated1rmMaxReps,
-      Value<bool> useImperial,
-    });
+typedef $$AppSettingsTableCreateCompanionBuilder = AppSettingsCompanion Function({
+  Value<int> id,
+  Value<int> themeMode,
+  Value<int> firstDayOfWeek,
+  Value<double> defaultWeightIncrement,
+  Value<int> restTimerSeconds,
+  Value<bool> restTimerVibrate,
+  Value<bool> restTimerSound,
+  Value<bool> restTimerAutoStart,
+  Value<bool> trackPersonalRecords,
+  Value<bool> markSetsComplete,
+  Value<bool> keepScreenOn,
+  Value<int> estimated1rmMaxReps,
+  Value<bool> useImperial,
+});
+typedef $$AppSettingsTableUpdateCompanionBuilder = AppSettingsCompanion Function({
+  Value<int> id,
+  Value<int> themeMode,
+  Value<int> firstDayOfWeek,
+  Value<double> defaultWeightIncrement,
+  Value<int> restTimerSeconds,
+  Value<bool> restTimerVibrate,
+  Value<bool> restTimerSound,
+  Value<bool> restTimerAutoStart,
+  Value<bool> trackPersonalRecords,
+  Value<bool> markSetsComplete,
+  Value<bool> keepScreenOn,
+  Value<int> estimated1rmMaxReps,
+  Value<bool> useImperial,
+});
 
 class $$AppSettingsTableFilterComposer extends Composer<_$AppDatabase, $AppSettingsTable> {
   $$AppSettingsTableFilterComposer({
@@ -6742,10 +6745,16 @@ typedef $$AppSettingsTableProcessedTableManager =
       AppSettingsRow,
       PrefetchHooks Function()
     >;
-typedef $$RoutinesTableCreateCompanionBuilder =
-    RoutinesCompanion Function({Value<int> id, required String name, Value<String> notes});
-typedef $$RoutinesTableUpdateCompanionBuilder =
-    RoutinesCompanion Function({Value<int> id, Value<String> name, Value<String> notes});
+typedef $$RoutinesTableCreateCompanionBuilder = RoutinesCompanion Function({
+  Value<int> id,
+  required String name,
+  Value<String> notes,
+});
+typedef $$RoutinesTableUpdateCompanionBuilder = RoutinesCompanion Function({
+  Value<int> id,
+  Value<String> name,
+  Value<String> notes,
+});
 
 final class $$RoutinesTableReferences extends BaseReferences<_$AppDatabase, $RoutinesTable, Routine> {
   $$RoutinesTableReferences(super.$_db, super.$_table, super.$_typedResult);
@@ -6868,15 +6877,16 @@ class $$RoutinesTableTableManager
           createFilteringComposer: () => $$RoutinesTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () => $$RoutinesTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () => $$RoutinesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<String> name = const Value.absent(),
-                Value<String> notes = const Value.absent(),
-              }) => RoutinesCompanion(id: id, name: name, notes: notes),
-          createCompanionCallback:
-              ({Value<int> id = const Value.absent(), required String name, Value<String> notes = const Value.absent()}) =>
-                  RoutinesCompanion.insert(id: id, name: name, notes: notes),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String> notes = const Value.absent(),
+          }) => RoutinesCompanion(id: id, name: name, notes: notes),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String name,
+            Value<String> notes = const Value.absent(),
+          }) => RoutinesCompanion.insert(id: id, name: name, notes: notes),
           withReferenceMapper: (p0) =>
               p0.map((e) => (e.readTable<$RoutinesTable, Routine>(table), $$RoutinesTableReferences(db, table, e))).toList(),
           prefetchHooksCallback: ({routineDaysRefs = false}) {
@@ -6917,10 +6927,18 @@ typedef $$RoutinesTableProcessedTableManager =
       Routine,
       PrefetchHooks Function({bool routineDaysRefs})
     >;
-typedef $$RoutineDaysTableCreateCompanionBuilder =
-    RoutineDaysCompanion Function({Value<int> id, required int routineId, required String name, Value<int> sortOrder});
-typedef $$RoutineDaysTableUpdateCompanionBuilder =
-    RoutineDaysCompanion Function({Value<int> id, Value<int> routineId, Value<String> name, Value<int> sortOrder});
+typedef $$RoutineDaysTableCreateCompanionBuilder = RoutineDaysCompanion Function({
+  Value<int> id,
+  required int routineId,
+  required String name,
+  Value<int> sortOrder,
+});
+typedef $$RoutineDaysTableUpdateCompanionBuilder = RoutineDaysCompanion Function({
+  Value<int> id,
+  Value<int> routineId,
+  Value<String> name,
+  Value<int> sortOrder,
+});
 
 final class $$RoutineDaysTableReferences extends BaseReferences<_$AppDatabase, $RoutineDaysTable, RoutineDay> {
   $$RoutineDaysTableReferences(super.$_db, super.$_table, super.$_typedResult);
@@ -7109,20 +7127,18 @@ class $$RoutineDaysTableTableManager
           createFilteringComposer: () => $$RoutineDaysTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () => $$RoutineDaysTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () => $$RoutineDaysTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<int> routineId = const Value.absent(),
-                Value<String> name = const Value.absent(),
-                Value<int> sortOrder = const Value.absent(),
-              }) => RoutineDaysCompanion(id: id, routineId: routineId, name: name, sortOrder: sortOrder),
-          createCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                required int routineId,
-                required String name,
-                Value<int> sortOrder = const Value.absent(),
-              }) => RoutineDaysCompanion.insert(id: id, routineId: routineId, name: name, sortOrder: sortOrder),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> routineId = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<int> sortOrder = const Value.absent(),
+          }) => RoutineDaysCompanion(id: id, routineId: routineId, name: name, sortOrder: sortOrder),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int routineId,
+            required String name,
+            Value<int> sortOrder = const Value.absent(),
+          }) => RoutineDaysCompanion.insert(id: id, routineId: routineId, name: name, sortOrder: sortOrder),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable<$RoutineDaysTable, RoutineDay>(table), $$RoutineDaysTableReferences(db, table, e)))
               .toList(),
@@ -7147,14 +7163,12 @@ class $$RoutineDaysTableTableManager
                     >
                   >(state) {
                     if (routineId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.routineId,
-                                referencedTable: $$RoutineDaysTableReferences._routineIdTable(db),
-                                referencedColumn: $$RoutineDaysTableReferences._routineIdTable(db).id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.routineId,
+                        referencedTable: $$RoutineDaysTableReferences._routineIdTable(db),
+                        referencedColumn: $$RoutineDaysTableReferences._routineIdTable(db).id,
+                      ) as T;
                     }
 
                     return state;
@@ -7191,30 +7205,28 @@ typedef $$RoutineDaysTableProcessedTableManager =
       RoutineDay,
       PrefetchHooks Function({bool routineId, bool routineSetsRefs})
     >;
-typedef $$RoutineSetsTableCreateCompanionBuilder =
-    RoutineSetsCompanion Function({
-      Value<int> id,
-      required int dayId,
-      required int exerciseId,
-      Value<double?> rawWeight,
-      Value<int?> reps,
-      Value<double?> distance,
-      Value<int?> durationSeconds,
-      Value<int> sortOrder,
-      Value<String?> groupName,
-    });
-typedef $$RoutineSetsTableUpdateCompanionBuilder =
-    RoutineSetsCompanion Function({
-      Value<int> id,
-      Value<int> dayId,
-      Value<int> exerciseId,
-      Value<double?> rawWeight,
-      Value<int?> reps,
-      Value<double?> distance,
-      Value<int?> durationSeconds,
-      Value<int> sortOrder,
-      Value<String?> groupName,
-    });
+typedef $$RoutineSetsTableCreateCompanionBuilder = RoutineSetsCompanion Function({
+  Value<int> id,
+  required int dayId,
+  required int exerciseId,
+  Value<double?> rawWeight,
+  Value<int?> reps,
+  Value<double?> distance,
+  Value<int?> durationSeconds,
+  Value<int> sortOrder,
+  Value<String?> groupName,
+});
+typedef $$RoutineSetsTableUpdateCompanionBuilder = RoutineSetsCompanion Function({
+  Value<int> id,
+  Value<int> dayId,
+  Value<int> exerciseId,
+  Value<double?> rawWeight,
+  Value<int?> reps,
+  Value<double?> distance,
+  Value<int?> durationSeconds,
+  Value<int> sortOrder,
+  Value<String?> groupName,
+});
 
 final class $$RoutineSetsTableReferences extends BaseReferences<_$AppDatabase, $RoutineSetsTable, RoutineSet> {
   $$RoutineSetsTableReferences(super.$_db, super.$_table, super.$_typedResult);
@@ -7517,24 +7529,20 @@ class $$RoutineSetsTableTableManager
                     >
                   >(state) {
                     if (dayId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.dayId,
-                                referencedTable: $$RoutineSetsTableReferences._dayIdTable(db),
-                                referencedColumn: $$RoutineSetsTableReferences._dayIdTable(db).id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.dayId,
+                        referencedTable: $$RoutineSetsTableReferences._dayIdTable(db),
+                        referencedColumn: $$RoutineSetsTableReferences._dayIdTable(db).id,
+                      ) as T;
                     }
                     if (exerciseId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.exerciseId,
-                                referencedTable: $$RoutineSetsTableReferences._exerciseIdTable(db),
-                                referencedColumn: $$RoutineSetsTableReferences._exerciseIdTable(db).id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.exerciseId,
+                        referencedTable: $$RoutineSetsTableReferences._exerciseIdTable(db),
+                        referencedColumn: $$RoutineSetsTableReferences._exerciseIdTable(db).id,
+                      ) as T;
                     }
 
                     return state;
@@ -7562,10 +7570,16 @@ typedef $$RoutineSetsTableProcessedTableManager =
       RoutineSet,
       PrefetchHooks Function({bool dayId, bool exerciseId})
     >;
-typedef $$MeasurementTypesTableCreateCompanionBuilder =
-    MeasurementTypesCompanion Function({Value<int> id, required String name, required String unit});
-typedef $$MeasurementTypesTableUpdateCompanionBuilder =
-    MeasurementTypesCompanion Function({Value<int> id, Value<String> name, Value<String> unit});
+typedef $$MeasurementTypesTableCreateCompanionBuilder = MeasurementTypesCompanion Function({
+  Value<int> id,
+  required String name,
+  required String unit,
+});
+typedef $$MeasurementTypesTableUpdateCompanionBuilder = MeasurementTypesCompanion Function({
+  Value<int> id,
+  Value<String> name,
+  Value<String> unit,
+});
 
 final class $$MeasurementTypesTableReferences extends BaseReferences<_$AppDatabase, $MeasurementTypesTable, MeasurementType> {
   $$MeasurementTypesTableReferences(super.$_db, super.$_table, super.$_typedResult);
@@ -7688,12 +7702,11 @@ class $$MeasurementTypesTableTableManager
           createFilteringComposer: () => $$MeasurementTypesTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () => $$MeasurementTypesTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () => $$MeasurementTypesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<String> name = const Value.absent(),
-                Value<String> unit = const Value.absent(),
-              }) => MeasurementTypesCompanion(id: id, name: name, unit: unit),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String> unit = const Value.absent(),
+          }) => MeasurementTypesCompanion(id: id, name: name, unit: unit),
           createCompanionCallback: ({Value<int> id = const Value.absent(), required String name, required String unit}) =>
               MeasurementTypesCompanion.insert(id: id, name: name, unit: unit),
           withReferenceMapper: (p0) => p0
@@ -7741,22 +7754,20 @@ typedef $$MeasurementTypesTableProcessedTableManager =
       MeasurementType,
       PrefetchHooks Function({bool measurementsRefs})
     >;
-typedef $$MeasurementsTableCreateCompanionBuilder =
-    MeasurementsCompanion Function({
-      Value<int> id,
-      required int typeId,
-      required String date,
-      required double value,
-      Value<String> note,
-    });
-typedef $$MeasurementsTableUpdateCompanionBuilder =
-    MeasurementsCompanion Function({
-      Value<int> id,
-      Value<int> typeId,
-      Value<String> date,
-      Value<double> value,
-      Value<String> note,
-    });
+typedef $$MeasurementsTableCreateCompanionBuilder = MeasurementsCompanion Function({
+  Value<int> id,
+  required int typeId,
+  required String date,
+  required double value,
+  Value<String> note,
+});
+typedef $$MeasurementsTableUpdateCompanionBuilder = MeasurementsCompanion Function({
+  Value<int> id,
+  Value<int> typeId,
+  Value<String> date,
+  Value<double> value,
+  Value<String> note,
+});
 
 final class $$MeasurementsTableReferences extends BaseReferences<_$AppDatabase, $MeasurementsTable, Measurement> {
   $$MeasurementsTableReferences(super.$_db, super.$_table, super.$_typedResult);
@@ -7902,22 +7913,20 @@ class $$MeasurementsTableTableManager
           createFilteringComposer: () => $$MeasurementsTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () => $$MeasurementsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () => $$MeasurementsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<int> typeId = const Value.absent(),
-                Value<String> date = const Value.absent(),
-                Value<double> value = const Value.absent(),
-                Value<String> note = const Value.absent(),
-              }) => MeasurementsCompanion(id: id, typeId: typeId, date: date, value: value, note: note),
-          createCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                required int typeId,
-                required String date,
-                required double value,
-                Value<String> note = const Value.absent(),
-              }) => MeasurementsCompanion.insert(id: id, typeId: typeId, date: date, value: value, note: note),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> typeId = const Value.absent(),
+            Value<String> date = const Value.absent(),
+            Value<double> value = const Value.absent(),
+            Value<String> note = const Value.absent(),
+          }) => MeasurementsCompanion(id: id, typeId: typeId, date: date, value: value, note: note),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int typeId,
+            required String date,
+            required double value,
+            Value<String> note = const Value.absent(),
+          }) => MeasurementsCompanion.insert(id: id, typeId: typeId, date: date, value: value, note: note),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable<$MeasurementsTable, Measurement>(table), $$MeasurementsTableReferences(db, table, e)))
               .toList(),
@@ -7942,14 +7951,12 @@ class $$MeasurementsTableTableManager
                     >
                   >(state) {
                     if (typeId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.typeId,
-                                referencedTable: $$MeasurementsTableReferences._typeIdTable(db),
-                                referencedColumn: $$MeasurementsTableReferences._typeIdTable(db).id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.typeId,
+                        referencedTable: $$MeasurementsTableReferences._typeIdTable(db),
+                        referencedColumn: $$MeasurementsTableReferences._typeIdTable(db).id,
+                      ) as T;
                     }
 
                     return state;
@@ -7977,22 +7984,20 @@ typedef $$MeasurementsTableProcessedTableManager =
       Measurement,
       PrefetchHooks Function({bool typeId})
     >;
-typedef $$ExerciseGoalsTableCreateCompanionBuilder =
-    ExerciseGoalsCompanion Function({
-      Value<int> id,
-      required int exerciseId,
-      required String metric,
-      required double target,
-      Value<String?> targetDate,
-    });
-typedef $$ExerciseGoalsTableUpdateCompanionBuilder =
-    ExerciseGoalsCompanion Function({
-      Value<int> id,
-      Value<int> exerciseId,
-      Value<String> metric,
-      Value<double> target,
-      Value<String?> targetDate,
-    });
+typedef $$ExerciseGoalsTableCreateCompanionBuilder = ExerciseGoalsCompanion Function({
+  Value<int> id,
+  required int exerciseId,
+  required String metric,
+  required double target,
+  Value<String?> targetDate,
+});
+typedef $$ExerciseGoalsTableUpdateCompanionBuilder = ExerciseGoalsCompanion Function({
+  Value<int> id,
+  Value<int> exerciseId,
+  Value<String> metric,
+  Value<double> target,
+  Value<String?> targetDate,
+});
 
 final class $$ExerciseGoalsTableReferences extends BaseReferences<_$AppDatabase, $ExerciseGoalsTable, ExerciseGoal> {
   $$ExerciseGoalsTableReferences(super.$_db, super.$_table, super.$_typedResult);
@@ -8140,15 +8145,13 @@ class $$ExerciseGoalsTableTableManager
           createFilteringComposer: () => $$ExerciseGoalsTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () => $$ExerciseGoalsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () => $$ExerciseGoalsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<int> exerciseId = const Value.absent(),
-                Value<String> metric = const Value.absent(),
-                Value<double> target = const Value.absent(),
-                Value<String?> targetDate = const Value.absent(),
-              }) =>
-                  ExerciseGoalsCompanion(id: id, exerciseId: exerciseId, metric: metric, target: target, targetDate: targetDate),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> exerciseId = const Value.absent(),
+            Value<String> metric = const Value.absent(),
+            Value<double> target = const Value.absent(),
+            Value<String?> targetDate = const Value.absent(),
+          }) => ExerciseGoalsCompanion(id: id, exerciseId: exerciseId, metric: metric, target: target, targetDate: targetDate),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
@@ -8187,14 +8190,12 @@ class $$ExerciseGoalsTableTableManager
                     >
                   >(state) {
                     if (exerciseId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.exerciseId,
-                                referencedTable: $$ExerciseGoalsTableReferences._exerciseIdTable(db),
-                                referencedColumn: $$ExerciseGoalsTableReferences._exerciseIdTable(db).id,
-                              )
-                              as T;
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.exerciseId,
+                        referencedTable: $$ExerciseGoalsTableReferences._exerciseIdTable(db),
+                        referencedColumn: $$ExerciseGoalsTableReferences._exerciseIdTable(db).id,
+                      ) as T;
                     }
 
                     return state;
@@ -8222,20 +8223,18 @@ typedef $$ExerciseGoalsTableProcessedTableManager =
       ExerciseGoal,
       PrefetchHooks Function({bool exerciseId})
     >;
-typedef $$WorkoutSessionsTableCreateCompanionBuilder =
-    WorkoutSessionsCompanion Function({
-      required String date,
-      required DateTime startedAt,
-      Value<DateTime?> endedAt,
-      Value<int> rowid,
-    });
-typedef $$WorkoutSessionsTableUpdateCompanionBuilder =
-    WorkoutSessionsCompanion Function({
-      Value<String> date,
-      Value<DateTime> startedAt,
-      Value<DateTime?> endedAt,
-      Value<int> rowid,
-    });
+typedef $$WorkoutSessionsTableCreateCompanionBuilder = WorkoutSessionsCompanion Function({
+  required String date,
+  required DateTime startedAt,
+  Value<DateTime?> endedAt,
+  Value<int> rowid,
+});
+typedef $$WorkoutSessionsTableUpdateCompanionBuilder = WorkoutSessionsCompanion Function({
+  Value<String> date,
+  Value<DateTime> startedAt,
+  Value<DateTime?> endedAt,
+  Value<int> rowid,
+});
 
 class $$WorkoutSessionsTableFilterComposer extends Composer<_$AppDatabase, $WorkoutSessionsTable> {
   $$WorkoutSessionsTableFilterComposer({
@@ -8308,20 +8307,18 @@ class $$WorkoutSessionsTableTableManager
           createFilteringComposer: () => $$WorkoutSessionsTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () => $$WorkoutSessionsTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () => $$WorkoutSessionsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<String> date = const Value.absent(),
-                Value<DateTime> startedAt = const Value.absent(),
-                Value<DateTime?> endedAt = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => WorkoutSessionsCompanion(date: date, startedAt: startedAt, endedAt: endedAt, rowid: rowid),
-          createCompanionCallback:
-              ({
-                required String date,
-                required DateTime startedAt,
-                Value<DateTime?> endedAt = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => WorkoutSessionsCompanion.insert(date: date, startedAt: startedAt, endedAt: endedAt, rowid: rowid),
+          updateCompanionCallback: ({
+            Value<String> date = const Value.absent(),
+            Value<DateTime> startedAt = const Value.absent(),
+            Value<DateTime?> endedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) => WorkoutSessionsCompanion(date: date, startedAt: startedAt, endedAt: endedAt, rowid: rowid),
+          createCompanionCallback: ({
+            required String date,
+            required DateTime startedAt,
+            Value<DateTime?> endedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) => WorkoutSessionsCompanion.insert(date: date, startedAt: startedAt, endedAt: endedAt, rowid: rowid),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (

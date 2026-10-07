@@ -141,15 +141,26 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                     return SingleChildScrollView(
                       child: EmptyState(
                         icon: _favourites ? Icons.star_outline_rounded : Icons.search_rounded,
-                        title: _favourites ? 'Keep your go-to exercises here' : 'No matching exercises',
-                        message: _favourites
+                        title: _archived
+                            ? 'No archived exercises here'
+                            : _favourites
+                            ? 'Keep your go-to exercises here'
+                            : 'No matching exercises',
+                        message: _archived
+                            ? 'Change your search or return to your active exercise library.'
+                            : _favourites
                             ? 'Tap the star beside an exercise to add it to favorites.'
                             : 'Try a different search or add your own exercise.',
-                        action: TextButton.icon(
-                          onPressed: _create,
-                          icon: const Icon(Icons.add_rounded),
-                          label: const Text('Create exercise'),
-                        ),
+                        action: _archived
+                            ? TextButton(
+                                onPressed: () => setState(() => _archived = false),
+                                child: const Text('Back to active exercises'),
+                              )
+                            : TextButton.icon(
+                                onPressed: _create,
+                                icon: const Icon(Icons.add_rounded),
+                                label: const Text('Create exercise'),
+                              ),
                       ),
                     );
                   }
@@ -217,7 +228,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
 
   Future<void> _create() async {
     final id = await context.push<int>('/exercises/edit${_category == null ? '' : '?category=$_category'}');
-    if (id != null && mounted && widget.pickMode) _open(id);
+    if (id != null && mounted) _open(id);
   }
 
   void _open(int id) {
