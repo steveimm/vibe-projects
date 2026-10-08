@@ -58,6 +58,7 @@ class _RestTimerSettingsState extends ConsumerState<_RestTimerSettings> {
   Widget build(BuildContext context) => AlertDialog(
     title: const Text('Rest timer'),
     content: SingleChildScrollView(
+      padding: const EdgeInsets.only(top: 12),
       child: Form(
         key: _form,
         child: Column(
