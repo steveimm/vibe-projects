@@ -45,7 +45,7 @@ class BackupService {
     final source = sqlite.sqlite3.open(path, mode: sqlite.OpenMode.readOnly);
     try {
       final version = source.select('PRAGMA user_version').single.values.first;
-      if (version != db.schemaVersion) {
+      if (version != 2 && version != db.schemaVersion) {
         throw const FormatException(
           'This is not a supported FitNotes++ backup. Use Import FitNotes for an original .fitnotes file.',
         );
@@ -54,7 +54,11 @@ class BackupService {
       final names = source.select("SELECT name FROM sqlite_master WHERE type = 'table'").map((r) => r['name']).toSet();
       for (final table in db.allTables) {
         final columns = source.select('PRAGMA table_info("${table.actualTableName}")').map((r) => r['name']).toSet();
-        if (!table.$columns.every((c) => columns.contains(c.$name)) || columns.length != table.$columns.length) {
+        final expected = table.$columns.map((c) => c.$name).toSet();
+        if (version == 2 && table.actualTableName == 'workout_sessions') {
+          expected.removeAll(['elapsed_seconds', 'running_since']);
+        }
+        if (!expected.every(columns.contains) || columns.length != expected.length) {
           throw const FormatException('The backup schema is incompatible with this app version.');
         }
       }
@@ -82,6 +86,14 @@ class BackupService {
         for (final table in tables)
           table: source.select('SELECT * FROM "$table"').map((r) => Map<String, Object?>.from(r)).toList(),
       };
+      if (source.select('PRAGMA user_version').single.values.first == 2) {
+        for (final session in rows['workout_sessions']!) {
+          final end = session['ended_at'] as int?;
+          final start = session['started_at'] as int;
+          session['elapsed_seconds'] = end == null ? 0 : (end - start).clamp(0, 2147483647);
+          session['running_since'] = end == null ? start : null;
+        }
+      }
       await db.transaction(() async {
         for (final table in tables.reversed) {
           await db.customStatement('DELETE FROM "$table"');

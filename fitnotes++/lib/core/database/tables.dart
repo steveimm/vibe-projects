@@ -189,6 +189,8 @@ class WorkoutSessions extends Table {
   TextColumn get date => text()();
   DateTimeColumn get startedAt => dateTime()();
   DateTimeColumn get endedAt => dateTime().nullable()();
+  IntColumn get elapsedSeconds => integer().withDefault(const Constant(0))();
+  DateTimeColumn get runningSince => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {date};

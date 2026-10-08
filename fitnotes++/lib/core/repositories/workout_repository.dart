@@ -22,8 +22,9 @@ class DaySnapshot {
 }
 
 class WorkoutRepository {
-  WorkoutRepository(this.db);
+  WorkoutRepository(this.db, {DateTime Function()? clock}) : _now = clock ?? DateTime.now;
   final AppDatabase db;
+  final DateTime Function() _now;
 
   Stream<List<WorkoutSet>> watchSetsForExerciseOnDate(int exerciseId, String date) =>
       (db.select(db.workoutSets)
@@ -273,15 +274,56 @@ class WorkoutRepository {
 
   Stream<WorkoutSession?> watchSession(String date) =>
       (db.select(db.workoutSessions)..where((s) => s.date.equals(date))).watchSingleOrNull();
-  Future<void> startSession(String date) => db
-      .into(db.workoutSessions)
-      .insert(
-        WorkoutSessionsCompanion.insert(date: date, startedAt: DateTime.now()),
-        mode: InsertMode.insertOrIgnore,
+  Future<void> startSession(String date) => db.transaction(() async {
+    Dates.validate(date);
+    final session = await watchSession(date).first;
+    final now = _now();
+    if (session == null) {
+      await db
+          .into(db.workoutSessions)
+          .insert(WorkoutSessionsCompanion.insert(date: date, startedAt: now, runningSince: Value(now)));
+    } else if (session.runningSince == null) {
+      await (db.update(
+        db.workoutSessions,
+      )..where((s) => s.date.equals(date))).write(WorkoutSessionsCompanion(runningSince: Value(now), endedAt: const Value(null)));
+    }
+  });
+
+  Future<void> pauseSession(String date) => _stopSession(date, finish: false);
+  Future<void> finishSession(String date) => _stopSession(date, finish: true);
+
+  Future<void> _stopSession(String date, {required bool finish}) => db.transaction(() async {
+    final session = await watchSession(date).first;
+    if (session == null) return;
+    final now = _now();
+    await (db.update(db.workoutSessions)..where((s) => s.date.equals(date))).write(
+      WorkoutSessionsCompanion(
+        elapsedSeconds: Value(session.durationAt(now)),
+        runningSince: const Value(null),
+        endedAt: Value(finish ? now : session.endedAt),
+      ),
+    );
+  });
+
+  Future<void> editSessionDuration(String date, int seconds) => db.transaction(() async {
+    if (seconds < 0 || seconds > 604800) throw const FormatException('Use a duration between 0 and 168 hours.');
+    final session = await watchSession(date).first;
+    final now = _now();
+    if (session == null) {
+      Dates.validate(date);
+      await db
+          .into(db.workoutSessions)
+          .insert(
+            WorkoutSessionsCompanion.insert(date: date, startedAt: now, endedAt: Value(now), elapsedSeconds: Value(seconds)),
+          );
+    } else {
+      await (db.update(db.workoutSessions)..where((s) => s.date.equals(date))).write(
+        WorkoutSessionsCompanion(elapsedSeconds: Value(seconds), runningSince: Value(session.runningSince == null ? null : now)),
       );
-  Future<void> finishSession(String date) => (db.update(
-    db.workoutSessions,
-  )..where((s) => s.date.equals(date))).write(WorkoutSessionsCompanion(endedAt: Value(DateTime.now())));
+    }
+  });
+
+  Future<void> resetSession(String date) => (db.delete(db.workoutSessions)..where((s) => s.date.equals(date))).go();
 
   Future<Map<String, List<int>>> workoutDayCategoryColors({int? categoryId, int? exerciseId}) async {
     final sets = await watchLog(categoryId: categoryId, exerciseId: exerciseId).first;
@@ -291,4 +333,9 @@ class WorkoutRepository {
     }
     return days.map((date, colors) => MapEntry(date, colors.toList()));
   }
+}
+
+extension WorkoutSessionDuration on WorkoutSession {
+  int durationAt(DateTime now) =>
+      elapsedSeconds + (runningSince == null ? 0 : now.difference(runningSince!).inSeconds.clamp(0, 604800));
 }

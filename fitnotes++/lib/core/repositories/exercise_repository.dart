@@ -114,6 +114,13 @@ class ExerciseRepository {
         ),
       );
 
+  Future<void> setRestDuration(int id, int? seconds) async {
+    if (seconds != null && (seconds < 1 || seconds > 3600)) throw const FormatException('Use 1 second to 60 minutes.');
+    await (db.update(
+      db.exercises,
+    )..where((e) => e.id.equals(id))).write(ExercisesCompanion(defaultRestTimeSeconds: Value(seconds)));
+  }
+
   Future<void> updateExercise({
     required int id,
     required String name,

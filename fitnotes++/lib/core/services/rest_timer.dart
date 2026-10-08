@@ -154,6 +154,26 @@ class RestTimerController extends Notifier<RestState> {
     }
   }
 
+  void setRemaining(int seconds) {
+    if (!state.visible) return;
+    _generation++;
+    final remaining = seconds.clamp(1, 3600);
+    final running = state.status == RestStatus.running;
+    state = RestState(
+      status: running ? RestStatus.running : RestStatus.paused,
+      remaining: remaining,
+      total: remaining,
+      label: state.label,
+      deadline: running ? _now().add(Duration(seconds: remaining)) : null,
+    );
+    if (running) {
+      _schedule();
+    } else {
+      _persistPause();
+    }
+    _tick();
+  }
+
   void configureAlerts({required bool sound, required bool vibrate}) {
     _generation++;
     _sound = sound;

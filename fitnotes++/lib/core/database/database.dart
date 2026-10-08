@@ -49,7 +49,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -82,6 +82,15 @@ class AppDatabase extends _$AppDatabase {
         await _seedExercises();
         await _seedMeasurements();
         await _indexes();
+      }
+      if (from == 2) {
+        await m.addColumn(workoutSessions, workoutSessions.elapsedSeconds);
+        await m.addColumn(workoutSessions, workoutSessions.runningSince);
+        await customStatement('''
+          UPDATE workout_sessions SET
+            elapsed_seconds = CASE WHEN ended_at IS NULL THEN 0 ELSE MAX(0, ended_at - started_at) END,
+            running_since = CASE WHEN ended_at IS NULL THEN started_at ELSE NULL END
+        ''');
       }
     },
     beforeOpen: (details) async {
