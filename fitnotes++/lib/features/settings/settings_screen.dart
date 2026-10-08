@@ -44,7 +44,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           data: (s) => ListView(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
             children: [
-              const SectionTitle('Make it yours'),
+              const SectionTitle('General'),
               Card(
                 child: Column(
                   children: [
@@ -120,7 +120,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     _switch(
                       'Completion checkboxes',
-                      'Mark logged sets complete or planned',
+                      'Show a checkbox beside each set',
                       s.markSetsComplete,
                       (v) => _update(AppSettingsCompanion(markSetsComplete: Value(v))),
                     ),
@@ -169,7 +169,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     }),
                     _switch(
                       'Auto-start',
-                      'Start resting after logging or completing a set',
+                      'Start after logging or completing a set',
                       s.restTimerAutoStart,
                       (v) => _update(AppSettingsCompanion(restTimerAutoStart: Value(v))),
                     ),
@@ -213,12 +213,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   () => context.push('/seasons'),
                 ),
               ),
-              const SectionTitle('Your data'),
-              Text(
-                'Your data is stored on this device. Save a full backup to keep your history, routines, and preferences.',
-                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: 12),
+              const SectionTitle('Data'),
               if (_busy != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -261,17 +256,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _tile(
                       Icons.upload_file_outlined,
                       'Import workout CSV',
-                      'FitNotes 10-column or legacy 8-column CSV',
+                      'Merge workouts from a CSV file',
                       _busy == null ? () => _import('csv') : null,
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(height: 28),
-              Center(
-                child: Text(
-                  'FitNotes++  ·  Offline by design',
-                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               ),
             ],

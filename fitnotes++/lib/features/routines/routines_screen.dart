@@ -25,9 +25,7 @@ class RoutinesScreen extends ConsumerWidget {
                 return SingleChildScrollView(
                   child: EmptyState(
                     icon: Icons.view_week_outlined,
-                    title: 'A plan you can repeat',
-                    message:
-                        'Build a routine with training days and preset sets. Leave values blank to reuse your previous session.',
+                    title: 'No routines',
                     action: FilledButton.icon(
                       onPressed: () => _create(context, ref),
                       icon: const Icon(Icons.add_rounded),
@@ -39,13 +37,6 @@ class RoutinesScreen extends ConsumerWidget {
               return ListView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                 children: [
-                  Text('Plan once. Keep showing up.', style: Theme.of(context).textTheme.headlineMedium),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Templates keep your favorite sessions a tap away.',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 24),
                   for (final routine in routines)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),

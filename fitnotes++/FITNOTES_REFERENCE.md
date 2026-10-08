@@ -329,3 +329,24 @@ The original Android app is only sporadically updated (last meaningful update ~M
 - Competitor pricing & free-tier caps drift — reverify at launch (notably Hevy's free routine cap).
 - Exact numeric `exercise_type_id` ↔ type map beyond {0:W&R, 1:Dist&Time, 3:Time-only} — this backup
   didn't exercise the Supporter-only types.
+
+## Emulator comparison, 2026-10-08
+
+Tested FitNotes 25.1 (`com.github.jamesgay.fitnotes`, version code 64) alongside FitNotes++ on the existing Android 16/API 36 emulator. The emulator has no Play Store. The unmodified APK came from [APKPure](https://apkpure.net/fitnotes-gym-workout-log/com.github.jamesgay.fitnotes/download). Its SHA-256 was `3461836b0be6707f759470ff38c5059dda9776e03ce8691a209a6dfbc44abb89`, and its signing certificate SHA-1 was `e66da566f4eb77a1c341c34cc7c2cf68c23c73f2`, matching that listing. This is mirror verification, not independent Play Store verification.
+
+Observed directly:
+
+- Selected Flat Barbell Bench Press and saved two 60 kg × 8 sets. The form keeps the previous values for the next set.
+- Opened the rest dialog from the training toolbar, changed 60 to 90 seconds, enabled Auto Start, and started the countdown. Saving the second set reset the running countdown to 90 seconds.
+- The rest dialog groups duration, vibration, sound, and auto-start. Running controls change to Pause and Cancel.
+- History shows both saved sets under their workout date. The exercise drawer keeps the workout list and Add Exercise within the editor.
+- No workout-duration controls appeared in the tested home and training screens. This does not establish that every original-app screen lacks them.
+
+Changes made in FitNotes++ from this comparison and user feedback:
+
+- Rest duration, per-exercise override, auto-start, sound, and vibration are accessible through Rest timer in the set editor. Tapping the running countdown edits its remaining time.
+- Workout time supports pause, resume, finish, duration editing, and reset. Paused time is excluded and state persists after reopening. Version 2 databases and backups retain their timer values.
+- The training toolbar switches between exercises in the selected workout and adds another exercise without returning home. Selecting an already selected set exits editing.
+- Removed introductory slogans and empty-state preambles across the app. Copied and routine sets use “Not completed” and completion controls. Their exclusion from statistics is stated where workouts are copied.
+
+Remaining differences identified by the [official tracking guide](https://www.fitnotesapp.com/workout_tracking/): original FitNotes supports dragging logged sets and workout exercises into order, bulk history editing, and automatic movement through supersets. FitNotes++ currently reorders routine sets only and stores superset names without automatic movement. These were not changed in this pass. FitNotes++ also adds snapshot weight multipliers and PR seasons described elsewhere in this repository.

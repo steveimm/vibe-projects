@@ -32,8 +32,7 @@ class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClient
         if (_typeId == null) {
           return EmptyState(
             icon: Icons.straighten_rounded,
-            title: 'Track a measurement',
-            message: 'Add a measurement to start a personal history.',
+            title: 'No measurements',
             action: FilledButton(onPressed: _addType, child: const Text('Add measurement')),
           );
         }
@@ -104,11 +103,7 @@ class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClient
               error: (_, _) => ErrorState(onRetry: () => ref.invalidate(measurementsProvider(_typeId!))),
               data: (records) {
                 if (records.isEmpty) {
-                  return const EmptyState(
-                    icon: Icons.monitor_weight_outlined,
-                    title: 'One entry at a time',
-                    message: 'Record a value to see how it changes over time.',
-                  );
+                  return const EmptyState(icon: Icons.monitor_weight_outlined, title: 'No measurements');
                 }
                 final points = records.reversed.map((r) => (date: r.date, value: _display(r.value, type.unit, units))).toList();
                 final label = _unit(type.unit, units);

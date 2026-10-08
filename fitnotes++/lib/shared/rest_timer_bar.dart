@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/services/rest_timer.dart';
 import '../core/util/format.dart';
+import 'widgets.dart';
 
 class RestTimerBar extends ConsumerWidget {
   const RestTimerBar({super.key});
@@ -46,23 +47,34 @@ class RestTimerBar extends ConsumerWidget {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            timer.status == RestStatus.finished
-                                ? 'Rest complete'
-                                : '${Fmt.duration(timer.remaining)}${timer.status == RestStatus.paused ? ' · paused' : ' · rest'}',
-                            style: TextStyle(fontWeight: FontWeight.w700, color: color.onSecondaryContainer),
-                          ),
-                          Text(
-                            timer.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 11, color: color.onSecondaryContainer),
-                          ),
-                        ],
+                      child: InkWell(
+                        onTap: () => _edit(context, ref),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    timer.status == RestStatus.finished
+                                        ? 'Rest complete'
+                                        : '${Fmt.duration(timer.remaining)}${timer.status == RestStatus.paused ? ' · paused' : ' · rest'}',
+                                    style: TextStyle(fontWeight: FontWeight.w700, color: color.onSecondaryContainer),
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                const Icon(Icons.edit_outlined, size: 14),
+                              ],
+                            ),
+                            Text(
+                              timer.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 11, color: color.onSecondaryContainer),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     if (timer.status != RestStatus.finished)
@@ -78,5 +90,22 @@ class RestTimerBar extends ConsumerWidget {
               ),
             ),
     );
+  }
+
+  Future<void> _edit(BuildContext context, WidgetRef ref) async {
+    final timer = ref.read(restTimerProvider);
+    final value = await prompt(
+      context,
+      title: 'Remaining rest time',
+      label: 'Time (m:ss or seconds)',
+      value: Fmt.duration(timer.remaining),
+      keyboard: TextInputType.datetime,
+      maxLength: 8,
+      validate: (v) {
+        final seconds = Fmt.parseDuration(v);
+        return seconds != null && seconds >= 1 && seconds <= 3600 ? null : 'Use 1 second to 60 minutes.';
+      },
+    );
+    if (value != null && context.mounted) ref.read(restTimerProvider.notifier).setRemaining(Fmt.parseDuration(value)!);
   }
 }

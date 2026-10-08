@@ -144,7 +144,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                         title: _archived
                             ? 'No archived exercises here'
                             : _favourites
-                            ? 'Keep your go-to exercises here'
+                            ? 'No favorites'
                             : 'No matching exercises',
                         message: _archived
                             ? 'Change your search or return to your active exercise library.'

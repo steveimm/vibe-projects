@@ -77,8 +77,6 @@ class _CopyWorkoutScreenState extends ConsumerState<CopyWorkoutScreen> {
             : ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
-                  Text('Start from a previous session', style: Theme.of(context).textTheme.headlineMedium),
-                  const SizedBox(height: 16),
                   Card(
                     child: Column(
                       children: [
@@ -95,7 +93,7 @@ class _CopyWorkoutScreenState extends ConsumerState<CopyWorkoutScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Copied sets are added as planned. Complete them as you train.',
+                    'Check off copied sets as you complete them. Only completed sets count in Progress.',
                     style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                   CheckboxListTile(
@@ -178,7 +176,7 @@ class _CopyWorkoutScreenState extends ConsumerState<CopyWorkoutScreen> {
     final ok = await attempt(context, () async {
       final ids = _sets.where((s) => _selected.contains(s.set.id)).map((s) => s.set.id).toList();
       final count = await ref.read(workoutRepositoryProvider).copySetsToDate(ids, widget.targetDate);
-      if (mounted) notice(context, '$count planned sets copied');
+      if (mounted) notice(context, '$count sets copied');
     });
     if (!mounted) return;
     if (ok) {

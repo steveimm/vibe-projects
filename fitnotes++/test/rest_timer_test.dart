@@ -33,10 +33,17 @@ void main() {
     await tester.tap(find.text('+15s'));
     await tester.pump();
     expect(container.read(restTimerProvider).remaining, remaining + 15);
+    await tester.tap(find.text('1:15 · paused'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), '1:30');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(container.read(restTimerProvider).remaining, 90);
+    expect(container.read(restTimerProvider).status, RestStatus.paused);
     await tester.tap(find.byTooltip('Resume timer'));
     now = now.add(const Duration(seconds: 2));
     await tester.pump(const Duration(seconds: 2));
-    expect(container.read(restTimerProvider).remaining, lessThan(remaining + 15));
+    expect(container.read(restTimerProvider).remaining, 88);
     timer.stop();
     await tester.pumpWidget(const SizedBox.shrink());
   });

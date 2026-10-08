@@ -43,7 +43,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('FitNotes++'), findsOneWidget);
-    expect(find.text('Make room for your next session'), findsOneWidget);
+    expect(find.text('Workout time'), findsOneWidget);
+    expect(find.text('Start'), findsOneWidget);
     expect(find.text('Routines'), findsOneWidget);
   });
 }

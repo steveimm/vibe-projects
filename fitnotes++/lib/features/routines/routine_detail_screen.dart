@@ -78,7 +78,7 @@ class _RoutineDetailScreenState extends ConsumerState<RoutineDetailScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: SectionTitle(
-                    '${items.length} planned sets',
+                    '${items.length} sets',
                     trailing: _dayId == null
                         ? null
                         : PopupMenuButton<String>(
@@ -100,8 +100,7 @@ class _RoutineDetailScreenState extends ConsumerState<RoutineDetailScreen> {
                       ? SingleChildScrollView(
                           child: EmptyState(
                             icon: Icons.playlist_add_rounded,
-                            title: 'Build this training day',
-                            message: 'Add exercises, set your targets, and drag the handles to arrange the order.',
+                            title: 'No exercises',
                             action: FilledButton.icon(
                               onPressed: _dayId == null ? _addDay : _addExercise,
                               icon: const Icon(Icons.add_rounded),
@@ -231,7 +230,7 @@ class _RoutineDetailScreenState extends ConsumerState<RoutineDetailScreen> {
     final ok = await attempt(context, () async {
       final count = await ref.read(routineRepositoryProvider).logDay(_dayId!, date);
       ref.read(selectedDateProvider.notifier).set(date);
-      if (mounted) notice(context, '$count planned sets added. Mark them complete as you train.');
+      if (mounted) notice(context, '$count sets added');
     });
     if (!mounted) return;
     if (ok) {

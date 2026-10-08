@@ -13,6 +13,7 @@ import '../../core/services/rest_timer.dart';
 import '../../core/util/dates.dart';
 import '../../core/util/format.dart';
 import '../../shared/rest_timer_bar.dart';
+import '../../shared/rest_timer_settings.dart';
 import '../../shared/widgets.dart';
 import 'graph_tab.dart';
 import 'history_tab.dart';
@@ -38,6 +39,11 @@ class ExerciseDetailScreen extends ConsumerWidget {
             appBar: AppBar(
               title: Text(exercise.name, maxLines: 2, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               actions: [
+                IconButton(
+                  tooltip: 'Workout exercises',
+                  icon: const Icon(Icons.format_list_bulleted_rounded),
+                  onPressed: () => _switchExercise(context, ref, exercise),
+                ),
                 IconButton(
                   tooltip: 'Edit exercise',
                   icon: const Icon(Icons.tune_rounded),
@@ -67,6 +73,55 @@ class ExerciseDetailScreen extends ConsumerWidget {
           ),
         ),
       );
+
+  Future<void> _switchExercise(BuildContext context, WidgetRef ref, Exercise exercise) async {
+    await attempt(context, () async {
+      final sets = await ref.read(workoutRepositoryProvider).dayLog(date);
+      if (!context.mounted) return;
+      final names = <int, String>{exercise.id: exercise.name};
+      final counts = <int, int>{};
+      for (final set in sets) {
+        names[set.set.exerciseId] = set.exerciseName;
+        counts.update(set.set.exerciseId, (n) => n + 1, ifAbsent: () => 1);
+      }
+      var selected = await showModalBottomSheet<int>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (context) => SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                const ListTile(
+                  title: Text('Workout exercises', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+                for (final entry in names.entries)
+                  ListTile(
+                    title: Text(entry.value),
+                    subtitle: Text(Fmt.count(counts[entry.key] ?? 0, 'set')),
+                    selected: entry.key == exerciseId,
+                    trailing: entry.key == exerciseId ? const Icon(Icons.check_rounded) : null,
+                    onTap: () => Navigator.pop(context, entry.key),
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.add_rounded),
+                  title: const Text('Add exercise'),
+                  onTap: () => Navigator.pop(context, -1),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (!context.mounted || selected == null) return;
+      if (selected == -1) selected = await context.push<int>('/pick-exercise?date=$date&return=1');
+      if (selected != null && selected != exerciseId && context.mounted) {
+        context.pushReplacement('/log/$selected?date=$date');
+      }
+    });
+  }
 }
 
 class _TrackTab extends ConsumerStatefulWidget {
@@ -203,7 +258,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
             padding: const EdgeInsets.only(bottom: 14),
             child: ExpansionTile(
               tilePadding: EdgeInsets.zero,
-              title: const Text('Technique notes'),
+              title: const Text('Exercise notes'),
               leading: const Icon(Icons.lightbulb_outline_rounded),
               children: [
                 Padding(
@@ -273,7 +328,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
               child: Semantics(
                 container: true,
                 child: Text(
-                  'How hard was this set?\nOptional RPE, from 1 to 10.',
+                  'Effort from 1 to 10',
                   style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               ),
@@ -310,9 +365,11 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           children: [
             Expanded(
               child: TextButton.icon(
-                onPressed: _startRest,
+                onPressed: () => showRestTimerSettings(context, ref, exercise: widget.exercise),
                 icon: const Icon(Icons.timer_outlined, size: 19),
-                label: Text('Rest · ${Fmt.duration(widget.exercise.defaultRestTimeSeconds ?? settings?.restTimerSeconds ?? 60)}'),
+                label: Text(
+                  'Rest timer · ${Fmt.duration(widget.exercise.defaultRestTimeSeconds ?? settings?.restTimerSeconds ?? 60)}',
+                ),
               ),
             ),
             if (_previous != null)
@@ -350,11 +407,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
             onRetry: () => ref.invalidate(exerciseSetsProvider((exerciseId: widget.exercise.id, date: widget.date))),
           ),
           data: (items) => items.isEmpty
-              ? const EmptyState(
-                  icon: Icons.playlist_add_check_rounded,
-                  title: 'Ready for set one',
-                  message: 'Log a set above. Tap a saved set to edit it, or use its menu for notes and more.',
-                )
+              ? const EmptyState(icon: Icons.playlist_add_check_rounded, title: 'No sets')
               : Column(
                   children: [
                     for (var i = 0; i < items.length; i++) _setCard(items[i], i, prs, units, settings?.markSetsComplete ?? false),
@@ -544,7 +597,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
                     [
-                      if (s.isPlanned) 'Planned',
+                      if (s.isPlanned) 'Not completed',
                       if (prs.contains(s.id)) 'Personal record',
                       if (s.rpe != null) 'RPE ${Fmt.number(s.rpe!)}',
                     ].join(' · '),
@@ -556,7 +609,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
                 Text('Superset · ${s.groupName}', style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant)),
             ],
           ),
-          onTap: () => _selectSet(s, editing: true),
+          onTap: () => _editing?.id == s.id ? _cancelEdit() : _selectSet(s, editing: true),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -565,7 +618,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
                 tooltip: 'Set options',
                 onSelected: (action) => _setAction(s, action),
                 itemBuilder: (_) => [
-                  PopupMenuItem(value: 'completion', child: Text(s.isPlanned ? 'Mark complete' : 'Mark as planned')),
+                  PopupMenuItem(value: 'completion', child: Text(s.isPlanned ? 'Mark complete' : 'Mark incomplete')),
                   const PopupMenuItem(value: 'edit', child: Text('Edit set')),
                   const PopupMenuItem(value: 'values', child: Text('Use values for next set')),
                   const PopupMenuItem(value: 'note', child: Text('Set note')),
@@ -585,7 +638,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
     if (!await attempt(context, () => repo.setComplete(set.id, complete)) || !mounted) return;
     notice(
       context,
-      complete ? 'Set completed' : 'Set marked as planned',
+      complete ? 'Set completed' : 'Set marked incomplete',
       action: SnackBarAction(label: 'Undo', onPressed: () => attempt(context, () => repo.setComplete(set.id, !complete))),
     );
     if (complete && (ref.read(settingsProvider).asData?.value.restTimerAutoStart ?? false)) _startRest();

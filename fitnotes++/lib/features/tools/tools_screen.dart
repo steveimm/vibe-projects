@@ -64,15 +64,6 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
               onSelectionChanged: (v) => setState(() => _mode = v.first),
             ),
             const SizedBox(height: 24),
-            Text(
-              _mode == 0
-                  ? 'Estimate your strength'
-                  : _mode == 1
-                  ? 'Load the bar'
-                  : 'Find your working weight',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 20),
             TextField(
               controller: _weight,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),

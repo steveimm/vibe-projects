@@ -107,7 +107,7 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
                             ? 'Estimates need a positive weight and reps within your configured limit.'
                             : _metric == GraphMetric.weightAtReps
                             ? 'No logged sets with $_atReps reps in this range.'
-                            : 'Try a wider date range. Planned sets appear after you complete them.',
+                            : 'Only completed sets are shown.',
                         action: _days == 0
                             ? null
                             : TextButton(onPressed: () => setState(() => _days = 0), child: const Text('Show all time')),
@@ -188,7 +188,7 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
     final best = estimates.fold<double>(0, (v, p) => math.max(v, p.value));
     if (actual.isEmpty) {
       return const Card(
-        child: Padding(padding: EdgeInsets.all(20), child: Text('Complete a weighted set to start your records.')),
+        child: Padding(padding: EdgeInsets.all(20), child: Text('No personal records')),
       );
     }
     final reps = _estimated ? List.generate(15, (i) => i + 1) : (actual.keys.toList()..sort());
@@ -230,10 +230,7 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
       error: (_, _) => ErrorState(onRetry: () => ref.invalidate(goalsProvider(widget.exercise.id))),
       data: (goals) => goals.isEmpty
           ? const Card(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Text('Set a target for this exercise. Your logged sessions update it automatically.'),
-              ),
+              child: Padding(padding: EdgeInsets.all(20), child: Text('No goals')),
             )
           : Column(
               children: [

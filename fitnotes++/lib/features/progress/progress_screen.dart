@@ -92,8 +92,6 @@ class _TrainingOverviewState extends ConsumerState<_TrainingOverview> with Autom
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
           children: [
-            Text('Small steps.\nVisible progress.', style: Theme.of(context).textTheme.headlineLarge),
-            const SizedBox(height: 14),
             Wrap(
               spacing: 8,
               children: [
@@ -168,8 +166,7 @@ class _TrainingOverviewState extends ConsumerState<_TrainingOverview> with Autom
             if (selected.isEmpty)
               EmptyState(
                 icon: Icons.insights_outlined,
-                title: 'Every set adds up',
-                message: 'Complete a workout to see your training volume, category balance, and recent records.',
+                title: 'No completed sets',
                 action: FilledButton(onPressed: () => context.go('/'), child: const Text('Go to workout')),
               ),
             if (counts.isNotEmpty) ...[
@@ -215,7 +212,7 @@ class _TrainingOverviewState extends ConsumerState<_TrainingOverview> with Autom
               ),
               if (records.isEmpty)
                 const Card(
-                  child: Padding(padding: EdgeInsets.all(20), child: Text('Your next personal record will appear here.')),
+                  child: Padding(padding: EdgeInsets.all(20), child: Text('No personal records')),
                 ),
               for (final record in records) _RecordTile(record: record),
             ],

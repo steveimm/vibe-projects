@@ -8,7 +8,7 @@ import '../../core/database/tables.dart';
 import '../../core/providers.dart';
 import '../../core/repositories/workout_repository.dart';
 import '../../core/util/dates.dart';
-import '../../core/services/rest_timer.dart';
+import 'workout_session_card.dart';
 import '../../core/util/format.dart';
 import '../../shared/widgets.dart';
 import 'workout_calendar.dart';
@@ -17,7 +17,7 @@ Future<void> startCopyWorkout(BuildContext context, WidgetRef ref, String date) 
   final priors = await ref.read(workoutRepositoryProvider).workoutDatesBefore(date);
   if (!context.mounted) return;
   if (priors.isEmpty) {
-    notice(context, 'Log a workout first, then you can copy it to another day.');
+    notice(context, 'No previous workouts to copy.');
     return;
   }
   final picked = await pickCopyDay(context, ref, initialDate: priors.first, selectableDays: priors.toSet());
@@ -160,7 +160,7 @@ Future<void> _editDayNote(BuildContext context, WidgetRef ref, String date) asyn
   final result = await prompt(
     context,
     title: 'Workout note',
-    label: 'How did the session feel?',
+    label: 'Note',
     value: current,
     optional: true,
     lines: 4,
@@ -266,7 +266,7 @@ class _DayView extends ConsumerWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           children: [
-            _SessionCard(date: date, sets: sets),
+            WorkoutSessionCard(date: date, sets: sets),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -284,8 +284,7 @@ class _DayView extends ConsumerWidget {
             if (sets.isEmpty)
               EmptyState(
                 icon: Icons.fitness_center_rounded,
-                title: 'Make room for your next session',
-                message: 'Start with an exercise or follow a routine. Your progress begins with the first set.',
+                title: 'No sets',
                 action: TextButton.icon(
                   onPressed: () => startCopyWorkout(context, ref, date),
                   icon: const Icon(Icons.copy_outlined),
@@ -312,7 +311,7 @@ class _DayView extends ConsumerWidget {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
                 leading: const Icon(Icons.edit_note_rounded),
                 title: Text(note == null ? 'Add a workout note' : 'Workout note'),
-                subtitle: note == null ? const Text('Energy, technique, or something to remember') : Text(note.comment),
+                subtitle: note == null ? null : Text(note.comment),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => _editDayNote(context, ref, date),
               ),
@@ -320,107 +319,6 @@ class _DayView extends ConsumerWidget {
           ],
         );
       },
-    );
-  }
-}
-
-class _SessionCard extends ConsumerWidget {
-  const _SessionCard({required this.date, required this.sets});
-  final String date;
-  final List<LoggedSet> sets;
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final done = sets.where((s) => !s.set.isPlanned).toList();
-    final volume = done.fold<double>(0, (v, s) => v + s.effectiveWeight * s.set.reps);
-    final units = ref.watch(unitsProvider);
-    final session = ref.watch(sessionProvider(date)).asData?.value;
-    final running = session != null && session.endedAt == null;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppTheme.ink, Color(0xFF2C5040)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(color: AppTheme.lime, borderRadius: BorderRadius.circular(20)),
-                child: Text(
-                  running
-                      ? 'SESSION IN PROGRESS'
-                      : session?.endedAt != null
-                      ? 'SESSION FINISHED'
-                      : 'WORKOUT LOG',
-                  style: const TextStyle(color: AppTheme.ink, fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.w800),
-                ),
-              ),
-              const Spacer(),
-              const Icon(Icons.fitness_center_rounded, color: Colors.white54, size: 22),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(child: StatValue('Sets logged', '${done.length}', inverse: true)),
-              Expanded(child: StatValue('Volume · ${units.weightLabel}', Fmt.number(units.weightFromKg(volume)), inverse: true)),
-              Expanded(child: StatValue('Planned sets', '${sets.length - done.length}', inverse: true)),
-            ],
-          ),
-          if (date == Dates.today() || session != null) ...[
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Icon(running ? Icons.timer_outlined : Icons.schedule_rounded, size: 16, color: Colors.white70),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: session == null
-                      ? const Text('Ready when you are', style: TextStyle(color: Colors.white70, fontSize: 12))
-                      : StreamBuilder<int>(
-                          stream: running ? Stream.periodic(const Duration(seconds: 1), (i) => i) : null,
-                          builder: (_, _) => Text(
-                            Fmt.duration(
-                              (session.endedAt ?? DateTime.now()).difference(session.startedAt).inSeconds.clamp(0, 86400),
-                            ),
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                ),
-                if (session?.endedAt == null)
-                  TextButton(
-                    style: TextButton.styleFrom(foregroundColor: AppTheme.lime, minimumSize: const Size(64, 36)),
-                    onPressed: () => attempt(context, () async {
-                      if (running) {
-                        final planned = sets.where((s) => s.set.isPlanned).length;
-                        if (planned > 0 &&
-                            !await confirm(
-                              context,
-                              title: 'Finish this session?',
-                              message: '$planned planned sets remain. They will stay planned and won’t count toward progress.',
-                              action: 'Finish session',
-                            )) {
-                          return;
-                        }
-                        await ref.read(workoutRepositoryProvider).finishSession(date);
-                        ref.read(restTimerProvider.notifier).stop();
-                      } else {
-                        await ref.read(workoutRepositoryProvider).startSession(date);
-                      }
-                    }),
-                    child: Text(running ? 'Finish session' : 'Start timer'),
-                  ),
-              ],
-            ),
-          ],
-        ],
-      ),
     );
   }
 }
@@ -490,7 +388,7 @@ class _ExerciseCard extends ConsumerWidget {
                         ),
                       ),
                       if (sets[i].set.isPlanned)
-                        Text('Planned', style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant))
+                        Text('Not completed', style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant))
                       else if (prs.contains(sets[i].set.id))
                         const Tooltip(
                           message: 'Personal record',

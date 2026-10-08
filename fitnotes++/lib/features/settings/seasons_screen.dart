@@ -14,18 +14,14 @@ class SeasonsScreen extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text('A fresh starting point.', style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 12),
-          const Text(
-            'Start a season to track personal records from a chosen date. Your history and all-time records are always preserved.',
-          ),
+          const Text('A season tracks personal records from a chosen date without deleting past workouts.'),
           const SizedBox(height: 20),
           FilledButton.icon(
             onPressed: () => showDialog(context: context, builder: (_) => const _SeasonDialog()),
             icon: const Icon(Icons.add_rounded),
             label: const Text('Start a season'),
           ),
-          const SectionTitle('Your seasons'),
+          const SectionTitle('Seasons'),
           ref
               .watch(seasonsProvider)
               .when(
@@ -33,10 +29,7 @@ class SeasonsScreen extends ConsumerWidget {
                 error: (_, _) => ErrorState(onRetry: () => ref.invalidate(seasonsProvider)),
                 data: (seasons) => seasons.isEmpty
                     ? const Card(
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: Text('No resets. Record badges currently use your all-time history.'),
-                        ),
+                        child: Padding(padding: EdgeInsets.all(20), child: Text('Records currently use all workouts.')),
                       )
                     : Column(
                         children: [

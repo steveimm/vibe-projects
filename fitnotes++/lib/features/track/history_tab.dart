@@ -23,11 +23,7 @@ class HistoryTab extends ConsumerWidget {
       data: (sets) {
         if (sets.isEmpty) {
           return const SingleChildScrollView(
-            child: EmptyState(
-              icon: Icons.history_rounded,
-              title: 'Your history starts here',
-              message: 'Log your first set to build a record of each session.',
-            ),
+            child: EmptyState(icon: Icons.history_rounded, title: 'No history'),
           );
         }
         final days = <String, List<WorkoutSet>>{};
@@ -72,7 +68,7 @@ class HistoryTab extends ConsumerWidget {
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                           subtitle: entry.value[j].isPlanned
-                              ? const Text('Planned')
+                              ? const Text('Not completed')
                               : entry.value[j].note?.isNotEmpty == true
                               ? Text(entry.value[j].note!)
                               : entry.value[j].rpe == null

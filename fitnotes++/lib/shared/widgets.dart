@@ -50,10 +50,10 @@ class SectionTitle extends StatelessWidget {
 }
 
 class EmptyState extends StatelessWidget {
-  const EmptyState({super.key, required this.icon, required this.title, required this.message, this.action});
+  const EmptyState({super.key, required this.icon, required this.title, this.message, this.action});
   final IconData icon;
   final String title;
-  final String message;
+  final String? message;
   final Widget? action;
   @override
   Widget build(BuildContext context) => Entrance(
@@ -73,12 +73,14 @@ class EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
+          if (message != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              message!,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+          ],
           if (action != null) ...[const SizedBox(height: 22), action!],
         ],
       ),
@@ -92,8 +94,7 @@ class ErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) => EmptyState(
     icon: Icons.cloud_off_rounded,
-    title: 'Something didn’t load',
-    message: 'Your saved data is still here. Try loading it again.',
+    title: 'Could not load data',
     action: OutlinedButton(onPressed: onRetry, child: const Text('Try again')),
   );
 }
@@ -251,7 +252,7 @@ class _PromptState extends State<_Prompt> {
         maxLength: widget.maxLength,
         keyboardType: widget.keyboard,
         textCapitalization: widget.keyboard == null ? TextCapitalization.sentences : TextCapitalization.none,
-        decoration: InputDecoration(labelText: widget.label),
+        decoration: InputDecoration(labelText: widget.label, counterText: ''),
         onFieldSubmitted: (_) => _save(),
         validator: (value) =>
             value!.trim().isEmpty && !widget.optional ? 'This field is required.' : widget.validate?.call(value.trim()),

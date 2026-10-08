@@ -4,13 +4,13 @@ An offline workout logger for Android, rebuilt with Flutter. No account, ads, or
 
 ## Features
 
-- **Workout log:** ten recording types, editable sets, RPE, per-set and daily notes, completion status, selective copying, deletion with undo, and a session timer.
+- **Workout log:** ten recording types, editable sets, RPE, per-set and daily notes, completion status, selective copying, deletion with undo, and an editable session timer with pause/resume.
 - **Exercise library:** 46 starter exercises, search, category filters, favorites, archive/restore, category management, and exercise-specific rest and weight increments.
 - **Routines:** named training days, ordered preset sets, optional previous-session values, superset labels, and saving an existing workout as a routine.
 - **Progress:** date-range and exercise-specific charts, Brzycki 1RM estimates, actual and estimated rep records, goals, training balance, and measurement history.
 - **Weight multipliers:** named factors per exercise, with the combined factor stored on each new set. Existing sets retain their original factor.
 - **PR seasons:** reset the record-comparison window without deleting any history. All-time records remain available.
-- **Rest timer:** pause/resume, added time, auto-start, sound and vibration, background notifications, and recovery of running or paused timers after reopening the app.
+- **Rest timer:** duration and auto-start controls in the set editor, per-exercise duration, editable remaining time, pause/resume, added time, sound and vibration, background notifications, and recovery of running or paused timers after reopening the app.
 - **Tools:** one-rep-max, percentage, and plate-loading calculators.
 - **Preferences:** light/dark/system appearance, metric/imperial units, week start, weight increments, record highlights, completion controls, keep-screen-on, and 1RM rep limits.
 - **Data:** full SQLite backup/restore with recovery of the previous state, CSV export/import, and original FitNotes workout import.
@@ -19,9 +19,9 @@ The interface uses shared typography, light and dark surfaces, compact entry con
 
 ## Data behavior
 
-Weights are stored in kilograms and distances in meters. Display-unit changes preserve the stored values. A multiplier is captured when a set is added, including a copied or routine-generated planned set.
+Weights are stored in kilograms and distances in meters. Display-unit changes preserve the stored values. A multiplier is captured when a set is added, including a copied or routine-generated set.
 
-Planned sets appear in the log and calendar. They do not count toward volume, records, graphs, or performed-workout counts until marked complete. Logging a new set records it as performed.
+Copied and routine sets appear as "Not completed" in the log and calendar. They do not count toward volume, records, graphs, or performed-workout counts until marked complete. Logging a new set records it as performed.
 
 Full `.fitnotesplus` backups contain the app's exercises, sets, notes, routines, measurements, goals, multipliers, seasons, and preferences. Restore validates the database and replaces data in a transaction. **Undo last restore** recovers the automatic copy made immediately before restoration.
 
@@ -29,7 +29,7 @@ Original `.fitnotes` imports merge categories, exercises, workout sets, set comm
 
 CSV exports contain performed sets in the standard ten-column FitNotes format, using canonical kg/meters and effective weights. CSV import also supports the legacy combined `Weight (lbs)` column. Reimporting an export does not duplicate matching sets. Use a full backup to retain raw weights, multipliers, RPE, routines, and preferences.
 
-Schema version 2 migrates existing version 1 databases without discarding their workout history. The reference backup and reconstruction notes are in [`ref/`](ref/) and [`FITNOTES_REFERENCE.md`](FITNOTES_REFERENCE.md).
+Schema version 3 migrates existing version 1 and 2 databases without discarding their workout history. Version 2 backups can also be restored. The reference backup and reconstruction notes are in [`ref/`](ref/) and [`FITNOTES_REFERENCE.md`](FITNOTES_REFERENCE.md).
 
 ## Development
 
@@ -40,11 +40,11 @@ flutter pub get
 dart run build_runner build
 flutter analyze
 flutter test
-flutter build apk --debug --target-platform android-arm64
-flutter build apk --release --target-platform android-arm64
+flutter build apk --debug --split-per-abi
+flutter build apk --release --split-per-abi
 ```
 
-APK outputs are in `build/app/outputs/flutter-apk/`. The existing Android release configuration uses the development signing key.
+Build separate APKs per ABI. Outputs are in `build/app/outputs/flutter-apk/`. Use `app-arm64-v8a-release.apk` for the ARM64 emulator. The existing Android release configuration uses the development signing key.
 
 - `lib/core/database/`: schema, migration, and starter data.
 - `lib/core/repositories/`: workout, exercise, routine, progress, and preference operations.
