@@ -478,7 +478,7 @@ class _WorkoutToolbar extends SliverPersistentHeaderDelegate {
                 icon: const Icon(Icons.delete_outline_rounded),
               ),
               const SizedBox(width: 8),
-              FilledButton.icon(onPressed: onDone, icon: const Icon(Icons.check_rounded), label: const Text('Done')),
+              IconButton.filled(tooltip: 'Done', onPressed: onDone, icon: const Icon(Icons.check_rounded)),
             ] else
               IconButton.filled(tooltip: 'Add exercise', onPressed: onAdd, icon: const Icon(Icons.add_rounded)),
           ],
@@ -516,7 +516,7 @@ class _ExerciseCard extends ConsumerWidget {
     return Semantics(
       selected: editing ? selected : null,
       child: Card(
-        color: editing && selected ? colors.primaryContainer : null,
+        color: editing && selected ? Color.alphaBlend(colors.primary.withValues(alpha: 0.08), colors.surfaceContainerLow) : null,
         shape: editing && selected
             ? RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),

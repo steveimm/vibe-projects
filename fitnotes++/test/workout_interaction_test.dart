@@ -105,7 +105,7 @@ void main() {
     final gesture = await tester.startGesture(origin);
     await tester.pump(const Duration(milliseconds: 650));
     await tester.pump(const Duration(milliseconds: 350));
-    expect(find.text('Done'), findsOneWidget);
+    expect(find.byTooltip('Done'), findsOneWidget);
     expect(find.byTooltip('Add exercise'), findsNothing);
     final previewCard = find.descendant(of: find.byKey(const ValueKey('workout-drag-preview')), matching: find.byType(Card));
     expect(tester.getSize(previewCard).height, originalHeight);
@@ -137,7 +137,7 @@ void main() {
     expect(find.text('Row'), findsOneWidget);
     expect(find.text('Bench press'), findsOneWidget);
     expect(tester.getTopLeft(find.text('Row')).dy, lessThan(tester.getTopLeft(find.text('Bench press')).dy));
-    await tester.tap(find.text('Done'));
+    await tester.tap(find.byTooltip('Done'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Delete selected exercises'), findsNothing);
     expect(find.byType(Checkbox), findsNothing);
@@ -191,7 +191,7 @@ void main() {
     final pinnedTop = tester.getTopLeft(toolbar).dy;
     await tester.longPress(find.text('Exercise 7'));
     await tester.pumpAndSettle();
-    expect(find.text('Done').hitTestable(), findsOneWidget);
+    expect(find.byTooltip('Done').hitTestable(), findsOneWidget);
     expect(find.byTooltip('Add exercise'), findsNothing);
     final actions = find.byWidgetPredicate((w) => w is AppMenuButton<String> && w.tooltip == 'Workout actions');
     expect(tester.widget<AppMenuButton<String>>(actions).enabled, false);
@@ -204,9 +204,9 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -450));
     await tester.pumpAndSettle();
-    expect(find.text('Done').hitTestable(), findsOneWidget);
+    expect(find.byTooltip('Done').hitTestable(), findsOneWidget);
     expect(tester.getTopLeft(toolbar).dy, pinnedTop);
-    await tester.tap(find.text('Done'));
+    await tester.tap(find.byTooltip('Done'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Add exercise').hitTestable(), findsOneWidget);
     expect(tester.widget<AppMenuButton<String>>(actions).enabled, true);
