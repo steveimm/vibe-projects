@@ -53,29 +53,14 @@ class WorkoutSessionCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Expanded(child: StatValue('Sets', '${done.length}', inverse: true)),
-              Expanded(child: StatValue('Volume · ${units.weightLabel}', Fmt.number(units.weightFromKg(volume)), inverse: true)),
-              PopupMenuButton<String>(
-                tooltip: 'Workout timer options',
-                iconColor: Colors.white70,
-                padding: EdgeInsets.zero,
-                onSelected: (action) async {
-                  if (action == 'edit') {
-                    await _edit(context, ref);
-                  } else if (await confirm(
-                        context,
-                        title: 'Reset workout time?',
-                        message: 'Set the timer to zero? Logged sets will be kept.',
-                        action: 'Reset',
-                      ) &&
-                      context.mounted) {
-                    await attempt(context, () => repo.resetSession(date));
-                  }
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'edit', child: Text('Edit duration')),
-                  if (session != null) const PopupMenuItem(value: 'reset', child: Text('Reset timer')),
-                ],
+              Expanded(child: StatValue('Sets', '${done.length}', inverse: true, centered: true)),
+              Expanded(
+                child: StatValue(
+                  'Volume · ${units.weightLabel}',
+                  Fmt.number(units.weightFromKg(volume)),
+                  inverse: true,
+                  centered: true,
+                ),
               ),
             ],
           ),
@@ -144,6 +129,28 @@ class WorkoutSessionCard extends ConsumerWidget {
                         onPressed: finish,
                         child: const Text('Finish'),
                       ),
+                  PopupMenuButton<String>(
+                    tooltip: 'Workout timer options',
+                    iconColor: Colors.white70,
+                    padding: EdgeInsets.zero,
+                    onSelected: (action) async {
+                      if (action == 'edit') {
+                        await _edit(context, ref);
+                      } else if (await confirm(
+                            context,
+                            title: 'Reset workout time?',
+                            message: 'Set the timer to zero? Logged sets will be kept.',
+                            action: 'Reset',
+                          ) &&
+                          context.mounted) {
+                        await attempt(context, () => repo.resetSession(date));
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(value: 'edit', child: Text('Edit duration')),
+                      if (session != null) const PopupMenuItem(value: 'reset', child: Text('Reset timer')),
+                    ],
+                  ),
                 ],
               );
             },

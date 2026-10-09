@@ -4,7 +4,7 @@ An offline workout logger for Android, rebuilt with Flutter. No account, ads, or
 
 ## Features
 
-- **Workout log:** ten recording types, editable sets, RPE, per-set and daily notes, completion status, selective copying, deletion with undo, and an editable session timer with pause/resume.
+- **Workout log:** ten recording types, exercise reordering, exercise removal with undo, editable sets, RPE, per-set and daily notes, completion status, selective copying, deletion with undo, and an editable session timer with pause/resume.
 - **Exercise library:** 46 starter exercises, search, category filters, favorites, archive/restore, category management, and exercise-specific rest and weight increments.
 - **Routines:** named training days, ordered preset sets, optional previous-session values, superset labels, and saving an existing workout as a routine.
 - **Progress:** date-range and exercise-specific charts, Brzycki 1RM estimates, actual and estimated rep records, goals, training balance, and measurement history.
@@ -29,7 +29,7 @@ Original `.fitnotes` imports merge categories, exercises, workout sets, set comm
 
 CSV exports contain performed sets in the standard ten-column FitNotes format, using canonical kg/meters and effective weights. CSV import also supports the legacy combined `Weight (lbs)` column. Reimporting an export does not duplicate matching sets. Use a full backup to retain raw weights, multipliers, RPE, routines, and preferences.
 
-Schema version 3 migrates existing version 1 and 2 databases without discarding their workout history. Version 2 backups can also be restored. The reference backup and reconstruction notes are in [`ref/`](ref/) and [`FITNOTES_REFERENCE.md`](FITNOTES_REFERENCE.md).
+Schema version 4 migrates existing version 1, 2, and 3 databases without discarding their workout history. Version 2 and 3 backups can also be restored. The reference backup and reconstruction notes are in [`ref/`](ref/) and [`FITNOTES_REFERENCE.md`](FITNOTES_REFERENCE.md).
 
 ## Development
 

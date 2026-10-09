@@ -52,15 +52,15 @@ void main() {
     );
     await tester.pumpAndSettle();
     final container = ProviderScope.containerOf(tester.element(find.byType(HomeScreen)));
-    final headingSize = tester.getSize(find.text('Today’s workout'));
+    final headingSize = tester.getSize(find.text('Today'));
     final weekTop = tester.getTopLeft(find.byType(WorkoutWeekStrip)).dy;
     final cardTop = tester.getTopLeft(find.byType(WorkoutSessionCard)).dy;
-    final fontSize = tester.widget<Text>(find.text('Today’s workout')).style!.fontSize;
+    final fontSize = tester.widget<Text>(find.text('Today')).style!.fontSize;
     for (final date in [Dates.shift(Dates.today(), -1), '2025-12-31', Dates.today()]) {
       container.read(selectedDateProvider.notifier).set(date);
       await tester.pumpAndSettle();
       final heading = date == Dates.today()
-          ? 'Today’s workout'
+          ? 'Today'
           : DateFormat(Dates.parse(date).year == DateTime.now().year ? 'EEE, d MMM' : 'EEE, d MMM yyyy')
                 .format(Dates.parse(date));
       expect(tester.getSize(find.text(heading)).height, headingSize.height);
@@ -75,7 +75,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('01'),
       200,
-      scrollable: find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)),
+      scrollable: find.descendant(of: find.byType(ReorderableListView), matching: find.byType(Scrollable)),
     );
     await tester.pumpAndSettle();
     expect(tester.getRect(find.text('60 kg × 8 reps')).left - tester.getRect(find.text('01')).right, greaterThanOrEqualTo(12));
@@ -168,6 +168,7 @@ void main() {
             ? find.byTooltip('Pause')
             : find.widgetWithText(TextButton, 'Pause');
         final duration = find.byTooltip('Edit workout duration');
+        expect(tester.getCenter(find.byTooltip('Workout timer options')).dy, closeTo(tester.getCenter(duration).dy, 0.1));
         expect(tester.getCenter(finish).dy, closeTo(tester.getCenter(duration).dy, 0.1));
         expect(tester.getCenter(pause).dy, closeTo(tester.getCenter(duration).dy, 0.1));
         if (scale == 1) expect(tester.getSize(find.byType(WorkoutSessionCard)).height, lessThan(160));

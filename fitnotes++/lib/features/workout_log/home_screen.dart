@@ -1,11 +1,10 @@
-import 'dart:math' as math;
-
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../app/theme.dart';
 import '../../core/database/tables.dart';
 import '../../core/providers.dart';
 import '../../core/repositories/workout_repository.dart';
@@ -35,20 +34,22 @@ class HomeScreen extends ConsumerWidget {
     final log = ref.watch(dayLogProvider(date));
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(color: AppTheme.ink, borderRadius: BorderRadius.circular(10)),
-              child: const Icon(Icons.add_rounded, color: AppTheme.lime, size: 24),
-            ),
-            const SizedBox(width: 10),
-            const Flexible(child: Text('FitNotes++', maxLines: 1, overflow: TextOverflow.ellipsis)),
-          ],
+        title: Text(
+          date == Dates.today()
+              ? 'Today'
+              : DateFormat(Dates.parse(date).year == DateTime.now().year ? 'EEE, d MMM' : 'EEE, d MMM yyyy')
+                    .format(Dates.parse(date)),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleLarge,
         ),
         actions: [
+          if (date != Dates.today())
+            IconButton(
+              tooltip: 'Go to today',
+              icon: const Icon(Icons.today_outlined),
+              onPressed: () => ref.read(selectedDateProvider.notifier).goToday(),
+            ),
           IconButton(
             tooltip: 'Calendar',
             icon: const Icon(Icons.calendar_month_outlined),
@@ -75,37 +76,6 @@ class HomeScreen extends ConsumerWidget {
       body: ContentWidth(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                height: math.max(48, MediaQuery.textScalerOf(context).scale(21) * 1.2 + 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        Dates.navLabel(date) == 'TODAY'
-                            ? 'Today’s workout'
-                            : DateFormat(Dates.parse(date).year == DateTime.now().year ? 'EEE, d MMM' : 'EEE, d MMM yyyy')
-                                  .format(Dates.parse(date)),
-                        style: Theme.of(context).textTheme.titleLarge,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Visibility(
-                      visible: date != Dates.today(),
-                      maintainSize: true,
-                      maintainAnimation: true,
-                      maintainState: true,
-                      child: TextButton(
-                        onPressed: () => ref.read(selectedDateProvider.notifier).goToday(),
-                        child: const Text('Today'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: WorkoutWeekStrip(
@@ -195,11 +165,20 @@ Future<void> _editDayNote(BuildContext context, WidgetRef ref, String date) asyn
   }
 }
 
-class _DayView extends ConsumerWidget {
+class _DayView extends ConsumerStatefulWidget {
   const _DayView({super.key, required this.date});
   final String date;
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_DayView> createState() => _DayViewState();
+}
+
+class _DayViewState extends ConsumerState<_DayView> {
+  bool _editing = false, _savingOrder = false;
+  List<int>? _order;
+
+  @override
+  Widget build(BuildContext context) {
+    final date = widget.date;
     final log = ref.watch(dayLogProvider(date));
     final note = ref.watch(dayNoteProvider(date)).asData?.value;
     return log.when(
@@ -210,73 +189,153 @@ class _DayView extends ConsumerWidget {
         for (final s in sets) {
           (groups[s.set.exerciseId] ??= []).add(s);
         }
-        return ListView(
+        if (listEquals(_order, groups.keys.toList())) _order = null;
+        final ids = {...?_order, ...groups.keys}.where(groups.containsKey).toList();
+        return ReorderableListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          children: [
-            WorkoutSessionCard(date: date, sets: sets),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => context.push('/pick-exercise?date=$date'),
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Add exercise'),
+          buildDefaultDragHandles: false,
+          itemCount: ids.length,
+          onReorderStart: (_) {
+            HapticFeedback.selectionClick();
+            setState(() => _editing = true);
+          },
+          onReorderItem: (oldIndex, newIndex) => _reorder(ids, oldIndex, newIndex),
+          header: Column(
+            children: [
+              WorkoutSessionCard(date: date, sets: sets),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => context.push('/pick-exercise?date=$date'),
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Add exercise'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  OutlinedButton(onPressed: () => context.go('/routines?date=$date'), child: const Text('Routine')),
+                ],
+              ),
+              if (sets.isEmpty)
+                EmptyState(
+                  icon: Icons.fitness_center_rounded,
+                  title: 'No sets',
+                  action: TextButton.icon(
+                    onPressed: () => startCopyWorkout(context, ref, date),
+                    icon: const Icon(Icons.copy_outlined),
+                    label: const Text('Copy a previous workout'),
                   ),
                 ),
-                const SizedBox(width: 10),
-                OutlinedButton(onPressed: () => context.go('/routines?date=$date'), child: const Text('Routine')),
-              ],
+              if (groups.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12, bottom: 8),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(Fmt.count(groups.length, 'exercise'), style: Theme.of(context).textTheme.titleMedium)),
+                      SizedBox(
+                        height: 48,
+                        child: _editing
+                            ? TextButton(onPressed: () => setState(() => _editing = false), child: const Text('Done'))
+                            : Center(
+                                child: Text(
+                                  Fmt.count(sets.length, 'set'),
+                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          itemBuilder: (context, index) {
+            final id = ids[index];
+            return Padding(
+              key: ValueKey(id),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: ReorderableDelayedDragStartListener(
+                index: index,
+                enabled: !_savingOrder,
+                child: _ExerciseCard(
+                  date: date,
+                  exerciseId: id,
+                  sets: groups[id]!,
+                  trailing: _editing
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: 'Remove ${groups[id]!.first.exerciseName} from workout',
+                              onPressed: _savingOrder ? null : () => _remove(id, groups[id]!.first.exerciseName),
+                              icon: const Icon(Icons.delete_outline_rounded),
+                            ),
+                            ReorderableDragStartListener(
+                              index: index,
+                              enabled: !_savingOrder,
+                              child: const SizedBox(width: 40, height: 48, child: Icon(Icons.drag_handle_rounded)),
+                            ),
+                          ],
+                        )
+                      : null,
+                ),
+              ),
+            );
+          },
+          footer: Card(
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+              titleTextStyle: Theme.of(context).textTheme.titleMedium,
+              subtitleTextStyle: Theme.of(context).textTheme.bodyMedium,
+              leading: const Icon(Icons.edit_note_rounded),
+              title: Text(note == null ? 'Add a workout note' : 'Workout note'),
+              subtitle: note == null ? null : Text(note.comment),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => _editDayNote(context, ref, date),
             ),
-            if (sets.isEmpty)
-              EmptyState(
-                icon: Icons.fitness_center_rounded,
-                title: 'No sets',
-                action: TextButton.icon(
-                  onPressed: () => startCopyWorkout(context, ref, date),
-                  icon: const Icon(Icons.copy_outlined),
-                  label: const Text('Copy a previous workout'),
-                ),
-              ),
-            if (groups.isNotEmpty)
-              SectionTitle(
-                '${groups.length} ${groups.length == 1 ? 'exercise' : 'exercises'}',
-                trailing: Text(
-                  '${sets.length} ${sets.length == 1 ? 'set' : 'sets'}',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                ),
-              ),
-            for (final entry in groups.entries)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Entrance(
-                  child: _ExerciseCard(date: date, exerciseId: entry.key, sets: entry.value),
-                ),
-              ),
-            Card(
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                titleTextStyle: Theme.of(context).textTheme.titleMedium,
-                subtitleTextStyle: Theme.of(context).textTheme.bodyMedium,
-                leading: const Icon(Icons.edit_note_rounded),
-                title: Text(note == null ? 'Add a workout note' : 'Workout note'),
-                subtitle: note == null ? null : Text(note.comment),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => _editDayNote(context, ref, date),
-              ),
-            ),
-          ],
+          ),
         );
       },
     );
   }
+
+  Future<void> _reorder(List<int> ids, int oldIndex, int newIndex) async {
+    if (_savingOrder || oldIndex == newIndex) return;
+    final order = [...ids];
+    order.insert(newIndex, order.removeAt(oldIndex));
+    setState(() {
+      _order = order;
+      _savingOrder = true;
+    });
+    final ok = await attempt(context, () => ref.read(workoutRepositoryProvider).reorderExercises(widget.date, order));
+    if (mounted) {
+      setState(() {
+        _savingOrder = false;
+        if (!ok) _order = null;
+      });
+    }
+  }
+
+  Future<void> _remove(int exerciseId, String name) async {
+    final repo = ref.read(workoutRepositoryProvider);
+    await attempt(context, () async {
+      final snapshot = await repo.removeExerciseFromDay(widget.date, exerciseId);
+      if (!mounted) return;
+      notice(
+        context,
+        '$name removed from this workout',
+        action: SnackBarAction(label: 'Undo', onPressed: () => attempt(context, () => repo.restoreDay(snapshot))),
+      );
+    });
+  }
 }
 
 class _ExerciseCard extends ConsumerWidget {
-  const _ExerciseCard({required this.date, required this.exerciseId, required this.sets});
+  const _ExerciseCard({required this.date, required this.exerciseId, required this.sets, this.trailing});
   final String date;
   final int exerciseId;
   final List<LoggedSet> sets;
+  final Widget? trailing;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final first = sets.first;
@@ -302,7 +361,12 @@ class _ExerciseCard extends ConsumerWidget {
                   ),
                   const SizedBox(width: 12),
                   Expanded(child: Text(first.exerciseName, style: Theme.of(context).textTheme.titleMedium)),
-                  const Icon(Icons.chevron_right_rounded, size: 20),
+                  trailing ??
+                      const SizedBox(
+                        width: 88,
+                        height: 48,
+                        child: Align(alignment: Alignment.centerRight, child: Icon(Icons.chevron_right_rounded, size: 20)),
+                      ),
                 ],
               ),
               if (group != null && group.isNotEmpty)

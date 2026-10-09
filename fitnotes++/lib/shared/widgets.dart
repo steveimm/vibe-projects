@@ -100,21 +100,22 @@ class ErrorState extends StatelessWidget {
 }
 
 class StatValue extends StatelessWidget {
-  const StatValue(this.label, this.value, {super.key, this.inverse = false});
+  const StatValue(this.label, this.value, {super.key, this.inverse = false, this.centered = false});
   final String label;
   final String value;
   final bool inverse;
+  final bool centered;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(right: 10),
+    padding: centered ? const EdgeInsets.symmetric(horizontal: 5) : const EdgeInsets.only(right: 10),
     child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       children: [
         SizedBox(
           width: double.infinity,
           child: FittedBox(
             fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
+            alignment: centered ? Alignment.center : Alignment.centerLeft,
             child: AnimatedSwitcher(
               duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180),
               child: Text(
@@ -129,6 +130,7 @@ class StatValue extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           label,
+          textAlign: centered ? TextAlign.center : TextAlign.start,
           style: Theme.of(context).textTheme.bodySmall
               ?.copyWith(color: inverse ? Colors.white70 : Theme.of(context).colorScheme.onSurfaceVariant),
         ),
