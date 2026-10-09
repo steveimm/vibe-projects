@@ -28,7 +28,11 @@ class BackupService {
     'measurements',
     'exercise_goals',
     'workout_sessions',
+    'workout_exercise_orders',
   ];
+
+  static Iterable<String> _tablesForVersion(int version) =>
+      tables.where((table) => version >= 4 || table != 'workout_exercise_orders');
 
   Future<Uint8List> backup({Directory? directory}) async {
     final dir = directory ?? await getTemporaryDirectory();
@@ -44,8 +48,8 @@ class BackupService {
   Future<Map<String, int>> inspect(String path) async {
     final source = sqlite.sqlite3.open(path, mode: sqlite.OpenMode.readOnly);
     try {
-      final version = source.select('PRAGMA user_version').single.values.first;
-      if (version != 2 && version != db.schemaVersion) {
+      final version = source.select('PRAGMA user_version').single.values.first as int;
+      if (version < 2 || version > db.schemaVersion) {
         throw const FormatException(
           'This is not a supported FitNotes++ backup. Use Import FitNotes for an original .fitnotes file.',
         );
@@ -53,6 +57,7 @@ class BackupService {
       if (source.select('PRAGMA quick_check').single.values.first != 'ok') throw const FormatException('The backup is damaged.');
       final names = source.select("SELECT name FROM sqlite_master WHERE type = 'table'").map((r) => r['name']).toSet();
       for (final table in db.allTables) {
+        if (!_tablesForVersion(version).contains(table.actualTableName)) continue;
         final columns = source.select('PRAGMA table_info("${table.actualTableName}")').map((r) => r['name']).toSet();
         final expected = table.$columns.map((c) => c.$name).toSet();
         if (version == 2 && table.actualTableName == 'workout_sessions') {
@@ -62,7 +67,7 @@ class BackupService {
           throw const FormatException('The backup schema is incompatible with this app version.');
         }
       }
-      if (!tables.every(names.contains)) throw const FormatException('The backup is missing required data.');
+      if (!_tablesForVersion(version).every(names.contains)) throw const FormatException('The backup is missing required data.');
       if (source.select('SELECT id FROM app_settings').length != 1 ||
           source.select('SELECT id FROM app_settings').single['id'] != 1) {
         throw const FormatException('The backup has invalid settings.');
@@ -70,7 +75,10 @@ class BackupService {
       if (source.select('PRAGMA foreign_key_check').isNotEmpty) {
         throw const FormatException('The backup contains broken exercise or routine references.');
       }
-      return {for (final table in tables) table: source.select('SELECT COUNT(*) AS n FROM "$table"').single['n'] as int};
+      return {
+        for (final table in _tablesForVersion(version))
+          table: source.select('SELECT COUNT(*) AS n FROM "$table"').single['n'] as int,
+      };
     } on sqlite.SqliteException {
       throw const FormatException('Choose a valid FitNotes++ backup file.');
     } finally {
@@ -82,11 +90,14 @@ class BackupService {
     await inspect(path);
     final source = sqlite.sqlite3.open(path, mode: sqlite.OpenMode.readOnly);
     try {
+      final version = source.select('PRAGMA user_version').single.values.first as int;
       final rows = {
         for (final table in tables)
-          table: source.select('SELECT * FROM "$table"').map((r) => Map<String, Object?>.from(r)).toList(),
+          table: _tablesForVersion(version).contains(table)
+              ? source.select('SELECT * FROM "$table"').map((r) => Map<String, Object?>.from(r)).toList()
+              : <Map<String, Object?>>[],
       };
-      if (source.select('PRAGMA user_version').single.values.first == 2) {
+      if (version == 2) {
         for (final session in rows['workout_sessions']!) {
           final end = session['ended_at'] as int?;
           final start = session['started_at'] as int;

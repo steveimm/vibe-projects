@@ -15,10 +15,11 @@ class LoggedSet {
 }
 
 class DaySnapshot {
-  const DaySnapshot(this.sets, this.notes, this.sessions);
+  const DaySnapshot(this.sets, this.notes, this.sessions, [this.orders = const []]);
   final List<WorkoutSet> sets;
   final List<WorkoutDayNote> notes;
   final List<WorkoutSession> sessions;
+  final List<WorkoutExerciseOrder> orders;
 }
 
 class WorkoutRepository {
@@ -58,10 +59,12 @@ class WorkoutRepository {
           '''
       SELECT s.*, e.name AS ex_name, e.type AS ex_type, c.color_argb AS color_argb
       FROM workout_sets s JOIN exercises e ON e.id = s.exercise_id JOIN categories c ON c.id = e.category_id
-      ${conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}'} ORDER BY s.date DESC, s.created_at, s.id
+      LEFT JOIN workout_exercise_orders o ON o.date = s.date AND o.exercise_id = s.exercise_id
+      ${conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}'}
+      ORDER BY s.date DESC, COALESCE(o.sort_order, 2147483647), s.created_at, s.id
     ''',
           variables: variables,
-          readsFrom: {db.workoutSets, db.exercises, db.categories},
+          readsFrom: {db.workoutSets, db.exercises, db.categories, db.workoutExerciseOrders},
         )
         .watch()
         .map(
@@ -80,6 +83,32 @@ class WorkoutRepository {
 
   Stream<List<LoggedSet>> watchDayLog(String date) => watchLog(date: date);
   Future<List<LoggedSet>> dayLog(String date) => watchDayLog(date).first;
+
+  Future<void> reorderExercises(String date, List<int> exerciseIds) => db.transaction(() async {
+    final existing = (await dayLog(date)).map((s) => s.set.exerciseId).toSet();
+    if (exerciseIds.toSet().length != exerciseIds.length || !existing.containsAll(exerciseIds)) {
+      throw const FormatException('The workout changed. Try moving the exercise again.');
+    }
+    await (db.delete(db.workoutExerciseOrders)..where((o) => o.date.equals(date))).go();
+    await db.batch((b) {
+      for (var i = 0; i < exerciseIds.length; i++) {
+        b.insert(
+          db.workoutExerciseOrders,
+          WorkoutExerciseOrdersCompanion.insert(date: date, exerciseId: exerciseIds[i], sortOrder: i),
+        );
+      }
+    });
+  });
+
+  Future<DaySnapshot> removeExerciseFromDay(String date, int exerciseId) => db.transaction(() async {
+    final sets = await (db.select(db.workoutSets)..where((s) => s.date.equals(date) & s.exerciseId.equals(exerciseId))).get();
+    final orders = await (db.select(
+      db.workoutExerciseOrders,
+    )..where((o) => o.date.equals(date) & o.exerciseId.equals(exerciseId))).get();
+    await (db.delete(db.workoutSets)..where((s) => s.date.equals(date) & s.exerciseId.equals(exerciseId))).go();
+    await (db.delete(db.workoutExerciseOrders)..where((o) => o.date.equals(date) & o.exerciseId.equals(exerciseId))).go();
+    return DaySnapshot(sets, const [], const [], orders);
+  });
 
   Future<String?> previousWorkoutDate(String before) async {
     final dates = await workoutDatesBefore(before);
@@ -256,10 +285,12 @@ class WorkoutRepository {
     final sets = await (db.select(db.workoutSets)..where((s) => s.date.equals(date))).get();
     final notes = await (db.select(db.workoutDayNotes)..where((s) => s.date.equals(date))).get();
     final sessions = await (db.select(db.workoutSessions)..where((s) => s.date.equals(date))).get();
+    final orders = await (db.select(db.workoutExerciseOrders)..where((s) => s.date.equals(date))).get();
     await (db.delete(db.workoutSets)..where((s) => s.date.equals(date))).go();
     await (db.delete(db.workoutDayNotes)..where((s) => s.date.equals(date))).go();
     await (db.delete(db.workoutSessions)..where((s) => s.date.equals(date))).go();
-    return DaySnapshot(sets, notes, sessions);
+    await (db.delete(db.workoutExerciseOrders)..where((s) => s.date.equals(date))).go();
+    return DaySnapshot(sets, notes, sessions, orders);
   });
 
   Future<void> restoreDay(DaySnapshot snapshot) => db.transaction(() async {
@@ -269,6 +300,9 @@ class WorkoutRepository {
     }
     for (final s in snapshot.sessions) {
       await db.into(db.workoutSessions).insert(s.toCompanion(true), mode: InsertMode.insertOrIgnore);
+    }
+    for (final order in snapshot.orders) {
+      await db.into(db.workoutExerciseOrders).insert(order.toCompanion(true), mode: InsertMode.insertOrIgnore);
     }
   });
 

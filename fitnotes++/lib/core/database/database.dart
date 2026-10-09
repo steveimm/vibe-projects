@@ -40,6 +40,7 @@ const _seedCategories = <(String, int)>[
     Measurements,
     ExerciseGoals,
     WorkoutSessions,
+    WorkoutExerciseOrders,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -49,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -92,6 +93,7 @@ class AppDatabase extends _$AppDatabase {
             running_since = CASE WHEN ended_at IS NULL THEN started_at ELSE NULL END
         ''');
       }
+      if (from < 4) await m.createTable(workoutExerciseOrders);
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');

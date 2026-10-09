@@ -57,6 +57,7 @@ void main() {
     final raw = sqlite.sqlite3.open(file.path);
     raw.execute('ALTER TABLE workout_sessions DROP COLUMN elapsed_seconds');
     raw.execute('ALTER TABLE workout_sessions DROP COLUMN running_since');
+    raw.execute('DROP TABLE workout_exercise_orders');
     raw.execute('PRAGMA user_version = 2');
     final start = DateTime.utc(2026, 10, 8, 10);
     raw.execute('INSERT INTO workout_sessions VALUES (?,?,?)', [

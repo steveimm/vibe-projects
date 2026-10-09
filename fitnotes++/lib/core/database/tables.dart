@@ -195,3 +195,12 @@ class WorkoutSessions extends Table {
   @override
   Set<Column> get primaryKey => {date};
 }
+
+class WorkoutExerciseOrders extends Table {
+  TextColumn get date => text()();
+  IntColumn get exerciseId => integer().references(Exercises, #id, onDelete: KeyAction.cascade)();
+  IntColumn get sortOrder => integer()();
+
+  @override
+  Set<Column> get primaryKey => {date, exerciseId};
+}
