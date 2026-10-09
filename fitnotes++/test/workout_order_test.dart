@@ -90,6 +90,45 @@ void main() {
     },
   );
 
+  test('bulk removal and undo preserve all selected sets, their positions, other dates, and workout metadata', () async {
+    final db = AppDatabase.memory();
+    addTearDown(db.close);
+    final repo = WorkoutRepository(db);
+    final exercises = (await db.select(db.exercises).get())
+        .where((e) => ['Barbell Curl', 'Barbell Row', 'Barbell Squat'].contains(e.name))
+        .toList();
+    final ids = exercises.map((e) => e.id).toList();
+    for (final id in ids) {
+      await repo.addSet(
+        exerciseId: id,
+        date: '2026-10-09',
+        rawWeight: 20,
+        reps: 8,
+        weightMultiplier: 2,
+        note: 'Controlled',
+        rpe: 8,
+      );
+      await repo.addSet(exerciseId: id, date: '2026-10-08', rawWeight: 15, reps: 10);
+    }
+    await repo.addSet(exerciseId: ids.first, date: '2026-10-09', rawWeight: 22, reps: 6, planned: true);
+    await repo.reorderExercises('2026-10-09', ids.reversed.toList());
+    await repo.saveDayNote('2026-10-09', 'Keep this note');
+    await repo.editSessionDuration('2026-10-09', 900);
+    final before = await repo.dayLog('2026-10-09');
+    final snapshot = await repo.removeExercisesFromDay('2026-10-09', [ids.first, ids.last, ids.first]);
+    expect(order(await repo.dayLog('2026-10-09')), [ids[1]]);
+    expect(await repo.dayLog('2026-10-08'), hasLength(3));
+    expect((await repo.watchDayNote('2026-10-09').first)!.comment, 'Keep this note');
+    expect((await repo.watchSession('2026-10-09').first)!.elapsedSeconds, 900);
+    expect((await db.select(db.exercises).get()).where((e) => ids.contains(e.id)), hasLength(3));
+    await repo.restoreDay(snapshot);
+    expect((await repo.dayLog('2026-10-09')).map((s) => s.set), before.map((s) => s.set));
+    final all = await repo.removeExercisesFromDay('2026-10-09', ids);
+    expect(await repo.dayLog('2026-10-09'), isEmpty);
+    await repo.restoreDay(all);
+    expect((await repo.dayLog('2026-10-09')).map((s) => s.set), before.map((s) => s.set));
+  });
+
   test('version 3 migration and backup restore keep existing workouts and timer durations', () async {
     final folder = Directory.systemTemp.createTempSync('fitnotes-v3-');
     addTearDown(() => folder.deleteSync(recursive: true));

@@ -15,7 +15,7 @@ An offline workout logger for Android, rebuilt with Flutter. No account, ads, or
 - **Preferences:** light/dark/system appearance, metric/imperial units, week start, weight increments, record highlights, completion controls, keep-screen-on, and 1RM rep limits.
 - **Data:** full SQLite backup/restore with recovery of the previous state, CSV export/import, and original FitNotes workout import.
 
-The exercise counts and Add exercise action stay visible while scrolling. Holding an exercise enters edit mode with a pinned Done button. Adding exercises, date navigation, and opening set editors are disabled until edit mode ends. Workout timer controls are available only for today. Other dates keep duration editing and reset in the timer menu. Menus and dialogs share sizing, typography, and spacing.
+The exercise counts and + button stay visible while scrolling. Holding an exercise selects it and enters edit mode. Tap more cards to select or deselect them, then use Delete beside Done to remove the selected exercises together. Undo restores their sets and order. Adding exercises, date navigation, and opening set editors are disabled until edit mode ends. Workout timer controls are available only for today. Other dates keep duration editing and reset in the timer menu. Menus and dialogs share sizing, typography, and spacing. Exercise selection, exercise switching, and history retain the previous screen so Back preserves filters, scroll position, tabs, and input.
 
 ## Data behavior
 

@@ -237,10 +237,6 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       return;
     }
     final date = widget.date ?? ref.read(selectedDateProvider) ?? Dates.today();
-    if (widget.pickMode) {
-      context.pushReplacement('/log/$id?date=$date');
-    } else {
-      context.push('/log/$id?date=${date.isEmpty ? Dates.today() : date}');
-    }
+    context.push('/log/$id?date=${date.isEmpty ? Dates.today() : date}');
   }
 }

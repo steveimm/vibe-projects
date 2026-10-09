@@ -42,7 +42,7 @@ class HistoryTab extends ConsumerWidget {
                 SectionTitle(
                   DateFormat('EEE, d MMM yyyy').format(Dates.parse(entry.key)),
                   trailing: TextButton(
-                    onPressed: () => context.pushReplacement('/log/${exercise.id}?date=${entry.key}'),
+                    onPressed: () => context.push('/log/${exercise.id}?date=${entry.key}'),
                     child: const Text('Open'),
                   ),
                 ),

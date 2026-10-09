@@ -212,6 +212,13 @@ class _DayView extends ConsumerStatefulWidget {
 class _DayViewState extends ConsumerState<_DayView> {
   bool _savingOrder = false;
   List<int>? _order;
+  final Set<int> _selected = {};
+
+  @override
+  void didUpdateWidget(covariant _DayView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.editing && !widget.editing) _selected.clear();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -226,6 +233,7 @@ class _DayViewState extends ConsumerState<_DayView> {
         for (final s in sets) {
           (groups[s.set.exerciseId] ??= []).add(s);
         }
+        _selected.removeWhere((id) => !groups.containsKey(id));
         if (listEquals(_order, groups.keys.toList())) _order = null;
         final ids = {...?_order, ...groups.keys}.where(groups.containsKey).toList();
         final scale = MediaQuery.textScalerOf(context);
@@ -245,6 +253,8 @@ class _DayViewState extends ConsumerState<_DayView> {
                 exerciseCount: groups.length,
                 setCount: sets.length,
                 editing: widget.editing,
+                selectedCount: _selected.length,
+                onDelete: _savingOrder || _selected.isEmpty ? null : _removeSelected,
                 onDone: () => widget.onEditingChanged(false),
                 onAdd: () => context.push('/pick-exercise?date=$date'),
               ),
@@ -267,8 +277,9 @@ class _DayViewState extends ConsumerState<_DayView> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               sliver: SliverReorderableList(
                 itemCount: ids.length,
-                onReorderStart: (_) {
+                onReorderStart: (index) {
                   HapticFeedback.selectionClick();
+                  if (!widget.editing) setState(() => _selected.add(ids[index]));
                   widget.onEditingChanged(true);
                 },
                 onReorderItem: (oldIndex, newIndex) => _reorder(ids, oldIndex, newIndex),
@@ -323,15 +334,29 @@ class _DayViewState extends ConsumerState<_DayView> {
     exerciseId: id,
     sets: sets,
     editing: widget.editing,
+    selected: _selected.contains(id),
+    onSelect: _savingOrder
+        ? null
+        : () => setState(() {
+            if (!_selected.add(id)) _selected.remove(id);
+          }),
     elevation: elevation,
     trailing: widget.editing
         ? Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                tooltip: 'Remove ${sets.first.exerciseName} from workout',
-                onPressed: _savingOrder ? null : () => _remove(id, sets.first.exerciseName),
-                icon: const Icon(Icons.delete_outline_rounded),
+              Checkbox(
+                value: _selected.contains(id),
+                onChanged: _savingOrder
+                    ? null
+                    : (value) => setState(() {
+                        if (value == true) {
+                          _selected.add(id);
+                        } else {
+                          _selected.remove(id);
+                        }
+                      }),
+                semanticLabel: 'Select ${sets.first.exerciseName}',
               ),
               Tooltip(
                 message: 'Drag up or down',
@@ -366,17 +391,27 @@ class _DayViewState extends ConsumerState<_DayView> {
     }
   }
 
-  Future<void> _remove(int exerciseId, String name) async {
+  Future<void> _removeSelected() async {
+    if (_savingOrder || _selected.isEmpty) return;
     final repo = ref.read(workoutRepositoryProvider);
-    await attempt(context, () async {
-      final snapshot = await repo.removeExerciseFromDay(widget.date, exerciseId);
+    final ids = _selected.toList();
+    setState(() => _savingOrder = true);
+    final ok = await attempt(context, () async {
+      final snapshot = await repo.removeExercisesFromDay(widget.date, ids);
       if (!mounted) return;
+      final count = snapshot.sets.map((s) => s.exerciseId).toSet().length;
       notice(
         context,
-        '$name removed from this workout',
+        '${Fmt.count(count, 'exercise')} removed from this workout',
         action: SnackBarAction(label: 'Undo', onPressed: () => attempt(context, () => repo.restoreDay(snapshot))),
       );
     });
+    if (mounted) {
+      setState(() {
+        _savingOrder = false;
+        if (ok) _selected.clear();
+      });
+    }
   }
 }
 
@@ -386,11 +421,14 @@ class _WorkoutToolbar extends SliverPersistentHeaderDelegate {
     required this.exerciseCount,
     required this.setCount,
     required this.editing,
+    required this.selectedCount,
+    required this.onDelete,
     required this.onDone,
     required this.onAdd,
   });
   final double height;
-  final int exerciseCount, setCount;
+  final int exerciseCount, setCount, selectedCount;
+  final VoidCallback? onDelete;
   final bool editing;
   final VoidCallback onDone, onAdd;
 
@@ -418,7 +456,7 @@ class _WorkoutToolbar extends SliverPersistentHeaderDelegate {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    Fmt.count(exerciseCount, 'exercise'),
+                    editing ? '$selectedCount selected' : Fmt.count(exerciseCount, 'exercise'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium?.copyWith(height: 1.25),
@@ -433,12 +471,16 @@ class _WorkoutToolbar extends SliverPersistentHeaderDelegate {
               ),
             ),
             const SizedBox(width: 8),
-            if (editing)
-              FilledButton.icon(onPressed: onDone, icon: const Icon(Icons.check_rounded), label: const Text('Done'))
-            else if (MediaQuery.textScalerOf(context).scale(14) > 20)
-              IconButton.filled(tooltip: 'Add exercise', onPressed: onAdd, icon: const Icon(Icons.add_rounded))
-            else
-              FilledButton.icon(onPressed: onAdd, icon: const Icon(Icons.add_rounded), label: const Text('Add exercise')),
+            if (editing) ...[
+              IconButton(
+                tooltip: 'Delete selected exercises',
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline_rounded),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(onPressed: onDone, icon: const Icon(Icons.check_rounded), label: const Text('Done')),
+            ] else
+              IconButton.filled(tooltip: 'Add exercise', onPressed: onAdd, icon: const Icon(Icons.add_rounded)),
           ],
         ),
       ),
@@ -452,6 +494,8 @@ class _ExerciseCard extends ConsumerWidget {
     required this.exerciseId,
     required this.sets,
     required this.editing,
+    required this.selected,
+    required this.onSelect,
     this.elevation = 0,
     this.trailing,
   });
@@ -459,7 +503,8 @@ class _ExerciseCard extends ConsumerWidget {
   final int exerciseId;
   final List<LoggedSet> sets;
   final Widget? trailing;
-  final bool editing;
+  final bool editing, selected;
+  final VoidCallback? onSelect;
   final double elevation;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -468,92 +513,105 @@ class _ExerciseCard extends ConsumerWidget {
     final prs = ref.watch(prSetIdsProvider(exerciseId));
     final units = ref.watch(unitsProvider);
     final group = first.set.groupName;
-    return Card(
-      elevation: elevation,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: editing ? null : () => context.push('/log/$exerciseId?date=$date'),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 5,
-                    height: 34,
-                    decoration: BoxDecoration(color: Color(first.colorArgb), borderRadius: BorderRadius.circular(4)),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(first.exerciseName, style: Theme.of(context).textTheme.titleMedium)),
-                  trailing ??
-                      const SizedBox(
-                        width: 88,
-                        height: 48,
-                        child: Align(alignment: Alignment.centerRight, child: Icon(Icons.chevron_right_rounded, size: 20)),
-                      ),
-                ],
-              ),
-              if (group != null && group.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text('Superset · $group', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.primary)),
-                ),
-              const SizedBox(height: 12),
-              for (var i = 0; i < sets.length.clamp(0, 5); i++)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 5),
-                  child: Row(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: Text(
-                          '${i + 1}'.padLeft(2, '0'),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+    return Semantics(
+      selected: editing ? selected : null,
+      child: Card(
+        color: editing && selected ? colors.primaryContainer : null,
+        shape: editing && selected
+            ? RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+                side: BorderSide(color: colors.primary, width: 2),
+              )
+            : null,
+        elevation: elevation,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: editing ? onSelect : () => context.push('/log/$exerciseId?date=$date'),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 5,
+                      height: 34,
+                      decoration: BoxDecoration(color: Color(first.colorArgb), borderRadius: BorderRadius.circular(4)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(first.exerciseName, style: Theme.of(context).textTheme.titleMedium)),
+                    trailing ??
+                        const SizedBox(
+                          width: 88,
+                          height: 48,
+                          child: Align(alignment: Alignment.centerRight, child: Icon(Icons.chevron_right_rounded, size: 20)),
                         ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          describeSet(
-                            type: ExerciseType.values[first.exerciseType],
-                            effectiveWeight: sets[i].effectiveWeight,
-                            reps: sets[i].set.reps,
-                            distance: sets[i].set.distance,
-                            durationSeconds: sets[i].set.durationSeconds,
-                            units: units,
-                          ),
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: sets[i].set.isPlanned ? colors.onSurfaceVariant : colors.onSurface,
+                  ],
+                ),
+                if (group != null && group.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Superset · $group',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.primary),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                for (var i = 0; i < sets.length.clamp(0, 5); i++)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Text(
+                            '${i + 1}'.padLeft(2, '0'),
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
                           ),
                         ),
-                      ),
-                      if (sets[i].set.isPlanned)
-                        Text(
-                          'Not completed',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
-                        )
-                      else if (prs.contains(sets[i].set.id))
-                        const Tooltip(
-                          message: 'Personal record',
-                          child: Icon(Icons.emoji_events_outlined, size: 18, color: Color(0xFFAE7A25)),
-                        )
-                      else
-                        Icon(Icons.check_rounded, size: 18, color: colors.primary),
-                    ],
+                        Expanded(
+                          child: Text(
+                            describeSet(
+                              type: ExerciseType.values[first.exerciseType],
+                              effectiveWeight: sets[i].effectiveWeight,
+                              reps: sets[i].set.reps,
+                              distance: sets[i].set.distance,
+                              durationSeconds: sets[i].set.durationSeconds,
+                              units: units,
+                            ),
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: sets[i].set.isPlanned ? colors.onSurfaceVariant : colors.onSurface,
+                            ),
+                          ),
+                        ),
+                        if (sets[i].set.isPlanned)
+                          Text(
+                            'Not completed',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                          )
+                        else if (prs.contains(sets[i].set.id))
+                          const Tooltip(
+                            message: 'Personal record',
+                            child: Icon(Icons.emoji_events_outlined, size: 18, color: Color(0xFFAE7A25)),
+                          )
+                        else
+                          Icon(Icons.check_rounded, size: 18, color: colors.primary),
+                      ],
+                    ),
                   ),
-                ),
-              if (sets.length > 5)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    '+ ${sets.length - 5} more sets',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.primary),
+                if (sets.length > 5)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      '+ ${sets.length - 5} more sets',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.primary),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

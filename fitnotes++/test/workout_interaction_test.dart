@@ -37,7 +37,8 @@ class _Workouts extends WorkoutRepository {
   ];
   List<int> order = [1, 2, 3];
   List<int>? moved;
-  int? removed;
+  Set<int>? removed;
+  final removedEntries = <int, LoggedSet>{};
 
   @override
   Stream<List<LoggedSet>> watchDayLog(String date) async* {
@@ -54,17 +55,19 @@ class _Workouts extends WorkoutRepository {
   }
 
   @override
-  Future<DaySnapshot> removeExerciseFromDay(String date, int exerciseId) async {
-    removed = exerciseId;
-    final deleted = sets.where((s) => s.set.exerciseId == exerciseId).map((s) => s.set).toList();
-    sets.removeWhere((s) => s.set.exerciseId == exerciseId);
+  Future<DaySnapshot> removeExercisesFromDay(String date, Iterable<int> exerciseIds) async {
+    final ids = exerciseIds.toSet();
+    removed = ids;
+    final deleted = sets.where((s) => ids.contains(s.set.exerciseId)).toList();
+    removedEntries.addEntries(deleted.map((s) => MapEntry(s.set.id, s)));
+    sets.removeWhere((s) => ids.contains(s.set.exerciseId));
     changes.add([...sets]);
-    return DaySnapshot(deleted, const [], const []);
+    return DaySnapshot(deleted.map((s) => s.set).toList(), const [], const []);
   }
 
   @override
   Future<void> restoreDay(DaySnapshot snapshot) async {
-    sets.add(LoggedSet(set: snapshot.sets.single, exerciseName: 'Row', colorArgb: 0xFFC0392B, exerciseType: 0));
+    sets.addAll(snapshot.sets.map((s) => removedEntries[s.id]!));
     sets.sort((a, b) => order.indexOf(a.set.exerciseId).compareTo(order.indexOf(b.set.exerciseId)));
     changes.add([...sets]);
   }
@@ -103,7 +106,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 650));
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.text('Done'), findsOneWidget);
-    expect(find.text('Add exercise'), findsNothing);
+    expect(find.byTooltip('Add exercise'), findsNothing);
     final previewCard = find.descendant(of: find.byKey(const ValueKey('workout-drag-preview')), matching: find.byType(Card));
     expect(tester.getSize(previewCard).height, originalHeight);
     expect(tester.widget<Card>(previewCard).clipBehavior, Clip.antiAlias);
@@ -117,17 +120,28 @@ void main() {
     expect(repo.moved, [2, 3, 1]);
     expect(tester.getTopLeft(find.text('Curl')).dy, lessThan(tester.getTopLeft(find.text('Row')).dy));
     expect(tester.getTopLeft(find.text('Row')).dy, lessThan(tester.getTopLeft(find.text('Bench press')).dy));
-    await tester.tap(find.byTooltip('Remove Row from workout'));
+    expect(find.text('1 selected'), findsOneWidget);
+    await tester.tap(find.text('Row'));
     await tester.pumpAndSettle();
-    expect(repo.removed, 3);
+    expect(find.text('2 selected'), findsOneWidget);
+    expect(find.widgetWithIcon(IconButton, Icons.delete_outline_rounded), findsOneWidget);
+    await tester.tap(find.byTooltip('Delete selected exercises'));
+    await tester.pumpAndSettle();
+    expect(repo.removed, {1, 3});
     expect(find.text('Row'), findsNothing);
+    expect(find.text('Bench press'), findsNothing);
+    expect(find.text('Curl'), findsOneWidget);
+    expect(tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.delete_outline_rounded)).onPressed, isNull);
     await tester.tap(find.text('Undo'));
     await tester.pumpAndSettle();
     expect(find.text('Row'), findsOneWidget);
+    expect(find.text('Bench press'), findsOneWidget);
     expect(tester.getTopLeft(find.text('Row')).dy, lessThan(tester.getTopLeft(find.text('Bench press')).dy));
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
-    expect(find.byTooltip('Remove Row from workout'), findsNothing);
+    expect(find.byTooltip('Delete selected exercises'), findsNothing);
+    expect(find.byType(Checkbox), findsNothing);
+    expect(find.byTooltip('Add exercise'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -170,7 +184,7 @@ void main() {
     final toolbar = find.byKey(const ValueKey('workout-list-toolbar'));
     await tester.scrollUntilVisible(find.text('Exercise 7'), 220, scrollable: scrollable);
     await tester.pumpAndSettle();
-    expect(find.text('Add exercise').hitTestable(), findsOneWidget);
+    expect(find.byTooltip('Add exercise').hitTestable(), findsOneWidget);
     expect(find.text('10 exercises').hitTestable(), findsOneWidget);
     expect(find.text('10 sets').hitTestable(), findsOneWidget);
     expect(tester.getTopLeft(toolbar).dy, closeTo(tester.getTopLeft(find.byType(CustomScrollView)).dy, 0.1));
@@ -178,10 +192,15 @@ void main() {
     await tester.longPress(find.text('Exercise 7'));
     await tester.pumpAndSettle();
     expect(find.text('Done').hitTestable(), findsOneWidget);
-    expect(find.text('Add exercise'), findsNothing);
+    expect(find.byTooltip('Add exercise'), findsNothing);
     final actions = find.byWidgetPredicate((w) => w is AppMenuButton<String> && w.tooltip == 'Workout actions');
     expect(tester.widget<AppMenuButton<String>>(actions).enabled, false);
     await tester.tap(find.text('Exercise 7'));
+    await tester.pumpAndSettle();
+    expect(find.text('0 selected'), findsOneWidget);
+    await tester.tap(find.text('Exercise 7'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 selected'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -450));
     await tester.pumpAndSettle();
@@ -189,7 +208,7 @@ void main() {
     expect(tester.getTopLeft(toolbar).dy, pinnedTop);
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
-    expect(find.text('Add exercise').hitTestable(), findsOneWidget);
+    expect(find.byTooltip('Add exercise').hitTestable(), findsOneWidget);
     expect(tester.widget<AppMenuButton<String>>(actions).enabled, true);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());

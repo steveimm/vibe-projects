@@ -84,7 +84,7 @@ class ExerciseDetailScreen extends ConsumerWidget {
         names[set.set.exerciseId] = set.exerciseName;
         counts.update(set.set.exerciseId, (n) => n + 1, ifAbsent: () => 1);
       }
-      var selected = await showModalBottomSheet<int>(
+      final selected = await showModalBottomSheet<int>(
         context: context,
         isScrollControlled: true,
         showDragHandle: true,
@@ -116,9 +116,10 @@ class ExerciseDetailScreen extends ConsumerWidget {
         ),
       );
       if (!context.mounted || selected == null) return;
-      if (selected == -1) selected = await context.push<int>('/pick-exercise?date=$date&return=1');
-      if (selected != null && selected != exerciseId && context.mounted) {
-        context.pushReplacement('/log/$selected?date=$date');
+      if (selected == -1) {
+        context.push('/pick-exercise?date=$date');
+      } else if (selected != exerciseId) {
+        context.push('/log/$selected?date=$date');
       }
     });
   }

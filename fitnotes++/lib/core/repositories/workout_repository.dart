@@ -100,13 +100,14 @@ class WorkoutRepository {
     });
   });
 
-  Future<DaySnapshot> removeExerciseFromDay(String date, int exerciseId) => db.transaction(() async {
-    final sets = await (db.select(db.workoutSets)..where((s) => s.date.equals(date) & s.exerciseId.equals(exerciseId))).get();
-    final orders = await (db.select(
-      db.workoutExerciseOrders,
-    )..where((o) => o.date.equals(date) & o.exerciseId.equals(exerciseId))).get();
-    await (db.delete(db.workoutSets)..where((s) => s.date.equals(date) & s.exerciseId.equals(exerciseId))).go();
-    await (db.delete(db.workoutExerciseOrders)..where((o) => o.date.equals(date) & o.exerciseId.equals(exerciseId))).go();
+  Future<DaySnapshot> removeExerciseFromDay(String date, int exerciseId) => removeExercisesFromDay(date, [exerciseId]);
+
+  Future<DaySnapshot> removeExercisesFromDay(String date, Iterable<int> exerciseIds) => db.transaction(() async {
+    final ids = exerciseIds.toSet();
+    final sets = await (db.select(db.workoutSets)..where((s) => s.date.equals(date) & s.exerciseId.isIn(ids))).get();
+    final orders = await (db.select(db.workoutExerciseOrders)..where((o) => o.date.equals(date) & o.exerciseId.isIn(ids))).get();
+    await (db.delete(db.workoutSets)..where((s) => s.date.equals(date) & s.exerciseId.isIn(ids))).go();
+    await (db.delete(db.workoutExerciseOrders)..where((o) => o.date.equals(date) & o.exerciseId.isIn(ids))).go();
     return DaySnapshot(sets, const [], const [], orders);
   });
 

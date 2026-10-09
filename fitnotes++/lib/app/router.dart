@@ -45,7 +45,10 @@ Page<void> _page(GoRouterState state, Widget child) => CustomTransitionPage(
         ),
 );
 
-final appRouter = GoRouter(
+final appRouter = createAppRouter();
+
+GoRouter createAppRouter({String initialLocation = '/'}) => GoRouter(
+  initialLocation: initialLocation,
   routes: [
     ShellRoute(
       builder: (_, state, child) => AppShell(path: state.uri.path, child: child),
