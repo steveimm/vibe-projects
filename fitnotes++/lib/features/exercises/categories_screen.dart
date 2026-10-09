@@ -37,7 +37,7 @@ class CategoriesScreen extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, _) => ErrorState(onRetry: () => ref.invalidate(categoriesProvider)),
             data: (categories) => ListView.separated(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               itemCount: categories.length,
               separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (_, i) {

@@ -49,7 +49,7 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
         ).map((p) => (date: p.date, value: metricDisplayValue(_metric!, p.value, units))).toList();
         final logged = sets.where((s) => !s.isPlanned).toList();
         return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
           children: [
             DropdownButtonFormField<GraphMetric>(
               initialValue: _metric,
@@ -188,7 +188,7 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
     final best = estimates.fold<double>(0, (v, p) => math.max(v, p.value));
     if (actual.isEmpty) {
       return const Card(
-        child: Padding(padding: EdgeInsets.all(20), child: Text('No personal records')),
+        child: Padding(padding: EdgeInsets.symmetric(horizontal: 16, vertical: 20), child: Text('No personal records')),
       );
     }
     final reps = _estimated ? List.generate(15, (i) => i + 1) : (actual.keys.toList()..sort());
@@ -230,7 +230,7 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
       error: (_, _) => ErrorState(onRetry: () => ref.invalidate(goalsProvider(widget.exercise.id))),
       data: (goals) => goals.isEmpty
           ? const Card(
-              child: Padding(padding: EdgeInsets.all(20), child: Text('No goals')),
+              child: Padding(padding: EdgeInsets.symmetric(horizontal: 16, vertical: 20), child: Text('No goals')),
             )
           : Column(
               children: [

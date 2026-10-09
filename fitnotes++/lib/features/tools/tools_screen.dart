@@ -52,7 +52,7 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
       appBar: AppBar(title: const Text('Workout tools')),
       body: ContentWidth(
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           children: [
             SegmentedButton<int>(
               segments: const [
@@ -154,12 +154,15 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
               const SizedBox(height: 20),
               if (remaining < 0)
                 const Card(
-                  child: Padding(padding: EdgeInsets.all(20), child: Text('Enter a total weight at least as heavy as the bar.')),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                    child: Text('Enter a total weight at least as heavy as the bar.'),
+                  ),
                 )
               else
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -238,7 +241,7 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
 
   Widget _result(String label, String value) => Card(
     child: Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -42,7 +42,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, _) => ErrorState(onRetry: () => ref.invalidate(settingsProvider)),
           data: (s) => ListView(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
             children: [
               const SectionTitle('General'),
               Card(

@@ -54,12 +54,12 @@ class _RoutineDetailScreenState extends ConsumerState<RoutineDetailScreen> {
               children: [
                 if (routine?.notes.isNotEmpty == true)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                     child: Align(alignment: Alignment.centerLeft, child: Text(routine!.notes)),
                   ),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
                       for (final day in days)
@@ -76,7 +76,7 @@ class _RoutineDetailScreenState extends ConsumerState<RoutineDetailScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: SectionTitle(
                     '${items.length} sets',
                     trailing: _dayId == null
@@ -109,7 +109,7 @@ class _RoutineDetailScreenState extends ConsumerState<RoutineDetailScreen> {
                           ),
                         )
                       : ReorderableListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
                           buildDefaultDragHandles: false,
                           itemCount: items.length,
                           onReorderItem: (oldIndex, newIndex) async {
@@ -153,7 +153,7 @@ class _RoutineDetailScreenState extends ConsumerState<RoutineDetailScreen> {
                         ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                   child: Row(
                     children: [
                       Expanded(

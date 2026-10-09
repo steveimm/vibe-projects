@@ -21,43 +21,44 @@ class WorkoutSessionCard extends ConsumerWidget {
     final session = ref.watch(sessionProvider(date)).asData?.value;
     final running = session?.runningSince != null;
     final repo = ref.read(workoutRepositoryProvider);
+    final theme = Theme.of(context);
+    final controlStyle = TextButton.styleFrom(
+      foregroundColor: AppTheme.lime,
+      minimumSize: const Size(56, 40),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+    );
+    final toggleLabel = running
+        ? 'Pause'
+        : session == null
+        ? 'Start'
+        : 'Resume';
+    void toggle() => attempt(context, () => running ? repo.pauseSession(date) : repo.startSession(date));
+    void finish() => attempt(context, () async {
+      await repo.finishSession(date);
+      ref.read(restTimerProvider.notifier).stop();
+    });
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [AppTheme.ink, Color(0xFF2C5040)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Expanded(child: StatValue('Completed sets', '${done.length}', inverse: true)),
+              Expanded(child: StatValue('Sets', '${done.length}', inverse: true)),
               Expanded(child: StatValue('Volume · ${units.weightLabel}', Fmt.number(units.weightFromKg(volume)), inverse: true)),
-            ],
-          ),
-          const Divider(height: 32, color: Colors.white24),
-          Row(
-            children: [
-              const Expanded(
-                child: Text('Workout time', style: TextStyle(color: Colors.white70)),
-              ),
-              if (session != null)
-                Text(
-                  running
-                      ? 'Running'
-                      : session.endedAt == null
-                      ? 'Paused'
-                      : 'Finished',
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                ),
               PopupMenuButton<String>(
                 tooltip: 'Workout timer options',
                 iconColor: Colors.white70,
+                padding: EdgeInsets.zero,
                 onSelected: (action) async {
                   if (action == 'edit') {
                     await _edit(context, ref);
@@ -78,44 +79,74 @@ class WorkoutSessionCard extends ConsumerWidget {
               ),
             ],
           ),
-          Wrap(
-            spacing: 12,
-            children: [
-              StreamBuilder<int>(
-                stream: running ? Stream.periodic(const Duration(seconds: 1), (i) => i) : null,
-                builder: (_, _) => TextButton.icon(
-                  style: TextButton.styleFrom(foregroundColor: Colors.white, padding: EdgeInsets.zero),
-                  onPressed: () => _edit(context, ref),
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: Text(
-                    Fmt.duration(session?.durationAt(DateTime.now()) ?? 0),
-                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
+          const Divider(height: 16, color: Colors.white24),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final iconControls = MediaQuery.textScalerOf(context).scale(14) > 20 || constraints.maxWidth < 280;
+              return Row(
+                children: [
+                  Expanded(
+                    child: Tooltip(
+                      message: 'Edit workout duration',
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => _edit(context, ref),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 48),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('Workout time', style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70)),
+                              StreamBuilder<int>(
+                                stream: running ? Stream.periodic(const Duration(seconds: 1), (i) => i) : null,
+                                builder: (_, _) => FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        Fmt.duration(session?.durationAt(DateTime.now()) ?? 0),
+                                        style: theme.textTheme.titleLarge?.copyWith(
+                                          color: Colors.white,
+                                          fontFeatures: [FontFeature.tabularFigures()],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      const Icon(Icons.edit_outlined, size: 14, color: Colors.white70),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              TextButton.icon(
-                style: TextButton.styleFrom(foregroundColor: AppTheme.lime),
-                onPressed: () => attempt(context, () => running ? repo.pauseSession(date) : repo.startSession(date)),
-                icon: Icon(running ? Icons.pause_rounded : Icons.play_arrow_rounded),
-                label: Text(
-                  running
-                      ? 'Pause'
-                      : session == null
-                      ? 'Start'
-                      : 'Resume',
-                ),
-              ),
-              if (session != null && session.endedAt == null)
-                TextButton.icon(
-                  style: TextButton.styleFrom(foregroundColor: Colors.white),
-                  onPressed: () => attempt(context, () async {
-                    await repo.finishSession(date);
-                    ref.read(restTimerProvider.notifier).stop();
-                  }),
-                  icon: const Icon(Icons.stop_rounded),
-                  label: const Text('Finish'),
-                ),
-            ],
+                  if (iconControls)
+                    IconButton(
+                      tooltip: toggleLabel,
+                      onPressed: toggle,
+                      color: AppTheme.lime,
+                      icon: Icon(running ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                    )
+                  else
+                    TextButton(style: controlStyle, onPressed: toggle, child: Text(toggleLabel)),
+                  if (session != null && session.endedAt == null)
+                    if (iconControls)
+                      IconButton(tooltip: 'Finish', onPressed: finish, color: Colors.white, icon: const Icon(Icons.stop_rounded))
+                    else
+                      TextButton(
+                        style: controlStyle.copyWith(foregroundColor: const WidgetStatePropertyAll(Colors.white)),
+                        onPressed: finish,
+                        child: const Text('Finish'),
+                      ),
+                ],
+              );
+            },
           ),
         ],
       ),

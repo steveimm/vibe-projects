@@ -90,7 +90,7 @@ class _TrainingOverviewState extends ConsumerState<_TrainingOverview> with Autom
         }
         final records = selected.where((s) => prIds.contains(s.set.id)).take(5).toList();
         return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
           children: [
             Wrap(
               spacing: 8,
@@ -106,7 +106,7 @@ class _TrainingOverviewState extends ConsumerState<_TrainingOverview> with Autom
             const SizedBox(height: 16),
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                 child: Row(
                   children: [
                     Expanded(child: StatValue('Workouts', '${dates.length}')),
@@ -212,7 +212,7 @@ class _TrainingOverviewState extends ConsumerState<_TrainingOverview> with Autom
               ),
               if (records.isEmpty)
                 const Card(
-                  child: Padding(padding: EdgeInsets.all(20), child: Text('No personal records')),
+                  child: Padding(padding: EdgeInsets.symmetric(horizontal: 16, vertical: 20), child: Text('No personal records')),
                 ),
               for (final record in records) _RecordTile(record: record),
             ],

@@ -12,7 +12,7 @@ class SeasonsScreen extends ConsumerWidget {
     appBar: AppBar(title: const Text('PR seasons')),
     body: ContentWidth(
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         children: [
           const Text('A season tracks personal records from a chosen date without deleting past workouts.'),
           const SizedBox(height: 20),
@@ -29,7 +29,10 @@ class SeasonsScreen extends ConsumerWidget {
                 error: (_, _) => ErrorState(onRetry: () => ref.invalidate(seasonsProvider)),
                 data: (seasons) => seasons.isEmpty
                     ? const Card(
-                        child: Padding(padding: EdgeInsets.all(20), child: Text('Records currently use all workouts.')),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                          child: Text('Records currently use all workouts.'),
+                        ),
                       )
                     : Column(
                         children: [

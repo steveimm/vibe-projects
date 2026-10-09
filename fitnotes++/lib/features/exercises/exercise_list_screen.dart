@@ -69,7 +69,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: TextField(
                 controller: _search,
                 onChanged: (_) => setState(() {}),
@@ -89,7 +89,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
             ),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
                   Padding(
@@ -124,7 +124,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
             ),
             if (_archived)
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: Text(
                   'Archived exercises remain in your history. Restore one to log it again.',
                   style: TextStyle(color: colors.onSurfaceVariant),
@@ -165,7 +165,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                     );
                   }
                   return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                     itemCount: list.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (_, i) {

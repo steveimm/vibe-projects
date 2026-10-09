@@ -39,7 +39,7 @@ class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClient
         final type = types.firstWhere((t) => t.id == _typeId);
         final records = ref.watch(measurementsProvider(_typeId!));
         return ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           children: [
             Row(
               children: [

@@ -75,7 +75,7 @@ class _CopyWorkoutScreenState extends ConsumerState<CopyWorkoutScreen> {
             : _failed
             ? ErrorState(onRetry: () => _load(_source))
             : ListView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                 children: [
                   Card(
                     child: Column(
@@ -160,7 +160,7 @@ class _CopyWorkoutScreenState extends ConsumerState<CopyWorkoutScreen> {
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
           child: FilledButton.icon(
             onPressed: _selected.isEmpty || _copying || _loading ? null : _copy,
             icon: const Icon(Icons.copy_rounded),

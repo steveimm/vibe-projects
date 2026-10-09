@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../shared/widgets.dart';
+import 'workout_day_dots.dart';
 
 import '../../core/database/tables.dart';
 import '../../core/providers.dart';
@@ -177,24 +178,7 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
           ),
         ),
         const SizedBox(height: 3),
-        SizedBox(
-          height: 6,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (final c in colors.take(4))
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 1),
-                  child: Container(
-                    width: 5,
-                    height: 5,
-                    decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle),
-                  ),
-                ),
-            ],
-          ),
-        ),
+        WorkoutDayDots(colors: colors),
       ],
     );
 
@@ -311,7 +295,7 @@ class _CalendarScreenState extends ConsumerState<_CalendarScreen> {
                 ),
               ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
                   Expanded(
@@ -429,7 +413,7 @@ class _DayDetailDialog extends StatelessWidget {
     }
     return AlertDialog(
       title: Text(Dates.longDate(date), style: TextStyle(color: accent)),
-      contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       content: SizedBox(
         width: double.maxFinite,
         child: sets.isEmpty

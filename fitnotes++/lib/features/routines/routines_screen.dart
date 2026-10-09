@@ -35,7 +35,7 @@ class RoutinesScreen extends ConsumerWidget {
                 );
               }
               return ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                 children: [
                   for (final routine in routines)
                     Padding(

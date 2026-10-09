@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +14,7 @@ import 'workout_session_card.dart';
 import '../../core/util/format.dart';
 import '../../shared/widgets.dart';
 import 'workout_calendar.dart';
+import 'workout_week_strip.dart';
 
 Future<void> startCopyWorkout(BuildContext context, WidgetRef ref, String date) async {
   final priors = await ref.read(workoutRepositoryProvider).workoutDatesBefore(date);
@@ -73,24 +76,45 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      Dates.navLabel(date) == 'TODAY'
-                          ? 'Today’s workout'
-                          : DateFormat(Dates.parse(date).year == DateTime.now().year ? 'EEE, d MMM' : 'EEE, d MMM yyyy')
-                                .format(Dates.parse(date)),
-                      style: Theme.of(context).textTheme.headlineMedium,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                height: math.max(48, MediaQuery.textScalerOf(context).scale(21) * 1.2 + 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        Dates.navLabel(date) == 'TODAY'
+                            ? 'Today’s workout'
+                            : DateFormat(Dates.parse(date).year == DateTime.now().year ? 'EEE, d MMM' : 'EEE, d MMM yyyy')
+                                  .format(Dates.parse(date)),
+                        style: Theme.of(context).textTheme.titleLarge,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  if (date != Dates.today())
-                    TextButton(onPressed: () => ref.read(selectedDateProvider.notifier).goToday(), child: const Text('Today')),
-                ],
+                    Visibility(
+                      visible: date != Dates.today(),
+                      maintainSize: true,
+                      maintainAnimation: true,
+                      maintainState: true,
+                      child: TextButton(
+                        onPressed: () => ref.read(selectedDateProvider.notifier).goToday(),
+                        child: const Text('Today'),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            _WeekStrip(date: date),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: WorkoutWeekStrip(
+                date: date,
+                firstDayOfWeek: ref.watch(settingsProvider).asData?.value.firstDayOfWeek ?? 1,
+                dayColors: workoutDayColors(ref.watch(allLogProvider).asData?.value ?? []),
+                onSelectDay: ref.read(selectedDateProvider.notifier).set,
+              ),
+            ),
             Expanded(
               child: GestureDetector(
                 onHorizontalDragEnd: (details) {
@@ -171,83 +195,6 @@ Future<void> _editDayNote(BuildContext context, WidgetRef ref, String date) asyn
   }
 }
 
-class _WeekStrip extends ConsumerWidget {
-  const _WeekStrip({required this.date});
-  final String date;
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final start = ref.watch(settingsProvider).asData?.value.firstDayOfWeek ?? 1;
-    final first = Dates.shift(date, -((Dates.parse(date).weekday - start + 7) % 7));
-    final colors = Theme.of(context).colorScheme;
-    final trained = ref.watch(allLogProvider).asData?.value.map((s) => s.set.date).toSet() ?? {};
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-      child: Row(
-        children: [
-          for (var i = 0; i < 7; i++)
-            Expanded(
-              child: Builder(
-                builder: (context) {
-                  final day = Dates.shift(first, i);
-                  final selected = day == date;
-                  return Semantics(
-                    selected: selected,
-                    label: Dates.longDate(day),
-                    button: true,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => ref.read(selectedDateProvider.notifier).set(day),
-                      child: AnimatedContainer(
-                        duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180),
-                        margin: const EdgeInsets.symmetric(horizontal: 3),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: selected ? colors.primary : colors.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: selected ? colors.primary : colors.outlineVariant),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              DateFormat('E').format(Dates.parse(day)).substring(0, 1),
-                              style: TextStyle(fontSize: 11, color: selected ? colors.onPrimary : colors.onSurfaceVariant),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              '${Dates.parse(day).day}',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: selected ? colors.onPrimary : colors.onSurface,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Container(
-                              width: 4,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: trained.contains(day)
-                                    ? selected
-                                          ? AppTheme.lime
-                                          : colors.primary
-                                    : Colors.transparent,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 class _DayView extends ConsumerWidget {
   const _DayView({super.key, required this.date});
   final String date;
@@ -264,10 +211,10 @@ class _DayView extends ConsumerWidget {
           (groups[s.set.exerciseId] ??= []).add(s);
         }
         return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
           children: [
             WorkoutSessionCard(date: date, sets: sets),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -308,7 +255,9 @@ class _DayView extends ConsumerWidget {
               ),
             Card(
               child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                titleTextStyle: Theme.of(context).textTheme.titleMedium,
+                subtitleTextStyle: Theme.of(context).textTheme.bodyMedium,
                 leading: const Icon(Icons.edit_note_rounded),
                 title: Text(note == null ? 'Add a workout note' : 'Workout note'),
                 subtitle: note == null ? null : Text(note.comment),
@@ -340,7 +289,7 @@ class _ExerciseCard extends ConsumerWidget {
       child: InkWell(
         onTap: () => context.push('/log/$exerciseId?date=$date'),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -359,7 +308,7 @@ class _ExerciseCard extends ConsumerWidget {
               if (group != null && group.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text('Superset · $group', style: TextStyle(fontSize: 12, color: colors.primary)),
+                  child: Text('Superset · $group', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.primary)),
                 ),
               const SizedBox(height: 12),
               for (var i = 0; i < sets.length.clamp(0, 5); i++)
@@ -367,9 +316,12 @@ class _ExerciseCard extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(vertical: 5),
                   child: Row(
                     children: [
-                      SizedBox(
-                        width: 28,
-                        child: Text('${i + 1}'.padLeft(2, '0'), style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant)),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Text(
+                          '${i + 1}'.padLeft(2, '0'),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                        ),
                       ),
                       Expanded(
                         child: Text(
@@ -381,14 +333,17 @@ class _ExerciseCard extends ConsumerWidget {
                             durationSeconds: sets[i].set.durationSeconds,
                             units: units,
                           ),
-                          style: TextStyle(
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: sets[i].set.isPlanned ? colors.onSurfaceVariant : colors.onSurface,
                           ),
                         ),
                       ),
                       if (sets[i].set.isPlanned)
-                        Text('Not completed', style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant))
+                        Text(
+                          'Not completed',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
+                        )
                       else if (prs.contains(sets[i].set.id))
                         const Tooltip(
                           message: 'Personal record',
@@ -402,7 +357,10 @@ class _ExerciseCard extends ConsumerWidget {
               if (sets.length > 5)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text('+ ${sets.length - 5} more sets', style: TextStyle(fontSize: 12, color: colors.primary)),
+                  child: Text(
+                    '+ ${sets.length - 5} more sets',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.primary),
+                  ),
                 ),
             ],
           ),

@@ -327,15 +327,19 @@ class WorkoutRepository {
 
   Future<Map<String, List<int>>> workoutDayCategoryColors({int? categoryId, int? exerciseId}) async {
     final sets = await watchLog(categoryId: categoryId, exerciseId: exerciseId).first;
-    final days = <String, Set<int>>{};
-    for (final s in sets) {
-      (days[s.set.date] ??= {}).add(s.colorArgb);
-    }
-    return days.map((date, colors) => MapEntry(date, colors.toList()));
+    return workoutDayColors(sets);
   }
 }
 
 extension WorkoutSessionDuration on WorkoutSession {
   int durationAt(DateTime now) =>
       elapsedSeconds + (runningSince == null ? 0 : now.difference(runningSince!).inSeconds.clamp(0, 604800));
+}
+
+Map<String, List<int>> workoutDayColors(Iterable<LoggedSet> sets) {
+  final days = <String, Set<int>>{};
+  for (final s in sets) {
+    (days[s.set.date] ??= {}).add(s.colorArgb);
+  }
+  return days.map((date, colors) => MapEntry(date, colors.toList()));
 }

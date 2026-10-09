@@ -32,7 +32,7 @@ class HistoryTab extends ConsumerWidget {
         }
         final entries = days.entries.toList();
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           itemCount: entries.length,
           itemBuilder: (_, i) {
             final entry = entries[i];

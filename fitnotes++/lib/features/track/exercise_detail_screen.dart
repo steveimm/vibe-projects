@@ -221,7 +221,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
     ];
     return ListView(
       controller: _scroll,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
       children: [
         Row(
           children: [
@@ -565,7 +565,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
         duration: const Duration(milliseconds: 160),
         decoration: BoxDecoration(
           color: _editing?.id == s.id ? colors.primaryContainer : colors.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: _editing?.id == s.id ? colors.primary : colors.outlineVariant),
         ),
         child: ListTile(

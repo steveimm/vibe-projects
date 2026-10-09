@@ -100,7 +100,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
                   return Form(
                     key: _form,
                     child: ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                       children: [
                         TextFormField(
                           controller: _name,

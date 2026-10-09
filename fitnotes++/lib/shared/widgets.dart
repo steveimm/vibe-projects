@@ -58,7 +58,7 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Entrance(
     child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -67,7 +67,7 @@ class EmptyState extends StatelessWidget {
             height: 68,
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(18),
             ),
             child: Icon(icon, size: 30, color: Theme.of(context).colorScheme.onPrimaryContainer),
           ),
@@ -120,12 +120,8 @@ class StatValue extends StatelessWidget {
               child: Text(
                 value,
                 key: ValueKey(value),
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                  color: inverse ? Colors.white : Theme.of(context).colorScheme.onSurface,
-                ),
+                style: Theme.of(context).textTheme.titleLarge
+                    ?.copyWith(color: inverse ? Colors.white : Theme.of(context).colorScheme.onSurface),
               ),
             ),
           ),
@@ -133,7 +129,8 @@ class StatValue extends StatelessWidget {
         const SizedBox(height: 3),
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: inverse ? Colors.white70 : Theme.of(context).colorScheme.onSurfaceVariant),
+          style: Theme.of(context).textTheme.bodySmall
+              ?.copyWith(color: inverse ? Colors.white70 : Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       ],
     ),
