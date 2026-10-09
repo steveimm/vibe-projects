@@ -614,7 +614,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
             mainAxisSize: MainAxisSize.min,
             children: [
               if (markComplete || s.isPlanned) Checkbox(value: !s.isPlanned, onChanged: (value) => _completion(s, value!)),
-              PopupMenuButton<String>(
+              AppMenuButton<String>(
                 tooltip: 'Set options',
                 onSelected: (action) => _setAction(s, action),
                 itemBuilder: (_) => [

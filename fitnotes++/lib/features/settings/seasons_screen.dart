@@ -93,7 +93,7 @@ class _SeasonDialogState extends ConsumerState<_SeasonDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
+  Widget build(BuildContext context) => AppDialog(
     title: const Text('Start a PR season'),
     content: Column(
       mainAxisSize: MainAxisSize.min,

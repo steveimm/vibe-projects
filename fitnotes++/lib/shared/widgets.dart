@@ -1,5 +1,29 @@
 import 'package:flutter/material.dart';
 
+class AppDialog extends AlertDialog {
+  const AppDialog({
+    super.key,
+    super.title,
+    super.content,
+    super.actions,
+    super.scrollable = true,
+    super.contentPadding = const EdgeInsets.fromLTRB(20, 20, 20, 16),
+  }) : super(titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0), buttonPadding: const EdgeInsets.symmetric(horizontal: 4));
+}
+
+class AppMenuButton<T> extends PopupMenuButton<T> {
+  const AppMenuButton({
+    super.key,
+    required super.itemBuilder,
+    super.onSelected,
+    super.tooltip,
+    super.icon,
+    super.iconColor,
+    super.enabled = true,
+    super.padding = const EdgeInsets.all(8),
+  }) : super(constraints: const BoxConstraints.tightFor(width: 240));
+}
+
 class ContentWidth extends StatelessWidget {
   const ContentWidth({super.key, required this.child});
   final Widget child;
@@ -170,7 +194,7 @@ Future<bool> attempt(BuildContext context, Future<void> Function() action, {Stri
 Future<bool> confirm(BuildContext context, {required String title, required String message, String action = 'Delete'}) async =>
     await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => AppDialog(
         title: Text(title),
         content: Text(message),
         actions: [
@@ -239,7 +263,7 @@ class _PromptState extends State<_Prompt> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
+  Widget build(BuildContext context) => AppDialog(
     title: Text(widget.title),
     content: Form(
       key: _form,

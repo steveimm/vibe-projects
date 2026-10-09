@@ -76,50 +76,48 @@ class _CategoryDialogState extends ConsumerState<_CategoryDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
+  Widget build(BuildContext context) => AppDialog(
     title: Text(widget.category == null ? 'New category' : 'Edit category'),
-    content: SingleChildScrollView(
-      child: Form(
-        key: _form,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _name,
-              maxLength: 80,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(labelText: 'Name'),
-              validator: (v) => v!.trim().isEmpty ? 'Enter a category name.' : null,
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                for (final color in {...categoryPalette, _color})
-                  Semantics(
-                    label: 'Category color ${color.toRadixString(16)}',
-                    selected: _color == color,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(24),
-                      onTap: () => setState(() => _color = color),
-                      child: SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: Center(
-                          child: CircleAvatar(
-                            radius: 18,
-                            backgroundColor: Color(color),
-                            child: _color == color ? const Icon(Icons.check_rounded, color: Colors.white) : null,
-                          ),
+    content: Form(
+      key: _form,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextFormField(
+            controller: _name,
+            maxLength: 80,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Name'),
+            validator: (v) => v!.trim().isEmpty ? 'Enter a category name.' : null,
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final color in {...categoryPalette, _color})
+                Semantics(
+                  label: 'Category color ${color.toRadixString(16)}',
+                  selected: _color == color,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(24),
+                    onTap: () => setState(() => _color = color),
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Center(
+                        child: CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Color(color),
+                          child: _color == color ? const Icon(Icons.check_rounded, color: Colors.white) : null,
                         ),
                       ),
                     ),
                   ),
-              ],
-            ),
-          ],
-        ),
+                ),
+            ],
+          ),
+        ],
       ),
     ),
     actions: [

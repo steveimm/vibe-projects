@@ -32,7 +32,7 @@ class _RoutineDetailScreenState extends ConsumerState<RoutineDetailScreen> {
         title: Text(routine?.name ?? 'Routine'),
         actions: [
           if (routine != null)
-            PopupMenuButton<String>(
+            AppMenuButton<String>(
               onSelected: (action) => _routineAction(routine, action),
               itemBuilder: (_) => const [
                 PopupMenuItem(value: 'rename', child: Text('Rename routine')),
@@ -81,7 +81,7 @@ class _RoutineDetailScreenState extends ConsumerState<RoutineDetailScreen> {
                     '${items.length} sets',
                     trailing: _dayId == null
                         ? null
-                        : PopupMenuButton<String>(
+                        : AppMenuButton<String>(
                             tooltip: 'Day options',
                             onSelected: (value) => _dayAction(days.firstWhere((d) => d.id == _dayId), value),
                             itemBuilder: (_) => const [
@@ -324,44 +324,42 @@ class _PresetDialogState extends ConsumerState<_PresetDialog> {
   Widget build(BuildContext context) {
     final type = widget.exercise.type;
     final units = ref.watch(unitsProvider);
-    return AlertDialog(
+    return AppDialog(
       title: Text(widget.exercise.name),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _form,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Blank values reuse your last session. With no history, defaults are 0 weight, 10 reps, 1 km, and 1 minute.',
-              ),
-              const SizedBox(height: 16),
-              if (type.hasWeight) _field(_weight, 'Weight (${units.weightLabel})', zero: true),
-              if (type.hasReps) _field(_reps, 'Reps', integer: true),
-              if (type.hasDistance) _field(_distance, 'Distance (${units.distanceLabel})'),
-              if (type.hasTime)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: TextFormField(
-                    controller: _time,
-                    decoration: const InputDecoration(labelText: 'Time (h:mm:ss)'),
-                    validator: (v) => v!.isEmpty || (Fmt.parseDuration(v) ?? 0) > 0 ? null : 'Enter a valid time.',
-                  ),
+      content: Form(
+        key: _form,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Blank values reuse your last session. With no history, defaults are 0 weight, 10 reps, 1 km, and 1 minute.',
+            ),
+            const SizedBox(height: 16),
+            if (type.hasWeight) _field(_weight, 'Weight (${units.weightLabel})', zero: true),
+            if (type.hasReps) _field(_reps, 'Reps', integer: true),
+            if (type.hasDistance) _field(_distance, 'Distance (${units.distanceLabel})'),
+            if (type.hasTime)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: TextFormField(
+                  controller: _time,
+                  decoration: const InputDecoration(labelText: 'Time (h:mm:ss)'),
+                  validator: (v) => v!.isEmpty || (Fmt.parseDuration(v) ?? 0) > 0 ? null : 'Enter a valid time.',
                 ),
-              TextFormField(
-                controller: _group,
-                maxLength: 40,
-                decoration: const InputDecoration(labelText: 'Superset name (optional)'),
               ),
-              if (widget.siblings.length > 1)
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Apply to every set of this exercise'),
-                  value: _all,
-                  onChanged: (v) => setState(() => _all = v!),
-                ),
-            ],
-          ),
+            TextFormField(
+              controller: _group,
+              maxLength: 40,
+              decoration: const InputDecoration(labelText: 'Superset name (optional)'),
+            ),
+            if (widget.siblings.length > 1)
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Apply to every set of this exercise'),
+                value: _all,
+                onChanged: (v) => setState(() => _all = v!),
+              ),
+          ],
         ),
       ),
       actions: [

@@ -46,7 +46,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
         actions: [
           IconButton(tooltip: 'Create exercise', onPressed: _create, icon: const Icon(Icons.add_rounded)),
           if (!widget.pickMode)
-            PopupMenuButton<String>(
+            AppMenuButton<String>(
               tooltip: 'Library options',
               onSelected: (action) {
                 if (action == 'categories') {

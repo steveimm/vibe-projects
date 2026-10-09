@@ -350,31 +350,29 @@ class _MultiplierDialogState extends ConsumerState<_MultiplierDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
+  Widget build(BuildContext context) => AppDialog(
     title: Text(widget.multiplier == null ? 'Weight multiplier' : 'Edit multiplier'),
-    content: SingleChildScrollView(
-      child: Form(
-        key: _form,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _label,
-              maxLength: 80,
-              decoration: const InputDecoration(labelText: 'Name', hintText: 'e.g. Two dumbbells'),
-              validator: (v) => v!.trim().isEmpty ? 'Enter a name.' : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _factor,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Multiply by', prefixText: '× '),
-              validator: (v) => (double.tryParse(v!) ?? 0) > 0 && (double.tryParse(v) ?? 101) <= 100
-                  ? null
-                  : 'Use a number greater than 0, up to 100',
-            ),
-          ],
-        ),
+    content: Form(
+      key: _form,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextFormField(
+            controller: _label,
+            maxLength: 80,
+            decoration: const InputDecoration(labelText: 'Name', hintText: 'e.g. Two dumbbells'),
+            validator: (v) => v!.trim().isEmpty ? 'Enter a name.' : null,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _factor,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(labelText: 'Multiply by', prefixText: '× '),
+            validator: (v) => (double.tryParse(v!) ?? 0) > 0 && (double.tryParse(v) ?? 101) <= 100
+                ? null
+                : 'Use a number greater than 0, up to 100',
+          ),
+        ],
       ),
     ),
     actions: [

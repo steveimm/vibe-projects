@@ -114,8 +114,25 @@ class AppTheme {
         contentTextStyle: TextStyle(color: dark ? ink : Colors.white),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: scheme.surfaceContainerLow,
+        surfaceTintColor: Colors.transparent,
+        elevation: 4,
+        menuPadding: const EdgeInsets.symmetric(vertical: 4),
+        labelTextStyle: WidgetStatePropertyAll(text.bodyMedium),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: scheme.outlineVariant),
+        ),
+      ),
       dialogTheme: DialogThemeData(
         backgroundColor: scheme.surface,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: text.titleLarge,
+        contentTextStyle: text.bodyMedium,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        constraints: const BoxConstraints(minWidth: 360, maxWidth: 400),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       bottomSheetTheme: BottomSheetThemeData(

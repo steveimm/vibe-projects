@@ -53,7 +53,7 @@ class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClient
                     onChanged: (id) => setState(() => _typeId = id),
                   ),
                 ),
-                PopupMenuButton<String>(
+                AppMenuButton<String>(
                   tooltip: 'Measurement options',
                   onSelected: (action) async {
                     if (action == 'add') {
@@ -176,15 +176,20 @@ class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClient
     if (name == null || !mounted) return;
     final unit = await showDialog<String>(
       context: context,
-      builder: (context) => SimpleDialog(
+      builder: (context) => AppDialog(
         title: const Text('Measurement unit'),
-        children: [
-          for (final unit in ['kg', 'cm', '%'])
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, unit),
-              child: Padding(padding: const EdgeInsets.all(12), child: Text(unit)),
-            ),
-        ],
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final unit in ['kg', 'cm', '%'])
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                titleTextStyle: Theme.of(context).textTheme.bodyMedium,
+                onTap: () => Navigator.pop(context, unit),
+                title: Text(unit),
+              ),
+          ],
+        ),
       ),
     );
     if (unit != null && mounted) {
@@ -233,50 +238,48 @@ class _MeasurementDialogState extends ConsumerState<_MeasurementDialog> {
   @override
   Widget build(BuildContext context) {
     final units = ref.watch(unitsProvider);
-    return AlertDialog(
+    return AppDialog(
       title: Text(widget.type.name),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _form,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(_date),
-                trailing: const Icon(Icons.event_outlined),
-                onTap: () async {
-                  final day = await showDatePicker(
-                    context: context,
-                    initialDate: Dates.parse(_date),
-                    firstDate: DateTime(1900),
-                    lastDate: DateTime(2100),
-                  );
-                  if (day != null && mounted) setState(() => _date = Dates.iso(day));
-                },
-              ),
-              TextFormField(
-                controller: _value,
-                autofocus: true,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(labelText: 'Value', suffixText: _unit(widget.type.unit, units)),
-                validator: (v) {
-                  final value = double.tryParse(v!);
-                  return value != null && value.isFinite && value > 0 && value <= (widget.type.unit == '%' ? 100 : 100000)
-                      ? null
-                      : 'Enter a valid value greater than zero.';
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _note,
-                maxLength: 500,
-                maxLines: 2,
-                decoration: const InputDecoration(labelText: 'Note (optional)'),
-              ),
-              const Text('One entry per day. Saving replaces the value for the selected date.', style: TextStyle(fontSize: 12)),
-            ],
-          ),
+      content: Form(
+        key: _form,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(_date),
+              trailing: const Icon(Icons.event_outlined),
+              onTap: () async {
+                final day = await showDatePicker(
+                  context: context,
+                  initialDate: Dates.parse(_date),
+                  firstDate: DateTime(1900),
+                  lastDate: DateTime(2100),
+                );
+                if (day != null && mounted) setState(() => _date = Dates.iso(day));
+              },
+            ),
+            TextFormField(
+              controller: _value,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: 'Value', suffixText: _unit(widget.type.unit, units)),
+              validator: (v) {
+                final value = double.tryParse(v!);
+                return value != null && value.isFinite && value > 0 && value <= (widget.type.unit == '%' ? 100 : 100000)
+                    ? null
+                    : 'Enter a valid value greater than zero.';
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _note,
+              maxLength: 500,
+              maxLines: 2,
+              decoration: const InputDecoration(labelText: 'Note (optional)'),
+            ),
+            const Text('One entry per day. Saving replaces the value for the selected date.', style: TextStyle(fontSize: 12)),
+          ],
         ),
       ),
       actions: [

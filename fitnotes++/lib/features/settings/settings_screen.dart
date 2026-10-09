@@ -292,16 +292,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       attempt(context, () => ref.read(settingsRepositoryProvider).update(changes));
   Future<T?> _pick<T>(String title, Map<T, String> options, T current) => showDialog<T>(
     context: context,
-    builder: (context) => SimpleDialog(
+    builder: (context) => AppDialog(
       title: Text(title),
-      children: [
-        for (final option in options.entries)
-          ListTile(
-            title: Text(option.value),
-            trailing: option.key == current ? const Icon(Icons.check_rounded) : null,
-            onTap: () => Navigator.pop(context, option.key),
-          ),
-      ],
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final option in options.entries)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              titleTextStyle: Theme.of(context).textTheme.bodyMedium,
+              title: Text(option.value),
+              trailing: option.key == current ? const Icon(Icons.check_rounded) : null,
+              onTap: () => Navigator.pop(context, option.key),
+            ),
+        ],
+      ),
     ),
   );
 

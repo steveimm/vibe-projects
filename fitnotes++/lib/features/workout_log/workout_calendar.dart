@@ -411,9 +411,8 @@ class _DayDetailDialog extends StatelessWidget {
           })
           .add(s);
     }
-    return AlertDialog(
+    return AppDialog(
       title: Text(Dates.longDate(date), style: TextStyle(color: accent)),
-      contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       content: SizedBox(
         width: double.maxFinite,
         child: sets.isEmpty

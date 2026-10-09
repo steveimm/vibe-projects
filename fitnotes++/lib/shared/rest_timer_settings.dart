@@ -55,48 +55,45 @@ class _RestTimerSettingsState extends ConsumerState<_RestTimerSettings> {
   );
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
+  Widget build(BuildContext context) => AppDialog(
     title: const Text('Rest timer'),
-    content: SingleChildScrollView(
-      padding: const EdgeInsets.only(top: 12),
-      child: Form(
-        key: _form,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _field(_duration, 'Default duration'),
-            if (widget.exercise != null) ...[
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Custom exercise duration'),
-                subtitle: Text(widget.exercise!.name),
-                value: _custom,
-                onChanged: _saving ? null : (v) => setState(() => _custom = v),
-              ),
-              if (_custom) _field(_exerciseDuration, 'Exercise duration'),
-            ],
+    content: Form(
+      key: _form,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _field(_duration, 'Default duration'),
+          if (widget.exercise != null) ...[
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Auto-start after a set'),
-              subtitle: const Text('When a set is logged or marked complete'),
-              value: _auto,
-              onChanged: _saving ? null : (v) => setState(() => _auto = v),
+              title: const Text('Custom exercise duration'),
+              subtitle: Text(widget.exercise!.name),
+              value: _custom,
+              onChanged: _saving ? null : (v) => setState(() => _custom = v),
             ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Sound'),
-              value: _sound,
-              onChanged: _saving ? null : (v) => setState(() => _sound = v),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Vibration'),
-              value: _vibrate,
-              onChanged: _saving ? null : (v) => setState(() => _vibrate = v),
-            ),
+            if (_custom) _field(_exerciseDuration, 'Exercise duration'),
           ],
-        ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Auto-start after a set'),
+            subtitle: const Text('When a set is logged or marked complete'),
+            value: _auto,
+            onChanged: _saving ? null : (v) => setState(() => _auto = v),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Sound'),
+            value: _sound,
+            onChanged: _saving ? null : (v) => setState(() => _sound = v),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Vibration'),
+            value: _vibrate,
+            onChanged: _saving ? null : (v) => setState(() => _vibrate = v),
+          ),
+        ],
       ),
     ),
     actions: [

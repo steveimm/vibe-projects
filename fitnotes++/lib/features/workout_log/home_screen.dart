@@ -26,79 +26,112 @@ Future<void> startCopyWorkout(BuildContext context, WidgetRef ref, String date) 
   if (picked != null && context.mounted) context.push('/copy?date=$date&source=$picked');
 }
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _editing = false;
+
+  void _setEditing(bool value) => setState(() => _editing = value);
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(selectedDateProvider, (previous, next) {
+      if (previous != next && _editing) _setEditing(false);
+    });
     final date = ref.watch(selectedDateProvider);
     final log = ref.watch(dayLogProvider(date));
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          date == Dates.today()
-              ? 'Today'
-              : DateFormat(Dates.parse(date).year == DateTime.now().year ? 'EEE, d MMM' : 'EEE, d MMM yyyy')
-                    .format(Dates.parse(date)),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        actions: [
-          if (date != Dates.today())
+    return PopScope(
+      canPop: !_editing,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _editing) _setEditing(false);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            date == Dates.today()
+                ? 'Today'
+                : DateFormat(Dates.parse(date).year == DateTime.now().year ? 'EEE, d MMM' : 'EEE, d MMM yyyy')
+                      .format(Dates.parse(date)),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          actions: [
+            if (date != Dates.today())
+              IconButton(
+                tooltip: 'Go to today',
+                icon: const Icon(Icons.today_outlined),
+                onPressed: _editing ? null : () => ref.read(selectedDateProvider.notifier).goToday(),
+              ),
             IconButton(
-              tooltip: 'Go to today',
-              icon: const Icon(Icons.today_outlined),
-              onPressed: () => ref.read(selectedDateProvider.notifier).goToday(),
+              tooltip: 'Calendar',
+              icon: const Icon(Icons.calendar_month_outlined),
+              onPressed: _editing
+                  ? null
+                  : () async {
+                      final picked = await openWorkoutCalendar(context, ref, initialDate: date);
+                      if (picked != null) ref.read(selectedDateProvider.notifier).set(picked);
+                    },
             ),
-          IconButton(
-            tooltip: 'Calendar',
-            icon: const Icon(Icons.calendar_month_outlined),
-            onPressed: () async {
-              final picked = await openWorkoutCalendar(context, ref, initialDate: date);
-              if (picked != null) ref.read(selectedDateProvider.notifier).set(picked);
-            },
-          ),
-          PopupMenuButton<String>(
-            tooltip: 'Workout actions',
-            onSelected: (value) => _action(context, ref, date, value),
-            itemBuilder: (_) => [
-              const PopupMenuItem(value: 'copy', child: Text('Copy a workout')),
-              const PopupMenuItem(value: 'note', child: Text('Workout note')),
-              if (log.asData?.value.isNotEmpty ?? false) ...[
-                const PopupMenuItem(value: 'routine', child: Text('Save as routine')),
-                const PopupMenuItem(value: 'delete', child: Text('Delete this workout')),
+            AppMenuButton<String>(
+              tooltip: 'Workout actions',
+              enabled: !_editing,
+              onSelected: (value) => _action(context, ref, date, value),
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'use-routine', child: Text('Use routine')),
+                const PopupMenuItem(value: 'copy', child: Text('Copy a workout')),
+                const PopupMenuItem(value: 'note', child: Text('Workout note')),
+                if (log.asData?.value.isNotEmpty ?? false) ...[
+                  const PopupMenuItem(value: 'routine', child: Text('Save as routine')),
+                  const PopupMenuItem(value: 'delete', child: Text('Delete this workout')),
+                ],
+                const PopupMenuItem(value: 'tools', child: Text('Workout calculators')),
               ],
-              const PopupMenuItem(value: 'tools', child: Text('Workout calculators')),
-            ],
-          ),
-        ],
-      ),
-      body: ContentWidth(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: WorkoutWeekStrip(
-                date: date,
-                firstDayOfWeek: ref.watch(settingsProvider).asData?.value.firstDayOfWeek ?? 1,
-                dayColors: workoutDayColors(ref.watch(allLogProvider).asData?.value ?? []),
-                onSelectDay: ref.read(selectedDateProvider.notifier).set,
-              ),
-            ),
-            Expanded(
-              child: GestureDetector(
-                onHorizontalDragEnd: (details) {
-                  final velocity = details.primaryVelocity ?? 0;
-                  if (velocity < -100) ref.read(selectedDateProvider.notifier).next();
-                  if (velocity > 100) ref.read(selectedDateProvider.notifier).previous();
-                },
-                child: AnimatedSwitcher(
-                  duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 160),
-                  child: _DayView(key: ValueKey(date), date: date),
-                ),
-              ),
             ),
           ],
+        ),
+        body: ContentWidth(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: IgnorePointer(
+                  ignoring: _editing,
+                  child: ExcludeSemantics(
+                    excluding: _editing,
+                    child: Opacity(
+                      opacity: _editing ? 0.5 : 1,
+                      child: WorkoutWeekStrip(
+                        date: date,
+                        firstDayOfWeek: ref.watch(settingsProvider).asData?.value.firstDayOfWeek ?? 1,
+                        dayColors: workoutDayColors(ref.watch(allLogProvider).asData?.value ?? []),
+                        onSelectDay: ref.read(selectedDateProvider.notifier).set,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onHorizontalDragEnd: _editing
+                      ? null
+                      : (details) {
+                          final velocity = details.primaryVelocity ?? 0;
+                          if (velocity < -100) ref.read(selectedDateProvider.notifier).next();
+                          if (velocity > 100) ref.read(selectedDateProvider.notifier).previous();
+                        },
+                  child: AnimatedSwitcher(
+                    duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 160),
+                    child: _DayView(key: ValueKey(date), date: date, editing: _editing, onEditingChanged: _setEditing),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -107,6 +140,8 @@ class HomeScreen extends ConsumerWidget {
   Future<void> _action(BuildContext context, WidgetRef ref, String date, String action) async {
     final repo = ref.read(workoutRepositoryProvider);
     switch (action) {
+      case 'use-routine':
+        context.go('/routines?date=$date');
       case 'copy':
         await startCopyWorkout(context, ref, date);
       case 'note':
@@ -166,14 +201,16 @@ Future<void> _editDayNote(BuildContext context, WidgetRef ref, String date) asyn
 }
 
 class _DayView extends ConsumerStatefulWidget {
-  const _DayView({super.key, required this.date});
+  const _DayView({super.key, required this.date, required this.editing, required this.onEditingChanged});
   final String date;
+  final bool editing;
+  final ValueChanged<bool> onEditingChanged;
   @override
   ConsumerState<_DayView> createState() => _DayViewState();
 }
 
 class _DayViewState extends ConsumerState<_DayView> {
-  bool _editing = false, _savingOrder = false;
+  bool _savingOrder = false;
   List<int>? _order;
 
   @override
@@ -191,113 +228,126 @@ class _DayViewState extends ConsumerState<_DayView> {
         }
         if (listEquals(_order, groups.keys.toList())) _order = null;
         final ids = {...?_order, ...groups.keys}.where(groups.containsKey).toList();
-        return ReorderableListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          buildDefaultDragHandles: false,
-          itemCount: ids.length,
-          onReorderStart: (_) {
-            HapticFeedback.selectionClick();
-            setState(() => _editing = true);
-          },
-          onReorderItem: (oldIndex, newIndex) => _reorder(ids, oldIndex, newIndex),
-          header: Column(
-            children: [
-              WorkoutSessionCard(date: date, sets: sets),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () => context.push('/pick-exercise?date=$date'),
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Add exercise'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  OutlinedButton(onPressed: () => context.go('/routines?date=$date'), child: const Text('Routine')),
-                ],
+        final scale = MediaQuery.textScalerOf(context);
+        final toolbarHeight = 16 + (scale.scale(16) * 1.25 + scale.scale(12) * 1.25).clamp(48, double.infinity).toDouble();
+        return CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: WorkoutSessionCard(date: date, sets: sets, enabled: !widget.editing),
               ),
-              if (sets.isEmpty)
-                EmptyState(
+            ),
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _WorkoutToolbar(
+                height: toolbarHeight,
+                exerciseCount: groups.length,
+                setCount: sets.length,
+                editing: widget.editing,
+                onDone: () => widget.onEditingChanged(false),
+                onAdd: () => context.push('/pick-exercise?date=$date'),
+              ),
+            ),
+            if (sets.isEmpty)
+              SliverToBoxAdapter(
+                child: EmptyState(
                   icon: Icons.fitness_center_rounded,
                   title: 'No sets',
-                  action: TextButton.icon(
-                    onPressed: () => startCopyWorkout(context, ref, date),
-                    icon: const Icon(Icons.copy_outlined),
-                    label: const Text('Copy a previous workout'),
-                  ),
-                ),
-              if (groups.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12, bottom: 8),
-                  child: Row(
-                    children: [
-                      Expanded(child: Text(Fmt.count(groups.length, 'exercise'), style: Theme.of(context).textTheme.titleMedium)),
-                      SizedBox(
-                        height: 48,
-                        child: _editing
-                            ? TextButton(onPressed: () => setState(() => _editing = false), child: const Text('Done'))
-                            : Center(
-                                child: Text(
-                                  Fmt.count(sets.length, 'set'),
-                                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                                ),
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-          itemBuilder: (context, index) {
-            final id = ids[index];
-            return Padding(
-              key: ValueKey(id),
-              padding: const EdgeInsets.only(bottom: 12),
-              child: ReorderableDelayedDragStartListener(
-                index: index,
-                enabled: !_savingOrder,
-                child: _ExerciseCard(
-                  date: date,
-                  exerciseId: id,
-                  sets: groups[id]!,
-                  trailing: _editing
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              tooltip: 'Remove ${groups[id]!.first.exerciseName} from workout',
-                              onPressed: _savingOrder ? null : () => _remove(id, groups[id]!.first.exerciseName),
-                              icon: const Icon(Icons.delete_outline_rounded),
-                            ),
-                            ReorderableDragStartListener(
-                              index: index,
-                              enabled: !_savingOrder,
-                              child: const SizedBox(width: 40, height: 48, child: Icon(Icons.drag_handle_rounded)),
-                            ),
-                          ],
-                        )
-                      : null,
+                  action: widget.editing
+                      ? null
+                      : TextButton.icon(
+                          onPressed: () => startCopyWorkout(context, ref, date),
+                          icon: const Icon(Icons.copy_outlined),
+                          label: const Text('Copy a previous workout'),
+                        ),
                 ),
               ),
-            );
-          },
-          footer: Card(
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-              titleTextStyle: Theme.of(context).textTheme.titleMedium,
-              subtitleTextStyle: Theme.of(context).textTheme.bodyMedium,
-              leading: const Icon(Icons.edit_note_rounded),
-              title: Text(note == null ? 'Add a workout note' : 'Workout note'),
-              subtitle: note == null ? null : Text(note.comment),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => _editDayNote(context, ref, date),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverReorderableList(
+                itemCount: ids.length,
+                onReorderStart: (_) {
+                  HapticFeedback.selectionClick();
+                  widget.onEditingChanged(true);
+                },
+                onReorderItem: (oldIndex, newIndex) => _reorder(ids, oldIndex, newIndex),
+                proxyDecorator: (child, index, animation) => AnimatedBuilder(
+                  animation: animation,
+                  builder: (context, _) => Align(
+                    key: const ValueKey('workout-drag-preview'),
+                    alignment: Alignment.topCenter,
+                    child: _exerciseCard(ids[index], index, groups[ids[index]]!, elevation: 6 * animation.value),
+                  ),
+                ),
+                itemBuilder: (context, index) {
+                  final id = ids[index];
+                  return Padding(
+                    key: ValueKey(id),
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: ReorderableDelayedDragStartListener(
+                      index: index,
+                      enabled: !_savingOrder,
+                      child: _exerciseCard(id, index, groups[id]!),
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                child: Card(
+                  child: ListTile(
+                    enabled: !widget.editing,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                    titleTextStyle: Theme.of(context).textTheme.titleMedium,
+                    subtitleTextStyle: Theme.of(context).textTheme.bodyMedium,
+                    leading: const Icon(Icons.edit_note_rounded),
+                    title: Text(note == null ? 'Add a workout note' : 'Workout note'),
+                    subtitle: note == null ? null : Text(note.comment),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: widget.editing ? null : () => _editDayNote(context, ref, date),
+                  ),
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
   }
+
+  Widget _exerciseCard(int id, int index, List<LoggedSet> sets, {double elevation = 0}) => _ExerciseCard(
+    date: widget.date,
+    exerciseId: id,
+    sets: sets,
+    editing: widget.editing,
+    elevation: elevation,
+    trailing: widget.editing
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: 'Remove ${sets.first.exerciseName} from workout',
+                onPressed: _savingOrder ? null : () => _remove(id, sets.first.exerciseName),
+                icon: const Icon(Icons.delete_outline_rounded),
+              ),
+              Tooltip(
+                message: 'Drag up or down',
+                child: Semantics(
+                  label: 'Move ${sets.first.exerciseName} up or down',
+                  child: ReorderableDragStartListener(
+                    index: index,
+                    enabled: !_savingOrder,
+                    child: const SizedBox(width: 40, height: 48, child: Icon(Icons.swap_vert_rounded)),
+                  ),
+                ),
+              ),
+            ],
+          )
+        : null,
+  );
 
   Future<void> _reorder(List<int> ids, int oldIndex, int newIndex) async {
     if (_savingOrder || oldIndex == newIndex) return;
@@ -330,12 +380,87 @@ class _DayViewState extends ConsumerState<_DayView> {
   }
 }
 
+class _WorkoutToolbar extends SliverPersistentHeaderDelegate {
+  const _WorkoutToolbar({
+    required this.height,
+    required this.exerciseCount,
+    required this.setCount,
+    required this.editing,
+    required this.onDone,
+    required this.onAdd,
+  });
+  final double height;
+  final int exerciseCount, setCount;
+  final bool editing;
+  final VoidCallback onDone, onAdd;
+
+  @override
+  double get minExtent => height;
+  @override
+  double get maxExtent => height;
+  @override
+  bool shouldRebuild(covariant _WorkoutToolbar oldDelegate) => true;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final theme = Theme.of(context);
+    return Material(
+      key: const ValueKey('workout-list-toolbar'),
+      color: theme.colorScheme.surface,
+      elevation: overlapsContent ? 2 : 0,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    Fmt.count(exerciseCount, 'exercise'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(height: 1.25),
+                  ),
+                  Text(
+                    Fmt.count(setCount, 'set'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (editing)
+              FilledButton.icon(onPressed: onDone, icon: const Icon(Icons.check_rounded), label: const Text('Done'))
+            else if (MediaQuery.textScalerOf(context).scale(14) > 20)
+              IconButton.filled(tooltip: 'Add exercise', onPressed: onAdd, icon: const Icon(Icons.add_rounded))
+            else
+              FilledButton.icon(onPressed: onAdd, icon: const Icon(Icons.add_rounded), label: const Text('Add exercise')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ExerciseCard extends ConsumerWidget {
-  const _ExerciseCard({required this.date, required this.exerciseId, required this.sets, this.trailing});
+  const _ExerciseCard({
+    required this.date,
+    required this.exerciseId,
+    required this.sets,
+    required this.editing,
+    this.elevation = 0,
+    this.trailing,
+  });
   final String date;
   final int exerciseId;
   final List<LoggedSet> sets;
   final Widget? trailing;
+  final bool editing;
+  final double elevation;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final first = sets.first;
@@ -344,12 +469,14 @@ class _ExerciseCard extends ConsumerWidget {
     final units = ref.watch(unitsProvider);
     final group = first.set.groupName;
     return Card(
+      elevation: elevation,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.push('/log/$exerciseId?date=$date'),
+        onTap: editing ? null : () => context.push('/log/$exerciseId?date=$date'),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(

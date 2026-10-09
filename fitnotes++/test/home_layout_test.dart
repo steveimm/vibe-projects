@@ -75,7 +75,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('01'),
       200,
-      scrollable: find.descendant(of: find.byType(ReorderableListView), matching: find.byType(Scrollable)),
+      scrollable: find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)),
     );
     await tester.pumpAndSettle();
     expect(tester.getRect(find.text('60 kg × 8 reps')).left - tester.getRect(find.text('01')).right, greaterThanOrEqualTo(12));
@@ -149,9 +149,9 @@ void main() {
                     width: width,
                     child: MediaQuery(
                       data: MediaQueryData(textScaler: TextScaler.linear(scale)),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: WorkoutSessionCard(date: '2026-10-09', sets: []),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: WorkoutSessionCard(date: Dates.today(), sets: const []),
                       ),
                     ),
                   ),
@@ -167,7 +167,7 @@ void main() {
         final pause = find.byTooltip('Pause').evaluate().isNotEmpty
             ? find.byTooltip('Pause')
             : find.widgetWithText(TextButton, 'Pause');
-        final duration = find.byTooltip('Edit workout duration');
+        final duration = find.byKey(const ValueKey('workout-duration'));
         expect(tester.getCenter(find.byTooltip('Workout timer options')).dy, closeTo(tester.getCenter(duration).dy, 0.1));
         expect(tester.getCenter(finish).dy, closeTo(tester.getCenter(duration).dy, 0.1));
         expect(tester.getCenter(pause).dy, closeTo(tester.getCenter(duration).dy, 0.1));

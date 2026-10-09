@@ -6,12 +6,14 @@ import '../../core/providers.dart';
 import '../../core/repositories/workout_repository.dart';
 import '../../core/services/rest_timer.dart';
 import '../../core/util/format.dart';
+import '../../core/util/dates.dart';
 import '../../shared/widgets.dart';
 
 class WorkoutSessionCard extends ConsumerWidget {
-  const WorkoutSessionCard({super.key, required this.date, required this.sets});
+  const WorkoutSessionCard({super.key, required this.date, required this.sets, this.enabled = true});
   final String date;
   final List<LoggedSet> sets;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -20,10 +22,11 @@ class WorkoutSessionCard extends ConsumerWidget {
     final units = ref.watch(unitsProvider);
     final session = ref.watch(sessionProvider(date)).asData?.value;
     final running = session?.runningSince != null;
-    final repo = ref.read(workoutRepositoryProvider);
+    final isToday = date == Dates.today();
     final theme = Theme.of(context);
     final controlStyle = TextButton.styleFrom(
       foregroundColor: AppTheme.lime,
+      disabledForegroundColor: Colors.white38,
       minimumSize: const Size(56, 40),
       padding: const EdgeInsets.symmetric(horizontal: 8),
     );
@@ -32,11 +35,22 @@ class WorkoutSessionCard extends ConsumerWidget {
         : session == null
         ? 'Start'
         : 'Resume';
-    void toggle() => attempt(context, () => running ? repo.pauseSession(date) : repo.startSession(date));
-    void finish() => attempt(context, () async {
-      await repo.finishSession(date);
-      ref.read(restTimerProvider.notifier).stop();
-    });
+    void toggle() {
+      if (!enabled || date != Dates.today()) return;
+      final repo = ref.read(workoutRepositoryProvider);
+      attempt(context, () => running ? repo.pauseSession(date) : repo.startSession(date));
+    }
+
+    void finish() {
+      if (!enabled || date != Dates.today()) return;
+      final repo = ref.read(workoutRepositoryProvider);
+      final rest = ref.read(restTimerProvider.notifier);
+      attempt(context, () async {
+        await repo.finishSession(date);
+        rest.stop();
+      });
+    }
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -71,67 +85,67 @@ class WorkoutSessionCard extends ConsumerWidget {
               return Row(
                 children: [
                   Expanded(
-                    child: Tooltip(
-                      message: 'Edit workout duration',
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(8),
-                        onTap: () => _edit(context, ref),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 48),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text('Workout time', style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70)),
-                              StreamBuilder<int>(
-                                stream: running ? Stream.periodic(const Duration(seconds: 1), (i) => i) : null,
-                                builder: (_, _) => FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: Alignment.centerLeft,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        Fmt.duration(session?.durationAt(DateTime.now()) ?? 0),
-                                        style: theme.textTheme.titleLarge?.copyWith(
-                                          color: Colors.white,
-                                          fontFeatures: [FontFeature.tabularFigures()],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      const Icon(Icons.edit_outlined, size: 14, color: Colors.white70),
-                                    ],
-                                  ),
+                    child: ConstrainedBox(
+                      key: const ValueKey('workout-duration'),
+                      constraints: const BoxConstraints(minHeight: 48),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('Workout time', style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70)),
+                          StreamBuilder<int>(
+                            stream: isToday && running ? Stream.periodic(const Duration(seconds: 1), (i) => i) : null,
+                            builder: (_, _) => FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                Fmt.duration(session?.durationAt(DateTime.now()) ?? 0),
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  color: Colors.white,
+                                  fontFeatures: [FontFeature.tabularFigures()],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ),
-                  if (iconControls)
-                    IconButton(
-                      tooltip: toggleLabel,
-                      onPressed: toggle,
-                      color: AppTheme.lime,
-                      icon: Icon(running ? Icons.pause_rounded : Icons.play_arrow_rounded),
-                    )
-                  else
-                    TextButton(style: controlStyle, onPressed: toggle, child: Text(toggleLabel)),
-                  if (session != null && session.endedAt == null)
+                  if (isToday)
                     if (iconControls)
-                      IconButton(tooltip: 'Finish', onPressed: finish, color: Colors.white, icon: const Icon(Icons.stop_rounded))
+                      IconButton(
+                        tooltip: toggleLabel,
+                        onPressed: enabled ? toggle : null,
+                        color: AppTheme.lime,
+                        disabledColor: Colors.white38,
+                        icon: Icon(running ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                      )
+                    else
+                      TextButton(style: controlStyle, onPressed: enabled ? toggle : null, child: Text(toggleLabel)),
+                  if (isToday && session != null && session.endedAt == null)
+                    if (iconControls)
+                      IconButton(
+                        tooltip: 'Finish',
+                        onPressed: enabled ? finish : null,
+                        color: Colors.white,
+                        disabledColor: Colors.white38,
+                        icon: const Icon(Icons.stop_rounded),
+                      )
                     else
                       TextButton(
-                        style: controlStyle.copyWith(foregroundColor: const WidgetStatePropertyAll(Colors.white)),
-                        onPressed: finish,
+                        style: controlStyle.copyWith(
+                          foregroundColor: WidgetStateProperty.resolveWith(
+                            (states) => states.contains(WidgetState.disabled) ? Colors.white38 : Colors.white,
+                          ),
+                        ),
+                        onPressed: enabled ? finish : null,
                         child: const Text('Finish'),
                       ),
-                  PopupMenuButton<String>(
+                  AppMenuButton<String>(
                     tooltip: 'Workout timer options',
-                    iconColor: Colors.white70,
+                    enabled: enabled,
+                    iconColor: enabled ? Colors.white70 : Colors.white38,
                     padding: EdgeInsets.zero,
                     onSelected: (action) async {
                       if (action == 'edit') {
@@ -143,7 +157,7 @@ class WorkoutSessionCard extends ConsumerWidget {
                             action: 'Reset',
                           ) &&
                           context.mounted) {
-                        await attempt(context, () => repo.resetSession(date));
+                        await attempt(context, () => ref.read(workoutRepositoryProvider).resetSession(date));
                       }
                     },
                     itemBuilder: (_) => [

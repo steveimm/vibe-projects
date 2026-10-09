@@ -337,60 +337,58 @@ class _GoalDialogState extends ConsumerState<_GoalDialog> {
   Widget build(BuildContext context) {
     final units = ref.watch(unitsProvider);
     final time = _metric.isTime || _metric == GraphMetric.bestPace;
-    return AlertDialog(
+    return AppDialog(
       title: Text(widget.goal == null ? 'Set a goal' : 'Edit goal'),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _form,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<GraphMetric>(
-                initialValue: _metric,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Metric'),
-                items: [
-                  for (final m in GraphMetric.forType(widget.exercise.type).where((m) => m != GraphMetric.weightAtReps))
-                    DropdownMenuItem(value: m, child: Text(m.label)),
-                ],
-                onChanged: (v) => setState(() {
-                  _metric = v!;
-                  _target.clear();
-                }),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _target,
-                keyboardType: time ? TextInputType.datetime : const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(labelText: time ? 'Target (m:ss)' : 'Target', suffixText: metricUnit(_metric, units)),
-                validator: (v) {
-                  final value = time ? Fmt.parseDuration(v!)?.toDouble() : double.tryParse(v!);
-                  return value != null && value.isFinite && value > 0 ? null : 'Enter a valid target greater than zero.';
-                },
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(_date ?? 'Target date (optional)'),
-                trailing: _date == null
-                    ? const Icon(Icons.event_outlined)
-                    : IconButton(
-                        tooltip: 'Clear target date',
-                        icon: const Icon(Icons.close_rounded),
-                        onPressed: () => setState(() => _date = null),
-                      ),
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: _date == null ? DateTime.now().add(const Duration(days: 90)) : Dates.parse(_date!),
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (date != null && mounted) setState(() => _date = Dates.iso(date));
-                },
-              ),
-            ],
-          ),
+      content: Form(
+        key: _form,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<GraphMetric>(
+              initialValue: _metric,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Metric'),
+              items: [
+                for (final m in GraphMetric.forType(widget.exercise.type).where((m) => m != GraphMetric.weightAtReps))
+                  DropdownMenuItem(value: m, child: Text(m.label)),
+              ],
+              onChanged: (v) => setState(() {
+                _metric = v!;
+                _target.clear();
+              }),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _target,
+              keyboardType: time ? TextInputType.datetime : const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: time ? 'Target (m:ss)' : 'Target', suffixText: metricUnit(_metric, units)),
+              validator: (v) {
+                final value = time ? Fmt.parseDuration(v!)?.toDouble() : double.tryParse(v!);
+                return value != null && value.isFinite && value > 0 ? null : 'Enter a valid target greater than zero.';
+              },
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(_date ?? 'Target date (optional)'),
+              trailing: _date == null
+                  ? const Icon(Icons.event_outlined)
+                  : IconButton(
+                      tooltip: 'Clear target date',
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => setState(() => _date = null),
+                    ),
+              onTap: () async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: _date == null ? DateTime.now().add(const Duration(days: 90)) : Dates.parse(_date!),
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                );
+                if (date != null && mounted) setState(() => _date = Dates.iso(date));
+              },
+            ),
+          ],
         ),
       ),
       actions: [
