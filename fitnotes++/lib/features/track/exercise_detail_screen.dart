@@ -275,30 +275,34 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           ),
       ],
     );
-    final actions = Row(
-      children: [
-        Tooltip(
-          message: 'Rest timer',
-          child: TextButton.icon(
-            onPressed: () => showRestTimerSettings(context, ref, exercise: widget.exercise),
-            icon: const Icon(Icons.timer_outlined, size: 20),
-            label: Text(Fmt.duration(widget.exercise.defaultRestTimeSeconds ?? settings?.restTimerSeconds ?? 60)),
+    final actions = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Tooltip(
+            message: 'Rest timer',
+            child: TextButton.icon(
+              onPressed: () => showRestTimerSettings(context, ref, exercise: widget.exercise),
+              icon: const Icon(Icons.timer_outlined, size: 20),
+              label: Text(Fmt.duration(widget.exercise.defaultRestTimeSeconds ?? settings?.restTimerSeconds ?? 60)),
+            ),
           ),
-        ),
-        const Spacer(),
-        if (_editing != null)
-          IconButton(tooltip: 'Cancel editing', onPressed: _saving ? null : _cancelEdit, icon: const Icon(Icons.close_rounded)),
-        SizedBox(
-          width: 104,
-          height: 48,
-          child: IconButton.filled(
-            tooltip: _editing == null ? 'Log set' : 'Update set',
-            style: IconButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            onPressed: _saving || settings == null || widget.exercise.archived ? null : () => _save(multiplier),
-            icon: Icon(_editing == null ? Icons.add_rounded : Icons.check_rounded, size: 32),
+          const Spacer(),
+          if (_editing != null) ...[
+            IconButton(tooltip: 'Cancel editing', onPressed: _saving ? null : _cancelEdit, icon: const Icon(Icons.close_rounded)),
+            const SizedBox(width: 8),
+          ],
+          SizedBox.square(
+            dimension: 48,
+            child: IconButton.filled(
+              tooltip: _editing == null ? 'Log set' : 'Update set',
+              style: IconButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              onPressed: _saving || settings == null || widget.exercise.archived ? null : () => _save(multiplier),
+              icon: Icon(_editing == null ? Icons.add_rounded : Icons.check_rounded, size: 28),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
     Widget rows({bool shrinkWrap = false}) => sets.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -327,7 +331,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           return Column(
             children: [
               ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: constraints.maxHeight - 104),
+                constraints: BoxConstraints(maxHeight: constraints.maxHeight - 120),
                 child: SingleChildScrollView(child: editor),
               ),
               actions,
