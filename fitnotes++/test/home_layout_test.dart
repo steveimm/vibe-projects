@@ -14,6 +14,38 @@ import 'package:fitnotes_plus/features/workout_log/workout_session_card.dart';
 import 'package:fitnotes_plus/features/workout_log/workout_week_strip.dart';
 
 void main() {
+  testWidgets('Android fractional text scaling keeps the pinned workout toolbar and list visible', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          settingsProvider.overrideWith((ref) => const Stream.empty()),
+          allLogProvider.overrideWith((ref) => Stream.value([])),
+          dayLogProvider.overrideWith((ref, date) => Stream.value([])),
+          dayNoteProvider.overrideWith((ref, date) => Stream.value(null)),
+          sessionProvider.overrideWith((ref, date) => Stream.value(null)),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: const _AndroidTextScale()),
+            child: child!,
+          ),
+          home: const HomeScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    final toolbar = find.byKey(const ValueKey('workout-list-toolbar'));
+    expect(tester.getSize(toolbar).height, 71);
+    expect(find.byTooltip('Add exercise').hitTestable(), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('changing the selected day keeps the home heading, week, and summary in place', (tester) async {
     tester.view.physicalSize = const Size(360, 800);
     tester.view.devicePixelRatio = 1;
@@ -177,4 +209,12 @@ void main() {
     }
     await tester.pumpWidget(const SizedBox.shrink());
   });
+}
+
+class _AndroidTextScale extends TextScaler {
+  const _AndroidTextScale();
+  @override
+  double scale(double fontSize) => fontSize == 16 ? 24.000000762939453 : fontSize * 1.6;
+  @override
+  double get textScaleFactor => 1.6;
 }

@@ -238,7 +238,7 @@ class _DayViewState extends ConsumerState<_DayView> {
         if (listEquals(_order, groups.keys.toList())) _order = null;
         final ids = {...?_order, ...groups.keys}.where(groups.containsKey).toList();
         final scale = MediaQuery.textScalerOf(context);
-        final toolbarHeight = 16 + (scale.scale(16) * 1.25 + scale.scale(12) * 1.25).clamp(48, double.infinity).toDouble();
+        final toolbarHeight = (16 + (scale.scale(16) * 1.25 + scale.scale(12) * 1.25).clamp(48, double.infinity)).ceilToDouble();
         return CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
@@ -430,46 +430,49 @@ class _WorkoutToolbar extends SliverPersistentHeaderDelegate {
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     final theme = Theme.of(context);
-    return Material(
-      key: const ValueKey('workout-list-toolbar'),
-      color: theme.colorScheme.surface,
-      elevation: overlapsContent ? 2 : 0,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    editing ? '$selectedCount selected' : Fmt.count(exerciseCount, 'exercise'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(height: 1.25),
-                  ),
-                  Text(
-                    Fmt.count(setCount, 'set'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (editing) ...[
-              IconButton(
-                tooltip: 'Delete selected exercises',
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline_rounded),
+    return SizedBox(
+      height: height,
+      child: Material(
+        key: const ValueKey('workout-list-toolbar'),
+        color: theme.colorScheme.surface,
+        elevation: overlapsContent ? 2 : 0,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      editing ? '$selectedCount selected' : Fmt.count(exerciseCount, 'exercise'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(height: 1.25),
+                    ),
+                    Text(
+                      Fmt.count(setCount, 'set'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(width: 8),
-              IconButton.filled(tooltip: 'Done', onPressed: onDone, icon: const Icon(Icons.check_rounded)),
-            ] else
-              IconButton.filled(tooltip: 'Add exercise', onPressed: onAdd, icon: const Icon(Icons.add_rounded)),
-          ],
+              if (editing) ...[
+                IconButton(
+                  tooltip: 'Delete selected exercises',
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline_rounded),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filled(tooltip: 'Done', onPressed: onDone, icon: const Icon(Icons.check_rounded)),
+              ] else
+                IconButton.filled(tooltip: 'Add exercise', onPressed: onAdd, icon: const Icon(Icons.add_rounded)),
+            ],
+          ),
         ),
       ),
     );

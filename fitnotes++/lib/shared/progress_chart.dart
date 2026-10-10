@@ -103,8 +103,10 @@ class ProgressChart extends StatelessWidget {
                   interval: math.max(1, (span / 3).ceil()).toDouble(),
                   getTitlesWidget: (value, meta) => value < 0 || value > span || (span == 0 && value != 0)
                       ? const SizedBox.shrink()
-                      : Padding(
-                          padding: const EdgeInsets.only(top: 10),
+                      : SideTitleWidget(
+                          meta: meta,
+                          space: 8,
+                          fitInside: SideTitleFitInsideData.fromTitleMeta(meta, distanceFromEdge: 0),
                           child: Text(
                             DateFormat(span > 365 ? 'MMM yy' : 'M/d').format(Dates.parse(Dates.shift(first, value.round()))),
                             style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
