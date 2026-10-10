@@ -41,7 +41,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     final toolbar = find.byKey(const ValueKey('workout-list-toolbar'));
-    expect(tester.getSize(toolbar).height, 71);
+    expect(tester.getSize(toolbar).height, 64);
     expect(find.byTooltip('Add exercise').hitTestable(), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });

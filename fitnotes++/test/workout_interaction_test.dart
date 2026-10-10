@@ -150,7 +150,7 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
-  testWidgets('workout counts, Add exercise, and Done stay visible while scrolling and editing blocks unrelated actions', (
+  testWidgets('exercise count, Add exercise, and Done stay visible while scrolling and editing blocks unrelated actions', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 720);
@@ -191,7 +191,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byTooltip('Add exercise').hitTestable(), findsOneWidget);
     expect(find.text('10 exercises').hitTestable(), findsOneWidget);
-    expect(find.text('10 sets').hitTestable(), findsOneWidget);
     expect(tester.getTopLeft(toolbar).dy, closeTo(tester.getTopLeft(find.byType(CustomScrollView)).dy, 0.1));
     final pinnedTop = tester.getTopLeft(toolbar).dy;
     await tester.longPress(find.text('Exercise 7'));

@@ -228,7 +228,7 @@ class _DayViewState extends ConsumerState<_DayView> {
         if (listEquals(_order, groups.keys.toList())) _order = null;
         final ids = {...?_order, ...groups.keys}.where(groups.containsKey).toList();
         final scale = MediaQuery.textScalerOf(context);
-        final toolbarHeight = (16 + (scale.scale(16) * 1.25 + scale.scale(12) * 1.25).clamp(48, double.infinity)).ceilToDouble();
+        final toolbarHeight = (16 + (scale.scale(16) * 1.25).clamp(48, double.infinity)).ceilToDouble();
         return CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
@@ -242,7 +242,6 @@ class _DayViewState extends ConsumerState<_DayView> {
               delegate: _WorkoutToolbar(
                 height: toolbarHeight,
                 exerciseCount: groups.length,
-                setCount: sets.length,
                 editing: widget.editing,
                 selectedCount: _selected.length,
                 onDelete: _savingOrder || _selected.isEmpty ? null : _removeSelected,
@@ -398,7 +397,6 @@ class _WorkoutToolbar extends SliverPersistentHeaderDelegate {
   const _WorkoutToolbar({
     required this.height,
     required this.exerciseCount,
-    required this.setCount,
     required this.editing,
     required this.selectedCount,
     required this.onDelete,
@@ -406,7 +404,7 @@ class _WorkoutToolbar extends SliverPersistentHeaderDelegate {
     required this.onAdd,
   });
   final double height;
-  final int exerciseCount, setCount, selectedCount;
+  final int exerciseCount, selectedCount;
   final VoidCallback? onDelete;
   final bool editing;
   final VoidCallback onDone, onAdd;
@@ -432,23 +430,11 @@ class _WorkoutToolbar extends SliverPersistentHeaderDelegate {
           child: Row(
             children: [
               Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      editing ? '$selectedCount selected' : Fmt.count(exerciseCount, 'exercise'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(height: 1.25),
-                    ),
-                    Text(
-                      Fmt.count(setCount, 'set'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ],
+                child: Text(
+                  editing ? '$selectedCount selected' : Fmt.count(exerciseCount, 'exercise'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(height: 1.25),
                 ),
               ),
               const SizedBox(width: 8),
