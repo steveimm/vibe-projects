@@ -163,19 +163,11 @@ class StatValue extends StatelessWidget {
   );
 }
 
-void notice(BuildContext context, String message, {SnackBarAction? action}) {
+void notice(BuildContext context, String message) {
   if (!context.mounted) return;
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        content: Text(message),
-        action: action,
-        duration: Duration(seconds: action == null ? 4 : 8),
-        persist: false,
-        showCloseIcon: action != null && MediaQuery.accessibleNavigationOf(context),
-      ),
-    );
+    ..showSnackBar(SnackBar(content: Text(message), duration: const Duration(seconds: 4), persist: false));
 }
 
 Future<bool> attempt(BuildContext context, Future<void> Function() action, {String? success}) async {

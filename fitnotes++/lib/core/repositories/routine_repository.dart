@@ -63,6 +63,30 @@ class RoutineRepository {
     await (db.update(db.routineSets)..where((s) => s.id.equals(id))).write(changes);
   }
 
+  Future<void> duplicateSet(int id) => db.transaction(() async {
+    final set = await (db.select(db.routineSets)..where((s) => s.id.equals(id))).getSingle();
+    await db.customStatement('UPDATE routine_sets SET sort_order = sort_order + 1 WHERE day_id = ? AND sort_order > ?', [
+      set.dayId,
+      set.sortOrder,
+    ]);
+    await db
+        .into(db.routineSets)
+        .insert(set.toCompanion(false).copyWith(id: const Value.absent(), sortOrder: Value(set.sortOrder + 1)));
+  });
+  Future<void> deleteSets(Iterable<int> ids) => (db.delete(db.routineSets)..where((s) => s.id.isIn(ids))).go();
+  Future<void> swapSetOrder(int firstId, int secondId) => db.transaction(() async {
+    final first = await (db.select(db.routineSets)..where((s) => s.id.equals(firstId))).getSingle();
+    final second = await (db.select(
+      db.routineSets,
+    )..where((s) => s.id.equals(secondId) & s.dayId.equals(first.dayId))).getSingle();
+    await (db.update(
+      db.routineSets,
+    )..where((s) => s.id.equals(firstId))).write(RoutineSetsCompanion(sortOrder: Value(second.sortOrder)));
+    await (db.update(
+      db.routineSets,
+    )..where((s) => s.id.equals(secondId))).write(RoutineSetsCompanion(sortOrder: Value(first.sortOrder)));
+  });
+
   Future<void> deleteSet(int id) => (db.delete(db.routineSets)..where((s) => s.id.equals(id))).go();
   Future<void> reorder(List<int> ids) => db.batch((b) {
     for (var i = 0; i < ids.length; i++) {

@@ -23,6 +23,7 @@ class RestTimerService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var alert: Runnable? = null
     private var finish: Runnable? = null
+    private var completed = false
     private val sound by lazy { RestAlertPlayer(this) }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -38,6 +39,7 @@ class RestTimerService : Service() {
         if (deadline <= 0 || preferences.getBoolean("paused", false) || preferences.getBoolean("finished", false)) { stopSelf(); return START_NOT_STICKY }
         alert?.let(handler::removeCallbacks)
         finish?.let(handler::removeCallbacks)
+        completed = false
         sound.stop()
         if (Build.VERSION.SDK_INT >= 26) {
             notifications.createNotificationChannel(NotificationChannel(CHANNEL, "Workout rest timer", NotificationManager.IMPORTANCE_LOW).apply {
@@ -60,7 +62,7 @@ class RestTimerService : Service() {
         if (wakeLock?.isHeld == true) wakeLock?.release()
         val remaining = (deadline - System.currentTimeMillis()).coerceIn(0, 3_600_000)
         wakeLock = (getSystemService(POWER_SERVICE) as PowerManager).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "FitNotes:rest").apply {
-            acquire(remaining + 5000)
+            acquire(remaining + RestAlertPlayer.MAX_DURATION_MS + 2000)
         }
         alert = Runnable { complete() }
         handler.postDelayed(alert!!, remaining)
@@ -68,8 +70,8 @@ class RestTimerService : Service() {
     }
 
     @Suppress("DEPRECATION")
-    private fun notificationBuilder(): Notification.Builder {
-        val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, CHANNEL) else Notification.Builder(this)
+    private fun notificationBuilder(channel: String = CHANNEL): Notification.Builder {
+        val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, channel) else Notification.Builder(this)
         return builder.setSmallIcon(R.drawable.app_symbol).setColor(0xFF326A59.toInt())
             .setVisibility(Notification.VISIBILITY_PRIVATE)
             .setContentIntent(PendingIntent.getActivity(this, 1, Intent(this, MainActivity::class.java).apply {
@@ -81,15 +83,31 @@ class RestTimerService : Service() {
     private fun complete() {
         val playSound = preferences.getBoolean("sound", true)
         val vibrate = preferences.getBoolean("vibrate", false)
+        val soundUri = preferences.getString("soundUri", null)
+        val label = preferences.getString("label", "Rest")
         preferences.edit().clear().apply()
+        completed = true
         if (vibrate) {
             val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
             if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
             else vibrator.vibrate(500)
         }
+        if (notifications.areNotificationsEnabled()) {
+            if (Build.VERSION.SDK_INT >= 26) {
+                notifications.createNotificationChannel(NotificationChannel(ALERT_CHANNEL, "Rest complete", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                    setSound(null, null)
+                    enableVibration(false)
+                })
+            }
+            val completion = notificationBuilder(ALERT_CHANNEL).setContentTitle("Rest complete")
+                .setContentText(label?.takeUnless { it == "Rest" }).setAutoCancel(true).setShowWhen(false)
+            if (Build.VERSION.SDK_INT >= 26) completion.setTimeoutAfter(8000)
+            if (Build.VERSION.SDK_INT >= 34) startForeground(ONGOING_ID, completion.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            else startForeground(ONGOING_ID, completion.build())
+        }
         finish = Runnable { stopSelf() }
-        handler.postDelayed(finish!!, 2000)
-        if (playSound) sound.play { stopSelf() }
+        handler.postDelayed(finish!!, RestAlertPlayer.MAX_DURATION_MS + 1000)
+        if (playSound) sound.play(soundUri) { stopSelf() }
         else handler.postDelayed(finish!!, if (vibrate) 500 else 0)
 
     }
@@ -98,13 +116,15 @@ class RestTimerService : Service() {
         alert?.let(handler::removeCallbacks)
         finish?.let(handler::removeCallbacks)
         sound.stop()
+        if (Build.VERSION.SDK_INT < 26) notifications.cancel(COMPLETE_ID)
         if (wakeLock?.isHeld == true) wakeLock?.release()
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopForeground(if (completed && Build.VERSION.SDK_INT >= 26) STOP_FOREGROUND_DETACH else STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
 
     companion object {
         private const val CHANNEL = "fitnotes_rest"
+        private const val ALERT_CHANNEL = "fitnotes_rest_alerts"
         private const val ONGOING_ID = 3101
         private const val COMPLETE_ID = 3102
         private const val STOP = "fitnotes.stop_rest"

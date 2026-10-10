@@ -48,26 +48,19 @@ class ExerciseDetailScreen extends ConsumerWidget {
                   icon: const Icon(Icons.edit_outlined),
                   onPressed: () => context.push('/exercises/edit?id=$exerciseId'),
                 ),
-                AppMenuButton<String>(
-                  tooltip: 'Exercise actions',
-                  onSelected: (action) {
-                    if (action == 'tools') context.push('/tools');
-                    if (action == 'notes') {
-                      showDialog(
-                        context: context,
-                        builder: (_) => AppDialog(
-                          title: const Text('Exercise notes'),
-                          content: Text(exercise.notes!),
-                          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
-                        ),
-                      );
-                    }
-                  },
-                  itemBuilder: (_) => [
-                    if (exercise.notes?.isNotEmpty == true) const PopupMenuItem(value: 'notes', child: Text('Exercise notes')),
-                    const PopupMenuItem(value: 'tools', child: Text('Calculators')),
-                  ],
-                ),
+                if (exercise.notes?.isNotEmpty == true)
+                  IconButton(
+                    tooltip: 'Exercise notes',
+                    icon: const Icon(Icons.notes_rounded),
+                    onPressed: () => showDialog(
+                      context: context,
+                      builder: (_) => AppDialog(
+                        title: const Text('Exercise notes'),
+                        content: Text(exercise.notes!),
+                        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+                      ),
+                    ),
+                  ),
               ],
               bottom: TabBar(
                 isScrollable: MediaQuery.textScalerOf(context).scale(1) > 1.4,
@@ -293,24 +286,17 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           ),
         ),
         const Spacer(),
-        IconButton(
-          tooltip: _editing == null ? 'Use last values' : 'Cancel editing',
-          onPressed: _saving
-              ? null
-              : _editing != null
-              ? _cancelEdit
-              : _previous == null
-              ? null
-              : () => setState(() {
-                  _fill(_previous!);
-                  _touched = true;
-                }),
-          icon: Icon(_editing == null ? Icons.history_rounded : Icons.close_rounded),
-        ),
-        IconButton.filled(
-          tooltip: _editing == null ? 'Log set' : 'Update set',
-          onPressed: _saving || settings == null || widget.exercise.archived ? null : () => _save(multiplier),
-          icon: Icon(_editing == null ? Icons.add_rounded : Icons.check_rounded),
+        if (_editing != null)
+          IconButton(tooltip: 'Cancel editing', onPressed: _saving ? null : _cancelEdit, icon: const Icon(Icons.close_rounded)),
+        SizedBox(
+          width: 104,
+          height: 48,
+          child: IconButton.filled(
+            tooltip: _editing == null ? 'Log set' : 'Update set',
+            style: IconButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            onPressed: _saving || settings == null || widget.exercise.archived ? null : () => _save(multiplier),
+            icon: Icon(_editing == null ? Icons.add_rounded : Icons.check_rounded, size: 32),
+          ),
         ),
       ],
     );
@@ -400,6 +386,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           widget.exercise.defaultRestTimeSeconds ?? settings?.restTimerSeconds ?? 60,
           label: widget.exercise.name,
           sound: settings?.restTimerSound ?? true,
+          soundUri: settings?.restTimerSoundUri,
           vibrate: settings?.restTimerVibrate ?? false,
         );
   }
@@ -486,7 +473,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => selected ? _cancelEdit() : _selectSet(s, editing: true),
+        onTap: () => selected ? _cancelEdit() : _selectSet(s),
         child: Padding(
           padding: const EdgeInsets.only(left: 10),
           child: Row(
@@ -532,7 +519,6 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
                 onSelected: (action) => _setAction(s, action),
                 itemBuilder: (_) => [
                   PopupMenuItem(value: 'completion', child: Text(s.isPlanned ? 'Mark complete' : 'Mark incomplete')),
-                  const PopupMenuItem(value: 'values', child: Text('Use values for next set')),
                   const PopupMenuItem(value: 'note', child: Text('Set note')),
                   const PopupMenuItem(value: 'group', child: Text('Superset name')),
                   const PopupMenuItem(value: 'delete', child: Text('Delete set')),
@@ -560,9 +546,9 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
     }
   }
 
-  void _selectSet(WorkoutSet set, {required bool editing}) {
+  void _selectSet(WorkoutSet set) {
     setState(() {
-      _editing = editing ? set : null;
+      _editing = set;
       _fill(set);
       _touched = true;
     });
@@ -573,8 +559,6 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
     switch (action) {
       case 'completion':
         await _completion(s, s.isPlanned);
-      case 'values':
-        _selectSet(s, editing: false);
       case 'note':
         final note = await prompt(
           context,
@@ -599,15 +583,17 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           await attempt(context, () => repo.setGroup(widget.exercise.id, widget.date, group.isEmpty ? null : group));
         }
       case 'delete':
+        if (!await confirm(context, title: 'Delete set?', message: 'Remove this set from the workout?') || !mounted) return;
         await attempt(context, () async {
           await repo.deleteSet(s.id);
+          final previous = await repo.lastSet(widget.exercise.id, widget.date);
           if (!mounted) return;
-          if (_editing?.id == s.id) setState(() => _editing = null);
-          notice(
-            context,
-            'Set deleted',
-            action: SnackBarAction(label: 'Undo', onPressed: () => attempt(context, () => repo.restoreSets([s]))),
-          );
+          setState(() {
+            _previous = previous;
+            _editing = null;
+            _error = null;
+            if (previous != null) _fill(previous);
+          });
         });
     }
   }

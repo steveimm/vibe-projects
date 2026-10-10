@@ -30,8 +30,12 @@ class _FitNotesAppState extends ConsumerState<FitNotesApp> with WidgetsBindingOb
       final old = previous?.asData?.value;
       if (old != null &&
           value != null &&
-          (old.restTimerSound != value.restTimerSound || old.restTimerVibrate != value.restTimerVibrate)) {
-        ref.read(restTimerProvider.notifier).configureAlerts(sound: value.restTimerSound, vibrate: value.restTimerVibrate);
+          (old.restTimerSound != value.restTimerSound ||
+              old.restTimerVibrate != value.restTimerVibrate ||
+              old.restTimerSoundUri != value.restTimerSoundUri)) {
+        ref
+            .read(restTimerProvider.notifier)
+            .configureAlerts(sound: value.restTimerSound, vibrate: value.restTimerVibrate, soundUri: value.restTimerSoundUri);
       }
     }, fireImmediately: true);
   }

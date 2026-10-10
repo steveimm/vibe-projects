@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database/database.dart';
 import '../core/providers.dart';
 import '../core/services/rest_timer.dart';
-import '../core/services/device_service.dart';
+import 'rest_sound_tile.dart';
 import '../core/util/format.dart';
 import 'widgets.dart';
 
@@ -35,6 +35,7 @@ class _RestTimerSettingsState extends ConsumerState<_RestTimerSettings> {
   late bool _custom = widget.exercise?.defaultRestTimeSeconds != null;
   late bool _auto = widget.settings.restTimerAutoStart;
   late bool _sound = widget.settings.restTimerSound;
+  late String? _soundUri = widget.settings.restTimerSoundUri;
   late bool _vibrate = widget.settings.restTimerVibrate;
   bool _saving = false;
 
@@ -81,20 +82,19 @@ class _RestTimerSettingsState extends ConsumerState<_RestTimerSettings> {
             value: _auto,
             onChanged: _saving ? null : (v) => setState(() => _auto = v),
           ),
-          Row(
-            children: [
-              const Expanded(child: ExcludeSemantics(child: Text('Sound'))),
-              IconButton(
-                tooltip: 'Preview rest sound',
-                onPressed: () => DeviceService.call('previewRestSound'),
-                icon: const Icon(Icons.volume_up_outlined),
-              ),
-              Semantics(
-                label: 'Sound',
-                child: Switch(value: _sound, onChanged: _saving ? null : (v) => setState(() => _sound = v)),
-              ),
-            ],
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Sound'),
+            value: _sound,
+            onChanged: _saving ? null : (v) => setState(() => _sound = v),
           ),
+          if (_sound)
+            RestSoundTile(
+              uri: _soundUri,
+              padding: EdgeInsets.zero,
+              showIcon: false,
+              onChanged: _saving ? null : (uri) => setState(() => _soundUri = uri),
+            ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Vibration'),
@@ -126,6 +126,7 @@ class _RestTimerSettingsState extends ConsumerState<_RestTimerSettings> {
                 restTimerSeconds: Value(seconds),
                 restTimerAutoStart: Value(_auto),
                 restTimerSound: Value(_sound),
+                restTimerSoundUri: Value(_soundUri),
                 restTimerVibrate: Value(_vibrate),
               ),
             );
@@ -139,7 +140,13 @@ class _RestTimerSettingsState extends ConsumerState<_RestTimerSettings> {
       if (start) {
         ref
             .read(restTimerProvider.notifier)
-            .start(custom ?? seconds, label: widget.exercise?.name ?? 'Rest', sound: _sound, vibrate: _vibrate);
+            .start(
+              custom ?? seconds,
+              label: widget.exercise?.name ?? 'Rest',
+              sound: _sound,
+              vibrate: _vibrate,
+              soundUri: _soundUri,
+            );
       }
       Navigator.pop(context);
     } else {

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
 import '../../shared/widgets.dart';
+import '../../core/util/format.dart';
 
 class RoutinesScreen extends ConsumerWidget {
   const RoutinesScreen({super.key, this.date});
@@ -12,7 +13,14 @@ class RoutinesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) => Scaffold(
     appBar: AppBar(
       title: const Text('Routines'),
-      actions: [IconButton(tooltip: 'New routine', icon: const Icon(Icons.add_rounded), onPressed: () => _create(context, ref))],
+      actions: [
+        IconButton.filled(
+          tooltip: 'New routine',
+          style: IconButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.onPrimary),
+          icon: const Icon(Icons.add_rounded),
+          onPressed: () => _create(context, ref),
+        ),
+      ],
     ),
     body: ContentWidth(
       child: ref
@@ -22,59 +30,36 @@ class RoutinesScreen extends ConsumerWidget {
             error: (_, _) => ErrorState(onRetry: () => ref.invalidate(routinesProvider)),
             data: (routines) {
               if (routines.isEmpty) {
-                return SingleChildScrollView(
-                  child: EmptyState(
-                    icon: Icons.view_week_outlined,
-                    title: 'No routines',
-                    action: FilledButton.icon(
-                      onPressed: () => _create(context, ref),
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Create a routine'),
-                    ),
-                  ),
-                );
+                return const Center(child: Text('No routines'));
               }
               return ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                 children: [
                   for (final routine in routines)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Entrance(
-                        child: Card(
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(18),
-                            leading: Container(
-                              width: 46,
-                              height: 46,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: const Icon(Icons.view_week_outlined),
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Card(
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                          minTileHeight: 64,
+                          titleTextStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                          title: Text(routine.name),
+                          subtitleTextStyle: Theme.of(context).textTheme.bodySmall,
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              routine.notes.isEmpty
+                                  ? Fmt.count(ref.watch(routineDaysProvider(routine.id)).asData?.value.length ?? 0, 'day')
+                                  : routine.notes,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            title: Text(routine.name, style: Theme.of(context).textTheme.titleMedium),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 5),
-                              child: Text(
-                                routine.notes.isEmpty
-                                    ? '${ref.watch(routineDaysProvider(routine.id)).asData?.value.length ?? 0} training days'
-                                    : routine.notes,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            trailing: const Icon(Icons.chevron_right_rounded),
-                            onTap: () => context.push('/routine/${routine.id}${date == null ? '' : '?date=$date'}'),
                           ),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () => context.push('/routine/${routine.id}${date == null ? '' : '?date=$date'}'),
                         ),
                       ),
                     ),
-                  OutlinedButton.icon(
-                    onPressed: () => _create(context, ref),
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('New routine'),
-                  ),
                 ],
               );
             },

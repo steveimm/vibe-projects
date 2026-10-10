@@ -22,6 +22,7 @@ class RestTimerController extends Notifier<RestState> {
   DateTime _now() => ref.read(restClockProvider)();
   Timer? _ticker;
   bool _sound = true, _vibrate = false, _visible = true;
+  String? _soundUri;
   int _generation = 0;
 
   @override
@@ -43,6 +44,7 @@ class RestTimerController extends Notifier<RestState> {
     }
     final paused = saved['paused'] == true;
     final deadline = DateTime.fromMillisecondsSinceEpoch(saved['deadline'] as int);
+    _soundUri = saved['soundUri'] as String?;
     _sound = saved['sound'] as bool;
     _vibrate = saved['vibrate'] as bool;
     final remaining = paused
@@ -72,9 +74,10 @@ class RestTimerController extends Notifier<RestState> {
     }
   }
 
-  void start(int seconds, {String label = 'Rest', bool sound = true, bool vibrate = false}) {
+  void start(int seconds, {String label = 'Rest', bool sound = true, bool vibrate = false, String? soundUri}) {
     _generation++;
     _sound = sound;
+    _soundUri = soundUri;
     _vibrate = vibrate;
     final duration = seconds.clamp(1, 3600);
     state = RestState(
@@ -134,7 +137,7 @@ class RestTimerController extends Notifier<RestState> {
   void add(int seconds) {
     _refresh();
     if (state.status == RestStatus.finished) {
-      start(seconds, label: state.label, sound: _sound, vibrate: _vibrate);
+      start(seconds, label: state.label, sound: _sound, vibrate: _vibrate, soundUri: _soundUri);
       return;
     }
     if (state.status == RestStatus.idle) return;
@@ -154,9 +157,11 @@ class RestTimerController extends Notifier<RestState> {
     }
   }
 
-  void configureAlerts({required bool sound, required bool vibrate}) {
+  void configureAlerts({required bool sound, required bool vibrate, String? soundUri}) {
     _generation++;
+    _refresh();
     _sound = sound;
+    _soundUri = soundUri;
     _vibrate = vibrate;
     if (state.status == RestStatus.running) _schedule();
     if (state.status == RestStatus.paused) _persistPause();
@@ -175,6 +180,7 @@ class RestTimerController extends Notifier<RestState> {
       'total': state.total,
       'label': state.label,
       'sound': _sound,
+      'soundUri': _soundUri,
       'vibrate': _vibrate,
     }),
   );
@@ -184,6 +190,7 @@ class RestTimerController extends Notifier<RestState> {
       'total': state.total,
       'label': state.label,
       'sound': _sound,
+      'soundUri': _soundUri,
       'vibrate': _vibrate,
     }),
   );

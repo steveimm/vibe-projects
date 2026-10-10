@@ -1,0 +1,60 @@
+{
+  "phases": [
+    {
+      "name": "Logging, routines, settings, and rest sounds",
+      "status": "complete",
+      "requirements": [
+        "Remove use-last-values control; emphasize icon-only logging action",
+        "Remove calculators and their navigation",
+        "Compact routine overview, grouped preset rows, consistent drag preview and edit dialogs",
+        "Consistent settings groups and clear explanation of max-weight estimation",
+        "Choose and preview device sounds; persist selection and preserve old backups",
+        "Emulator testing, split ABI build, and commit before Analysis follow-up",
+        "Verify chosen sound and completion notification fire with screen locked, before unlocking",
+        "Confirmation before workout/set/routine deletion; successful workout deletion exits selection mode; no Undo snackbars"
+      ],
+      "validation": {
+        "tests": 49,
+        "analysis": "No issues found",
+        "emulator": [
+          "Routine overview and grouped preset cards",
+          "Preset dialog at emulator width; fixed intrinsic layout failure",
+          "Routine applied to workout",
+          "Delete cancellation keeps selection; confirming exits edit mode without snackbar",
+          "Device ringtone selected and retained across APK update",
+          "Selected ringtone playing with power Asleep and keyguard showing=true",
+          "One Rest complete notification posted before unlock; notification and service cleared automatically"
+        ],
+        "lock_test": {
+          "sound": "Your New Adventure",
+          "media_player": "started",
+          "focus": "GAIN_TRANSIENT_MAY_DUCK",
+          "notification_id": 3101,
+          "keyguard_showing": true,
+          "power": "Asleep",
+          "original_lock_setting_restored": true
+        },
+        "release": "1.2.1+10",
+        "split_apks": "build/releases/1.2.1/"
+      }
+    },
+    {
+      "name": "Analysis follow-up",
+      "status": "pending",
+      "requirements": [
+        "Test original FitNotes Analysis with dummy workout data",
+        "Rename Training tab to Analysis",
+        "Per-workout graphs with trend lines",
+        "Filters: 1 month, 3 months, 6 months, All time, custom range",
+        "Training balance pie chart",
+        "Remove personal records section",
+        "Emulator testing, split ABI build, and commit"
+      ]
+    }
+  ],
+  "restore": {
+    "fitnotes_plus_snapshot": "/private/tmp/fitnotes-consistency-original.tar",
+    "fitnotes_plus_extracted": "/private/tmp/fitnotes-consistency-original",
+    "status": "Temporary fixtures active; restore after Analysis testing"
+  }
+}

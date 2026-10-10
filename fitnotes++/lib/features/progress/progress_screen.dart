@@ -23,13 +23,6 @@ class ProgressScreen extends StatelessWidget {
     child: Scaffold(
       appBar: AppBar(
         title: const Text('Progress'),
-        actions: [
-          IconButton(
-            tooltip: 'Workout calculators',
-            icon: const Icon(Icons.calculate_outlined),
-            onPressed: () => context.push('/tools'),
-          ),
-        ],
         bottom: TabBar(
           isScrollable: MediaQuery.textScalerOf(context).scale(1) > 1.4,
           tabAlignment: MediaQuery.textScalerOf(context).scale(1) > 1.4 ? TabAlignment.start : TabAlignment.fill,

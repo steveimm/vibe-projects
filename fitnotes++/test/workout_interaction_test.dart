@@ -74,7 +74,9 @@ class _Workouts extends WorkoutRepository {
 }
 
 void main() {
-  testWidgets('holding an exercise enables dragging and removal, and Undo restores the removed card', (tester) async {
+  testWidgets('deletion requires confirmation, cancel keeps selection, and success exits edit mode without a snackbar', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -127,18 +129,21 @@ void main() {
     expect(find.widgetWithIcon(IconButton, Icons.delete_outline_rounded), findsOneWidget);
     await tester.tap(find.byTooltip('Delete selected exercises'));
     await tester.pumpAndSettle();
+    expect(repo.removed, isNull);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('2 selected'), findsOneWidget);
+    expect(repo.removed, isNull);
+    await tester.tap(find.byTooltip('Delete selected exercises'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Remove'));
+    await tester.pumpAndSettle();
     expect(repo.removed, {1, 3});
     expect(find.text('Row'), findsNothing);
     expect(find.text('Bench press'), findsNothing);
     expect(find.text('Curl'), findsOneWidget);
-    expect(tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.delete_outline_rounded)).onPressed, isNull);
-    await tester.tap(find.text('Undo'));
-    await tester.pumpAndSettle();
-    expect(find.text('Row'), findsOneWidget);
-    expect(find.text('Bench press'), findsOneWidget);
-    expect(tester.getTopLeft(find.text('Row')).dy, lessThan(tester.getTopLeft(find.text('Bench press')).dy));
-    await tester.tap(find.byTooltip('Done'));
-    await tester.pumpAndSettle();
+    expect(find.byTooltip('Done'), findsNothing);
+    expect(find.byType(SnackBar), findsNothing);
     expect(find.byTooltip('Delete selected exercises'), findsNothing);
     expect(find.byType(Checkbox), findsNothing);
     expect(find.byTooltip('Add exercise'), findsOneWidget);

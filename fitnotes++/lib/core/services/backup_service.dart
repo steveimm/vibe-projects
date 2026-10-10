@@ -60,6 +60,7 @@ class BackupService {
         if (!_tablesForVersion(version).contains(table.actualTableName)) continue;
         final columns = source.select('PRAGMA table_info("${table.actualTableName}")').map((r) => r['name']).toSet();
         final expected = table.$columns.map((c) => c.$name).toSet();
+        if (version < 5 && table.actualTableName == 'app_settings') expected.remove('rest_timer_sound_uri');
         if (version == 2 && table.actualTableName == 'workout_sessions') {
           expected.removeAll(['elapsed_seconds', 'running_since']);
         }

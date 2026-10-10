@@ -18,6 +18,7 @@ import '../../core/services/rest_timer.dart';
 import '../../core/util/dates.dart';
 import '../../core/util/format.dart';
 import '../../shared/widgets.dart';
+import '../../shared/rest_sound_tile.dart';
 
 Future<File> _recoveryFile() async => File('${(await getApplicationDocumentsDirectory()).path}/fitnotes-before-restore.sqlite');
 final _recoveryProvider = FutureProvider.autoDispose((ref) async => (await _recoveryFile()).exists());
@@ -42,7 +43,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, _) => ErrorState(onRetry: () => ref.invalidate(settingsProvider)),
           data: (s) => ListView(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             children: [
               const SectionTitle('General'),
               Card(
@@ -57,7 +58,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         if (choice != null) await _update(AppSettingsCompanion(themeMode: Value(choice)));
                       },
                     ),
-                    const Divider(indent: 56, endIndent: 16),
                     _tile(
                       Icons.straighten_rounded,
                       'Units',
@@ -70,7 +70,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         if (choice != null) await _update(AppSettingsCompanion(useImperial: Value(choice)));
                       },
                     ),
-                    const Divider(indent: 56, endIndent: 16),
                     _tile(
                       Icons.calendar_view_week_outlined,
                       'Week starts on',
@@ -113,38 +112,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       }
                     }),
                     _switch(
-                      'Personal records',
-                      'Highlight record-setting sets',
-                      s.trackPersonalRecords,
-                      (v) => _update(AppSettingsCompanion(trackPersonalRecords: Value(v))),
-                    ),
-                    _switch(
+                      Icons.check_box_outlined,
                       'Completion checkboxes',
                       'Show a checkbox beside each set',
                       s.markSetsComplete,
                       (v) => _update(AppSettingsCompanion(markSetsComplete: Value(v))),
                     ),
                     _switch(
+                      Icons.screen_lock_portrait_outlined,
                       'Keep screen on',
-                      'While FitNotes++ is open',
+                      'While the app is open',
                       s.keepScreenOn,
                       (v) => _update(AppSettingsCompanion(keepScreenOn: Value(v))),
-                    ),
-                    _tile(
-                      Icons.auto_graph_rounded,
-                      '1RM rep limit',
-                      s.estimated1rmMaxReps == 0 ? 'No cap (up to 36 reps)' : 'Include sets up to ${s.estimated1rmMaxReps} reps',
-                      () async {
-                        final value = await _pick('1RM rep limit', const {
-                          0: 'No cap (up to 36 reps)',
-                          8: '8 reps',
-                          10: '10 reps',
-                          12: '12 reps',
-                          15: '15 reps',
-                          20: '20 reps',
-                        }, s.estimated1rmMaxReps);
-                        if (value != null) await _update(AppSettingsCompanion(estimated1rmMaxReps: Value(value)));
-                      },
                     ),
                   ],
                 ),
@@ -168,49 +147,77 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       if (value != null) await _update(AppSettingsCompanion(restTimerSeconds: Value(Fmt.parseDuration(value)!)));
                     }),
                     _switch(
-                      'Auto-start',
-                      'Start after logging or completing a set',
+                      Icons.play_circle_outline_rounded,
+                      'Auto-start after a set',
+                      null,
                       s.restTimerAutoStart,
                       (v) => _update(AppSettingsCompanion(restTimerAutoStart: Value(v))),
                     ),
                     _switch(
+                      Icons.volume_up_outlined,
                       'Sound',
-                      'Play a tone when rest ends',
+                      null,
                       s.restTimerSound,
                       (v) => _update(AppSettingsCompanion(restTimerSound: Value(v))),
                     ),
+                    if (s.restTimerSound)
+                      RestSoundTile(
+                        uri: s.restTimerSoundUri,
+                        onChanged: (uri) => _update(AppSettingsCompanion(restTimerSoundUri: Value(uri))),
+                      ),
                     _switch(
+                      Icons.vibration_rounded,
                       'Vibration',
-                      'Vibrate when rest ends',
+                      null,
                       s.restTimerVibrate,
                       (v) => _update(AppSettingsCompanion(restTimerVibrate: Value(v))),
                     ),
+                    if (DeviceService.nativeTimers)
+                      _tile(
+                        Icons.notifications_outlined,
+                        'Timer notifications',
+                        'Android notification settings',
+                        () => attempt(context, () async {
+                          await DeviceService.call('notificationSettings');
+                        }),
+                      ),
                   ],
                 ),
               ),
-              if (DeviceService.nativeTimers)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Card(
-                    child: _tile(
-                      Icons.notifications_outlined,
-                      'Timer notifications',
-                      'Countdown and alerts while the app is in the background',
-                      () => attempt(context, () async {
-                        await DeviceService.call('notificationSettings');
-                      }),
-                    ),
-                  ),
-                ),
-              const SectionTitle('Personal record seasons'),
+              const SectionTitle('Progress'),
               Card(
-                child: _tile(
-                  Icons.emoji_events_outlined,
-                  'Manage seasons',
-                  season == null
-                      ? 'Tracking all-time records'
-                      : '${season.note?.isNotEmpty == true ? season.note : 'Current season'} · since ${season.date}',
-                  () => context.push('/seasons'),
+                child: Column(
+                  children: [
+                    _switch(
+                      Icons.emoji_events_outlined,
+                      'Highlight personal records',
+                      null,
+                      s.trackPersonalRecords,
+                      (v) => _update(AppSettingsCompanion(trackPersonalRecords: Value(v))),
+                    ),
+                    _tile(
+                      Icons.auto_graph_rounded,
+                      'Max-weight estimate',
+                      'Use sets up to ${s.estimated1rmMaxReps == 0 ? 36 : s.estimated1rmMaxReps} reps',
+                      () async {
+                        final value = await _pick(
+                          'Max-weight estimate',
+                          const {8: '8 reps', 10: '10 reps', 12: '12 reps', 15: '15 reps', 20: '20 reps', 0: '36 reps'},
+                          s.estimated1rmMaxReps,
+                          explanation: 'Estimates the weight you could lift once. Sets above this rep count are ignored.',
+                        );
+                        if (value != null) await _update(AppSettingsCompanion(estimated1rmMaxReps: Value(value)));
+                      },
+                    ),
+                    _tile(
+                      Icons.emoji_events_outlined,
+                      'Manage seasons',
+                      season == null
+                          ? 'Tracking all-time records'
+                          : '${season.note?.isNotEmpty == true ? season.note : 'Current season'} · since ${season.date}',
+                      () => context.push('/seasons'),
+                    ),
+                  ],
                 ),
               ),
               const SectionTitle('Data'),
@@ -272,7 +279,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _tile(IconData icon, String title, String subtitle, VoidCallback? tap) => Semantics(
     container: true,
     child: ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+      minLeadingWidth: 24,
+      horizontalTitleGap: 12,
       leading: Icon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
       title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
       subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
@@ -281,22 +290,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       enabled: tap != null,
     ),
   );
-  Widget _switch(String title, String subtitle, bool value, ValueChanged<bool> change) => SwitchListTile(
-    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-    title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-    subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
-    value: value,
-    onChanged: change,
+  Widget _switch(IconData icon, String title, String? subtitle, bool value, ValueChanged<bool> change) => ListTileTheme(
+    data: const ListTileThemeData(minLeadingWidth: 24, horizontalTitleGap: 12),
+    child: SwitchListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+      secondary: Icon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
+      title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+      subtitle: subtitle == null ? null : Text(subtitle, style: const TextStyle(fontSize: 12)),
+      value: value,
+      onChanged: change,
+    ),
   );
   Future<void> _update(AppSettingsCompanion changes) =>
       attempt(context, () => ref.read(settingsRepositoryProvider).update(changes));
-  Future<T?> _pick<T>(String title, Map<T, String> options, T current) => showDialog<T>(
+  Future<T?> _pick<T>(String title, Map<T, String> options, T current, {String? explanation}) => showDialog<T>(
     context: context,
     builder: (context) => AppDialog(
       title: Text(title),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (explanation != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(explanation)),
           for (final option in options.entries)
             ListTile(
               contentPadding: EdgeInsets.zero,

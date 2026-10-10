@@ -132,7 +132,7 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  'Brzycki estimate${cap == 0 ? '' : ' · limited to $cap reps'}. Sets with 37 or more reps are excluded.',
+                  'Estimated weight for one rep. Uses sets of up to ${cap == 0 ? 36 : cap} reps.',
                   style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               ),

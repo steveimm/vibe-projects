@@ -122,6 +122,7 @@ class AppSettings extends Table {
   IntColumn get restTimerSeconds => integer().withDefault(const Constant(60))();
   BoolColumn get restTimerVibrate => boolean().withDefault(const Constant(false))();
   BoolColumn get restTimerSound => boolean().withDefault(const Constant(true))();
+  TextColumn get restTimerSoundUri => text().nullable()();
   BoolColumn get restTimerAutoStart => boolean().withDefault(const Constant(false))();
   BoolColumn get trackPersonalRecords => boolean().withDefault(const Constant(true))();
   BoolColumn get markSetsComplete => boolean().withDefault(const Constant(false))();

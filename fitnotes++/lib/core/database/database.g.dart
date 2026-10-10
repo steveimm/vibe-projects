@@ -2320,6 +2320,15 @@ class $AppSettingsTable extends AppSettings with TableInfo<$AppSettingsTable, Ap
     defaultConstraints: GeneratedColumn.constraintIsAlways('CHECK ("rest_timer_sound" IN (0, 1))'),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _restTimerSoundUriMeta = const VerificationMeta('restTimerSoundUri');
+  @override
+  late final GeneratedColumn<String> restTimerSoundUri = GeneratedColumn<String>(
+    'rest_timer_sound_uri',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _restTimerAutoStartMeta = const VerificationMeta('restTimerAutoStart');
   @override
   late final GeneratedColumn<bool> restTimerAutoStart = GeneratedColumn<bool>(
@@ -2394,6 +2403,7 @@ class $AppSettingsTable extends AppSettings with TableInfo<$AppSettingsTable, Ap
     restTimerSeconds,
     restTimerVibrate,
     restTimerSound,
+    restTimerSoundUri,
     restTimerAutoStart,
     trackPersonalRecords,
     markSetsComplete,
@@ -2439,6 +2449,12 @@ class $AppSettingsTable extends AppSettings with TableInfo<$AppSettingsTable, Ap
     }
     if (data.containsKey('rest_timer_sound')) {
       context.handle(_restTimerSoundMeta, restTimerSound.isAcceptableOrUnknown(data['rest_timer_sound']!, _restTimerSoundMeta));
+    }
+    if (data.containsKey('rest_timer_sound_uri')) {
+      context.handle(
+        _restTimerSoundUriMeta,
+        restTimerSoundUri.isAcceptableOrUnknown(data['rest_timer_sound_uri']!, _restTimerSoundUriMeta),
+      );
     }
     if (data.containsKey('rest_timer_auto_start')) {
       context.handle(
@@ -2489,6 +2505,7 @@ class $AppSettingsTable extends AppSettings with TableInfo<$AppSettingsTable, Ap
       restTimerSeconds: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}rest_timer_seconds'])!,
       restTimerVibrate: attachedDatabase.typeMapping.read(DriftSqlType.bool, data['${effectivePrefix}rest_timer_vibrate'])!,
       restTimerSound: attachedDatabase.typeMapping.read(DriftSqlType.bool, data['${effectivePrefix}rest_timer_sound'])!,
+      restTimerSoundUri: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}rest_timer_sound_uri']),
       restTimerAutoStart: attachedDatabase.typeMapping.read(DriftSqlType.bool, data['${effectivePrefix}rest_timer_auto_start'])!,
       trackPersonalRecords: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
@@ -2515,6 +2532,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
   final int restTimerSeconds;
   final bool restTimerVibrate;
   final bool restTimerSound;
+  final String? restTimerSoundUri;
   final bool restTimerAutoStart;
   final bool trackPersonalRecords;
   final bool markSetsComplete;
@@ -2529,6 +2547,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     required this.restTimerSeconds,
     required this.restTimerVibrate,
     required this.restTimerSound,
+    this.restTimerSoundUri,
     required this.restTimerAutoStart,
     required this.trackPersonalRecords,
     required this.markSetsComplete,
@@ -2546,6 +2565,9 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     map['rest_timer_seconds'] = Variable<int>(restTimerSeconds);
     map['rest_timer_vibrate'] = Variable<bool>(restTimerVibrate);
     map['rest_timer_sound'] = Variable<bool>(restTimerSound);
+    if (!nullToAbsent || restTimerSoundUri != null) {
+      map['rest_timer_sound_uri'] = Variable<String>(restTimerSoundUri);
+    }
     map['rest_timer_auto_start'] = Variable<bool>(restTimerAutoStart);
     map['track_personal_records'] = Variable<bool>(trackPersonalRecords);
     map['mark_sets_complete'] = Variable<bool>(markSetsComplete);
@@ -2564,6 +2586,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       restTimerSeconds: Value(restTimerSeconds),
       restTimerVibrate: Value(restTimerVibrate),
       restTimerSound: Value(restTimerSound),
+      restTimerSoundUri: restTimerSoundUri == null && nullToAbsent ? const Value.absent() : Value(restTimerSoundUri),
       restTimerAutoStart: Value(restTimerAutoStart),
       trackPersonalRecords: Value(trackPersonalRecords),
       markSetsComplete: Value(markSetsComplete),
@@ -2583,6 +2606,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       restTimerSeconds: serializer.fromJson<int>(json['restTimerSeconds']),
       restTimerVibrate: serializer.fromJson<bool>(json['restTimerVibrate']),
       restTimerSound: serializer.fromJson<bool>(json['restTimerSound']),
+      restTimerSoundUri: serializer.fromJson<String?>(json['restTimerSoundUri']),
       restTimerAutoStart: serializer.fromJson<bool>(json['restTimerAutoStart']),
       trackPersonalRecords: serializer.fromJson<bool>(json['trackPersonalRecords']),
       markSetsComplete: serializer.fromJson<bool>(json['markSetsComplete']),
@@ -2602,6 +2626,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       'restTimerSeconds': serializer.toJson<int>(restTimerSeconds),
       'restTimerVibrate': serializer.toJson<bool>(restTimerVibrate),
       'restTimerSound': serializer.toJson<bool>(restTimerSound),
+      'restTimerSoundUri': serializer.toJson<String?>(restTimerSoundUri),
       'restTimerAutoStart': serializer.toJson<bool>(restTimerAutoStart),
       'trackPersonalRecords': serializer.toJson<bool>(trackPersonalRecords),
       'markSetsComplete': serializer.toJson<bool>(markSetsComplete),
@@ -2619,6 +2644,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     int? restTimerSeconds,
     bool? restTimerVibrate,
     bool? restTimerSound,
+    Value<String?> restTimerSoundUri = const Value.absent(),
     bool? restTimerAutoStart,
     bool? trackPersonalRecords,
     bool? markSetsComplete,
@@ -2633,6 +2659,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     restTimerSeconds: restTimerSeconds ?? this.restTimerSeconds,
     restTimerVibrate: restTimerVibrate ?? this.restTimerVibrate,
     restTimerSound: restTimerSound ?? this.restTimerSound,
+    restTimerSoundUri: restTimerSoundUri.present ? restTimerSoundUri.value : this.restTimerSoundUri,
     restTimerAutoStart: restTimerAutoStart ?? this.restTimerAutoStart,
     trackPersonalRecords: trackPersonalRecords ?? this.trackPersonalRecords,
     markSetsComplete: markSetsComplete ?? this.markSetsComplete,
@@ -2651,6 +2678,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       restTimerSeconds: data.restTimerSeconds.present ? data.restTimerSeconds.value : this.restTimerSeconds,
       restTimerVibrate: data.restTimerVibrate.present ? data.restTimerVibrate.value : this.restTimerVibrate,
       restTimerSound: data.restTimerSound.present ? data.restTimerSound.value : this.restTimerSound,
+      restTimerSoundUri: data.restTimerSoundUri.present ? data.restTimerSoundUri.value : this.restTimerSoundUri,
       restTimerAutoStart: data.restTimerAutoStart.present ? data.restTimerAutoStart.value : this.restTimerAutoStart,
       trackPersonalRecords: data.trackPersonalRecords.present ? data.trackPersonalRecords.value : this.trackPersonalRecords,
       markSetsComplete: data.markSetsComplete.present ? data.markSetsComplete.value : this.markSetsComplete,
@@ -2670,6 +2698,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
           ..write('restTimerSeconds: $restTimerSeconds, ')
           ..write('restTimerVibrate: $restTimerVibrate, ')
           ..write('restTimerSound: $restTimerSound, ')
+          ..write('restTimerSoundUri: $restTimerSoundUri, ')
           ..write('restTimerAutoStart: $restTimerAutoStart, ')
           ..write('trackPersonalRecords: $trackPersonalRecords, ')
           ..write('markSetsComplete: $markSetsComplete, ')
@@ -2689,6 +2718,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     restTimerSeconds,
     restTimerVibrate,
     restTimerSound,
+    restTimerSoundUri,
     restTimerAutoStart,
     trackPersonalRecords,
     markSetsComplete,
@@ -2707,6 +2737,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
           other.restTimerSeconds == this.restTimerSeconds &&
           other.restTimerVibrate == this.restTimerVibrate &&
           other.restTimerSound == this.restTimerSound &&
+          other.restTimerSoundUri == this.restTimerSoundUri &&
           other.restTimerAutoStart == this.restTimerAutoStart &&
           other.trackPersonalRecords == this.trackPersonalRecords &&
           other.markSetsComplete == this.markSetsComplete &&
@@ -2723,6 +2754,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
   final Value<int> restTimerSeconds;
   final Value<bool> restTimerVibrate;
   final Value<bool> restTimerSound;
+  final Value<String?> restTimerSoundUri;
   final Value<bool> restTimerAutoStart;
   final Value<bool> trackPersonalRecords;
   final Value<bool> markSetsComplete;
@@ -2737,6 +2769,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
     this.restTimerSeconds = const Value.absent(),
     this.restTimerVibrate = const Value.absent(),
     this.restTimerSound = const Value.absent(),
+    this.restTimerSoundUri = const Value.absent(),
     this.restTimerAutoStart = const Value.absent(),
     this.trackPersonalRecords = const Value.absent(),
     this.markSetsComplete = const Value.absent(),
@@ -2752,6 +2785,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
     this.restTimerSeconds = const Value.absent(),
     this.restTimerVibrate = const Value.absent(),
     this.restTimerSound = const Value.absent(),
+    this.restTimerSoundUri = const Value.absent(),
     this.restTimerAutoStart = const Value.absent(),
     this.trackPersonalRecords = const Value.absent(),
     this.markSetsComplete = const Value.absent(),
@@ -2767,6 +2801,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
     Expression<int>? restTimerSeconds,
     Expression<bool>? restTimerVibrate,
     Expression<bool>? restTimerSound,
+    Expression<String>? restTimerSoundUri,
     Expression<bool>? restTimerAutoStart,
     Expression<bool>? trackPersonalRecords,
     Expression<bool>? markSetsComplete,
@@ -2782,6 +2817,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
       if (restTimerSeconds != null) 'rest_timer_seconds': restTimerSeconds,
       if (restTimerVibrate != null) 'rest_timer_vibrate': restTimerVibrate,
       if (restTimerSound != null) 'rest_timer_sound': restTimerSound,
+      if (restTimerSoundUri != null) 'rest_timer_sound_uri': restTimerSoundUri,
       if (restTimerAutoStart != null) 'rest_timer_auto_start': restTimerAutoStart,
       if (trackPersonalRecords != null) 'track_personal_records': trackPersonalRecords,
       if (markSetsComplete != null) 'mark_sets_complete': markSetsComplete,
@@ -2799,6 +2835,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
     Value<int>? restTimerSeconds,
     Value<bool>? restTimerVibrate,
     Value<bool>? restTimerSound,
+    Value<String?>? restTimerSoundUri,
     Value<bool>? restTimerAutoStart,
     Value<bool>? trackPersonalRecords,
     Value<bool>? markSetsComplete,
@@ -2814,6 +2851,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
       restTimerSeconds: restTimerSeconds ?? this.restTimerSeconds,
       restTimerVibrate: restTimerVibrate ?? this.restTimerVibrate,
       restTimerSound: restTimerSound ?? this.restTimerSound,
+      restTimerSoundUri: restTimerSoundUri ?? this.restTimerSoundUri,
       restTimerAutoStart: restTimerAutoStart ?? this.restTimerAutoStart,
       trackPersonalRecords: trackPersonalRecords ?? this.trackPersonalRecords,
       markSetsComplete: markSetsComplete ?? this.markSetsComplete,
@@ -2847,6 +2885,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
     if (restTimerSound.present) {
       map['rest_timer_sound'] = Variable<bool>(restTimerSound.value);
     }
+    if (restTimerSoundUri.present) {
+      map['rest_timer_sound_uri'] = Variable<String>(restTimerSoundUri.value);
+    }
     if (restTimerAutoStart.present) {
       map['rest_timer_auto_start'] = Variable<bool>(restTimerAutoStart.value);
     }
@@ -2878,6 +2919,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
           ..write('restTimerSeconds: $restTimerSeconds, ')
           ..write('restTimerVibrate: $restTimerVibrate, ')
           ..write('restTimerSound: $restTimerSound, ')
+          ..write('restTimerSoundUri: $restTimerSoundUri, ')
           ..write('restTimerAutoStart: $restTimerAutoStart, ')
           ..write('trackPersonalRecords: $trackPersonalRecords, ')
           ..write('markSetsComplete: $markSetsComplete, ')
@@ -6863,6 +6905,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder = AppSettingsCompanion Function
   Value<int> restTimerSeconds,
   Value<bool> restTimerVibrate,
   Value<bool> restTimerSound,
+  Value<String?> restTimerSoundUri,
   Value<bool> restTimerAutoStart,
   Value<bool> trackPersonalRecords,
   Value<bool> markSetsComplete,
@@ -6878,6 +6921,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder = AppSettingsCompanion Function
   Value<int> restTimerSeconds,
   Value<bool> restTimerVibrate,
   Value<bool> restTimerSound,
+  Value<String?> restTimerSoundUri,
   Value<bool> restTimerAutoStart,
   Value<bool> trackPersonalRecords,
   Value<bool> markSetsComplete,
@@ -6912,6 +6956,9 @@ class $$AppSettingsTableFilterComposer extends Composer<_$AppDatabase, $AppSetti
 
   ColumnFilters<bool> get restTimerSound =>
       $composableBuilder(column: $table.restTimerSound, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get restTimerSoundUri =>
+      $composableBuilder(column: $table.restTimerSoundUri, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get restTimerAutoStart =>
       $composableBuilder(column: $table.restTimerAutoStart, builder: (column) => ColumnFilters(column));
@@ -6960,6 +7007,9 @@ class $$AppSettingsTableOrderingComposer extends Composer<_$AppDatabase, $AppSet
   ColumnOrderings<bool> get restTimerSound =>
       $composableBuilder(column: $table.restTimerSound, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get restTimerSoundUri =>
+      $composableBuilder(column: $table.restTimerSoundUri, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get restTimerAutoStart =>
       $composableBuilder(column: $table.restTimerAutoStart, builder: (column) => ColumnOrderings(column));
 
@@ -7001,6 +7051,9 @@ class $$AppSettingsTableAnnotationComposer extends Composer<_$AppDatabase, $AppS
   GeneratedColumn<bool> get restTimerVibrate => $composableBuilder(column: $table.restTimerVibrate, builder: (column) => column);
 
   GeneratedColumn<bool> get restTimerSound => $composableBuilder(column: $table.restTimerSound, builder: (column) => column);
+
+  GeneratedColumn<String> get restTimerSoundUri =>
+      $composableBuilder(column: $table.restTimerSoundUri, builder: (column) => column);
 
   GeneratedColumn<bool> get restTimerAutoStart =>
       $composableBuilder(column: $table.restTimerAutoStart, builder: (column) => column);
@@ -7050,6 +7103,7 @@ class $$AppSettingsTableTableManager
                 Value<int> restTimerSeconds = const Value.absent(),
                 Value<bool> restTimerVibrate = const Value.absent(),
                 Value<bool> restTimerSound = const Value.absent(),
+                Value<String?> restTimerSoundUri = const Value.absent(),
                 Value<bool> restTimerAutoStart = const Value.absent(),
                 Value<bool> trackPersonalRecords = const Value.absent(),
                 Value<bool> markSetsComplete = const Value.absent(),
@@ -7064,6 +7118,7 @@ class $$AppSettingsTableTableManager
                 restTimerSeconds: restTimerSeconds,
                 restTimerVibrate: restTimerVibrate,
                 restTimerSound: restTimerSound,
+                restTimerSoundUri: restTimerSoundUri,
                 restTimerAutoStart: restTimerAutoStart,
                 trackPersonalRecords: trackPersonalRecords,
                 markSetsComplete: markSetsComplete,
@@ -7080,6 +7135,7 @@ class $$AppSettingsTableTableManager
                 Value<int> restTimerSeconds = const Value.absent(),
                 Value<bool> restTimerVibrate = const Value.absent(),
                 Value<bool> restTimerSound = const Value.absent(),
+                Value<String?> restTimerSoundUri = const Value.absent(),
                 Value<bool> restTimerAutoStart = const Value.absent(),
                 Value<bool> trackPersonalRecords = const Value.absent(),
                 Value<bool> markSetsComplete = const Value.absent(),
@@ -7094,6 +7150,7 @@ class $$AppSettingsTableTableManager
                 restTimerSeconds: restTimerSeconds,
                 restTimerVibrate: restTimerVibrate,
                 restTimerSound: restTimerSound,
+                restTimerSoundUri: restTimerSoundUri,
                 restTimerAutoStart: restTimerAutoStart,
                 trackPersonalRecords: trackPersonalRecords,
                 markSetsComplete: markSetsComplete,

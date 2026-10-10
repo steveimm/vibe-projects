@@ -10,7 +10,6 @@ import '../features/routines/routine_detail_screen.dart';
 import '../features/routines/routines_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/settings/seasons_screen.dart';
-import '../features/tools/tools_screen.dart';
 import '../features/track/exercise_detail_screen.dart';
 import '../features/workout_log/copy_workout_screen.dart';
 import '../features/workout_log/home_screen.dart';
@@ -102,7 +101,6 @@ GoRouter createAppRouter({String initialLocation = '/'}) => GoRouter(
           _page(state, RoutineDetailScreen(id: int.parse(state.pathParameters['id']!), date: _date(state))),
     ),
     GoRoute(path: '/seasons', pageBuilder: (_, state) => _page(state, const SeasonsScreen())),
-    GoRoute(path: '/tools', pageBuilder: (_, state) => _page(state, const ToolsScreen())),
     GoRoute(
       path: '/copy',
       pageBuilder: (_, state) => _page(

@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.app.Activity
 import android.content.Intent
+import android.media.RingtoneManager
 import android.os.Build
 import android.net.Uri
 import android.provider.Settings
@@ -14,6 +15,8 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val channelName = "fitnotes/device"
+    private var pendingPreview: MethodChannel.Result? = null
+    private var pendingSound: MethodChannel.Result? = null
     private var pendingSave: MethodChannel.Result? = null
     private var pendingBytes: ByteArray? = null
     private val restSound by lazy { RestAlertPlayer(this) }
@@ -49,13 +52,51 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 "previewRestSound" -> {
-                    restSound.play()
-                    result.success(null)
+                    stopSoundPreview()
+                    pendingPreview = result
+                    restSound.play(call.argument<String>("uri")) {
+                        pendingPreview?.success(null)
+                        pendingPreview = null
+                    }
+                }
+                "stopRestSoundPreview" -> { stopSoundPreview(); result.success(null) }
+                "restSoundName" -> {
+                    val uri = call.argument<String>("uri")
+                    val name = try {
+                        if (uri == null) "Soft chime"
+                        else if (Uri.parse(uri).scheme !in listOf("content", "android.resource")) "Unavailable sound"
+                        else {
+                            val ringtone = RingtoneManager.getRingtone(this, Uri.parse(uri))
+                            try { ringtone?.getTitle(this) ?: "Unavailable sound" } finally { ringtone?.stop() }
+                        }
+                    } catch (_: Exception) { "Unavailable sound" }
+                    result.success(name)
+                }
+                "pickRestSound" -> {
+                    if (pendingSound != null) result.error("busy", "A sound picker is already open.", null)
+                    else {
+                        stopSoundPreview()
+                        pendingSound = result
+                        try {
+                            val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                                putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALL)
+                                putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Rest sound")
+                                putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                                putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, false)
+                                putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, call.argument<String>("uri")?.let(Uri::parse))
+                            }
+                            startActivityForResult(intent, 73)
+                        } catch (error: Exception) {
+                            pendingSound = null
+                            result.error("sound_picker", "Could not open the device sound picker.", null)
+                        }
+                    }
                 }
                 "scheduleRest" -> {
                     preferences.edit().putLong("deadline", call.argument<Number>("deadline")!!.toLong())
                         .putInt("total", call.argument<Number>("total")!!.toInt())
                         .putString("label", call.argument<String>("label"))
+                        .putString("soundUri", call.argument<String>("soundUri"))
                         .putBoolean("sound", call.argument<Boolean>("sound") == true)
                         .putBoolean("vibrate", call.argument<Boolean>("vibrate") == true)
                         .putBoolean("paused", false).putBoolean("finished", false).apply()
@@ -68,6 +109,7 @@ class MainActivity : FlutterActivity() {
                         .putInt("remaining", call.argument<Number>("remaining")!!.toInt())
                         .putInt("total", call.argument<Number>("total")!!.toInt())
                         .putString("label", call.argument<String>("label"))
+                        .putString("soundUri", call.argument<String>("soundUri"))
                         .putBoolean("sound", call.argument<Boolean>("sound") == true)
                         .putBoolean("vibrate", call.argument<Boolean>("vibrate") == true).apply()
                     RestTimerService.stop(this, clear = false)
@@ -87,7 +129,7 @@ class MainActivity : FlutterActivity() {
                         result.success(mapOf("deadline" to deadline, "total" to preferences.getInt("total", 60),
                             "remaining" to preferences.getInt("remaining", 0), "paused" to paused, "finished" to finished,
                             "label" to preferences.getString("label", "Rest"), "sound" to preferences.getBoolean("sound", true),
-                            "vibrate" to preferences.getBoolean("vibrate", false)))
+                            "vibrate" to preferences.getBoolean("vibrate", false), "soundUri" to preferences.getString("soundUri", null)))
                     }
                 }
                 else -> result.notImplemented()
@@ -96,8 +138,16 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
-        restSound.stop()
+        stopSoundPreview()
+        pendingSound?.success(null)
+        pendingSound = null
         super.onDestroy()
+    }
+
+    private fun stopSoundPreview() {
+        restSound.stop()
+        pendingPreview?.success(null)
+        pendingPreview = null
     }
 
     private fun requestTimerNotifications() {
@@ -112,6 +162,19 @@ class MainActivity : FlutterActivity() {
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 73) {
+            val result = pendingSound ?: return
+            pendingSound = null
+            if (resultCode != Activity.RESULT_OK) { result.success(null); return }
+            @Suppress("DEPRECATION")
+            val uri = data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            if (uri == null) { result.success(null); return }
+            if ((data?.flags ?: 0) and Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION != 0) {
+                try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: SecurityException) { }
+            }
+            result.success(uri.toString())
+            return
+        }
         if (requestCode != 71) return
         val result = pendingSave ?: return
         val bytes = pendingBytes

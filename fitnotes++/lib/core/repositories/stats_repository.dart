@@ -7,7 +7,7 @@ import '../util/dates.dart';
 
 // Keys are also persisted in exercise goals and backups.
 enum GraphMetric {
-  estimated1rm('Estimated 1RM'),
+  estimated1rm('Estimated max weight'),
   maxWeight('Max weight'),
   workoutVolume('Volume'),
   totalReps('Total reps'),

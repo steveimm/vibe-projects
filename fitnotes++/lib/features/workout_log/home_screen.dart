@@ -90,7 +90,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const PopupMenuItem(value: 'routine', child: Text('Save as routine')),
                   const PopupMenuItem(value: 'delete', child: Text('Delete this workout')),
                 ],
-                const PopupMenuItem(value: 'tools', child: Text('Workout calculators')),
               ],
             ),
           ],
@@ -147,8 +146,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         await startCopyWorkout(context, ref, date);
       case 'note':
         await _editDayNote(context, ref, date);
-      case 'tools':
-        context.push('/tools');
       case 'routine':
         final name = await prompt(
           context,
@@ -171,14 +168,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           return;
         }
         await attempt(context, () async {
-          final snapshot = await repo.deleteDay(date);
-          if (context.mounted) {
-            notice(
-              context,
-              'Workout deleted',
-              action: SnackBarAction(label: 'Undo', onPressed: () => attempt(context, () => repo.restoreDay(snapshot))),
-            );
-          }
+          await repo.deleteDay(date);
         });
     }
   }
@@ -381,25 +371,26 @@ class _DayViewState extends ConsumerState<_DayView> {
 
   Future<void> _removeSelected() async {
     if (_savingOrder || _selected.isEmpty) return;
-    final repo = ref.read(workoutRepositoryProvider);
     final ids = _selected.toList();
+    if (!await confirm(
+          context,
+          title: 'Remove exercises?',
+          message: 'Remove ${Fmt.count(ids.length, 'exercise')} and their sets from this workout?',
+          action: 'Remove',
+        ) ||
+        !mounted) {
+      return;
+    }
     setState(() => _savingOrder = true);
     final ok = await attempt(context, () async {
-      final snapshot = await repo.removeExercisesFromDay(widget.date, ids);
-      if (!mounted) return;
-      final count = snapshot.sets.map((s) => s.exerciseId).toSet().length;
-      notice(
-        context,
-        '${Fmt.count(count, 'exercise')} removed from this workout',
-        action: SnackBarAction(label: 'Undo', onPressed: () => attempt(context, () => repo.restoreDay(snapshot))),
-      );
+      await ref.read(workoutRepositoryProvider).removeExercisesFromDay(widget.date, ids);
     });
-    if (mounted) {
-      setState(() {
-        _savingOrder = false;
-        if (ok) _selected.clear();
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _savingOrder = false;
+      if (ok) _selected.clear();
+    });
+    if (ok) widget.onEditingChanged(false);
   }
 }
 
