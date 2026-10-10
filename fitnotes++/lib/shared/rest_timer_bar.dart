@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/services/rest_timer.dart';
 import '../core/util/format.dart';
-import 'widgets.dart';
 
 class RestTimerBar extends ConsumerWidget {
   const RestTimerBar({super.key});
@@ -11,101 +10,62 @@ class RestTimerBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final timer = ref.watch(restTimerProvider);
     final control = ref.read(restTimerProvider.notifier);
-    final color = Theme.of(context).colorScheme;
-    return AnimatedSize(
-      duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180),
-      alignment: Alignment.bottomCenter,
-      child: !timer.visible
-          ? const SizedBox.shrink()
-          : Material(
-              color: color.secondaryContainer,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 4, 6),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 38,
-                      height: 38,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          ExcludeSemantics(
-                            child: CircularProgressIndicator(
-                              value: timer.total == 0 ? 0 : (timer.remaining / timer.total).clamp(0, 1),
-                              strokeWidth: 3,
-                              color: color.onSecondaryContainer,
-                              backgroundColor: color.onSecondaryContainer.withValues(alpha: 0.15),
-                            ),
-                          ),
-                          Icon(
-                            timer.status == RestStatus.finished ? Icons.check_rounded : Icons.timer_outlined,
-                            size: 19,
-                            color: color.onSecondaryContainer,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: InkWell(
-                        onTap: () => _edit(context, ref),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    timer.status == RestStatus.finished
-                                        ? 'Rest complete'
-                                        : '${Fmt.duration(timer.remaining)}${timer.status == RestStatus.paused ? ' · paused' : ' · rest'}',
-                                    style: TextStyle(fontWeight: FontWeight.w700, color: color.onSecondaryContainer),
-                                  ),
-                                ),
-                                const SizedBox(width: 5),
-                                const Icon(Icons.edit_outlined, size: 14),
-                              ],
-                            ),
-                            Text(
-                              timer.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 11, color: color.onSecondaryContainer),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    if (timer.status != RestStatus.finished)
-                      IconButton(
-                        tooltip: timer.status == RestStatus.paused ? 'Resume timer' : 'Pause timer',
-                        onPressed: control.pauseOrResume,
-                        icon: Icon(timer.status == RestStatus.paused ? Icons.play_arrow_rounded : Icons.pause_rounded),
-                      ),
-                    TextButton(onPressed: timer.remaining >= 3600 ? null : () => control.add(15), child: const Text('+15s')),
-                    IconButton(tooltip: 'Dismiss timer', onPressed: control.stop, icon: const Icon(Icons.close_rounded)),
-                  ],
+    final colors = Theme.of(context).colorScheme;
+    if (!timer.visible) return const SizedBox.shrink();
+    final progress = timer.total == 0 ? 0.0 : (1 - timer.remaining / timer.total).clamp(0.0, 1.0);
+    return Material(
+      color: colors.surfaceContainerLow,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(end: progress),
+                duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 200),
+                builder: (_, value, _) => FractionallySizedBox(
+                  widthFactor: value,
+                  heightFactor: 1,
+                  child: ColoredBox(color: Color.alphaBlend(colors.primary.withValues(alpha: 0.16), colors.surfaceContainerLow)),
                 ),
               ),
             ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 12, right: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${timer.status == RestStatus.paused ? 'Paused' : 'Rest'} · ${Fmt.duration(timer.remaining)}',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      if (timer.label != 'Rest' && timer.label.isNotEmpty)
+                        Text(
+                          timer.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: timer.status == RestStatus.paused ? 'Resume rest timer' : 'Pause rest timer',
+                  onPressed: control.pauseOrResume,
+                  icon: Icon(timer.status == RestStatus.paused ? Icons.play_arrow_rounded : Icons.pause_rounded),
+                ),
+                TextButton(onPressed: timer.remaining >= 3600 ? null : () => control.add(15), child: const Text('+15s')),
+                IconButton(tooltip: 'Stop rest timer', onPressed: control.stop, icon: const Icon(Icons.close_rounded)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
-  }
-
-  Future<void> _edit(BuildContext context, WidgetRef ref) async {
-    final timer = ref.read(restTimerProvider);
-    final value = await prompt(
-      context,
-      title: 'Remaining rest time',
-      label: 'Time (m:ss or seconds)',
-      value: Fmt.duration(timer.remaining),
-      keyboard: TextInputType.datetime,
-      maxLength: 8,
-      validate: (v) {
-        final seconds = Fmt.parseDuration(v);
-        return seconds != null && seconds >= 1 && seconds <= 3600 ? null : 'Use 1 second to 60 minutes.';
-      },
-    );
-    if (value != null && context.mounted) ref.read(restTimerProvider.notifier).setRemaining(Fmt.parseDuration(value)!);
   }
 }

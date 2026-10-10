@@ -46,6 +46,47 @@ void main() {
     expect(await repo.dayLog(date), hasLength(1));
   });
 
+  test('first performed set starts today only and leaves existing sessions alone', () async {
+    final db = AppDatabase.memory();
+    addTearDown(db.close);
+    var now = DateTime(2026, 10, 10, 10);
+    final repo = WorkoutRepository(db, clock: () => now);
+    final exercise = (await db.select(db.exercises).get()).first;
+    const today = '2026-10-10';
+    Future<int> log(String date, {bool planned = false}) =>
+        repo.addSet(exerciseId: exercise.id, date: date, reps: 10, planned: planned);
+    await log('2026-10-09');
+    await log('2026-10-11');
+    expect(await db.select(db.workoutSessions).get(), isEmpty);
+    final target = await log(today, planned: true);
+    await repo.updateSet(target, reps: 12);
+    expect((await repo.dayLog(today)).single.set.isPlanned, true);
+    expect(await repo.watchSession(today).first, isNull);
+    await repo.setComplete(target, true);
+    final started = (await repo.watchSession(today).first)!;
+    expect(started.runningSince, now);
+    now = now.add(const Duration(minutes: 2));
+    await log(today);
+    expect((await repo.watchSession(today).first)!.durationAt(now), 120);
+    await repo.pauseSession(today);
+    now = now.add(const Duration(minutes: 5));
+    await log(today);
+    expect((await repo.watchSession(today).first)!.runningSince, isNull);
+    expect((await repo.watchSession(today).first)!.durationAt(now), 120);
+    await repo.finishSession(today);
+    await log(today);
+    expect((await repo.watchSession(today).first)!.endedAt, isNotNull);
+    await repo.resetSession(today);
+    await repo.startSession(today);
+    final manualStart = now;
+    now = now.add(const Duration(minutes: 1));
+    await log(today);
+    expect((await repo.watchSession(today).first)!.runningSince, manualStart);
+    await repo.resetSession(today);
+    await log(today);
+    expect((await repo.watchSession(today).first)!.runningSince, now);
+  });
+
   test('version 2 session migration and backup restore preserve running and finished times', () async {
     final folder = Directory.systemTemp.createTempSync('fitnotes-v2-');
     addTearDown(() => folder.deleteSync(recursive: true));

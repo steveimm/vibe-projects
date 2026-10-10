@@ -16,6 +16,7 @@ class MainActivity : FlutterActivity() {
     private val channelName = "fitnotes/device"
     private var pendingSave: MethodChannel.Result? = null
     private var pendingBytes: ByteArray? = null
+    private val restSound by lazy { RestAlertPlayer(this) }
     private val preferences by lazy { getSharedPreferences("fitnotes_timer", MODE_PRIVATE) }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -47,6 +48,10 @@ class MainActivity : FlutterActivity() {
                         startActivityForResult(intent, 71)
                     }
                 }
+                "previewRestSound" -> {
+                    restSound.play()
+                    result.success(null)
+                }
                 "scheduleRest" -> {
                     preferences.edit().putLong("deadline", call.argument<Number>("deadline")!!.toLong())
                         .putInt("total", call.argument<Number>("total")!!.toInt())
@@ -76,7 +81,7 @@ class MainActivity : FlutterActivity() {
                     val deadline = preferences.getLong("deadline", 0)
                     val paused = preferences.getBoolean("paused", false)
                     val finished = preferences.getBoolean("finished", false) || (!paused && deadline > 0 && deadline <= System.currentTimeMillis())
-                    if (deadline <= 0 && !paused && !finished) result.success(null)
+                    if (finished || (deadline <= 0 && !paused)) result.success(null)
                     else {
                         if (!paused && !finished) RestTimerService.start(this)
                         result.success(mapOf("deadline" to deadline, "total" to preferences.getInt("total", 60),
@@ -88,6 +93,11 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    override fun onDestroy() {
+        restSound.stop()
+        super.onDestroy()
     }
 
     private fun requestTimerNotifications() {

@@ -1,0 +1,21 @@
+{
+  "principles": ["Fast logging during a workout", "Compact, stable layouts", "Icons for familiar actions", "Only functional text", "Preserve existing data"],
+  "checks": [
+    {"id":"sound", "requirement":"Audible, rounded rest chime with temporary music ducking and sound preview", "status":"in_progress"},
+    {"id":"session_start", "requirement":"First performed set today starts workout time without resetting a manual, paused, or finished timer", "status":"in_progress"},
+    {"id":"logging_layout", "requirement":"Remove RPE, date row, reset button, session headings and oversized empty state from set logging", "status":"in_progress"},
+    {"id":"logging_controls", "requirement":"Plus to log, checkmark to update, pencil to edit exercise; stable controls and keyboard layout", "status":"in_progress"},
+    {"id":"routine_feedback", "requirement":"No snackbar for logging, updating, or completing sets; failures remain visible", "status":"in_progress"},
+    {"id":"set_rows", "requirement":"Compact set rows, same muted selection style as home, no jump when selecting a set", "status":"in_progress"},
+    {"id":"rest_bar", "requirement":"Full-width left-to-right progress fill, no circular clock or duplicate editor, capitalized status, auto-hide at completion", "status":"in_progress"},
+    {"id":"rest_lifecycle", "requirement":"Pause/resume, background completion, alert playback, and reopening do not resurrect expired timers", "status":"pending"},
+    {"id":"planned_sets", "requirement":"Editing a copied set does not silently mark it performed; completing it starts today's timers when appropriate", "status":"pending"},
+    {"id":"measurements", "requirement":"All recorded measurement charts appear together without selecting a type", "status":"pending"},
+    {"id":"measurement_record", "requirement":"Per-metric quick recording, compact empty metrics, accessible history/edit/delete, units preserved", "status":"pending"},
+    {"id":"training_range", "requirement":"Single-row range control; summary, activity, categories and records follow the chosen range", "status":"pending"},
+    {"id":"related_polish", "requirement":"Audit nearby labels, duplicated actions, padding, retained input, and range/chart behavior", "status":"pending"},
+    {"id":"emulator", "requirement":"Exercise real logging, editing, rest, progress, measurement, navigation, and large-text flows with isolated fixtures", "status":"pending"},
+    {"id":"review", "requirement":"One independent review near completion, then resolve material findings", "status":"pending"},
+    {"id":"delivery", "requirement":"Restore pre-test data, build split ABI APKs, install ARM64 release, commit in stages", "status":"pending"}
+  ]
+}

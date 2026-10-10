@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database/database.dart';
 import '../core/providers.dart';
 import '../core/services/rest_timer.dart';
+import '../core/services/device_service.dart';
 import '../core/util/format.dart';
 import 'widgets.dart';
 
@@ -77,13 +78,21 @@ class _RestTimerSettingsState extends ConsumerState<_RestTimerSettings> {
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Auto-start after a set'),
-            subtitle: const Text('When a set is logged or marked complete'),
             value: _auto,
             onChanged: _saving ? null : (v) => setState(() => _auto = v),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Sound'),
+            title: Row(
+              children: [
+                const Expanded(child: Text('Sound')),
+                IconButton(
+                  tooltip: 'Preview rest sound',
+                  onPressed: () => DeviceService.call('previewRestSound'),
+                  icon: const Icon(Icons.volume_up_outlined),
+                ),
+              ],
+            ),
             value: _sound,
             onChanged: _saving ? null : (v) => setState(() => _sound = v),
           ),

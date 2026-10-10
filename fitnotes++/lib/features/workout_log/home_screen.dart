@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../app/theme.dart';
 import '../../core/database/tables.dart';
 import '../../core/providers.dart';
 import '../../core/repositories/workout_repository.dart';
@@ -516,7 +517,7 @@ class _ExerciseCard extends ConsumerWidget {
     return Semantics(
       selected: editing ? selected : null,
       child: Card(
-        color: editing && selected ? Color.alphaBlend(colors.primary.withValues(alpha: 0.08), colors.surfaceContainerLow) : null,
+        color: editing && selected ? AppTheme.selectionColor(colors) : null,
         shape: editing && selected
             ? RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),

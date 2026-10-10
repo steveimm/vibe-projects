@@ -172,7 +172,7 @@ void notice(BuildContext context, String message, {SnackBarAction? action}) {
         content: Text(message),
         action: action,
         duration: Duration(seconds: action == null ? 4 : 8),
-        persist: action != null && MediaQuery.accessibleNavigationOf(context),
+        persist: false,
         showCloseIcon: action != null && MediaQuery.accessibleNavigationOf(context),
       ),
     );

@@ -8,8 +8,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.media.AudioManager
-import android.media.ToneGenerator
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -25,7 +23,7 @@ class RestTimerService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var alert: Runnable? = null
     private var finish: Runnable? = null
-    private var tone: ToneGenerator? = null
+    private val sound by lazy { RestAlertPlayer(this) }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -40,8 +38,7 @@ class RestTimerService : Service() {
         if (deadline <= 0 || preferences.getBoolean("paused", false) || preferences.getBoolean("finished", false)) { stopSelf(); return START_NOT_STICKY }
         alert?.let(handler::removeCallbacks)
         finish?.let(handler::removeCallbacks)
-        tone?.release()
-        tone = null
+        sound.stop()
         if (Build.VERSION.SDK_INT >= 26) {
             notifications.createNotificationChannel(NotificationChannel(CHANNEL, "Workout rest timer", NotificationManager.IMPORTANCE_LOW).apply {
                 description = "Countdown and completion alerts for your rest timer"
@@ -82,31 +79,25 @@ class RestTimerService : Service() {
 
     @Suppress("DEPRECATION")
     private fun complete() {
-        preferences.edit().putBoolean("finished", true).apply()
-        if (preferences.getBoolean("sound", true)) {
-            try {
-                tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
-                tone?.startTone(ToneGenerator.TONE_PROP_ACK, 700)
-            } catch (_: RuntimeException) { }
-        }
-        if (preferences.getBoolean("vibrate", false)) {
+        val playSound = preferences.getBoolean("sound", true)
+        val vibrate = preferences.getBoolean("vibrate", false)
+        preferences.edit().clear().apply()
+        if (vibrate) {
             val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
             if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
             else vibrator.vibrate(500)
         }
-        if (notifications.areNotificationsEnabled()) {
-            notifications.notify(COMPLETE_ID, notificationBuilder().setContentTitle("Rest complete")
-                .setContentText(preferences.getString("label", "Ready for your next set"))
-                .setAutoCancel(true).setShowWhen(false).build())
-        }
         finish = Runnable { stopSelf() }
-        handler.postDelayed(finish!!, 1000)
+        handler.postDelayed(finish!!, 2000)
+        if (playSound) sound.play { stopSelf() }
+        else handler.postDelayed(finish!!, if (vibrate) 500 else 0)
+
     }
 
     override fun onDestroy() {
         alert?.let(handler::removeCallbacks)
         finish?.let(handler::removeCallbacks)
-        tone?.release()
+        sound.stop()
         if (wakeLock?.isHeld == true) wakeLock?.release()
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()

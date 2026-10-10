@@ -163,7 +163,7 @@ class WorkoutRepository {
     SetValues(weight: rawWeight, reps: reps, distance: distance, seconds: durationSeconds, rpe: rpe).validate(exercise.type);
     final factor = weightMultiplier ?? await multiplier(exerciseId);
     if (!factor.isFinite || factor <= 0) throw const FormatException('Weight multiplier must be greater than zero.');
-    return db
+    final id = await db
         .into(db.workoutSets)
         .insert(
           WorkoutSetsCompanion.insert(
@@ -182,6 +182,8 @@ class WorkoutRepository {
             isComplete: Value(!planned),
           ),
         );
+    if (!planned) await _startSessionIfNeeded(date);
+    return id;
   });
 
   Future<void> updateSet(
@@ -210,8 +212,6 @@ class WorkoutRepository {
         durationSeconds: durationSeconds == null ? const Value.absent() : Value(durationSeconds),
         rpe: rpe,
         note: note,
-        isComplete: const Value(true),
-        isPlanned: const Value(false),
       ),
     );
   });
@@ -222,9 +222,25 @@ class WorkoutRepository {
       b.insert(db.workoutSets, s.toCompanion(true), mode: InsertMode.insertOrIgnore);
     }
   });
-  Future<void> setComplete(int id, bool value) => (db.update(
-    db.workoutSets,
-  )..where((s) => s.id.equals(id))).write(WorkoutSetsCompanion(isComplete: Value(value), isPlanned: Value(!value)));
+  Future<void> setComplete(int id, bool value) => db.transaction(() async {
+    final set = await (db.select(db.workoutSets)..where((s) => s.id.equals(id))).getSingle();
+    await (db.update(
+      db.workoutSets,
+    )..where((s) => s.id.equals(id))).write(WorkoutSetsCompanion(isComplete: Value(value), isPlanned: Value(!value)));
+    if (value) await _startSessionIfNeeded(set.date);
+  });
+
+  Future<void> _startSessionIfNeeded(String date) async {
+    final now = _now();
+    if (date != Dates.iso(now)) return;
+    await db
+        .into(db.workoutSessions)
+        .insert(
+          WorkoutSessionsCompanion.insert(date: date, startedAt: now, runningSince: Value(now)),
+          mode: InsertMode.insertOrIgnore,
+        );
+  }
+
   Future<void> setNote(int id, String? note) =>
       (db.update(db.workoutSets)..where((s) => s.id.equals(id))).write(WorkoutSetsCompanion(note: Value(note)));
   Future<void> setGroup(int exerciseId, String date, String? group) => (db.update(

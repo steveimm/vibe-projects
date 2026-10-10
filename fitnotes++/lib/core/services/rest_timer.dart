@@ -15,7 +15,7 @@ class RestState {
   final int total;
   final String label;
   final DateTime? deadline;
-  bool get visible => status != RestStatus.idle;
+  bool get visible => status == RestStatus.running || status == RestStatus.paused;
 }
 
 class RestTimerController extends Notifier<RestState> {

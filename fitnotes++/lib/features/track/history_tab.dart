@@ -71,9 +71,7 @@ class HistoryTab extends ConsumerWidget {
                               ? const Text('Not completed')
                               : entry.value[j].note?.isNotEmpty == true
                               ? Text(entry.value[j].note!)
-                              : entry.value[j].rpe == null
-                              ? null
-                              : Text('RPE ${Fmt.number(entry.value[j].rpe!)}'),
+                              : null,
                           trailing: prs.contains(entry.value[j].id)
                               ? const Tooltip(
                                   message: 'Personal record',

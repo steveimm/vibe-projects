@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 class AppTheme {
   static const ink = Color(0xFF182D2A);
   static const lime = Color(0xFFD9F3A3);
+  static Color selectionColor(ColorScheme colors) =>
+      Color.alphaBlend(colors.primary.withValues(alpha: 0.08), colors.surfaceContainerLow);
+
   static const seed = Color(0xFF326A59);
 
   static ThemeData _theme(Brightness brightness) {
