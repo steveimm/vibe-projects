@@ -9,8 +9,10 @@ import '../core/util/dates.dart';
 import '../core/util/format.dart';
 
 class ProgressChart extends StatelessWidget {
-  const ProgressChart({super.key, required this.points, required this.label});
+  const ProgressChart({super.key, required this.points, required this.label, this.height = 250, this.zeroBased = true});
   final List<MetricPoint> points;
+  final double height;
+  final bool zeroBased;
   final String Function(double) label;
   @override
   Widget build(BuildContext context) {
@@ -19,9 +21,13 @@ class ProgressChart extends StatelessWidget {
     final span = Dates.daysBetween(first, points.last.date);
     final color = Theme.of(context).colorScheme.primary;
     final maxValue = points.map((p) => p.value).reduce(math.max);
-    final maxY = maxValue <= 0 ? 1.0 : maxValue * 1.15;
+    final minValue = points.map((p) => p.value).reduce(math.min);
+    final padding = math.max((maxValue - minValue) * 0.15, math.max(maxValue.abs() * 0.01, 0.1));
+    final minY = zeroBased ? 0.0 : math.max(0.0, minValue - padding);
+    final maxY = zeroBased ? (maxValue <= 0 ? 1.0 : maxValue * 1.15) : maxValue + padding;
+    final interval = (maxY - minY) / 3;
     return SizedBox(
-      height: 250,
+      height: height,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(0, 16, 12, 0),
         child: LineChart(
@@ -29,7 +35,7 @@ class ProgressChart extends StatelessWidget {
           LineChartData(
             minX: span == 0 ? -1 : 0,
             maxX: span == 0 ? 1 : span.toDouble(),
-            minY: 0,
+            minY: minY,
             maxY: maxY,
             lineBarsData: [
               LineChartBarData(
@@ -51,7 +57,7 @@ class ProgressChart extends StatelessWidget {
             ],
             gridData: FlGridData(
               drawVerticalLine: false,
-              horizontalInterval: maxY / 4,
+              horizontalInterval: interval,
               getDrawingHorizontalLine: (_) => FlLine(
                 color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.7),
                 strokeWidth: 1,
@@ -79,7 +85,7 @@ class ProgressChart extends StatelessWidget {
                 sideTitles: SideTitles(
                   showTitles: true,
                   reservedSize: 42,
-                  interval: maxY / 4,
+                  interval: interval,
                   getTitlesWidget: (value, meta) => Text(
                     value >= 1000 ? '${Fmt.number(value / 1000)}k' : Fmt.number(value),
                     style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),

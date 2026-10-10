@@ -16,130 +16,190 @@ class BodyTab extends ConsumerStatefulWidget {
 }
 
 class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClientMixin {
-  int? _typeId;
   @override
   bool get wantKeepAlive => true;
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final types = ref.watch(measurementTypesProvider);
+    final measurements = ref.watch(allMeasurementsProvider);
     final units = ref.watch(unitsProvider);
     return types.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => ErrorState(onRetry: () => ref.invalidate(measurementTypesProvider)),
-      data: (types) {
-        if (!types.any((t) => t.id == _typeId)) _typeId = types.firstOrNull?.id;
-        if (_typeId == null) {
-          return EmptyState(
-            icon: Icons.straighten_rounded,
-            title: 'No measurements',
-            action: FilledButton(onPressed: _addType, child: const Text('Add measurement')),
-          );
-        }
-        final type = types.firstWhere((t) => t.id == _typeId);
-        final records = ref.watch(measurementsProvider(_typeId!));
-        return ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<int>(
-                    key: ValueKey(_typeId),
-                    initialValue: _typeId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Measurement'),
-                    items: [for (final t in types) DropdownMenuItem(value: t.id, child: Text(t.name))],
-                    onChanged: (id) => setState(() => _typeId = id),
-                  ),
-                ),
-                AppMenuButton<String>(
-                  tooltip: 'Measurement options',
-                  onSelected: (action) async {
-                    if (action == 'add') {
-                      await _addType();
-                      return;
-                    }
-                    if (action == 'rename') {
-                      final name = await prompt(
-                        context,
-                        title: 'Rename measurement',
-                        label: 'Name',
-                        value: type.name,
-                        maxLength: 80,
-                      );
-                      if (name != null && context.mounted) {
-                        await attempt(context, () => ref.read(progressRepositoryProvider).renameType(type.id, name));
-                      }
-                      return;
-                    }
-                    if (action == 'delete' &&
-                        await confirm(
-                          context,
-                          title: 'Delete measurement type?',
-                          message: 'Remove ${type.name} and all of its recorded values?',
-                        ) &&
-                        context.mounted) {
-                      await attempt(context, () => ref.read(progressRepositoryProvider).deleteType(type.id));
-                    }
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'add', child: Text('Custom measurement')),
-                    PopupMenuItem(value: 'rename', child: Text('Rename measurement')),
-                    PopupMenuItem(value: 'delete', child: Text('Delete measurement type')),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () => _edit(type),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Record measurement'),
-            ),
-            const SizedBox(height: 20),
-            records.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, _) => ErrorState(onRetry: () => ref.invalidate(measurementsProvider(_typeId!))),
-              data: (records) {
-                if (records.isEmpty) {
-                  return const EmptyState(icon: Icons.monitor_weight_outlined, title: 'No measurements');
-                }
-                final points = records.reversed.map((r) => (date: r.date, value: _display(r.value, type.unit, units))).toList();
-                final label = _unit(type.unit, units);
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+      data: (types) => measurements.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, _) => ErrorState(onRetry: () => ref.invalidate(allMeasurementsProvider)),
+        data: (all) {
+          final groups = <int, List<Measurement>>{};
+          for (final record in all) {
+            (groups[record.typeId] ??= []).add(record);
+          }
+          final ordered = [...types.where((t) => groups.containsKey(t.id)), ...types.where((t) => !groups.containsKey(t.id))];
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            children: [
+              for (final type in ordered)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Card(
+                    child: Column(
+                      children: [
+                        Row(
                           children: [
-                            Text('${Fmt.number(points.last.value)} $label', style: Theme.of(context).textTheme.headlineMedium),
-                            Text(
-                              'Latest · ${points.last.date}',
-                              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: InkWell(
+                                onTap: () => _history(type),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(type.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                      if (groups[type.id]?.firstOrNull case final latest?)
+                                        Text(
+                                          '${Fmt.number(_display(latest.value, type.unit, units))} ${_unit(type.unit, units)} · ${DateFormat('d MMM yyyy').format(Dates.parse(latest.date))}',
+                                          style: Theme.of(context).textTheme.bodySmall,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
-                            ProgressChart(points: points, label: (v) => '${Fmt.number(v)} $label'),
+                            IconButton(
+                              tooltip: 'Record ${type.name}',
+                              onPressed: () => _record(type, groups[type.id] ?? []),
+                              icon: const Icon(Icons.add_rounded),
+                            ),
+                            AppMenuButton<String>(
+                              tooltip: '${type.name} options',
+                              onSelected: (action) => _typeAction(type, action),
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(value: 'history', child: Text('History')),
+                                PopupMenuItem(value: 'rename', child: Text('Rename')),
+                                PopupMenuItem(value: 'delete', child: Text('Delete measurement type')),
+                              ],
+                            ),
                           ],
                         ),
-                      ),
-                    ),
-                    const SectionTitle('History'),
-                    for (final r in records)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Card(
-                          child: ListTile(
-                            title: Text(
-                              '${Fmt.number(_display(r.value, type.unit, units))} $label',
-                              style: const TextStyle(fontWeight: FontWeight.w700),
+                        if (groups[type.id] case final records?)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+                            child: ProgressChart(
+                              key: ValueKey('measurement-chart-${type.id}'),
+                              height: 140,
+                              zeroBased: false,
+                              points: records.reversed
+                                  .map((r) => (date: r.date, value: _display(r.value, type.unit, units)))
+                                  .toList(),
+                              label: (v) => '${Fmt.number(v)} ${_unit(type.unit, units)}',
                             ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              TextButton.icon(onPressed: _addType, icon: const Icon(Icons.add_rounded), label: const Text('Custom measurement')),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _record(MeasurementType type, List<Measurement> records) => showDialog<void>(
+    context: context,
+    builder: (_) => _MeasurementDialog(type: type, record: records.where((r) => r.date == Dates.today()).firstOrNull),
+  );
+
+  void _history(MeasurementType type) =>
+      Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => _MeasurementHistory(type: type)));
+
+  Future<void> _typeAction(MeasurementType type, String action) async {
+    if (action == 'history') {
+      _history(type);
+    } else if (action == 'rename') {
+      final name = await prompt(context, title: 'Rename measurement', label: 'Name', value: type.name, maxLength: 80);
+      if (name != null && mounted) {
+        await attempt(context, () => ref.read(progressRepositoryProvider).renameType(type.id, name));
+      }
+    } else if (action == 'delete' &&
+        await confirm(
+          context,
+          title: 'Delete measurement type?',
+          message: 'Remove ${type.name} and all of its recorded values?',
+        ) &&
+        mounted) {
+      await attempt(context, () => ref.read(progressRepositoryProvider).deleteType(type.id));
+    }
+  }
+
+  Future<void> _addType() async {
+    final name = await prompt(context, title: 'Custom measurement', label: 'Name', maxLength: 80);
+    if (name == null || !mounted) return;
+    final units = ref.read(unitsProvider);
+    final unit = await showDialog<String>(
+      context: context,
+      builder: (context) => AppDialog(
+        title: const Text('Measurement unit'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final unit in ['kg', 'cm', '%'])
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                titleTextStyle: Theme.of(context).textTheme.bodyMedium,
+                onTap: () => Navigator.pop(context, unit),
+                title: Text(_unit(unit, units)),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (unit != null && mounted) {
+      await attempt(context, () async {
+        final id = await ref.read(progressRepositoryProvider).addType(name, unit);
+        if (mounted) await _record(MeasurementType(id: id, name: name, unit: unit), []);
+      });
+    }
+  }
+}
+
+class _MeasurementHistory extends ConsumerWidget {
+  const _MeasurementHistory({required this.type});
+  final MeasurementType type;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final units = ref.watch(unitsProvider);
+    return Scaffold(
+      appBar: AppBar(title: Text(type.name)),
+      body: ContentWidth(
+        child: ref
+            .watch(measurementsProvider(type.id))
+            .when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (_, _) => ErrorState(onRetry: () => ref.invalidate(measurementsProvider(type.id))),
+              data: (records) => records.isEmpty
+                  ? const Center(child: Text('No measurements'))
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: records.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 4),
+                      itemBuilder: (context, i) {
+                        final r = records[i];
+                        return Card(
+                          child: ListTile(
+                            title: Text('${Fmt.number(_display(r.value, type.unit, units))} ${_unit(type.unit, units)}'),
                             subtitle: Text(
                               '${DateFormat('d MMM yyyy').format(Dates.parse(r.date))}${r.note.isEmpty ? '' : '\n${r.note}'}',
                             ),
-                            onTap: () => _edit(type, r),
+                            onTap: () => showDialog<void>(
+                              context: context,
+                              builder: (_) => _MeasurementDialog(type: type, record: r),
+                            ),
                             trailing: IconButton(
                               tooltip: 'Delete measurement',
                               icon: const Icon(Icons.delete_outline_rounded),
@@ -155,49 +215,12 @@ class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClient
                               },
                             ),
                           ),
-                        ),
-                      ),
-                  ],
-                );
-              },
+                        );
+                      },
+                    ),
             ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _edit(MeasurementType type, [Measurement? record]) => showDialog(
-    context: context,
-    builder: (_) => _MeasurementDialog(type: type, record: record),
-  );
-  Future<void> _addType() async {
-    final name = await prompt(context, title: 'Custom measurement', label: 'Name', maxLength: 80);
-    if (name == null || !mounted) return;
-    final unit = await showDialog<String>(
-      context: context,
-      builder: (context) => AppDialog(
-        title: const Text('Measurement unit'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final unit in ['kg', 'cm', '%'])
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                titleTextStyle: Theme.of(context).textTheme.bodyMedium,
-                onTap: () => Navigator.pop(context, unit),
-                title: Text(unit),
-              ),
-          ],
-        ),
       ),
     );
-    if (unit != null && mounted) {
-      await attempt(context, () async {
-        final id = await ref.read(progressRepositoryProvider).addType(name, unit);
-        if (mounted) setState(() => _typeId = id);
-      });
-    }
   }
 }
 
@@ -228,6 +251,7 @@ class _MeasurementDialogState extends ConsumerState<_MeasurementDialog> {
   late final _note = TextEditingController(text: widget.record?.note ?? '');
   final _form = GlobalKey<FormState>();
   bool _busy = false;
+  late bool _showNote = widget.record?.note.isNotEmpty == true;
   @override
   void dispose() {
     _value.dispose();
@@ -262,60 +286,78 @@ class _MeasurementDialogState extends ConsumerState<_MeasurementDialog> {
             TextFormField(
               controller: _value,
               autofocus: true,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => _save(),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(labelText: 'Value', suffixText: _unit(widget.type.unit, units)),
               validator: (v) {
-                final value = double.tryParse(v!);
+                final value = double.tryParse(v!.replaceAll(',', '.'));
                 return value != null && value.isFinite && value > 0 && value <= (widget.type.unit == '%' ? 100 : 100000)
                     ? null
                     : 'Enter a valid value greater than zero.';
               },
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _note,
-              maxLength: 500,
-              maxLines: 2,
-              decoration: const InputDecoration(labelText: 'Note (optional)'),
-            ),
-            const Text('One entry per day. Saving replaces the value for the selected date.', style: TextStyle(fontSize: 12)),
+            if (_showNote) ...[
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _note,
+                maxLength: 500,
+                maxLines: 2,
+                decoration: const InputDecoration(labelText: 'Note (optional)'),
+              ),
+            ] else
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  tooltip: 'Add note',
+                  onPressed: () => setState(() => _showNote = true),
+                  icon: const Icon(Icons.note_add_outlined),
+                ),
+              ),
           ],
         ),
       ),
       actions: [
         TextButton(onPressed: _busy ? null : () => Navigator.pop(context), child: const Text('Cancel')),
-        FilledButton(
-          onPressed: _busy
-              ? null
-              : () async {
-                  if (!_form.currentState!.validate()) return;
-                  setState(() => _busy = true);
-                  final input = double.parse(_value.text);
-                  final unchanged =
-                      widget.record != null && _value.text == Fmt.number(_display(widget.record!.value, widget.type.unit, units));
-                  final value = unchanged
-                      ? widget.record!.value
-                      : widget.type.unit == 'kg'
-                      ? units.weightToKg(input)
-                      : widget.type.unit == 'cm' && units.imperial
-                      ? input * 2.54
-                      : input;
-                  final ok = await attempt(
-                    context,
-                    () => ref
-                        .read(progressRepositoryProvider)
-                        .saveMeasurement(widget.type.id, _date, value, _note.text, id: widget.record?.id),
-                  );
-                  if (!context.mounted) return;
-                  if (ok) {
-                    Navigator.pop(context);
-                  } else {
-                    setState(() => _busy = false);
-                  }
-                },
-          child: const Text('Save'),
-        ),
+        FilledButton(onPressed: _busy ? null : _save, child: const Text('Save')),
       ],
     );
+  }
+
+  Future<void> _save() async {
+    if (_busy || !_form.currentState!.validate()) return;
+    setState(() => _busy = true);
+    final units = ref.read(unitsProvider);
+    final input = double.parse(_value.text.replaceAll(',', '.'));
+    final unchanged = widget.record != null && _value.text == Fmt.number(_display(widget.record!.value, widget.type.unit, units));
+    final value = unchanged
+        ? widget.record!.value
+        : widget.type.unit == 'kg'
+        ? units.weightToKg(input)
+        : widget.type.unit == 'cm' && units.imperial
+        ? input * 2.54
+        : input;
+    var saved = false;
+    final ok = await attempt(context, () async {
+      final repo = ref.read(progressRepositoryProvider);
+      var id = widget.record?.id;
+      if (id == null) {
+        final existing = await repo.measurementOnDate(widget.type.id, _date);
+        if (!mounted) return;
+        if (existing != null) {
+          if (!await confirm(context, title: 'Replace measurement?', message: 'Replace the entry for $_date?') || !mounted)
+            return;
+          id = existing.id;
+        }
+      }
+      await repo.saveMeasurement(widget.type.id, _date, value, _note.text, id: id);
+      saved = true;
+    });
+    if (!mounted) return;
+    if (ok && saved) {
+      Navigator.pop(context);
+    } else {
+      setState(() => _busy = false);
+    }
   }
 }

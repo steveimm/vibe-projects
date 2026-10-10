@@ -112,6 +112,7 @@ final routineSetsProvider = StreamProvider.autoDispose.family<List<RoutineSet>, 
 final progressRepositoryProvider = Provider((ref) => ProgressRepository(ref.watch(databaseProvider)));
 final seasonsProvider = StreamProvider((ref) => ref.watch(progressRepositoryProvider).watchSeasons());
 final measurementTypesProvider = StreamProvider((ref) => ref.watch(progressRepositoryProvider).watchTypes());
+final allMeasurementsProvider = StreamProvider((ref) => ref.watch(progressRepositoryProvider).watchAllMeasurements());
 final measurementsProvider = StreamProvider.autoDispose.family<List<Measurement>, int>(
   (ref, id) => ref.watch(progressRepositoryProvider).watchMeasurements(id),
 );

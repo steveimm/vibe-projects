@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -28,8 +30,10 @@ class ProgressScreen extends StatelessWidget {
             onPressed: () => context.push('/tools'),
           ),
         ],
-        bottom: const TabBar(
-          tabs: [
+        bottom: TabBar(
+          isScrollable: MediaQuery.textScalerOf(context).scale(1) > 1.4,
+          tabAlignment: MediaQuery.textScalerOf(context).scale(1) > 1.4 ? TabAlignment.start : TabAlignment.fill,
+          tabs: const [
             Tab(text: 'Training'),
             Tab(text: 'Measurements'),
           ],
@@ -89,96 +93,64 @@ class _TrainingOverviewState extends ConsumerState<_TrainingOverview> with Autom
           );
         }
         final records = selected.where((s) => prIds.contains(s.set.id)).take(5).toList();
+        final activityStart = _days == 0 ? (dates.toList()..sort()).firstOrNull ?? Dates.shift(Dates.today(), -6) : since;
+        final activity = Stats.activity(selected.map((s) => s.set).toList(), from: activityStart, to: Dates.today());
         return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
           children: [
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final entry in const {7: '7 days', 30: '30 days', 90: '90 days', 0: 'All time'}.entries)
-                  ChoiceChip(
-                    label: Text(entry.value),
-                    selected: _days == entry.key,
-                    onSelected: (_) => setState(() => _days = entry.key),
-                  ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 320 || MediaQuery.textScalerOf(context).scale(1) > 1.2;
+                return Row(
+                  children: [
+                    for (final entry in const {7: '7 days', 30: '30 days', 90: '90 days', 0: 'All time'}.entries)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: Tooltip(
+                            message: entry.value,
+                            child: ChoiceChip(
+                              padding: EdgeInsets.zero,
+                              labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                              showCheckmark: false,
+                              label: Text(compact ? (entry.key == 0 ? 'All' : '${entry.key}d') : entry.value, maxLines: 1),
+                              selected: _days == entry.key,
+                              onSelected: (_) => setState(() => _days = entry.key),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Card(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                padding: const EdgeInsets.all(12),
                 child: Row(
                   children: [
                     Expanded(child: StatValue('Workouts', '${dates.length}')),
-                    Expanded(child: StatValue('Logged sets', '${selected.length}')),
+                    Expanded(child: StatValue('Sets', '${selected.length}')),
                     Expanded(child: StatValue('Volume · ${units.weightLabel}', Fmt.number(units.weightFromKg(volume)))),
                   ],
                 ),
               ),
             ),
-            const SectionTitle('The last two weeks'),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    for (var i = 13; i >= 0; i--)
-                      Expanded(
-                        child: Builder(
-                          builder: (context) {
-                            final date = Dates.shift(Dates.today(), -i);
-                            final count = logged.where((s) => s.set.date == date).length;
-                            return Tooltip(
-                              message: '${Dates.longDate(date)} · $count sets',
-                              child: Column(
-                                children: [
-                                  Container(
-                                    height: 40,
-                                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(5),
-                                      color: count == 0
-                                          ? Theme.of(context).colorScheme.surfaceContainerHighest
-                                          : Theme.of(context).colorScheme.primary.withValues(
-                                              alpha: count < 5
-                                                  ? 0.45
-                                                  : count < 15
-                                                  ? 0.7
-                                                  : 1,
-                                            ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    '${Dates.parse(date).day}',
-                                    style: TextStyle(fontSize: 9, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
+            const SectionTitle('Sets'),
+            _ActivityChart(buckets: activity),
             if (selected.isEmpty)
-              EmptyState(
-                icon: Icons.insights_outlined,
-                title: 'No completed sets',
-                action: FilledButton(onPressed: () => context.go('/'), child: const Text('Go to workout')),
-              ),
+              const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Text('No completed sets in this period')),
             if (counts.isNotEmpty) ...[
               const SectionTitle('Training balance'),
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(12),
                   child: Column(
                     children: [
                       for (final entry in (counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value))))
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          padding: const EdgeInsets.symmetric(vertical: 6),
                           child: Column(
                             children: [
                               Row(
@@ -187,7 +159,7 @@ class _TrainingOverviewState extends ConsumerState<_TrainingOverview> with Autom
                                   Text('${entry.value} sets', style: const TextStyle(fontWeight: FontWeight.w600)),
                                 ],
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 4),
                               LinearProgressIndicator(
                                 value: entry.value / selected.length,
                                 minHeight: 6,
@@ -203,17 +175,13 @@ class _TrainingOverviewState extends ConsumerState<_TrainingOverview> with Autom
                 ),
               ),
             ],
-            if (ref.watch(settingsProvider).asData?.value.trackPersonalRecords ?? true) ...[
+            if (records.isNotEmpty && (ref.watch(settingsProvider).asData?.value.trackPersonalRecords ?? true)) ...[
               SectionTitle(
-                'Recent records',
+                'Personal records',
                 trailing: season == null
                     ? null
                     : Text('This season', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary)),
               ),
-              if (records.isEmpty)
-                const Card(
-                  child: Padding(padding: EdgeInsets.symmetric(horizontal: 16, vertical: 20), child: Text('No personal records')),
-                ),
               for (final record in records) _RecordTile(record: record),
             ],
           ],
@@ -231,23 +199,86 @@ class _RecordTile extends ConsumerWidget {
     padding: const EdgeInsets.only(bottom: 8),
     child: Card(
       child: ListTile(
-        leading: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFEAC4).withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(13),
-          ),
-          child: const Icon(Icons.emoji_events_outlined, color: Color(0xFF966715)),
-        ),
         title: Text(record.exerciseName, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
-          '${describeSet(type: ExerciseType.values[record.exerciseType], effectiveWeight: record.effectiveWeight, reps: record.set.reps, distance: record.set.distance, durationSeconds: record.set.durationSeconds, units: ref.watch(unitsProvider))}\n${DateFormat('d MMM yyyy').format(Dates.parse(record.set.date))}',
+          '${describeSet(type: ExerciseType.values[record.exerciseType], effectiveWeight: record.effectiveWeight, reps: record.set.reps, distance: record.set.distance, durationSeconds: record.set.durationSeconds, units: ref.watch(unitsProvider))} · ${DateFormat('d MMM yyyy').format(Dates.parse(record.set.date))}',
         ),
-        isThreeLine: true,
         trailing: const Icon(Icons.chevron_right_rounded),
         onTap: () => context.push('/log/${record.set.exerciseId}?date=${record.set.date}&tab=2'),
       ),
     ),
   );
+}
+
+class _ActivityChart extends StatelessWidget {
+  const _ActivityChart({required this.buckets});
+  final List<ActivityBucket> buckets;
+
+  @override
+  Widget build(BuildContext context) {
+    if (buckets.isEmpty) return const SizedBox.shrink();
+    final colors = Theme.of(context).colorScheme;
+    final maxCount = buckets.fold<int>(1, (n, b) => math.max(n, b.sets));
+    String dateLabel(String date) => DateFormat('d MMM yy').format(Dates.parse(date));
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            SizedBox(
+              height: 70,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  for (final bucket in buckets)
+                    Expanded(
+                      child: Tooltip(
+                        triggerMode: TooltipTriggerMode.tap,
+                        message:
+                            '${dateLabel(bucket.start)}${bucket.start == bucket.end ? '' : ' – ${dateLabel(bucket.end)}'} · ${bucket.sets} sets',
+                        child: Semantics(
+                          label: '${bucket.start} to ${bucket.end}: ${bucket.sets} sets',
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 1),
+                            height: math.max(3, 70 * bucket.sets / maxCount),
+                            decoration: BoxDecoration(
+                              color: bucket.sets == 0 ? colors.surfaceContainerHighest : colors.primary,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    DateFormat('d MMM yy').format(Dates.parse(buckets.first.start)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    DateFormat('d MMM yy').format(Dates.parse(buckets.last.end)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

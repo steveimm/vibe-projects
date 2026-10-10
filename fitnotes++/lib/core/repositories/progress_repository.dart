@@ -25,6 +25,10 @@ class ProgressRepository {
             ..where((m) => m.typeId.equals(id))
             ..orderBy([(m) => OrderingTerm.desc(m.date)]))
           .watch();
+  Stream<List<Measurement>> watchAllMeasurements() =>
+      (db.select(db.measurements)..orderBy([(m) => OrderingTerm.desc(m.date), (m) => OrderingTerm.desc(m.id)])).watch();
+  Future<Measurement?> measurementOnDate(int typeId, String date) =>
+      (db.select(db.measurements)..where((m) => m.typeId.equals(typeId) & m.date.equals(date))).getSingleOrNull();
   Future<int> addType(String name, String unit) =>
       db.into(db.measurementTypes).insert(MeasurementTypesCompanion.insert(name: name.trim(), unit: unit));
   Future<void> renameType(int id, String name) =>

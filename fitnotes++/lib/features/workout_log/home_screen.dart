@@ -260,20 +260,6 @@ class _DayViewState extends ConsumerState<_DayView> {
                 onAdd: () => context.push('/pick-exercise?date=$date'),
               ),
             ),
-            if (sets.isEmpty)
-              SliverToBoxAdapter(
-                child: EmptyState(
-                  icon: Icons.fitness_center_rounded,
-                  title: 'No sets',
-                  action: widget.editing
-                      ? null
-                      : TextButton.icon(
-                          onPressed: () => startCopyWorkout(context, ref, date),
-                          icon: const Icon(Icons.copy_outlined),
-                          label: const Text('Copy a previous workout'),
-                        ),
-                ),
-              ),
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               sliver: SliverReorderableList(
@@ -306,24 +292,25 @@ class _DayViewState extends ConsumerState<_DayView> {
                 },
               ),
             ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                child: Card(
-                  child: ListTile(
-                    enabled: !widget.editing,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                    titleTextStyle: Theme.of(context).textTheme.titleMedium,
-                    subtitleTextStyle: Theme.of(context).textTheme.bodyMedium,
-                    leading: const Icon(Icons.edit_note_rounded),
-                    title: Text(note == null ? 'Add a workout note' : 'Workout note'),
-                    subtitle: note == null ? null : Text(note.comment),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: widget.editing ? null : () => _editDayNote(context, ref, date),
+            if (note != null)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Card(
+                    child: ListTile(
+                      enabled: !widget.editing,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      titleTextStyle: Theme.of(context).textTheme.titleMedium,
+                      subtitleTextStyle: Theme.of(context).textTheme.bodyMedium,
+                      leading: const Icon(Icons.edit_note_rounded),
+                      title: const Text('Workout note'),
+                      subtitle: Text(note.comment),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: widget.editing ? null : () => _editDayNote(context, ref, date),
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         );
       },

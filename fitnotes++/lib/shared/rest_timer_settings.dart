@@ -81,20 +81,19 @@ class _RestTimerSettingsState extends ConsumerState<_RestTimerSettings> {
             value: _auto,
             onChanged: _saving ? null : (v) => setState(() => _auto = v),
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Row(
-              children: [
-                const Expanded(child: Text('Sound')),
-                IconButton(
-                  tooltip: 'Preview rest sound',
-                  onPressed: () => DeviceService.call('previewRestSound'),
-                  icon: const Icon(Icons.volume_up_outlined),
-                ),
-              ],
-            ),
-            value: _sound,
-            onChanged: _saving ? null : (v) => setState(() => _sound = v),
+          Row(
+            children: [
+              const Expanded(child: ExcludeSemantics(child: Text('Sound'))),
+              IconButton(
+                tooltip: 'Preview rest sound',
+                onPressed: () => DeviceService.call('previewRestSound'),
+                icon: const Icon(Icons.volume_up_outlined),
+              ),
+              Semantics(
+                label: 'Sound',
+                child: Switch(value: _sound, onChanged: _saving ? null : (v) => setState(() => _sound = v)),
+              ),
+            ],
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,

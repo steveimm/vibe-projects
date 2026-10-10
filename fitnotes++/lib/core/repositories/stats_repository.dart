@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import '../database/database.dart';
 import '../database/tables.dart';
 import '../util/onerm.dart';
+import '../util/dates.dart';
 
 // Keys are also persisted in exercise goals and backups.
 enum GraphMetric {
@@ -36,12 +37,44 @@ enum GraphMetric {
   ];
 }
 
+typedef ActivityBucket = ({String start, String end, int sets});
+
 typedef MetricPoint = ({String date, double value});
 
 class Stats {
   Stats._();
   static const allTime = '0000-01-01';
   static double effective(WorkoutSet s) => s.rawWeight * s.weightMultiplier;
+
+  static List<ActivityBucket> activity(List<WorkoutSet> sets, {required String from, required String to}) {
+    final days = Dates.daysBetween(from, to) + 1;
+    if (days <= 0) return [];
+    final counts = <String, int>{};
+    for (final set in sets) {
+      if (!set.isPlanned && set.date.compareTo(from) >= 0 && set.date.compareTo(to) <= 0) {
+        counts.update(set.date, (n) => n + 1, ifAbsent: () => 1);
+      }
+    }
+    final result = <ActivityBucket>[];
+    var start = from;
+    while (start.compareTo(to) <= 0) {
+      final date = Dates.parse(start);
+      final next = days <= 31
+          ? Dates.shift(start, 1)
+          : days <= 180
+          ? Dates.shift(start, 8 - date.weekday)
+          : days <= 1460
+          ? Dates.iso(DateTime(date.year, date.month + 1))
+          : Dates.iso(DateTime(date.year + 1));
+      final end = next.compareTo(to) > 0 ? to : Dates.shift(next, -1);
+      final count = counts.entries
+          .where((e) => e.key.compareTo(start) >= 0 && e.key.compareTo(end) <= 0)
+          .fold<int>(0, (n, e) => n + e.value);
+      result.add((start: start, end: end, sets: count));
+      start = next;
+    }
+    return result;
+  }
 
   static List<WorkoutSet> _chronological(List<WorkoutSet> sets) => [...sets]
     ..sort((a, b) {

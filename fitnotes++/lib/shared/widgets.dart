@@ -62,7 +62,7 @@ class SectionTitle extends StatelessWidget {
     header: true,
     container: true,
     child: Padding(
-      padding: const EdgeInsets.only(top: 20, bottom: 12),
+      padding: const EdgeInsets.only(top: 12, bottom: 8),
       child: Row(
         children: [
           Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
