@@ -108,6 +108,47 @@ void main() {
     await closed;
   });
 
+  testWidgets('completing a copied set makes its values available for the next set', (tester) async {
+    _viewport(tester);
+    final db = AppDatabase.memory();
+    final repo = WorkoutRepository(db);
+    late int exerciseId;
+    await tester.runAsync(() async {
+      exerciseId = (await db.select(db.exercises).get()).firstWhere((e) => e.name == 'Flat Barbell Bench Press').id;
+      await repo.addSet(exerciseId: exerciseId, date: Dates.shift(Dates.today(), -1), rawWeight: 70, reps: 8);
+      await repo.addSet(exerciseId: exerciseId, date: Dates.today(), rawWeight: 50, reps: 6, planned: true);
+    });
+    final container = ProviderContainer(overrides: [databaseProvider.overrideWithValue(db)]);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: ExerciseDetailScreen(exerciseId: exerciseId, date: Dates.today()),
+        ),
+      ),
+    );
+    await _flush(tester);
+    expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '70');
+    await tester.tap(find.byType(Checkbox));
+    await _flush(tester);
+    expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '50');
+    expect(tester.widget<TextField>(find.byType(TextField).at(1)).controller!.text, '6');
+    await tester.tap(find.byTooltip('Log set'));
+    await _flush(tester);
+    List<LoggedSet>? saved;
+    unawaited(repo.dayLog(Dates.today()).then((value) => saved = value));
+    await _flush(tester);
+    expect(saved!.length, 2);
+    expect(saved!.every((s) => s.set.rawWeight == 50 && s.set.reps == 6 && !s.set.isPlanned), true);
+    expect(find.byType(SnackBar), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    container.dispose();
+    final closed = db.close();
+    await _flush(tester);
+    await closed;
+  });
+
   testWidgets('measurement overview shows all graphs and recording today edits the existing entry', (tester) async {
     _viewport(tester);
     final db = AppDatabase.memory();

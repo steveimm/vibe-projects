@@ -548,6 +548,12 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
   Future<void> _completion(WorkoutSet set, bool complete) async {
     final repo = ref.read(workoutRepositoryProvider);
     if (!await attempt(context, () => repo.setComplete(set.id, complete)) || !mounted) return;
+    if (complete) {
+      setState(() {
+        _previous = set.copyWith(isComplete: true, isPlanned: false);
+        if (!_touched && _editing == null) _fill(_previous!);
+      });
+    }
     HapticFeedback.selectionClick();
     if (complete && widget.date == Dates.today() && (ref.read(settingsProvider).asData?.value.restTimerAutoStart ?? false)) {
       _startRest();
