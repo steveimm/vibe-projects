@@ -42,16 +42,21 @@ class RestTimerService : Service() {
         completed = false
         sound.stop()
         if (Build.VERSION.SDK_INT >= 26) {
-            notifications.createNotificationChannel(NotificationChannel(CHANNEL, "Workout rest timer", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "Countdown and completion alerts for your rest timer"
+            val previous = notifications.getNotificationChannel("fitnotes_rest")
+            val importance = if (previous != null && (Build.VERSION.SDK_INT < 29 || previous.hasUserSetImportance()))
+                previous.importance else NotificationManager.IMPORTANCE_DEFAULT
+            notifications.createNotificationChannel(NotificationChannel(CHANNEL, "Rest countdown", importance).apply {
+                description = "Time remaining during rest"
                 setSound(null, null)
                 enableVibration(false)
+                setShowBadge(false)
+                if (previous != null) lockscreenVisibility = previous.lockscreenVisibility
             })
         }
         val notification = notificationBuilder()
             .setContentTitle("Rest timer")
-            .setContentText(preferences.getString("label", "FitNotes++"))
-            .setWhen(deadline).setUsesChronometer(true).setChronometerCountDown(true)
+            .setContentText(preferences.getString("label", "Rest")?.takeUnless { it == "Rest" })
+            .setWhen(deadline).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true)
             .setOngoing(true).setOnlyAlertOnce(true)
             .addAction(Notification.Action.Builder(null, "Stop", PendingIntent.getService(this, 2,
                 Intent(this, RestTimerService::class.java).setAction(STOP), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)).build())
@@ -123,7 +128,7 @@ class RestTimerService : Service() {
     }
 
     companion object {
-        private const val CHANNEL = "fitnotes_rest"
+        private const val CHANNEL = "fitnotes_rest_countdown"
         private const val ALERT_CHANNEL = "fitnotes_rest_alerts"
         private const val ONGOING_ID = 3101
         private const val COMPLETE_ID = 3102

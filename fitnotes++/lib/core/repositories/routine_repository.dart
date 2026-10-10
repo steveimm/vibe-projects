@@ -29,7 +29,8 @@ class RoutineRepository {
   Future<void> update(int id, String name, String notes) => (db.update(
     db.routines,
   )..where((r) => r.id.equals(id))).write(RoutinesCompanion(name: Value(name.trim()), notes: Value(notes)));
-  Future<void> delete(int id) => (db.delete(db.routines)..where((r) => r.id.equals(id))).go();
+  Future<void> delete(int id) => deleteMany([id]);
+  Future<void> deleteMany(Iterable<int> ids) => (db.delete(db.routines)..where((r) => r.id.isIn(ids))).go();
   Future<int> addDay(int routineId, String name) async {
     final days = await watchDays(routineId).first;
     return db

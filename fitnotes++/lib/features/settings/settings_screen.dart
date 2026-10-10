@@ -70,15 +70,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         if (choice != null) await _update(AppSettingsCompanion(useImperial: Value(choice)));
                       },
                     ),
-                    _tile(
-                      Icons.calendar_view_week_outlined,
-                      'Week starts on',
-                      s.firstDayOfWeek == 7 ? 'Sunday' : 'Monday',
-                      () async {
-                        final choice = await _pick('Week starts on', const {1: 'Monday', 7: 'Sunday'}, s.firstDayOfWeek);
-                        if (choice != null) await _update(AppSettingsCompanion(firstDayOfWeek: Value(choice)));
-                      },
-                    ),
                   ],
                 ),
               ),

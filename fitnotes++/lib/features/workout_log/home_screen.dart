@@ -107,7 +107,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       opacity: _editing ? 0.5 : 1,
                       child: WorkoutWeekStrip(
                         date: date,
-                        firstDayOfWeek: ref.watch(settingsProvider).asData?.value.firstDayOfWeek ?? 1,
+                        firstDayOfWeek: DateTime.monday,
                         dayColors: workoutDayColors(ref.watch(allLogProvider).asData?.value ?? []),
                         onSelectDay: ref.read(selectedDateProvider.notifier).set,
                       ),

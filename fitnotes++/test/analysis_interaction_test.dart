@@ -68,12 +68,12 @@ void main() {
     expect(tester.widget<WorkoutChart>(find.byType(WorkoutChart)).points.map((p) => p.value), [200, 960, 730]);
     expect(tester.widget<PieChart>(find.byType(PieChart)).data.sections.map((s) => s.value), [4, 1]);
     expect(tester.getBottomRight(find.byType(PieChart)).dy, lessThan(850));
-    for (final entry in {'3 months': 4, '6 months': 5, 'All time': 6}.entries) {
+    for (final entry in {'3m': 4, '6m': 5, 'All time': 6}.entries) {
       await tester.tap(find.text(entry.key));
       await flush(tester);
       expect(tester.widget<WorkoutChart>(find.byType(WorkoutChart)).points.length, entry.value);
     }
-    await tester.tap(find.text('1 month'));
+    await tester.tap(find.text('1m'));
     await flush(tester);
     final metric = find.byType(DropdownButtonFormField<WorkoutMetric>);
     await tester.tap(metric);

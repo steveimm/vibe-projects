@@ -1,0 +1,65 @@
+{
+  "version": "1.3.3+14",
+  "requirements": {
+    "logging_button": "Compact 48 dp square, 28 dp icon, separation from inputs and set rows; stable update position.",
+    "routines": "Long-press selection, tap to toggle multiple cards, rounded muted highlights, pinned Delete and Done, confirmation, exit after delete, no Undo snackbar.",
+    "routine_add": "Bottom right above navigation, hidden during selection.",
+    "analysis_ranges": "1m, 3m, 6m, All time, Custom.",
+    "calendar": "Monday first across the week strip, workout calendar and Material date pickers. Week-start setting removed. Legacy stored preference ignored.",
+    "notification": "Native live countdown. Default channel importance allows lock-screen visibility without a start sound; explicit old importance and lock-screen visibility retained."
+  },
+  "tests": {
+    "logging_and_layout": 4,
+    "routines_and_analysis": 7,
+    "routine_placement_analysis_timer": 3,
+    "monday_calendar_home": 6,
+    "static_analysis": "No issues found"
+  },
+  "emulator": [
+    "Logging button viewed before and after, including numeric keyboard.",
+    "Routine add button sits at bottom right above navigation.",
+    "Held QA A, selected QA B, saw 2 selected and rounded highlights.",
+    "Cancel retained selection. Android Back exited selection on the same routine list.",
+    "Confirmed bulk deletion removed both temporary routines and returned to normal mode without snackbar.",
+    "Analysis shows 1m, 3m and 6m.",
+    "Notification live countdown observed changing from 58 to 56 seconds.",
+    "Final release: Settings General contains only Appearance and Units. Workout calendar headers run Monday through Sunday.",
+    "Native countdown visible on the lock screen at 00:55 while window policy reported keyguard showing=true.",
+    "An earlier check found the old low-importance channel was hidden on the lock screen. The new silent default-importance channel fixes the default and retains explicit legacy importance choices."
+  ],
+  "pending": [],
+  "cleanup": {
+    "temporary_routines": "Deleted through the tested bulk action; initial and final routine counts zero.",
+    "logged_workouts": "No sets added.",
+    "lock_setting": "disabled=true, restored to the original value.",
+    "rest_timer": "Stopped through the app. No active app notification records remained."
+  },
+  "artifacts": [
+    {
+      "file": "build/releases/1.3.3/app-arm64-v8a-release.apk",
+      "bytes": 22165893,
+      "sha256": "2225995d7f8220e953d57bc37f9459d1ae09ed6dc41a5236f7c15e09db71c92c"
+    },
+    {
+      "file": "build/releases/1.3.3/app-armeabi-v7a-release.apk",
+      "bytes": 19706061,
+      "sha256": "69639f2a065523b61d3600e55656597fc7dfe3532b7e6d9199a82c4eca49daf3"
+    },
+    {
+      "file": "build/releases/1.3.3/app-x86_64-release.apk",
+      "bytes": 23683161,
+      "sha256": "81b891866529be7116ae98d4a22111b65b917c3eec0e3f195f5ae017994c1aee"
+    }
+  ],
+  "references": [
+    "https://developer.android.com/reference/android/app/Notification.Builder#setShowWhen(boolean)",
+    "https://developer.android.com/reference/android/app/NotificationChannel#hasUserSetImportance()"
+  ],
+  "status": "complete",
+  "installed": {
+    "version": "1.3.3",
+    "version_code": 2014,
+    "abi": "arm64-v8a",
+    "emulator": "FitNotes_API_36"
+  }
+}

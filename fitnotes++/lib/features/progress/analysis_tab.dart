@@ -87,12 +87,10 @@ class _AnalysisTabState extends ConsumerState<AnalysisTab> with AutomaticKeepAli
                               label: option.key == -1 && compact
                                   ? const Icon(Icons.date_range_rounded, size: 20, semanticLabel: 'Custom range')
                                   : Text(
-                                      compact
-                                          ? (option.key == 0
-                                                ? 'All'
-                                                : option.key == -1
-                                                ? 'Custom'
-                                                : '${option.key} mo')
+                                      option.key > 0
+                                          ? '${option.key}m'
+                                          : compact && option.key == 0
+                                          ? 'All'
                                           : option.value,
                                       maxLines: 1,
                                     ),

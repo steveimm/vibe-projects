@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,11 +11,12 @@ import 'package:fitnotes_plus/main.dart';
 void main() {
   // Boot the real app with the DB-backed providers overridden by synchronous
   // streams — keeps the widget test free of Drift/FakeAsync flakiness.
-  testWidgets('App boots into an empty Workout Log', (tester) async {
+  testWidgets('App boots into an empty Workout Log with Monday first even with a legacy Sunday preference', (tester) async {
+    final semantics = tester.ensureSemantics();
     final settings = AppSettingsRow(
       id: 1,
       themeMode: 0,
-      firstDayOfWeek: 1,
+      firstDayOfWeek: 7,
       defaultWeightIncrement: 2.5,
       restTimerSeconds: 60,
       restTimerVibrate: false,
@@ -47,5 +49,11 @@ void main() {
     expect(find.text('Workout time'), findsOneWidget);
     expect(find.byTooltip('Start'), findsOneWidget);
     expect(find.text('Routines'), findsOneWidget);
+    expect(MaterialLocalizations.of(tester.element(find.text('Today'))).firstDayOfWeekIndex, DateTime.monday);
+    expect(
+      tester.getCenter(find.bySemanticsLabel(RegExp(r'^Monday,')).hitTestable()).dx,
+      lessThan(tester.getCenter(find.bySemanticsLabel(RegExp(r'^Sunday,')).hitTestable()).dx),
+    );
+    semantics.dispose();
   });
 }

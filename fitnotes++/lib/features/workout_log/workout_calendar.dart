@@ -230,7 +230,6 @@ class _CalendarScreenState extends ConsumerState<_CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final firstDay = ref.watch(settingsProvider).asData?.value.firstDayOfWeek ?? 1;
     final categories = ref.watch(categoriesProvider).asData?.value ?? [];
     final exercises = ref.watch(allExercisesProvider).asData?.value ?? [];
     final count = _colors.keys.where((d) => widget.selectable?.call(d) ?? true).length;
@@ -323,10 +322,10 @@ class _CalendarScreenState extends ConsumerState<_CalendarScreen> {
             if (_loading) const LinearProgressIndicator(minHeight: 2),
             Expanded(
               child: WorkoutCalendar(
-                key: ValueKey('$firstDay:$_category:$_exercise'),
+                key: ValueKey('$_category:$_exercise'),
                 dayColors: _colors,
                 initialMonth: widget.initialDate,
-                firstDayOfWeek: firstDay,
+                firstDayOfWeek: DateTime.monday,
                 selectable: widget.selectable,
                 onSelectDay: (d) => widget.onDayTap(context, d),
               ),

@@ -62,7 +62,7 @@ class _FitNotesAppState extends ConsumerState<FitNotesApp> with WidgetsBindingOb
     };
     return MaterialApp.router(
       title: 'FitNotes++',
-      localizationsDelegates: [CalendarLocalizationsDelegate(settings?.firstDayOfWeek ?? 1)],
+      localizationsDelegates: const [CalendarLocalizationsDelegate(DateTime.monday)],
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
