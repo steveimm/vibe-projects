@@ -450,6 +450,10 @@ class _RoutineDetailScreenState extends ConsumerState<RoutineDetailScreen> {
   }
 }
 
+final _lastSetProvider = FutureProvider.autoDispose.family<WorkoutSet?, ExerciseDateKey>(
+  (ref, key) => ref.watch(workoutRepositoryProvider).lastSet(key.exerciseId, key.date),
+);
+
 class _PresetDialog extends ConsumerStatefulWidget {
   const _PresetDialog({required this.set, required this.exercise, required this.siblings, required this.date});
   final RoutineSet set;
@@ -488,32 +492,31 @@ class _PresetDialogState extends ConsumerState<_PresetDialog> {
   Widget build(BuildContext context) {
     final type = widget.exercise.type;
     final units = ref.watch(unitsProvider);
-    final previous = ref
-        .watch(exerciseHistoryProvider(widget.exercise.id))
-        .asData
-        ?.value
-        .where((s) => !s.isPlanned && s.date.compareTo(widget.date) <= 0)
-        .firstOrNull;
+    final lastSet = ref.watch(_lastSetProvider((exerciseId: widget.exercise.id, date: widget.date)));
+    final previous = lastSet.asData?.value;
     final fields = <Widget>[
       if (type.hasWeight)
         _field(
           _weight,
           'Weight (${units.weightLabel})',
-          hint: Fmt.number(units.weightFromKg(previous?.rawWeight ?? 0)),
+          hint: lastSet.hasValue ? Fmt.number(units.weightFromKg(previous?.rawWeight ?? 0)) : null,
           zero: true,
         ),
-      if (type.hasReps) _field(_reps, 'Reps', hint: '${previous?.reps ?? 10}', integer: true),
+      if (type.hasReps) _field(_reps, 'Reps', hint: lastSet.hasValue ? '${previous?.reps ?? 10}' : null, integer: true),
       if (type.hasDistance)
         _field(
           _distance,
           'Distance (${units.distanceLabel})',
-          hint: Fmt.number(units.distanceFromMeters(previous?.distance ?? 1000), precision: 3),
+          hint: lastSet.hasValue ? Fmt.number(units.distanceFromMeters(previous?.distance ?? 1000), precision: 3) : null,
         ),
       if (type.hasTime)
         TextFormField(
           controller: _time,
           keyboardType: TextInputType.datetime,
-          decoration: InputDecoration(labelText: 'Time (m:ss)', hintText: Fmt.duration(previous?.durationSeconds ?? 60)),
+          decoration: InputDecoration(
+            labelText: 'Time (m:ss)',
+            hintText: lastSet.hasValue ? Fmt.duration(previous?.durationSeconds ?? 60) : null,
+          ),
           validator: (v) => v!.isEmpty || (Fmt.parseDuration(v) ?? 0) > 0 ? null : 'Enter a valid time.',
         ),
     ];
@@ -560,7 +563,7 @@ class _PresetDialogState extends ConsumerState<_PresetDialog> {
     );
   }
 
-  Widget _field(TextEditingController ctrl, String label, {required String hint, bool zero = false, bool integer = false}) =>
+  Widget _field(TextEditingController ctrl, String label, {String? hint, bool zero = false, bool integer = false}) =>
       TextFormField(
         controller: ctrl,
         keyboardType: TextInputType.numberWithOptions(decimal: !integer),

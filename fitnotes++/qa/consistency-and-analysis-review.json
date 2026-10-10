@@ -36,11 +36,12 @@
         },
         "release": "1.2.1+10",
         "split_apks": "build/releases/1.2.1/"
-      }
+      },
+      "commit": "48c4508"
     },
     {
       "name": "Analysis follow-up",
-      "status": "pending",
+      "status": "complete",
       "requirements": [
         "Test original FitNotes Analysis with dummy workout data",
         "Rename Training tab to Analysis",
@@ -49,12 +50,174 @@
         "Training balance pie chart",
         "Remove personal records section",
         "Emulator testing, split ABI build, and commit"
-      ]
+      ],
+      "reference": {
+        "app": "FitNotes 25.1 (version code 64)",
+        "backup": "/private/tmp/FitNotes-analysis-before.fitnotes",
+        "device_backup": "/sdcard/Download/FitNotes-analysis-before.fitnotes",
+        "dummy_data": [
+          "2026-10-05: Barbell Row 20 kg \u00d7 10",
+          "2026-10-08: existing Bench Press 60 kg \u00d7 8, twice",
+          "2026-10-10: Bench Press 50 kg \u00d7 8 and 55 kg \u00d7 6"
+        ],
+        "verified_totals": {
+          "workouts": 3,
+          "sets": 5,
+          "reps": 40,
+          "volume_kg": 1890
+        },
+        "per_workout_metrics": [
+          "Volume Per Workout",
+          "Sets Per Workout",
+          "Reps Per Workout",
+          "Workout Duration"
+        ],
+        "observations": [
+          "Workout graph points use actual calendar-date spacing",
+          "Trend Line toggle adds a straight date-based fit",
+          "Custom Date asks for start and end dates and includes both endpoints",
+          "Missing workout times show no records, rather than zero-duration workouts",
+          "Breakdown defaults to set counts by category; dummy data was Chest 80%, Back 20%"
+        ],
+        "restore_status": "Restored through native Restore. All 24 database tables matched the pre-test backup, including settings and both original training_log rows."
+      },
+      "validation": {
+        "tests": 52,
+        "review_fix_tests": 3,
+        "analysis": "No issues found",
+        "review": {
+          "agents": 1,
+          "findings_fixed": [
+            "Routine hints now use the same lastSet query as routine application, including latest-created/id ordering.",
+            "Compact Custom range button has an accessibility label."
+          ]
+        },
+        "release": "1.3.0+11",
+        "split_apks": "build/releases/1.3.0/",
+        "emulator": [
+          "Normal text: graph, filters and training balance fit one screen.",
+          "One month: 3 completed workouts; volumes 200, 960, 730 kg; sets 1, 2, 2; reps 10, 16, 14; durations 30, 45, 40 minutes.",
+          "Training balance: Chest 4 sets (80%), Back 1 set (20%); uncompleted planned Row excluded.",
+          "Three months: Chest 4 / Back 2. Six months: Chest 5 / Back 2. All time: Chest 6 / Back 2.",
+          "Held October 8 duration bar shows October 8, 2026 and 45:00; date-spaced trend renders across actual workout dates.",
+          "Custom range cancellation retains 1 month. October 8\u201310 includes both endpoint workouts and updates the pie to Chest 4 sets, 100%.",
+          "Dark mode and Android text scale 1.6: filters remain one row; graph, category labels and both pie sections remain visible without overflow.",
+          "Final ARM64 release installed and launched. Compact Custom range accessibility label verified in the release APK. Restored Home contains no fixture workouts."
+        ],
+        "release_install": {
+          "version": "1.3.0",
+          "android_version_code": 2011,
+          "abi": "arm64-v8a",
+          "emulator": "FitNotes_API_36 (Android 16/API 36)"
+        }
+      }
     }
   ],
   "restore": {
     "fitnotes_plus_snapshot": "/private/tmp/fitnotes-consistency-original.tar",
     "fitnotes_plus_extracted": "/private/tmp/fitnotes-consistency-original",
-    "status": "Temporary fixtures active; restore after Analysis testing"
-  }
+    "status": "Original database and preferences restored byte-for-byte. After schema 4 to 5 migration, every original column and row matched. Rest sound URI defaults to null.",
+    "file_checks": {
+      "app_flutter/fitnotes_plus.sqlite": {
+        "restored_exactly": true,
+        "sha256": "fe30feebd5a9b55ee60e5edd6dff239066197e0d56a65822b66388d478bb73ca"
+      },
+      "shared_prefs/fitnotes_timer.xml": {
+        "restored_exactly": true,
+        "sha256": "3325d2a819fdd8062c2cdc48a09b995c9b012915bcdf88b1cf9742a7f057c793"
+      },
+      "shared_prefs/fitnotes_permissions.xml": {
+        "restored_exactly": true,
+        "sha256": "3c496b4fc0848ca6abba77ba4e75022cd1bf116f73ee11e22c002957c874c3e8"
+      }
+    },
+    "migration_checks": {
+      "app_settings": {
+        "rows": 1,
+        "matches_before": true
+      },
+      "categories": {
+        "rows": 9,
+        "matches_before": true
+      },
+      "exercise_goals": {
+        "rows": 0,
+        "matches_before": true
+      },
+      "exercise_multipliers": {
+        "rows": 0,
+        "matches_before": true
+      },
+      "exercises": {
+        "rows": 46,
+        "matches_before": true
+      },
+      "measurement_types": {
+        "rows": 15,
+        "matches_before": true
+      },
+      "measurements": {
+        "rows": 0,
+        "matches_before": true
+      },
+      "pr_reset_markers": {
+        "rows": 0,
+        "matches_before": true
+      },
+      "routine_days": {
+        "rows": 0,
+        "matches_before": true
+      },
+      "routine_sets": {
+        "rows": 0,
+        "matches_before": true
+      },
+      "routines": {
+        "rows": 0,
+        "matches_before": true
+      },
+      "sqlite_sequence": {
+        "rows": 3,
+        "matches_before": true
+      },
+      "workout_day_notes": {
+        "rows": 0,
+        "matches_before": true
+      },
+      "workout_exercise_orders": {
+        "rows": 0,
+        "matches_before": true
+      },
+      "workout_sessions": {
+        "rows": 0,
+        "matches_before": true
+      },
+      "workout_sets": {
+        "rows": 0,
+        "matches_before": true
+      }
+    },
+    "emulator_settings": {
+      "font_scale": 1.0,
+      "night_mode": "no",
+      "lock_disabled": true
+    }
+  },
+  "artifacts": [
+    {
+      "file": "build/releases/1.3.0/app-arm64-v8a-release.apk",
+      "bytes": 22165845,
+      "sha256": "c873ed62e539210d089df7e719e55ca39df9b8bbe17cb470c4870a2082ac7521"
+    },
+    {
+      "file": "build/releases/1.3.0/app-armeabi-v7a-release.apk",
+      "bytes": 19656861,
+      "sha256": "efd799e182ad5e1662d48ca3808ab9c889d33962d167050d25c2252670851501"
+    },
+    {
+      "file": "build/releases/1.3.0/app-x86_64-release.apk",
+      "bytes": 23683113,
+      "sha256": "7f49958457dff67c0d6dba1b65ebd06b75a478c4e1afbc24744160c2902e030c"
+    }
+  ]
 }

@@ -9,6 +9,7 @@ import 'package:fitnotes_plus/app/theme.dart';
 import 'package:fitnotes_plus/core/database/database.dart';
 import 'package:fitnotes_plus/core/providers.dart';
 import 'package:fitnotes_plus/core/repositories/routine_repository.dart';
+import 'package:fitnotes_plus/core/repositories/workout_repository.dart';
 import 'package:fitnotes_plus/core/util/dates.dart';
 import 'package:fitnotes_plus/shared/widgets.dart';
 
@@ -36,6 +37,10 @@ void main() {
       dayId = (await repo.watchDays(routineId).first).single.id;
       await repo.addExercise(dayId, benchId);
       await repo.addExercise(dayId, rowId);
+      final workouts = WorkoutRepository(db);
+      for (final entry in [(60.0, 10), (80.0, 5)]) {
+        await workouts.addSet(exerciseId: benchId, date: Dates.shift(Dates.today(), -1), rawWeight: entry.$1, reps: entry.$2);
+      }
     });
     final container = ProviderContainer(overrides: [databaseProvider.overrideWithValue(db)]);
     final router = createAppRouter(initialLocation: '/routine/$routineId');
@@ -56,6 +61,14 @@ void main() {
     await _flush(tester);
     final dialog = find.byType(AppDialog);
     final fields = find.descendant(of: dialog, matching: find.byType(TextFormField));
+    expect(
+      tester.widget<TextField>(find.descendant(of: fields.at(0), matching: find.byType(TextField))).decoration!.hintText,
+      '80',
+    );
+    expect(
+      tester.widget<TextField>(find.descendant(of: fields.at(1), matching: find.byType(TextField))).decoration!.hintText,
+      '5',
+    );
     await tester.enterText(fields.at(0), '60');
     await tester.enterText(fields.at(1), '8');
     await tester.tap(find.byType(Checkbox));

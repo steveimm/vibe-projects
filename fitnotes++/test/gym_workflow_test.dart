@@ -167,8 +167,8 @@ void main() {
       ),
     );
     await _flush(tester);
-    for (final label in ['7 days', '30 days', '90 days', 'All time']) {
-      expect(tester.getCenter(find.text(label)).dy, tester.getCenter(find.text('7 days')).dy);
+    for (final label in ['1 month', '3 months', '6 months', 'All time', 'Custom']) {
+      expect(tester.getCenter(find.text(label)).dy, tester.getCenter(find.text('1 month')).dy);
     }
     tester.platformDispatcher.textScaleFactorTestValue = 2;
     await tester.pump();

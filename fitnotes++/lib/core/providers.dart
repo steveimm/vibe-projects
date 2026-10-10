@@ -95,6 +95,10 @@ final allLogProvider = StreamProvider((ref) => ref.watch(workoutRepositoryProvid
 final dayNoteProvider = StreamProvider.autoDispose.family<WorkoutDayNote?, String>(
   (ref, date) => ref.watch(workoutRepositoryProvider).watchDayNote(date),
 );
+final workoutSessionsProvider = StreamProvider((ref) {
+  final db = ref.watch(databaseProvider);
+  return db.select(db.workoutSessions).watch();
+});
 final sessionProvider = StreamProvider.autoDispose.family<WorkoutSession?, String>(
   (ref, date) => ref.watch(workoutRepositoryProvider).watchSession(date),
 );
