@@ -32,7 +32,7 @@ class HistoryTab extends ConsumerWidget {
         }
         final entries = days.entries.toList();
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
           itemCount: entries.length,
           itemBuilder: (_, i) {
             final entry = entries[i];
@@ -52,6 +52,8 @@ class HistoryTab extends ConsumerWidget {
                       for (var j = 0; j < entry.value.length; j++) ...[
                         if (j > 0) const Divider(indent: 16, endIndent: 16),
                         ListTile(
+                          minTileHeight: 48,
+                          minVerticalPadding: 4,
                           leading: Text(
                             '${j + 1}'.padLeft(2, '0'),
                             style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),

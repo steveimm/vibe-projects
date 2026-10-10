@@ -111,7 +111,8 @@ class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClient
 
   Future<void> _record(MeasurementType type, List<Measurement> records) => showDialog<void>(
     context: context,
-    builder: (_) => _MeasurementDialog(type: type, record: records.where((r) => r.date == Dates.today()).firstOrNull),
+    builder: (_) =>
+        _MeasurementDialog(type: type, record: records.where((r) => r.date == Dates.today()).firstOrNull, quickRecord: true),
   );
 
   void _history(MeasurementType type) =>
@@ -236,9 +237,10 @@ String _unit(String unit, Units units) => unit == 'kg'
     : unit;
 
 class _MeasurementDialog extends ConsumerStatefulWidget {
-  const _MeasurementDialog({required this.type, this.record});
+  const _MeasurementDialog({required this.type, this.record, this.quickRecord = false});
   final MeasurementType type;
   final Measurement? record;
+  final bool quickRecord;
   @override
   ConsumerState<_MeasurementDialog> createState() => _MeasurementDialogState();
 }
@@ -252,6 +254,12 @@ class _MeasurementDialogState extends ConsumerState<_MeasurementDialog> {
   final _form = GlobalKey<FormState>();
   bool _busy = false;
   late bool _showNote = widget.record?.note.isNotEmpty == true;
+  @override
+  void initState() {
+    super.initState();
+    _value.selection = TextSelection(baseOffset: 0, extentOffset: _value.text.length);
+  }
+
   @override
   void dispose() {
     _value.dispose();
@@ -340,13 +348,14 @@ class _MeasurementDialogState extends ConsumerState<_MeasurementDialog> {
     var saved = false;
     final ok = await attempt(context, () async {
       final repo = ref.read(progressRepositoryProvider);
-      var id = widget.record?.id;
+      var id = widget.quickRecord && _date != widget.record?.date ? null : widget.record?.id;
       if (id == null) {
         final existing = await repo.measurementOnDate(widget.type.id, _date);
         if (!mounted) return;
         if (existing != null) {
-          if (!await confirm(context, title: 'Replace measurement?', message: 'Replace the entry for $_date?') || !mounted)
+          if (!await confirm(context, title: 'Replace measurement?', message: 'Replace the entry for $_date?') || !mounted) {
             return;
+          }
           id = existing.id;
         }
       }

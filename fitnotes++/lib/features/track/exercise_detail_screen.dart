@@ -314,12 +314,14 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
         ),
       ],
     );
-    final rows = sets.when(
+    Widget rows({bool shrinkWrap = false}) => sets.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) =>
           ErrorState(onRetry: () => ref.invalidate(exerciseSetsProvider((exerciseId: widget.exercise.id, date: widget.date)))),
       data: (items) => ListView.separated(
-        controller: _scroll,
+        controller: shrinkWrap ? null : _scroll,
+        shrinkWrap: shrinkWrap,
+        physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
         padding: const EdgeInsets.only(bottom: 8),
         itemCount: items.length,
         separatorBuilder: (_, _) => const SizedBox(height: 4),
@@ -332,7 +334,8 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
         builder: (context, constraints) {
           if (constraints.maxHeight < 160) {
             return SingleChildScrollView(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [editor, actions]),
+              key: const ValueKey('compact-log-scroll'),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [editor, actions, rows(shrinkWrap: true)]),
             );
           }
           return Column(
@@ -342,7 +345,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
                 child: SingleChildScrollView(child: editor),
               ),
               actions,
-              Expanded(child: rows),
+              Expanded(child: rows()),
             ],
           );
         },

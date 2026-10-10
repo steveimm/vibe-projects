@@ -34,14 +34,14 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
     final units = ref.watch(unitsProvider);
     final history = ref.watch(exerciseHistoryProvider(widget.exercise.id));
     final season = ref.watch(seasonsProvider).asData?.value.firstOrNull;
-    final since = _days == 0 ? Stats.allTime : Dates.shift(Dates.today(), -_days);
+    final since = _days == 0 ? Stats.allTime : Dates.shift(Dates.today(), -_days + 1);
     final cap = ref.watch(settingsProvider).asData?.value.estimated1rmMaxReps ?? 0;
     return history.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => ErrorState(onRetry: () => ref.invalidate(exerciseHistoryProvider(widget.exercise.id))),
       data: (sets) {
         final points = Stats.graph(
-          sets,
+          sets.where((s) => s.date.compareTo(Dates.today()) <= 0).toList(),
           _metric!,
           sinceDate: since,
           max1rmReps: cap,
@@ -49,7 +49,7 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
         ).map((p) => (date: p.date, value: metricDisplayValue(_metric!, p.value, units))).toList();
         final logged = sets.where((s) => !s.isPlanned).toList();
         return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
           children: [
             DropdownButtonFormField<GraphMetric>(
               initialValue: _metric,
@@ -93,10 +93,10 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
                 child: points.isEmpty
                     ? EmptyState(
                         icon: Icons.show_chart_rounded,
@@ -115,17 +115,15 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(_metric!.label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                          const SizedBox(height: 5),
                           Text(
                             metricLabel(_metric!, points.last.value, units),
                             style: Theme.of(context).textTheme.headlineMedium,
                           ),
                           Text(
-                            'Latest session · ${points.last.date}',
+                            points.last.date,
                             style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
                           ),
-                          ProgressChart(points: points, label: (v) => metricLabel(_metric!, v, units)),
+                          ProgressChart(height: 200, points: points, label: (v) => metricLabel(_metric!, v, units)),
                         ],
                       ),
               ),
@@ -194,7 +192,7 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
     final reps = _estimated ? List.generate(15, (i) => i + 1) : (actual.keys.toList()..sort());
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Wrap(
           spacing: 12,
           runSpacing: 16,
@@ -357,7 +355,7 @@ class _GoalDialogState extends ConsumerState<_GoalDialog> {
                 _target.clear();
               }),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             TextFormField(
               controller: _target,
               keyboardType: time ? TextInputType.datetime : const TextInputType.numberWithOptions(decimal: true),

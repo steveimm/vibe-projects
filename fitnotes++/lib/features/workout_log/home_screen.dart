@@ -159,7 +159,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         if (name != null && context.mounted) {
           await attempt(context, () async {
             await ref.read(routineRepositoryProvider).fromWorkout(date, name);
-          }, success: 'Routine saved. Find it in Routines.');
+          }, success: 'Routine saved');
         }
       case 'delete':
         if (!await confirm(

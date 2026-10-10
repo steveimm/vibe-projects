@@ -69,7 +69,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
               child: TextField(
                 controller: _search,
                 onChanged: (_) => setState(() {}),
@@ -89,7 +89,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
             ),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
                   Padding(
@@ -165,21 +165,21 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                     );
                   }
                   return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                     itemCount: list.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    separatorBuilder: (_, _) => const SizedBox(height: 4),
                     itemBuilder: (_, i) {
                       final e = list[i];
                       return Card(
                         child: ListTile(
                           contentPadding: const EdgeInsets.only(left: 14, right: 4),
-                          minVerticalPadding: 12,
+                          minVerticalPadding: 6,
                           leading: Container(
-                            width: 42,
-                            height: 42,
+                            width: 32,
+                            height: 32,
                             decoration: BoxDecoration(
                               color: Color(e.colorArgb).withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(13),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             child: Icon(Icons.fitness_center_rounded, size: 20, color: Color(e.colorArgb)),
                           ),
@@ -187,7 +187,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              '${e.categoryName} · ${e.workoutCount == 0 ? 'Not logged yet' : Fmt.count(e.workoutCount, 'workout')}',
+                              '${e.categoryName}${e.workoutCount == 0 ? '' : ' · ${Fmt.count(e.workoutCount, 'workout')}'}',
                               style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
                             ),
                           ),

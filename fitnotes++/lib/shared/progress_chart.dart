@@ -23,9 +23,13 @@ class ProgressChart extends StatelessWidget {
     final maxValue = points.map((p) => p.value).reduce(math.max);
     final minValue = points.map((p) => p.value).reduce(math.min);
     final padding = math.max((maxValue - minValue) * 0.15, math.max(maxValue.abs() * 0.01, 0.1));
-    final minY = zeroBased ? 0.0 : math.max(0.0, minValue - padding);
-    final maxY = zeroBased ? (maxValue <= 0 ? 1.0 : maxValue * 1.15) : maxValue + padding;
-    final interval = (maxY - minY) / 3;
+    final lower = zeroBased ? 0.0 : math.max(0.0, minValue - padding);
+    final upper = zeroBased ? (maxValue <= 0 ? 1.0 : maxValue * 1.15) : maxValue + padding;
+    final roughStep = (upper - lower) / 3;
+    final magnitude = math.pow(10, (math.log(roughStep) / math.ln10).floor()).toDouble();
+    final interval = [1.0, 2.0, 5.0, 10.0].firstWhere((n) => n * magnitude >= roughStep) * magnitude;
+    final minY = (lower / interval).floor() * interval;
+    final maxY = (upper / interval).ceil() * interval;
     return SizedBox(
       height: height,
       child: Padding(

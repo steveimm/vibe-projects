@@ -10,7 +10,7 @@
     {
       "id": "sound",
       "requirement": "Audible, rounded rest chime with temporary music ducking and sound preview",
-      "status": "in_progress"
+      "status": "emulator_verified"
     },
     {
       "id": "session_start",
@@ -55,17 +55,17 @@
     {
       "id": "measurements",
       "requirement": "All recorded measurement charts appear together without selecting a type",
-      "status": "implemented_pending_emulator"
+      "status": "implemented_tested"
     },
     {
       "id": "measurement_record",
       "requirement": "Per-metric quick recording, compact empty metrics, accessible history/edit/delete, units preserved",
-      "status": "implemented_pending_emulator"
+      "status": "implemented_tested"
     },
     {
       "id": "training_range",
       "requirement": "Single-row range control; summary, activity, categories and records follow the chosen range",
-      "status": "implemented_pending_emulator"
+      "status": "implemented_tested"
     },
     {
       "id": "related_polish",
@@ -80,7 +80,7 @@
     {
       "id": "review",
       "requirement": "One independent review near completion, then resolve material findings",
-      "status": "pending"
+      "status": "implemented_tested"
     },
     {
       "id": "delivery",
@@ -89,10 +89,11 @@
     }
   ],
   "validation": {
-    "regression_tests": 40,
+    "regression_tests": 44,
     "new_workflow_tests": 4,
     "first_commit": "435640c",
     "emulator_backup": "Preserved before testing in /private/tmp/fitnotes-gym-before-test.tar",
-    "audio": "Transient may-duck focus request and release observed. Separate media playback check pending."
+    "audio": "Android API 36: separate media player ducked to 0.2 volume during the chime, restored on focus release. Headphone loudness not measured.",
+    "review": "One independent review found measurement backfill moving today and unreachable sets below 160px. Both fixed and covered by workflow tests."
   }
 }

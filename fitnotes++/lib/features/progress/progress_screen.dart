@@ -109,6 +109,7 @@ class _TrainingOverviewState extends ConsumerState<_TrainingOverview> with Autom
                           padding: const EdgeInsets.symmetric(horizontal: 2),
                           child: Tooltip(
                             message: entry.value,
+                            excludeFromSemantics: true,
                             child: ChoiceChip(
                               padding: EdgeInsets.zero,
                               labelPadding: const EdgeInsets.symmetric(horizontal: 6),

@@ -24,12 +24,6 @@ class WorkoutSessionCard extends ConsumerWidget {
     final running = session?.runningSince != null;
     final isToday = date == Dates.today();
     final theme = Theme.of(context);
-    final controlStyle = TextButton.styleFrom(
-      foregroundColor: AppTheme.lime,
-      disabledForegroundColor: Colors.white38,
-      minimumSize: const Size(56, 40),
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-    );
     final toggleLabel = running
         ? 'Pause'
         : session == null
@@ -79,95 +73,76 @@ class WorkoutSessionCard extends ConsumerWidget {
             ],
           ),
           const Divider(height: 16, color: Colors.white24),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final iconControls = MediaQuery.textScalerOf(context).scale(14) > 20 || constraints.maxWidth < 280;
-              return Row(
-                children: [
-                  Expanded(
-                    child: ConstrainedBox(
-                      key: const ValueKey('workout-duration'),
-                      constraints: const BoxConstraints(minHeight: 48),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('Workout time', style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70)),
-                          StreamBuilder<int>(
-                            stream: isToday && running ? Stream.periodic(const Duration(seconds: 1), (i) => i) : null,
-                            builder: (_, _) => FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                Fmt.duration(session?.durationAt(DateTime.now()) ?? 0),
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  color: Colors.white,
-                                  fontFeatures: [FontFeature.tabularFigures()],
-                                ),
-                              ),
+          Row(
+            children: [
+              Expanded(
+                child: ConstrainedBox(
+                  key: const ValueKey('workout-duration'),
+                  constraints: const BoxConstraints(minHeight: 48),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('Workout time', style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70)),
+                      StreamBuilder<int>(
+                        stream: isToday && running ? Stream.periodic(const Duration(seconds: 1), (i) => i) : null,
+                        builder: (_, _) => FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            Fmt.duration(session?.durationAt(DateTime.now()) ?? 0),
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              color: Colors.white,
+                              fontFeatures: [FontFeature.tabularFigures()],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (isToday)
-                    if (iconControls)
-                      IconButton(
-                        tooltip: toggleLabel,
-                        onPressed: enabled ? toggle : null,
-                        color: AppTheme.lime,
-                        disabledColor: Colors.white38,
-                        icon: Icon(running ? Icons.pause_rounded : Icons.play_arrow_rounded),
-                      )
-                    else
-                      TextButton(style: controlStyle, onPressed: enabled ? toggle : null, child: Text(toggleLabel)),
-                  if (isToday && session != null && session.endedAt == null)
-                    if (iconControls)
-                      IconButton(
-                        tooltip: 'Finish',
-                        onPressed: enabled ? finish : null,
-                        color: Colors.white,
-                        disabledColor: Colors.white38,
-                        icon: const Icon(Icons.stop_rounded),
-                      )
-                    else
-                      TextButton(
-                        style: controlStyle.copyWith(
-                          foregroundColor: WidgetStateProperty.resolveWith(
-                            (states) => states.contains(WidgetState.disabled) ? Colors.white38 : Colors.white,
-                          ),
                         ),
-                        onPressed: enabled ? finish : null,
-                        child: const Text('Finish'),
                       ),
-                  AppMenuButton<String>(
-                    tooltip: 'Workout timer options',
-                    enabled: enabled,
-                    iconColor: enabled ? Colors.white70 : Colors.white38,
-                    padding: EdgeInsets.zero,
-                    onSelected: (action) async {
-                      if (action == 'edit') {
-                        await _edit(context, ref);
-                      } else if (await confirm(
-                            context,
-                            title: 'Reset workout time?',
-                            message: 'Set the timer to zero? Logged sets will be kept.',
-                            action: 'Reset',
-                          ) &&
-                          context.mounted) {
-                        await attempt(context, () => ref.read(workoutRepositoryProvider).resetSession(date));
-                      }
-                    },
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Edit duration')),
-                      if (session != null) const PopupMenuItem(value: 'reset', child: Text('Reset timer')),
                     ],
                   ),
+                ),
+              ),
+              if (isToday)
+                IconButton(
+                  tooltip: toggleLabel,
+                  onPressed: enabled ? toggle : null,
+                  color: AppTheme.lime,
+                  disabledColor: Colors.white38,
+                  icon: Icon(running ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                ),
+              if (isToday && session != null && session.endedAt == null)
+                IconButton(
+                  tooltip: 'Finish',
+                  onPressed: enabled ? finish : null,
+                  color: Colors.white,
+                  disabledColor: Colors.white38,
+                  icon: const Icon(Icons.stop_rounded),
+                ),
+              AppMenuButton<String>(
+                tooltip: 'Workout timer options',
+                enabled: enabled,
+                iconColor: enabled ? Colors.white70 : Colors.white38,
+                padding: EdgeInsets.zero,
+                onSelected: (action) async {
+                  if (action == 'edit') {
+                    await _edit(context, ref);
+                  } else if (await confirm(
+                        context,
+                        title: 'Reset workout time?',
+                        message: 'Set the timer to zero? Logged sets will be kept.',
+                        action: 'Reset',
+                      ) &&
+                      context.mounted) {
+                    await attempt(context, () => ref.read(workoutRepositoryProvider).resetSession(date));
+                  }
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'edit', child: Text('Edit duration')),
+                  if (session != null) const PopupMenuItem(value: 'reset', child: Text('Reset timer')),
                 ],
-              );
-            },
+              ),
+            ],
           ),
         ],
       ),

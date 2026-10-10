@@ -45,7 +45,7 @@ void main() {
     expect(find.text('Today'), findsOneWidget);
     expect(find.text('FitNotes++'), findsNothing);
     expect(find.text('Workout time'), findsOneWidget);
-    expect(find.text('Start'), findsOneWidget);
+    expect(find.byTooltip('Start'), findsOneWidget);
     expect(find.text('Routines'), findsOneWidget);
   });
 }
