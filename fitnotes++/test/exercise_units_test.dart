@@ -261,6 +261,7 @@ void main() {
     await tester.enterText(find.byType(TextField).at(1), '9');
     await tester.tap(find.byTooltip('Update set'));
     await _flush(tester);
+    await tester.showKeyboard(find.byType(TextField).first);
     await tester.tap(find.byTooltip('Edit exercise'));
     await _flush(tester);
     final unitField = find.byKey(const ValueKey<WeightUnit?>(WeightUnit.pounds));
@@ -271,6 +272,7 @@ void main() {
     await tester.tap(find.byTooltip('Save exercise'));
     await _flush(tester);
     expect(find.text('Weight · kg'), findsOneWidget);
+    expect(tester.widget<EditableText>(find.byType(EditableText).first).focusNode.hasFocus, isFalse);
     expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '45.36');
     await tester.tap(find.byKey(ValueKey('logged-set-${original.id}')));
     await tester.pump();

@@ -55,7 +55,10 @@ class ExerciseDetailScreen extends ConsumerWidget {
                 IconButton(
                   tooltip: 'Edit exercise',
                   icon: const Icon(Icons.edit_outlined),
-                  onPressed: () => context.push('/exercises/edit?id=$exerciseId'),
+                  onPressed: () {
+                    dismissKeyboard();
+                    context.push('/exercises/edit?id=$exerciseId');
+                  },
                 ),
                 if (exercise.notes?.isNotEmpty == true)
                   IconButton(

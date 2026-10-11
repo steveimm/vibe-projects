@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+void dismissKeyboard() {
+  FocusManager.instance.primaryFocus?.unfocus();
+  FocusManager.instance.applyFocusChangesIfNeeded();
+}
+
 class AppFloatingActionButton extends StatelessWidget {
   const AppFloatingActionButton({super.key, required this.tooltip, required this.onPressed, this.icon = Icons.add_rounded});
   final String tooltip;

@@ -1,0 +1,106 @@
+{
+  "version": "1.7.0+19",
+  "schema_version": 7,
+  "status": "complete",
+  "implementation_commit": "e8330c8",
+  "requirements": [
+    "Three-digit, two-decimal weight inputs fit without horizontal scrolling or changing card height.",
+    "Formula shows the rounded 0.45 lb-to-kg conversion, each enabled named multiplier, optional bodyweight addition, and kg total.",
+    "Conversion and stored data retain full precision.",
+    "Add bodyweight is disabled when no bodyweight measurement is available.",
+    "Latest bodyweight on or before the workout date is added after multipliers and captured per set.",
+    "The counter excludes bodyweight. History, totals, graphs, copies, routines, backup and CSV use the complete weight."
+  ],
+  "user_decision": "Multipliers apply only to entered weight: 80 + (20 * 0.5) = 90 kg.",
+  "validation": {
+    "full_suite": 64,
+    "final_focused_suite": 13,
+    "static_analysis": "No issues found",
+    "automated_widths": [
+      320,
+      360,
+      390
+    ],
+    "automated_text_scales": [
+      1.0,
+      1.3,
+      2.0
+    ],
+    "emulator": "FitNotes_API_36, Android 16/API 36, ARM64, 945x2100 at 420 dpi (360 dp wide)",
+    "emulator_checks": [
+      "999.99 remains fully visible. Both input cards align, and named factors are visible below them.",
+      "With no measurement, Add bodyweight is grey and disabled.",
+      "Recorded 80 kg in Progress and enabled Add bodyweight in exercise settings.",
+      "999.99 lb with factors 0.5 and 0.8 plus 80 kg bodyweight displays and logs 261.44 kg. Counter remains 999.99.",
+      "Verified exact stored input, factor, bodyweight, and unchanged prior set using the emulator database.",
+      "Final release: 123.45 remains visible when returning from exercise settings, and Android reports mInputShown=false.",
+      "Returned to Home with no QA exercises or sets after the original data was restored."
+    ],
+    "stored_values": {
+      "exercise": {
+        "id": 47,
+        "weight_unit": 1,
+        "include_bodyweight": 1
+      },
+      "sets": [
+        {
+          "raw_weight": 55.9959780765,
+          "weight_multiplier": 0.4,
+          "bodyweight": 0.0,
+          "reps": 8
+        },
+        {
+          "raw_weight": 453.5878340763,
+          "weight_multiplier": 0.4,
+          "bodyweight": 80.0,
+          "reps": 8
+        }
+      ],
+      "effective_kg": 261.43513363052,
+      "app_errors": ""
+    },
+    "screenshots": [
+      "build/qa/1.7.0/number-formula.png",
+      "build/qa/1.7.0/bodyweight-disabled.png",
+      "build/qa/1.7.0/bodyweight-enabled.png",
+      "build/qa/1.7.0/full-calculation.png",
+      "build/qa/1.7.0/release-input.png",
+      "build/qa/1.7.0/release-home.png"
+    ],
+    "environment_note": "A display resize stalled the emulator graphics backend. Restarted the preserved AVD with SwiftShader and disabled crash-report prompts. The APK was unchanged by this recovery."
+  },
+  "restore": {
+    "status": "Original database and preferences restored and byte-for-byte verified before release installation.",
+    "archive": "build/qa/1.7.0/original.tar",
+    "original_display": "1080x2400, 420 dpi, font scale 1.0",
+    "verified_sha256": {
+      "app_flutter/fitnotes_plus.sqlite": "34b04fa88754f69e75a1d94ac4463c7143eca4efcd3e481974698fdb27e2e5cd",
+      "shared_prefs/fitnotes_timer.xml": "3325d2a819fdd8062c2cdc48a09b995c9b012915bcdf88b1cf9742a7f057c793",
+      "shared_prefs/fitnotes_permissions.xml": "3c496b4fc0848ca6abba77ba4e75022cd1bf116f73ee11e22c002957c874c3e8"
+    },
+    "display_restored": "1080x2400; original density 420 and font scale 1.0 unchanged."
+  },
+  "release": {
+    "build_command": "flutter build apk --release --split-per-abi",
+    "artifacts": [
+      {
+        "path": "build/releases/1.7.0/app-arm64-v8a-release.apk",
+        "sha256": "4082cae20c86fbb0ca8caec203740ca50574ae6818d2a7461ccda7e84c1031c1"
+      },
+      {
+        "path": "build/releases/1.7.0/app-armeabi-v7a-release.apk",
+        "sha256": "37af61509ddd1d29f2740b6e67c676add426141ea5bfbac0bfad2352eba19932"
+      },
+      {
+        "path": "build/releases/1.7.0/app-x86_64-release.apk",
+        "sha256": "14035411c7c25d8935fcf05e1d291d71780b86407523344bf8b87a0deca4c2ef"
+      }
+    ],
+    "installed": {
+      "version_name": "1.7.0",
+      "version_code": 2019,
+      "abi": "arm64-v8a",
+      "launch": "Passed. Original data restored, display 1080x2400, no test sets remain."
+    }
+  }
+}
