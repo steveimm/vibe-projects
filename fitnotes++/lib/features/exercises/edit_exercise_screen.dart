@@ -131,7 +131,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
                             Expanded(
                               child: DropdownButtonFormField<int>(
                                 key: ValueKey(_category),
-                                onTap: () => FocusScope.of(context).unfocus(),
+                                onTap: _dismissKeyboard,
                                 initialValue: _category,
                                 isExpanded: true,
                                 decoration: const InputDecoration(labelText: 'Body part'),
@@ -164,7 +164,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<ExerciseType>(
-                          onTap: () => FocusScope.of(context).unfocus(),
+                          onTap: _dismissKeyboard,
                           initialValue: _type,
                           key: ValueKey(_type),
                           isExpanded: true,
@@ -182,7 +182,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
                           const SizedBox(height: 12),
                           DropdownButtonFormField<int>(
                             key: ValueKey(_weightUnit),
-                            onTap: () => FocusScope.of(context).unfocus(),
+                            onTap: _dismissKeyboard,
                             isExpanded: true,
                             initialValue: _weightUnit?.index ?? -1,
                             decoration: const InputDecoration(labelText: 'Weight unit'),
@@ -290,6 +290,11 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
     );
   }
 
+  void _dismissKeyboard() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    FocusManager.instance.applyFocusChangesIfNeeded();
+  }
+
   void _changeWeightUnit(WeightUnit? unit) {
     final systemUnits = ref.read(unitsProvider);
     final typed = double.tryParse(_increment.text);
@@ -309,7 +314,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
   }
 
   Future<void> _editMultiplier([int? index]) async {
-    FocusScope.of(context).unfocus();
+    _dismissKeyboard();
     final others = [
       for (var i = 0; i < _multipliers.length; i++)
         if (i != index) _multipliers[i],
@@ -335,7 +340,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
 
   Future<void> _save() async {
     if (_form.currentState?.validate() != true) return;
-    FocusScope.of(context).unfocus();
+    _dismissKeyboard();
     setState(() => _saving = true);
     int? id = widget.exerciseId;
     final success = await attempt(context, () async {

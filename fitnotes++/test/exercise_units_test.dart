@@ -153,6 +153,7 @@ void main() {
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
     }
+    expect(tester.widget<EditableText>(find.byType(EditableText).first).focusNode.hasFocus, isFalse);
     expect(find.text('Multiplier 1'), findsOneWidget);
     expect(find.text('Multiplier 2'), findsOneWidget);
     await tester.tap(find.byType(Switch).last);

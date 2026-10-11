@@ -1,0 +1,107 @@
+{
+  "version": "1.6.0+18",
+  "schema_version": 6,
+  "status": "complete",
+  "implementation_commit": "6af6157",
+  "requirements": [
+    "Per-exercise weight input: app setting, kg, or lb. Logged rows, totals, and graphs use the app unit.",
+    "Any number of named or unnamed factors per exercise; default names are Multiplier X. Enabled factors multiply together.",
+    "Input converts to canonical kg and the combined factor is captured per set. Editing a set preserves that factor.",
+    "Unit and multiplier controls available while creating an exercise, saved atomically with other exercise settings.",
+    "Routine presets and weight increments use the exercise input unit.",
+    "Older databases and backups remain readable with app-unit defaults."
+  ],
+  "validation": {
+    "full_suite": 61,
+    "final_focused_suite": 10,
+    "static_analysis": "No issues found",
+    "logs": [
+      "/private/tmp/fitnotes-1.6.0-tests.log",
+      "/private/tmp/fitnotes-units-final-tests.log",
+      "/private/tmp/fitnotes-1.6.0-analysis.log"
+    ],
+    "emulator": "FitNotes_API_36, emulator-5554, Android 16/API 36, ARM64",
+    "emulator_checks": [
+      "Created QA Units Pulley with lb input, unnamed 0.5 and Cable 0.8 factors. 100 lb displayed and logged as 18.14 kg.",
+      "Edited reps from 8 to 9 without changing weight or adding another set.",
+      "Changed the exercise input to kg and disabled Cable. Switched the app to pounds. 20 kg with the remaining 0.5 factor logged as 22.05 lb.",
+      "The earlier set displays as 40 lb and retains rawWeight 45.359237 kg with its captured factor 0.4. The new set stores 20 kg with factor 0.5.",
+      "Exercise settings with two multipliers fit in one screen at normal text size.",
+      "Multiplier dialog return leaves the exercise-name field unfocused. Android reports mInputShown=false, and the full form remains visible.",
+      "Final app-process error log is empty."
+    ],
+    "screenshots": [
+      "/private/tmp/fitnotes-1.6.0-exercise-settings.png",
+      "/private/tmp/fitnotes-1.6.0-lb-preview.png",
+      "/private/tmp/fitnotes-1.6.0-kg-record.png",
+      "/private/tmp/fitnotes-1.6.0-kg-input-lb-records.png",
+      "/private/tmp/fitnotes-1.6.0-keyboard-return.png",
+      "/private/tmp/fitnotes-1.6.0-release-home.png"
+    ],
+    "keyboard_regression_tests": 4,
+    "stored_values": {
+      "exercise": {
+        "id": 47,
+        "name": "QA Units Pulley",
+        "weight_unit": 0
+      },
+      "sets": [
+        {
+          "raw_weight": 45.359237,
+          "weight_multiplier": 0.4,
+          "reps": 9
+        },
+        {
+          "raw_weight": 20.0,
+          "weight_multiplier": 0.5,
+          "reps": 5
+        }
+      ],
+      "factors": [
+        {
+          "label": "Multiplier 1",
+          "factor": 0.5,
+          "enabled": 1
+        },
+        {
+          "label": "Cable",
+          "factor": 0.8,
+          "enabled": 0
+        }
+      ],
+      "system_uses_pounds": true
+    }
+  },
+  "restore": {
+    "status": "Original schema-5 database and preferences restored and byte-for-byte verified before release installation.",
+    "archive": "/private/tmp/fitnotes-1.6.0-original.tar",
+    "verified_sha256": {
+      "app_flutter/fitnotes_plus.sqlite": "2a3a7566aebd3d1e547fc24f65b1cf63aa520ca32f06e61f6a0967a61d38d453",
+      "shared_prefs/fitnotes_timer.xml": "3325d2a819fdd8062c2cdc48a09b995c9b012915bcdf88b1cf9742a7f057c793",
+      "shared_prefs/fitnotes_permissions.xml": "3c496b4fc0848ca6abba77ba4e75022cd1bf116f73ee11e22c002957c874c3e8"
+    }
+  },
+  "release": {
+    "build_command": "flutter build apk --release --split-per-abi",
+    "artifacts": [
+      {
+        "path": "build/releases/1.6.0/app-arm64-v8a-release.apk",
+        "sha256": "3d3d8e2ee95383e950edd77bfc8a706ff5f3c78f4eb39dab2b876b5759f11ade"
+      },
+      {
+        "path": "build/releases/1.6.0/app-armeabi-v7a-release.apk",
+        "sha256": "925e2e75679e90e2648d7b9283e92a4e42d6291b4caca4ff4c168a2c05296818"
+      },
+      {
+        "path": "build/releases/1.6.0/app-x86_64-release.apk",
+        "sha256": "95460074707d0733f4e03eb295e82783f55da77b53d943ef32afa6f028768650"
+      }
+    ],
+    "installed": {
+      "version_name": "1.6.0",
+      "version_code": 2018,
+      "abi": "arm64-v8a",
+      "launch": "Passed. Home displays original data, kg app unit, and no QA exercise or sets."
+    }
+  }
+}
