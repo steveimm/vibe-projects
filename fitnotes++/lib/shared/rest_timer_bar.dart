@@ -44,13 +44,6 @@ class RestTimerBar extends ConsumerWidget {
                         '${timer.status == RestStatus.paused ? 'Paused' : 'Rest'} · ${Fmt.duration(timer.remaining)}',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                       ),
-                      if (timer.label != 'Rest' && timer.label.isNotEmpty)
-                        Text(
-                          timer.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
                     ],
                   ),
                 ),

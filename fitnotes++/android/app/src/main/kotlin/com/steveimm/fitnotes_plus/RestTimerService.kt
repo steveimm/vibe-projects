@@ -22,6 +22,7 @@ class RestTimerService : Service() {
     private val notifications by lazy { getSystemService(NotificationManager::class.java) }
     private var wakeLock: PowerManager.WakeLock? = null
     private var alert: Runnable? = null
+    private var countdown: Runnable? = null
     private var finish: Runnable? = null
     private var completed = false
     private val sound by lazy { RestAlertPlayer(this) }
@@ -38,6 +39,7 @@ class RestTimerService : Service() {
         val deadline = preferences.getLong("deadline", 0)
         if (deadline <= 0 || preferences.getBoolean("paused", false) || preferences.getBoolean("finished", false)) { stopSelf(); return START_NOT_STICKY }
         alert?.let(handler::removeCallbacks)
+        countdown?.let(handler::removeCallbacks)
         finish?.let(handler::removeCallbacks)
         completed = false
         sound.stop()
@@ -53,14 +55,13 @@ class RestTimerService : Service() {
                 if (previous != null) lockscreenVisibility = previous.lockscreenVisibility
             })
         }
-        val notification = notificationBuilder()
+        val builder = notificationBuilder()
             .setContentTitle("Rest timer")
-            .setContentText(preferences.getString("label", "Rest")?.takeUnless { it == "Rest" })
-            .setWhen(deadline).setShowWhen(true).setUsesChronometer(true).setChronometerCountDown(true)
+            .setContentText(remainingText(deadline)).setShowWhen(false)
             .setOngoing(true).setOnlyAlertOnce(true)
             .addAction(Notification.Action.Builder(null, "Stop", PendingIntent.getService(this, 2,
                 Intent(this, RestTimerService::class.java).setAction(STOP), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)).build())
-            .build()
+        val notification = builder.build()
         if (Build.VERSION.SDK_INT >= 34) startForeground(ONGOING_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         else startForeground(ONGOING_ID, notification)
         notifications.cancel(COMPLETE_ID)
@@ -71,14 +72,30 @@ class RestTimerService : Service() {
         }
         alert = Runnable { complete() }
         handler.postDelayed(alert!!, remaining)
+        countdown = object : Runnable {
+            override fun run() {
+                val left = deadline - System.currentTimeMillis()
+                if (completed || left <= 0) return
+                notifications.notify(ONGOING_ID, builder.setContentText(remainingText(deadline)).build())
+                handler.postDelayed(this, minOf(1000L, left))
+            }
+        }
+        handler.postDelayed(countdown!!, minOf(1000L, remaining))
         return START_STICKY
+    }
+
+    private fun remainingText(deadline: Long): String {
+        val seconds = ((deadline - System.currentTimeMillis() + 999) / 1000).coerceAtLeast(0)
+        val minutes = seconds / 60
+        val clock = "${minutes % 60}:${(seconds % 60).toString().padStart(2, '0')}"
+        return if (minutes >= 60) "${minutes / 60}:${clock.padStart(5, '0')}" else clock
     }
 
     @Suppress("DEPRECATION")
     private fun notificationBuilder(channel: String = CHANNEL): Notification.Builder {
         val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, channel) else Notification.Builder(this)
         return builder.setSmallIcon(R.drawable.app_symbol).setColor(0xFF326A59.toInt())
-            .setVisibility(Notification.VISIBILITY_PRIVATE)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setContentIntent(PendingIntent.getActivity(this, 1, Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
@@ -89,7 +106,7 @@ class RestTimerService : Service() {
         val playSound = preferences.getBoolean("sound", true)
         val vibrate = preferences.getBoolean("vibrate", false)
         val soundUri = preferences.getString("soundUri", null)
-        val label = preferences.getString("label", "Rest")
+        countdown?.let(handler::removeCallbacks)
         preferences.edit().clear().apply()
         completed = true
         if (vibrate) {
@@ -105,7 +122,7 @@ class RestTimerService : Service() {
                 })
             }
             val completion = notificationBuilder(ALERT_CHANNEL).setContentTitle("Rest complete")
-                .setContentText(label?.takeUnless { it == "Rest" }).setAutoCancel(true).setShowWhen(false)
+                .setAutoCancel(true).setShowWhen(false)
             if (Build.VERSION.SDK_INT >= 26) completion.setTimeoutAfter(8000)
             if (Build.VERSION.SDK_INT >= 34) startForeground(ONGOING_ID, completion.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
             else startForeground(ONGOING_ID, completion.build())
@@ -119,6 +136,7 @@ class RestTimerService : Service() {
 
     override fun onDestroy() {
         alert?.let(handler::removeCallbacks)
+        countdown?.let(handler::removeCallbacks)
         finish?.let(handler::removeCallbacks)
         sound.stop()
         if (Build.VERSION.SDK_INT < 26) notifications.cancel(COMPLETE_ID)
