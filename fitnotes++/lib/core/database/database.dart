@@ -50,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -62,6 +62,7 @@ class AppDatabase extends _$AppDatabase {
       await _indexes();
     },
     onUpgrade: (m, from, to) async {
+      if (from < 6) await m.addColumn(exercises, exercises.weightUnit);
       if (from < 2) {
         await m.addColumn(exercises, exercises.weightIncrement);
         await m.addColumn(workoutSets, workoutSets.sourceKey);

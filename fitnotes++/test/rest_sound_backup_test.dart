@@ -23,6 +23,7 @@ void main() {
     final old = backup.copySync('${folder.path}/v4.fitnotesplus');
     final raw = sqlite.sqlite3.open(old.path);
     raw.execute('ALTER TABLE app_settings DROP COLUMN rest_timer_sound_uri');
+    raw.execute('ALTER TABLE exercises DROP COLUMN weight_unit');
     raw.execute('PRAGMA user_version = 4');
     raw.close();
     final migrated = AppDatabase(NativeDatabase(old.copySync('${folder.path}/migrate.sqlite')));

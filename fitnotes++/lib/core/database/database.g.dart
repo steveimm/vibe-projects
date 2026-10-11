@@ -351,6 +351,14 @@ class $ExercisesTable extends Exercises with TableInfo<$ExercisesTable, Exercise
     requiredDuringInsert: false,
   );
   @override
+  late final GeneratedColumnWithTypeConverter<WeightUnit?, int> weightUnit = GeneratedColumn<int>(
+    'weight_unit',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  ).withConverter<WeightUnit?>($ExercisesTable.$converterweightUnitn);
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     name,
@@ -362,6 +370,7 @@ class $ExercisesTable extends Exercises with TableInfo<$ExercisesTable, Exercise
     archived,
     sortOrder,
     weightIncrement,
+    weightUnit,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -433,6 +442,9 @@ class $ExercisesTable extends Exercises with TableInfo<$ExercisesTable, Exercise
       archived: attachedDatabase.typeMapping.read(DriftSqlType.bool, data['${effectivePrefix}archived'])!,
       sortOrder: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}sort_order'])!,
       weightIncrement: attachedDatabase.typeMapping.read(DriftSqlType.double, data['${effectivePrefix}weight_increment']),
+      weightUnit: $ExercisesTable.$converterweightUnitn.fromSql(
+        attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}weight_unit']),
+      ),
     );
   }
 
@@ -442,6 +454,8 @@ class $ExercisesTable extends Exercises with TableInfo<$ExercisesTable, Exercise
   }
 
   static JsonTypeConverter2<ExerciseType, int, int> $convertertype = const EnumIndexConverter<ExerciseType>(ExerciseType.values);
+  static JsonTypeConverter2<WeightUnit, int, int> $converterweightUnit = const EnumIndexConverter<WeightUnit>(WeightUnit.values);
+  static JsonTypeConverter2<WeightUnit?, int?, int?> $converterweightUnitn = JsonTypeConverter2.asNullable($converterweightUnit);
 }
 
 class Exercise extends DataClass implements Insertable<Exercise> {
@@ -455,6 +469,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
   final bool archived;
   final int sortOrder;
   final double? weightIncrement;
+  final WeightUnit? weightUnit;
   const Exercise({
     required this.id,
     required this.name,
@@ -466,6 +481,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     required this.archived,
     required this.sortOrder,
     this.weightIncrement,
+    this.weightUnit,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -488,6 +504,9 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     if (!nullToAbsent || weightIncrement != null) {
       map['weight_increment'] = Variable<double>(weightIncrement);
     }
+    if (!nullToAbsent || weightUnit != null) {
+      map['weight_unit'] = Variable<int>($ExercisesTable.$converterweightUnitn.toSql(weightUnit));
+    }
     return map;
   }
 
@@ -505,6 +524,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
       archived: Value(archived),
       sortOrder: Value(sortOrder),
       weightIncrement: weightIncrement == null && nullToAbsent ? const Value.absent() : Value(weightIncrement),
+      weightUnit: weightUnit == null && nullToAbsent ? const Value.absent() : Value(weightUnit),
     );
   }
 
@@ -521,6 +541,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
       archived: serializer.fromJson<bool>(json['archived']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       weightIncrement: serializer.fromJson<double?>(json['weightIncrement']),
+      weightUnit: $ExercisesTable.$converterweightUnitn.fromJson(serializer.fromJson<int?>(json['weightUnit'])),
     );
   }
   @override
@@ -537,6 +558,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
       'archived': serializer.toJson<bool>(archived),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'weightIncrement': serializer.toJson<double?>(weightIncrement),
+      'weightUnit': serializer.toJson<int?>($ExercisesTable.$converterweightUnitn.toJson(weightUnit)),
     };
   }
 
@@ -551,6 +573,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     bool? archived,
     int? sortOrder,
     Value<double?> weightIncrement = const Value.absent(),
+    Value<WeightUnit?> weightUnit = const Value.absent(),
   }) => Exercise(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -562,6 +585,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
     archived: archived ?? this.archived,
     sortOrder: sortOrder ?? this.sortOrder,
     weightIncrement: weightIncrement.present ? weightIncrement.value : this.weightIncrement,
+    weightUnit: weightUnit.present ? weightUnit.value : this.weightUnit,
   );
   Exercise copyWithCompanion(ExercisesCompanion data) {
     return Exercise(
@@ -577,6 +601,7 @@ class Exercise extends DataClass implements Insertable<Exercise> {
       archived: data.archived.present ? data.archived.value : this.archived,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       weightIncrement: data.weightIncrement.present ? data.weightIncrement.value : this.weightIncrement,
+      weightUnit: data.weightUnit.present ? data.weightUnit.value : this.weightUnit,
     );
   }
 
@@ -592,14 +617,26 @@ class Exercise extends DataClass implements Insertable<Exercise> {
           ..write('isFavourite: $isFavourite, ')
           ..write('archived: $archived, ')
           ..write('sortOrder: $sortOrder, ')
-          ..write('weightIncrement: $weightIncrement')
+          ..write('weightIncrement: $weightIncrement, ')
+          ..write('weightUnit: $weightUnit')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, categoryId, type, notes, defaultRestTimeSeconds, isFavourite, archived, sortOrder, weightIncrement);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    categoryId,
+    type,
+    notes,
+    defaultRestTimeSeconds,
+    isFavourite,
+    archived,
+    sortOrder,
+    weightIncrement,
+    weightUnit,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -613,7 +650,8 @@ class Exercise extends DataClass implements Insertable<Exercise> {
           other.isFavourite == this.isFavourite &&
           other.archived == this.archived &&
           other.sortOrder == this.sortOrder &&
-          other.weightIncrement == this.weightIncrement);
+          other.weightIncrement == this.weightIncrement &&
+          other.weightUnit == this.weightUnit);
 }
 
 class ExercisesCompanion extends UpdateCompanion<Exercise> {
@@ -627,6 +665,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
   final Value<bool> archived;
   final Value<int> sortOrder;
   final Value<double?> weightIncrement;
+  final Value<WeightUnit?> weightUnit;
   const ExercisesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -638,6 +677,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     this.archived = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.weightIncrement = const Value.absent(),
+    this.weightUnit = const Value.absent(),
   });
   ExercisesCompanion.insert({
     this.id = const Value.absent(),
@@ -650,6 +690,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     this.archived = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.weightIncrement = const Value.absent(),
+    this.weightUnit = const Value.absent(),
   }) : name = Value(name),
        categoryId = Value(categoryId);
   static Insertable<Exercise> custom({
@@ -663,6 +704,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     Expression<bool>? archived,
     Expression<int>? sortOrder,
     Expression<double>? weightIncrement,
+    Expression<int>? weightUnit,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -675,6 +717,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
       if (archived != null) 'archived': archived,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (weightIncrement != null) 'weight_increment': weightIncrement,
+      if (weightUnit != null) 'weight_unit': weightUnit,
     });
   }
 
@@ -689,6 +732,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     Value<bool>? archived,
     Value<int>? sortOrder,
     Value<double?>? weightIncrement,
+    Value<WeightUnit?>? weightUnit,
   }) {
     return ExercisesCompanion(
       id: id ?? this.id,
@@ -701,6 +745,7 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
       archived: archived ?? this.archived,
       sortOrder: sortOrder ?? this.sortOrder,
       weightIncrement: weightIncrement ?? this.weightIncrement,
+      weightUnit: weightUnit ?? this.weightUnit,
     );
   }
 
@@ -737,6 +782,9 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
     if (weightIncrement.present) {
       map['weight_increment'] = Variable<double>(weightIncrement.value);
     }
+    if (weightUnit.present) {
+      map['weight_unit'] = Variable<int>($ExercisesTable.$converterweightUnitn.toSql(weightUnit.value));
+    }
     return map;
   }
 
@@ -752,7 +800,8 @@ class ExercisesCompanion extends UpdateCompanion<Exercise> {
           ..write('isFavourite: $isFavourite, ')
           ..write('archived: $archived, ')
           ..write('sortOrder: $sortOrder, ')
-          ..write('weightIncrement: $weightIncrement')
+          ..write('weightIncrement: $weightIncrement, ')
+          ..write('weightUnit: $weightUnit')
           ..write(')'))
         .toString();
   }
@@ -1364,7 +1413,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
   /// Calendar day, `yyyy-MM-dd`.
   final String date;
 
-  /// The number the user actually entered (before any multiplier).
+  /// Input weight converted to kilograms, before any multiplier.
   final double rawWeight;
 
   /// Product of enabled factors captured when the set was added.
@@ -5389,6 +5438,7 @@ typedef $$ExercisesTableCreateCompanionBuilder = ExercisesCompanion Function({
   Value<bool> archived,
   Value<int> sortOrder,
   Value<double?> weightIncrement,
+  Value<WeightUnit?> weightUnit,
 });
 typedef $$ExercisesTableUpdateCompanionBuilder = ExercisesCompanion Function({
   Value<int> id,
@@ -5401,6 +5451,7 @@ typedef $$ExercisesTableUpdateCompanionBuilder = ExercisesCompanion Function({
   Value<bool> archived,
   Value<int> sortOrder,
   Value<double?> weightIncrement,
+  Value<WeightUnit?> weightUnit,
 });
 
 final class $$ExercisesTableReferences extends BaseReferences<_$AppDatabase, $ExercisesTable, Exercise> {
@@ -5515,6 +5566,9 @@ class $$ExercisesTableFilterComposer extends Composer<_$AppDatabase, $ExercisesT
 
   ColumnFilters<double> get weightIncrement =>
       $composableBuilder(column: $table.weightIncrement, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<WeightUnit?, WeightUnit, int> get weightUnit =>
+      $composableBuilder(column: $table.weightUnit, builder: (column) => ColumnWithTypeConverterFilters(column));
 
   $$CategoriesTableFilterComposer get categoryId {
     final $$CategoriesTableFilterComposer composer = $composerBuilder(
@@ -5655,6 +5709,9 @@ class $$ExercisesTableOrderingComposer extends Composer<_$AppDatabase, $Exercise
   ColumnOrderings<double> get weightIncrement =>
       $composableBuilder(column: $table.weightIncrement, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get weightUnit =>
+      $composableBuilder(column: $table.weightUnit, builder: (column) => ColumnOrderings(column));
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -5701,6 +5758,9 @@ class $$ExercisesTableAnnotationComposer extends Composer<_$AppDatabase, $Exerci
   GeneratedColumn<int> get sortOrder => $composableBuilder(column: $table.sortOrder, builder: (column) => column);
 
   GeneratedColumn<double> get weightIncrement => $composableBuilder(column: $table.weightIncrement, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<WeightUnit?, int> get weightUnit =>
+      $composableBuilder(column: $table.weightUnit, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -5857,6 +5917,7 @@ class $$ExercisesTableTableManager
                 Value<bool> archived = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<double?> weightIncrement = const Value.absent(),
+                Value<WeightUnit?> weightUnit = const Value.absent(),
               }) => ExercisesCompanion(
                 id: id,
                 name: name,
@@ -5868,6 +5929,7 @@ class $$ExercisesTableTableManager
                 archived: archived,
                 sortOrder: sortOrder,
                 weightIncrement: weightIncrement,
+                weightUnit: weightUnit,
               ),
           createCompanionCallback:
               ({
@@ -5881,6 +5943,7 @@ class $$ExercisesTableTableManager
                 Value<bool> archived = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<double?> weightIncrement = const Value.absent(),
+                Value<WeightUnit?> weightUnit = const Value.absent(),
               }) => ExercisesCompanion.insert(
                 id: id,
                 name: name,
@@ -5892,6 +5955,7 @@ class $$ExercisesTableTableManager
                 archived: archived,
                 sortOrder: sortOrder,
                 weightIncrement: weightIncrement,
+                weightUnit: weightUnit,
               ),
           withReferenceMapper: (p0) =>
               p0.map((e) => (e.readTable<$ExercisesTable, Exercise>(table), $$ExercisesTableReferences(db, table, e))).toList(),

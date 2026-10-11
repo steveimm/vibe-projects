@@ -1,0 +1,268 @@
+import 'dart:io';
+
+import 'package:drift/drift.dart' show Value;
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:sqlite3/sqlite3.dart' as sqlite;
+
+import 'package:fitnotes_plus/app/router.dart';
+import 'package:fitnotes_plus/app/theme.dart';
+import 'package:fitnotes_plus/core/database/database.dart';
+import 'package:fitnotes_plus/core/database/tables.dart';
+import 'package:fitnotes_plus/core/providers.dart';
+import 'package:fitnotes_plus/core/repositories/exercise_repository.dart';
+import 'package:fitnotes_plus/core/repositories/workout_repository.dart';
+import 'package:fitnotes_plus/core/services/backup_service.dart';
+import 'package:fitnotes_plus/core/util/dates.dart';
+import 'package:fitnotes_plus/core/util/format.dart';
+import 'package:fitnotes_plus/shared/widgets.dart';
+
+Future<void> _flush(WidgetTester tester) async {
+  for (var i = 0; i < 8; i++) {
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+}
+
+void main() {
+  test('exercise input units convert independently, stacked factors are captured once, and backup preserves them', () async {
+    final db = AppDatabase.memory();
+    addTearDown(db.close);
+    final exercises = ExerciseRepository(db);
+    final workouts = WorkoutRepository(db);
+    final category = (await db.select(db.categories).get()).first.id;
+    final id = await exercises.createExercise(
+      name: 'Pulley',
+      categoryId: category,
+      type: ExerciseType.weightAndReps,
+      weightUnit: const Value(WeightUnit.pounds),
+      multipliers: [
+        (label: '', factor: 0.5, enabled: true),
+        (label: 'Cable', factor: 0.8, enabled: true),
+        (label: '', factor: 3.0, enabled: false),
+      ],
+    );
+    final input = const Units().withWeightUnit((await exercises.getExercise(id)).weightUnit);
+    expect(input.weightLabel, 'lb');
+    expect(input.distanceLabel, 'km');
+    final setId = await workouts.addSet(exerciseId: id, date: '2026-10-01', rawWeight: input.weightToKg(100), reps: 8);
+    final first = (await workouts.dayLog('2026-10-01')).single;
+    expect(first.set.rawWeight, closeTo(45.359237, 1e-10));
+    expect(first.set.weightMultiplier, 0.4);
+    expect(first.effectiveWeight, closeTo(18.1436948, 1e-10));
+    expect((await exercises.watchMultipliers(id).first).map((m) => m.label), ['Multiplier 1', 'Cable', 'Multiplier 2']);
+    await exercises.updateExercise(
+      id: id,
+      name: 'Pulley',
+      categoryId: category,
+      type: ExerciseType.weightAndReps,
+      weightUnit: const Value(WeightUnit.kilograms),
+      multipliers: [(label: '', factor: 2.0, enabled: true)],
+    );
+    await workouts.updateSet(setId, reps: 9);
+    expect((await workouts.dayLog('2026-10-01')).single.effectiveWeight, first.effectiveWeight);
+    final imperialApp = const Units(true).withWeightUnit((await exercises.getExercise(id)).weightUnit);
+    expect(imperialApp.weightLabel, 'kg');
+    expect(imperialApp.distanceLabel, 'mi');
+    await workouts.addSet(exerciseId: id, date: '2026-10-02', rawWeight: imperialApp.weightToKg(20), reps: 8);
+    expect((await workouts.dayLog('2026-10-02')).single.effectiveWeight, 40);
+    await exercises.updateExercise(id: id, name: 'Renamed', categoryId: category, type: ExerciseType.weightAndReps);
+    expect((await exercises.getExercise(id)).weightUnit, WeightUnit.kilograms, reason: 'Unrelated updates preserve the override');
+    final folder = Directory.systemTemp.createTempSync('fitnotes-unit-backup-');
+    addTearDown(() => folder.deleteSync(recursive: true));
+    final service = BackupService(db);
+    final file = File('${folder.path}/units.fitnotesplus')..writeAsBytesSync(await service.backup(directory: folder));
+    await exercises.updateExercise(
+      id: id,
+      name: 'Changed',
+      categoryId: category,
+      type: ExerciseType.weightAndReps,
+      weightUnit: const Value(null),
+      multipliers: [],
+    );
+    await service.restore(file.path);
+    expect((await exercises.getExercise(id)).weightUnit, WeightUnit.kilograms);
+    expect((await exercises.watchMultipliers(id).first).single.factor, 2);
+    expect((await workouts.dayLog('2026-10-01')).single.set.weightMultiplier, 0.4);
+    await expectLater(
+      exercises.createExercise(
+        name: 'Invalid factor',
+        categoryId: category,
+        type: ExerciseType.weightAndReps,
+        multipliers: [(label: '', factor: double.nan, enabled: true)],
+      ),
+      throwsFormatException,
+    );
+    expect(await (db.select(db.exercises)..where((e) => e.name.equals('Invalid factor'))).get(), isEmpty);
+  });
+
+  test('version 5 migrates and restores with app-unit defaults without changing old weights', () async {
+    final db = AppDatabase.memory();
+    addTearDown(db.close);
+    final folder = Directory.systemTemp.createTempSync('fitnotes-unit-migration-');
+    addTearDown(() => folder.deleteSync(recursive: true));
+    final exercise = (await db.select(db.exercises).get()).first;
+    await WorkoutRepository(db).addSet(exerciseId: exercise.id, date: '2026-10-01', reps: 8);
+    final service = BackupService(db);
+    final file = File('${folder.path}/v5.fitnotesplus')..writeAsBytesSync(await service.backup(directory: folder));
+    final raw = sqlite.sqlite3.open(file.path);
+    raw.execute('ALTER TABLE exercises DROP COLUMN weight_unit');
+    raw.execute('PRAGMA user_version = 5');
+    raw.close();
+    final migrated = AppDatabase(NativeDatabase(file.copySync('${folder.path}/migrate.sqlite')));
+    addTearDown(migrated.close);
+    expect((await migrated.select(migrated.exercises).get()).every((e) => e.weightUnit == null), isTrue);
+    expect((await migrated.select(migrated.workoutSets).get()).single.reps, 8);
+    await db.update(db.exercises).write(const ExercisesCompanion(weightUnit: Value(WeightUnit.pounds)));
+    await service.restore(file.path);
+    expect((await db.select(db.exercises).get()).every((e) => e.weightUnit == null), isTrue);
+    expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
+  });
+
+  testWidgets('new exercises can stack unnamed multipliers and canceling later edits keeps saved settings', (tester) async {
+    tester.view.physicalSize = const Size(390, 850);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final db = AppDatabase.memory();
+    final container = ProviderContainer(overrides: [databaseProvider.overrideWithValue(db)]);
+    final router = createAppRouter();
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+    await _flush(tester);
+    await tester.tap(find.byTooltip('Add exercise'));
+    await _flush(tester);
+    await tester.tap(find.byTooltip('Create exercise'));
+    await _flush(tester);
+    await tester.enterText(find.byType(TextFormField).first, 'New pulley');
+    await tester.tap(find.byKey(const ValueKey<WeightUnit?>(null)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('lb').last);
+    await tester.pumpAndSettle();
+    for (final factor in ['0.5', '0.8']) {
+      await tester.tap(find.byTooltip('Add multiplier'));
+      await tester.pumpAndSettle();
+      final fields = find.descendant(of: find.byType(AppDialog), matching: find.byType(TextFormField));
+      await tester.enterText(fields.first, factor);
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('Multiplier 1'), findsOneWidget);
+    expect(find.text('Multiplier 2'), findsOneWidget);
+    await tester.tap(find.byType(Switch).last);
+    await tester.pump();
+    await tester.tap(find.byTooltip('Save exercise'));
+    await _flush(tester);
+    late Exercise exercise;
+    await tester.runAsync(() async {
+      exercise = (await (db.select(db.exercises)..where((e) => e.name.equals('New pulley'))).get()).single;
+      expect(exercise.weightUnit, WeightUnit.pounds);
+      final factors = await (db.select(db.exerciseMultipliers)..where((m) => m.exerciseId.equals(exercise.id))).get();
+      expect(factors.map((m) => m.label), ['Multiplier 1', 'Multiplier 2']);
+      expect(factors.map((m) => m.factor), [0.5, 0.8]);
+      expect(factors.map((m) => m.enabled), [true, false]);
+    });
+    await tester.tap(find.byTooltip('Edit exercise'));
+    await _flush(tester);
+    await tester.tap(find.text('Multiplier 1'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+    expect(find.text('Multiplier 1'), findsNothing);
+    await tester.binding.handlePopRoute();
+    await _flush(tester);
+    await tester.runAsync(
+      () async =>
+          expect(await (db.select(db.exerciseMultipliers)..where((m) => m.exerciseId.equals(exercise.id))).get(), hasLength(2)),
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    router.dispose();
+    container.dispose();
+    final closed = db.close();
+    await _flush(tester);
+    await closed;
+  });
+
+  testWidgets('lb input logs kg after multipliers, edits retain precision, and changing the exercise unit converts the input', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 850);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final db = AppDatabase.memory();
+    final repo = ExerciseRepository(db);
+    late int id;
+    await tester.runAsync(() async {
+      final category = (await db.select(db.categories).get()).first.id;
+      id = await repo.createExercise(
+        name: 'Pulley',
+        categoryId: category,
+        type: ExerciseType.weightAndReps,
+        weightUnit: const Value(WeightUnit.pounds),
+        multipliers: [(label: 'Pulley', factor: 0.5, enabled: true), (label: 'Cable', factor: 0.8, enabled: true)],
+      );
+    });
+    final container = ProviderContainer(overrides: [databaseProvider.overrideWithValue(db)]);
+    final router = createAppRouter(initialLocation: '/log/$id?date=${Dates.today()}');
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      ),
+    );
+    await _flush(tester);
+    expect(find.text('Weight · lb'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, '100');
+    await tester.enterText(find.byType(TextField).at(1), '8');
+    await tester.pump();
+    expect(find.text('× 0.4 · 18.14 kg'), findsOneWidget);
+    await tester.tap(find.byTooltip('Log set'));
+    await _flush(tester);
+    List<LoggedSet>? logged;
+    await tester.runAsync(() async => logged = await WorkoutRepository(db).dayLog(Dates.today()));
+    final original = logged!.single.set;
+    expect(original.rawWeight, closeTo(45.359237, 1e-10));
+    expect(original.weightMultiplier, 0.4);
+    expect(find.text('18.14 kg × 8 reps'), findsOneWidget);
+    await tester.tap(find.byKey(ValueKey('logged-set-${original.id}')));
+    await tester.pump();
+    expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '100');
+    await tester.enterText(find.byType(TextField).at(1), '9');
+    await tester.tap(find.byTooltip('Update set'));
+    await _flush(tester);
+    await tester.tap(find.byTooltip('Edit exercise'));
+    await _flush(tester);
+    final unitField = find.byKey(const ValueKey<WeightUnit?>(WeightUnit.pounds));
+    await tester.tap(unitField);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('kg').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Save exercise'));
+    await _flush(tester);
+    expect(find.text('Weight · kg'), findsOneWidget);
+    expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '45.36');
+    await tester.tap(find.byKey(ValueKey('logged-set-${original.id}')));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Update set'));
+    await _flush(tester);
+    await tester.runAsync(() async => logged = await WorkoutRepository(db).dayLog(Dates.today()));
+    expect(logged!.single.set.rawWeight, original.rawWeight);
+    expect(logged!.single.set.weightMultiplier, original.weightMultiplier);
+    expect(logged!.single.set.reps, 9);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    router.dispose();
+    container.dispose();
+    final closed = db.close();
+    await _flush(tester);
+    await closed;
+  });
+}

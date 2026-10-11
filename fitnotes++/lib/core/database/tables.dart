@@ -16,6 +16,8 @@ enum ExerciseType {
   repsAndTime,
 }
 
+enum WeightUnit { kilograms, pounds }
+
 extension ExerciseFields on ExerciseType {
   bool get hasWeight => [
     ExerciseType.weightAndReps,
@@ -57,6 +59,7 @@ class Exercises extends Table {
   BoolColumn get archived => boolean().withDefault(const Constant(false))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   RealColumn get weightIncrement => real().nullable()();
+  IntColumn get weightUnit => intEnum<WeightUnit>().nullable()();
 }
 
 /// Named factors are multiplied together when adding a workout set.
@@ -78,7 +81,7 @@ class WorkoutSets extends Table {
   /// Calendar day, `yyyy-MM-dd`.
   TextColumn get date => text()();
 
-  /// The number the user actually entered (before any multiplier).
+  /// Input weight converted to kilograms, before any multiplier.
   RealColumn get rawWeight => real().withDefault(const Constant(0))();
 
   /// Product of enabled factors captured when the set was added.

@@ -100,6 +100,7 @@ void main() {
     raw.execute('ALTER TABLE workout_sessions DROP COLUMN running_since');
     raw.execute('DROP TABLE workout_exercise_orders');
     raw.execute('ALTER TABLE app_settings DROP COLUMN rest_timer_sound_uri');
+    raw.execute('ALTER TABLE exercises DROP COLUMN weight_unit');
     raw.execute('PRAGMA user_version = 2');
     final start = DateTime.utc(2026, 10, 8, 10);
     raw.execute('INSERT INTO workout_sessions VALUES (?,?,?)', [

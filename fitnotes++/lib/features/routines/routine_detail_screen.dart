@@ -289,7 +289,11 @@ class _RoutineDetailScreenState extends ConsumerState<RoutineDetailScreen> {
                     SizedBox(width: 24, child: Text('${i + 1}', style: Theme.of(context).textTheme.bodySmall)),
                     Expanded(
                       child: Text(
-                        _description(sets[i], ref.watch(unitsProvider), exercise?.type ?? ExerciseType.weightAndReps),
+                        _description(
+                          sets[i],
+                          ref.watch(unitsProvider).withWeightUnit(exercise?.weightUnit),
+                          exercise?.type ?? ExerciseType.weightAndReps,
+                        ),
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
@@ -469,13 +473,18 @@ class _PresetDialog extends ConsumerStatefulWidget {
 class _PresetDialogState extends ConsumerState<_PresetDialog> {
   final _form = GlobalKey<FormState>();
   late final _weight = TextEditingController(
-    text: widget.set.rawWeight == null ? '' : Fmt.number(ref.read(unitsProvider).weightFromKg(widget.set.rawWeight!)),
+    text: widget.set.rawWeight == null
+        ? ''
+        : Fmt.number(ref.read(unitsProvider).withWeightUnit(widget.exercise.weightUnit).weightFromKg(widget.set.rawWeight!)),
   );
   late final _reps = TextEditingController(text: widget.set.reps?.toString() ?? '');
   late final _distance = TextEditingController(
     text: widget.set.distance == null
         ? ''
-        : Fmt.number(ref.read(unitsProvider).distanceFromMeters(widget.set.distance!), precision: 6),
+        : Fmt.number(
+            ref.read(unitsProvider).withWeightUnit(widget.exercise.weightUnit).distanceFromMeters(widget.set.distance!),
+            precision: 6,
+          ),
   );
   late final _time = TextEditingController(
     text: widget.set.durationSeconds == null ? '' : Fmt.duration(widget.set.durationSeconds!),
@@ -492,7 +501,7 @@ class _PresetDialogState extends ConsumerState<_PresetDialog> {
   @override
   Widget build(BuildContext context) {
     final type = widget.exercise.type;
-    final units = ref.watch(unitsProvider);
+    final units = ref.watch(unitsProvider).withWeightUnit(widget.exercise.weightUnit);
     final lastSet = ref.watch(_lastSetProvider((exerciseId: widget.exercise.id, date: widget.date)));
     final previous = lastSet.asData?.value;
     final fields = <Widget>[
@@ -573,7 +582,7 @@ class _PresetDialogState extends ConsumerState<_PresetDialog> {
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
     setState(() => _saving = true);
-    final units = ref.read(unitsProvider);
+    final units = ref.read(unitsProvider).withWeightUnit(widget.exercise.weightUnit);
     final weight = double.tryParse(_weight.text), distance = double.tryParse(_distance.text);
     final changes = RoutineSetsCompanion(
       rawWeight: Value(

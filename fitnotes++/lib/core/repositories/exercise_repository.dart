@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../database/database.dart';
 import '../database/tables.dart';
+import '../models/weight_multiplier.dart';
 
 /// An exercise plus its display category and usage stats (for the list).
 class ExerciseListItem {
@@ -101,18 +102,25 @@ class ExerciseRepository {
     String? notes,
     int? restSeconds,
     double? weightIncrement,
-  }) => db
-      .into(db.exercises)
-      .insert(
-        ExercisesCompanion.insert(
-          name: name,
-          categoryId: categoryId,
-          type: Value(type),
-          notes: Value(notes),
-          defaultRestTimeSeconds: Value(restSeconds),
-          weightIncrement: Value(weightIncrement),
-        ),
-      );
+    Value<WeightUnit?> weightUnit = const Value.absent(),
+    List<MultiplierValue>? multipliers,
+  }) => db.transaction(() async {
+    final id = await db
+        .into(db.exercises)
+        .insert(
+          ExercisesCompanion.insert(
+            name: name,
+            categoryId: categoryId,
+            type: Value(type),
+            notes: Value(notes),
+            defaultRestTimeSeconds: Value(restSeconds),
+            weightIncrement: Value(weightIncrement),
+            weightUnit: weightUnit,
+          ),
+        );
+    if (multipliers != null) await _replaceMultipliers(id, multipliers);
+    return id;
+  });
 
   Future<void> setRestDuration(int id, int? seconds) async {
     if (seconds != null && (seconds < 1 || seconds > 3600)) throw const FormatException('Use 1 second to 60 minutes.');
@@ -129,7 +137,9 @@ class ExerciseRepository {
     String? notes,
     int? restSeconds,
     double? weightIncrement,
-  }) async {
+    Value<WeightUnit?> weightUnit = const Value.absent(),
+    List<MultiplierValue>? multipliers,
+  }) => db.transaction(() async {
     final old = await getExercise(id);
     if (old.type != type) {
       final sets =
@@ -154,9 +164,11 @@ class ExerciseRepository {
         notes: Value(notes),
         defaultRestTimeSeconds: Value(restSeconds),
         weightIncrement: Value(weightIncrement),
+        weightUnit: weightUnit,
       ),
     );
-  }
+    if (multipliers != null) await _replaceMultipliers(id, multipliers);
+  });
 
   Future<void> setFavourite(int id, bool value) =>
       (db.update(db.exercises)..where((e) => e.id.equals(id))).write(ExercisesCompanion(isFavourite: Value(value)));
@@ -189,21 +201,20 @@ class ExerciseRepository {
   Future<void> saveMultiplier({
     int? id,
     required int exerciseId,
-    required String label,
+    String label = '',
     required double factor,
     bool enabled = true,
   }) async {
-    if (label.trim().isEmpty || !factor.isFinite || factor <= 0 || factor > 100) {
-      throw const FormatException('Enter a name and a multiplier between 0 and 100.');
-    }
     final existing = await watchMultipliers(exerciseId).first;
-    final product = existing.where((m) => m.enabled && m.id != id).fold<double>(enabled ? factor : 1, (v, m) => v * m.factor);
-    if (!product.isFinite || product > 10000 || product < 0.0001) {
-      throw const FormatException('Combined multiplier is outside the supported range.');
-    }
+    validateMultipliers([
+      for (final m in existing.where((m) => m.id != id)) (label: m.label, factor: m.factor, enabled: m.enabled),
+      (label: label, factor: factor, enabled: enabled),
+    ]);
     final entry = ExerciseMultipliersCompanion(
       exerciseId: Value(exerciseId),
-      label: Value(label.trim()),
+      label: Value(
+        label.trim().isEmpty ? nextMultiplierName(existing.where((m) => m.id != id).map((m) => m.label)) : label.trim(),
+      ),
       factor: Value(factor),
       enabled: Value(enabled),
     );
@@ -215,6 +226,26 @@ class ExerciseRepository {
   }
 
   Future<void> deleteMultiplier(int id) => (db.delete(db.exerciseMultipliers)..where((m) => m.id.equals(id))).go();
+
+  Future<void> _replaceMultipliers(int exerciseId, List<MultiplierValue> values) async {
+    validateMultipliers(values);
+    final labels = values.map((m) => m.label.trim()).where((label) => label.isNotEmpty).toSet();
+    await (db.delete(db.exerciseMultipliers)..where((m) => m.exerciseId.equals(exerciseId))).go();
+    for (final value in values) {
+      final label = value.label.trim().isEmpty ? nextMultiplierName(labels) : value.label.trim();
+      labels.add(label);
+      await db
+          .into(db.exerciseMultipliers)
+          .insert(
+            ExerciseMultipliersCompanion.insert(
+              exerciseId: exerciseId,
+              label: label,
+              factor: Value(value.factor),
+              enabled: Value(value.enabled),
+            ),
+          );
+    }
+  }
 
   Future<int> createCategory({required String name, required int colorArgb}) =>
       db.into(db.categories).insert(CategoriesCompanion.insert(name: name, colorArgb: Value(colorArgb)));

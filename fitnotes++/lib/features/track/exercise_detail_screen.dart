@@ -187,7 +187,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
   }
 
   void _fill(WorkoutSet s) {
-    final units = ref.read(unitsProvider);
+    final units = ref.read(unitsProvider).withWeightUnit(widget.exercise.weightUnit);
     _weight.text = Fmt.number(units.weightFromKg(s.rawWeight));
     _reps.text = '${s.reps}';
     _distance.text = Fmt.number(units.distanceFromMeters(s.distance), precision: 3);
@@ -200,14 +200,33 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
   }
 
   @override
+  void didUpdateWidget(covariant _TrackTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.exercise.weightUnit == widget.exercise.weightUnit) return;
+    final systemUnits = ref.read(unitsProvider);
+    final typed = double.tryParse(_weight.text.replaceAll(',', '.'));
+    if (typed == null || !typed.isFinite) return;
+    final kg = _weight.text == _loadedWeightText && _loadedWeight != null
+        ? _loadedWeight!
+        : systemUnits.withWeightUnit(oldWidget.exercise.weightUnit).weightToKg(typed);
+    _weight.text = Fmt.number(systemUnits.withWeightUnit(widget.exercise.weightUnit).weightFromKg(kg));
+    _loadedWeight = kg;
+    _loadedWeightText = _weight.text;
+  }
+
+  @override
   Widget build(BuildContext context) {
     super.build(context);
-    final units = ref.watch(unitsProvider);
+    final systemUnits = ref.watch(unitsProvider);
+    final units = systemUnits.withWeightUnit(widget.exercise.weightUnit);
     final settings = ref.watch(settingsProvider).asData?.value;
     final sets = ref.watch(exerciseSetsProvider((exerciseId: widget.exercise.id, date: widget.date)));
     final prs = ref.watch(recordBadgesProvider(widget.exercise.id));
-    final factors = ref.watch(multipliersProvider(widget.exercise.id)).asData?.value ?? [];
+    final factorData = ref.watch(multipliersProvider(widget.exercise.id));
+    final factors = factorData.asData?.value ?? [];
     final multiplier = _editing?.weightMultiplier ?? factors.where((m) => m.enabled).fold<double>(1, (v, m) => v * m.factor);
+    final typedWeight = double.tryParse(_weight.text.replaceAll(',', '.'));
+    final effectiveWeight = typedWeight == null || !typedWeight.isFinite ? null : _weightInKg(units, typedWeight) * multiplier;
     final type = widget.exercise.type;
     final fields = <Widget>[
       if (type.hasWeight)
@@ -258,13 +277,13 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
                   ],
                 ),
         ),
-        if (type.hasWeight && multiplier != 1)
+        if (type.hasWeight && effectiveWeight != null && (multiplier != 1 || units.weightImperial != systemUnits.weightImperial))
           Align(
             alignment: Alignment.centerLeft,
             child: Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                '× ${Fmt.number(multiplier)} · ${units.weight(units.weightToKg(double.tryParse(_weight.text) ?? 0) * multiplier)} effective',
+                '${multiplier == 1 ? '' : '× ${Fmt.number(multiplier, precision: 6)} · '}${systemUnits.weight(effectiveWeight)}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -307,7 +326,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
         ],
         AppFloatingActionButton(
           tooltip: _editing == null ? 'Log set' : 'Update set',
-          onPressed: _saving || settings == null || widget.exercise.archived ? null : () => _save(multiplier),
+          onPressed: _saving || settings == null || !factorData.hasValue || widget.exercise.archived ? null : _save,
           icon: _editing == null ? Icons.add_rounded : Icons.check_rounded,
         ),
       ],
@@ -323,7 +342,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
         padding: const EdgeInsets.only(bottom: 88),
         itemCount: items.length,
         separatorBuilder: (_, _) => const SizedBox(height: 4),
-        itemBuilder: (_, i) => _setCard(items[i], i, prs, units, settings?.markSetsComplete ?? false),
+        itemBuilder: (_, i) => _setCard(items[i], i, prs, systemUnits, settings?.markSetsComplete ?? false),
       ),
     );
     final tabs = DefaultTabController.of(context);
@@ -375,7 +394,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
   }
 
   void _stepCanonical(double delta, {required bool weight}) {
-    final units = ref.read(unitsProvider);
+    final units = ref.read(unitsProvider).withWeightUnit(widget.exercise.weightUnit);
     final controller = weight ? _weight : _distance;
     final originalText = weight ? _loadedWeightText : _loadedDistanceText;
     final original = weight ? _loadedWeight : _loadedDistance;
@@ -429,9 +448,12 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
         );
   }
 
-  Future<void> _save(double multiplier) async {
+  double _weightInKg(Units units, double value) =>
+      _weight.text == _loadedWeightText && _loadedWeight != null ? _loadedWeight! : units.weightToKg(value);
+
+  Future<void> _save() async {
     final type = widget.exercise.type;
-    final units = ref.read(unitsProvider);
+    final units = ref.read(unitsProvider).withWeightUnit(widget.exercise.weightUnit);
     final weight = type.hasWeight ? double.tryParse(_weight.text.replaceAll(',', '.')) : 0.0;
     final reps = type.hasReps ? int.tryParse(_reps.text) : 0;
     final distance = type.hasDistance ? double.tryParse(_distance.text.replaceAll(',', '.')) : 0.0;
@@ -441,7 +463,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
       return;
     }
     final values = SetValues(
-      weight: _weight.text == _loadedWeightText && _loadedWeight != null ? _loadedWeight! : units.weightToKg(weight),
+      weight: _weightInKg(units, weight),
       reps: reps,
       distance: _distance.text == _loadedDistanceText && _loadedDistance != null
           ? _loadedDistance!
@@ -472,7 +494,6 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           exerciseId: widget.exercise.id,
           date: widget.date,
           rawWeight: values.weight,
-          weightMultiplier: multiplier,
           reps: values.reps,
           distance: values.distance,
           durationSeconds: values.seconds,

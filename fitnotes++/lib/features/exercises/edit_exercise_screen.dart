@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:drift/drift.dart' show Value;
 
-import '../../core/database/database.dart';
 import '../../core/database/tables.dart';
 import '../../core/providers.dart';
+import '../../core/models/weight_multiplier.dart';
 import '../../core/util/format.dart';
 import '../../shared/widgets.dart';
 import 'categories_screen.dart';
@@ -23,7 +24,10 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
   final _rest = TextEditingController();
   final _increment = TextEditingController();
   int? _category;
-  Exercise? _original;
+  WeightUnit? _weightUnit;
+  final _multipliers = <MultiplierValue>[];
+  double? _incrementKg;
+  String? _incrementText;
   ExerciseType _type = ExerciseType.weightAndReps;
   bool _loading = false, _saving = false, _failed = false;
   @override
@@ -39,14 +43,22 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
       _failed = false;
     });
     try {
-      final ex = await ref.read(exerciseRepositoryProvider).getExercise(widget.exerciseId!);
+      final repo = ref.read(exerciseRepositoryProvider);
+      final ex = await repo.getExercise(widget.exerciseId!);
+      final multipliers = await repo.watchMultipliers(ex.id).first;
+      await ref.read(settingsProvider.future);
       if (!mounted) return;
-      _original = ex;
-      final units = ref.read(unitsProvider);
+      _weightUnit = ex.weightUnit;
+      _multipliers
+        ..clear()
+        ..addAll(multipliers.map((m) => (label: m.label, factor: m.factor, enabled: m.enabled)));
+      final units = ref.read(unitsProvider).withWeightUnit(_weightUnit);
       _name.text = ex.name;
       _notes.text = ex.notes ?? '';
       _rest.text = ex.defaultRestTimeSeconds == null ? '' : '${ex.defaultRestTimeSeconds}';
       _increment.text = ex.weightIncrement == null ? '' : Fmt.number(units.weightFromKg(ex.weightIncrement!));
+      _incrementKg = ex.weightIncrement;
+      _incrementText = _increment.text;
       setState(() {
         _category = ex.categoryId;
         _type = ex.type;
@@ -72,7 +84,8 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final units = ref.watch(unitsProvider);
+    final systemUnits = ref.watch(unitsProvider);
+    final units = systemUnits.withWeightUnit(_weightUnit);
     final categories = ref.watch(categoriesProvider);
     final history = widget.exerciseId == null ? null : ref.watch(exerciseHistoryProvider(widget.exerciseId!)).asData?.value;
     return Scaffold(
@@ -87,6 +100,9 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
             ),
         ],
       ),
+      floatingActionButton: _loading || _failed
+          ? null
+          : AppFloatingActionButton(tooltip: 'Save exercise', icon: Icons.check_rounded, onPressed: _saving ? null : _save),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _failed
@@ -100,13 +116,13 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
                   return Form(
                     key: _form,
                     child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
                       children: [
                         TextFormField(
                           controller: _name,
                           textCapitalization: TextCapitalization.words,
                           maxLength: 120,
-                          decoration: const InputDecoration(labelText: 'Exercise name', hintText: 'e.g. Incline dumbbell press'),
+                          decoration: const InputDecoration(labelText: 'Exercise name', counterText: ''),
                           validator: (v) => v!.trim().isEmpty ? 'Enter an exercise name.' : null,
                         ),
                         const SizedBox(height: 12),
@@ -115,9 +131,10 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
                             Expanded(
                               child: DropdownButtonFormField<int>(
                                 key: ValueKey(_category),
+                                onTap: () => FocusScope.of(context).unfocus(),
                                 initialValue: _category,
                                 isExpanded: true,
-                                decoration: const InputDecoration(labelText: 'Category'),
+                                decoration: const InputDecoration(labelText: 'Body part'),
                                 items: [
                                   for (final c in cats)
                                     DropdownMenuItem(
@@ -145,8 +162,9 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 12),
                         DropdownButtonFormField<ExerciseType>(
+                          onTap: () => FocusScope.of(context).unfocus(),
                           initialValue: _type,
                           key: ValueKey(_type),
                           isExpanded: true,
@@ -160,12 +178,64 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
                           ],
                           onChanged: history?.isNotEmpty == true ? null : (v) => setState(() => _type = v!),
                         ),
+                        if (_type.hasWeight) ...[
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<int>(
+                            key: ValueKey(_weightUnit),
+                            onTap: () => FocusScope.of(context).unfocus(),
+                            isExpanded: true,
+                            initialValue: _weightUnit?.index ?? -1,
+                            decoration: const InputDecoration(labelText: 'Weight unit'),
+                            items: [
+                              DropdownMenuItem(
+                                value: -1,
+                                child: Text(
+                                  'Use app setting (${systemUnits.weightLabel})',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const DropdownMenuItem(value: 0, child: Text('kg')),
+                              const DropdownMenuItem(value: 1, child: Text('lb')),
+                            ],
+                            onChanged: (value) => _changeWeightUnit(value == -1 ? null : WeightUnit.values[value!]),
+                          ),
+                          Row(
+                            children: [
+                              Expanded(child: Text('Multipliers', style: Theme.of(context).textTheme.titleMedium)),
+                              IconButton.filledTonal(
+                                tooltip: 'Add multiplier',
+                                onPressed: () => _editMultiplier(),
+                                icon: const Icon(Icons.add_rounded),
+                              ),
+                            ],
+                          ),
+                          for (var i = 0; i < _multipliers.length; i++)
+                            Card(
+                              margin: const EdgeInsets.only(bottom: 6),
+                              child: ListTile(
+                                title: Row(
+                                  children: [
+                                    Expanded(child: Text(_multipliers[i].label)),
+                                    const SizedBox(width: 8),
+                                    Text('× ${Fmt.number(_multipliers[i].factor, precision: 6)}'),
+                                  ],
+                                ),
+                                onTap: () => _editMultiplier(i),
+                                trailing: Switch(
+                                  value: _multipliers[i].enabled,
+                                  onChanged: (value) => setState(
+                                    () => _multipliers[i] = (
+                                      label: _multipliers[i].label,
+                                      factor: _multipliers[i].factor,
+                                      enabled: value,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                         const SectionTitle('Defaults'),
-                        Text(
-                          'Leave these blank to use your settings.',
-                          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                        ),
-                        const SizedBox(height: 12),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -196,28 +266,20 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
                             ],
                           ],
                         ),
-                        const SectionTitle('Technique notes'),
-                        TextFormField(
-                          controller: _notes,
-                          maxLines: 4,
-                          maxLength: 2000,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: const InputDecoration(hintText: 'Setup, cues, equipment…'),
-                        ),
-                        if (widget.exerciseId != null && _type.hasWeight) ...[
-                          const SectionTitle('Weight multipliers'),
-                          Text(
-                            'Record the number on the equipment. Enabled factors multiply together to calculate effective weight. Existing sets keep their original factor.',
-                            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                          ),
-                          const SizedBox(height: 12),
-                          _Multipliers(exerciseId: widget.exerciseId!),
-                        ],
-                        const SizedBox(height: 24),
-                        FilledButton.icon(
-                          onPressed: _saving ? null : _save,
-                          icon: const Icon(Icons.check_rounded),
-                          label: Text(_saving ? 'Saving…' : 'Save exercise'),
+                        const SizedBox(height: 12),
+                        ExpansionTile(
+                          title: const Text('Notes'),
+                          tilePadding: EdgeInsets.zero,
+                          initiallyExpanded: _notes.text.isNotEmpty,
+                          children: [
+                            TextFormField(
+                              controller: _notes,
+                              maxLines: 3,
+                              maxLength: 2000,
+                              textCapitalization: TextCapitalization.sentences,
+                              decoration: const InputDecoration(labelText: 'Technique notes'),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -228,19 +290,63 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
     );
   }
 
+  void _changeWeightUnit(WeightUnit? unit) {
+    final systemUnits = ref.read(unitsProvider);
+    final typed = double.tryParse(_increment.text);
+    final kg = _increment.text == _incrementText && _incrementKg != null
+        ? _incrementKg
+        : typed == null
+        ? null
+        : systemUnits.withWeightUnit(_weightUnit).weightToKg(typed);
+    setState(() {
+      _weightUnit = unit;
+      if (kg != null) {
+        _increment.text = Fmt.number(systemUnits.withWeightUnit(unit).weightFromKg(kg));
+        _incrementKg = kg;
+        _incrementText = _increment.text;
+      }
+    });
+  }
+
+  Future<void> _editMultiplier([int? index]) async {
+    FocusScope.of(context).unfocus();
+    final others = [
+      for (var i = 0; i < _multipliers.length; i++)
+        if (i != index) _multipliers[i],
+    ];
+    final value = await showDialog<MultiplierValue>(
+      context: context,
+      builder: (_) => _MultiplierDialog(
+        value: index == null ? null : _multipliers[index],
+        others: others,
+        defaultName: nextMultiplierName(others.map((m) => m.label)),
+        onDelete: index == null ? null : () => setState(() => _multipliers.removeAt(index)),
+      ),
+    );
+    if (value == null || !mounted) return;
+    setState(() {
+      if (index == null) {
+        _multipliers.add(value);
+      } else {
+        _multipliers[index] = value;
+      }
+    });
+  }
+
   Future<void> _save() async {
-    if (!_form.currentState!.validate()) return;
+    if (_form.currentState?.validate() != true) return;
+    FocusScope.of(context).unfocus();
     setState(() => _saving = true);
     int? id = widget.exerciseId;
     final success = await attempt(context, () async {
       final repo = ref.read(exerciseRepositoryProvider);
       final notes = _notes.text.trim().isEmpty ? null : _notes.text.trim();
       final increment = double.tryParse(_increment.text);
-      final units = ref.read(unitsProvider);
+      final units = ref.read(unitsProvider).withWeightUnit(_weightUnit);
       final kg = increment == null
           ? null
-          : _original?.weightIncrement != null && _increment.text == Fmt.number(units.weightFromKg(_original!.weightIncrement!))
-          ? _original!.weightIncrement
+          : _incrementKg != null && _increment.text == _incrementText
+          ? _incrementKg
           : units.weightToKg(increment);
       if (id == null) {
         id = await repo.createExercise(
@@ -250,6 +356,8 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
           notes: notes,
           restSeconds: int.tryParse(_rest.text),
           weightIncrement: kg,
+          weightUnit: Value(_weightUnit),
+          multipliers: List.of(_multipliers),
         );
       } else {
         await repo.updateExercise(
@@ -260,6 +368,8 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
           notes: notes,
           restSeconds: int.tryParse(_rest.text),
           weightIncrement: kg,
+          weightUnit: Value(_weightUnit),
+          multipliers: List.of(_multipliers),
         );
       }
     });
@@ -287,61 +397,25 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
   }
 }
 
-class _Multipliers extends ConsumerWidget {
-  const _Multipliers({required this.exerciseId});
-  final int exerciseId;
+class _MultiplierDialog extends StatefulWidget {
+  const _MultiplierDialog({required this.defaultName, required this.others, this.value, this.onDelete});
+  final String defaultName;
+  final List<MultiplierValue> others;
+  final MultiplierValue? value;
+  final VoidCallback? onDelete;
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Column(
-    children: [
-      for (final m in ref.watch(multipliersProvider(exerciseId)).asData?.value ?? <ExerciseMultiplier>[])
-        Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            title: Text(m.label),
-            subtitle: Text('× ${Fmt.number(m.factor)}'),
-            onTap: () => showDialog(
-              context: context,
-              builder: (_) => _MultiplierDialog(exerciseId: exerciseId, multiplier: m),
-            ),
-            trailing: Switch(
-              value: m.enabled,
-              onChanged: (v) => attempt(
-                context,
-                () => ref
-                    .read(exerciseRepositoryProvider)
-                    .saveMultiplier(id: m.id, exerciseId: exerciseId, label: m.label, factor: m.factor, enabled: v),
-              ),
-            ),
-          ),
-        ),
-      Align(
-        alignment: Alignment.centerLeft,
-        child: TextButton.icon(
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('Add multiplier'),
-          onPressed: () => showDialog(
-            context: context,
-            builder: (_) => _MultiplierDialog(exerciseId: exerciseId),
-          ),
-        ),
-      ),
-    ],
-  );
+  State<_MultiplierDialog> createState() => _MultiplierDialogState();
 }
 
-class _MultiplierDialog extends ConsumerStatefulWidget {
-  const _MultiplierDialog({required this.exerciseId, this.multiplier});
-  final int exerciseId;
-  final ExerciseMultiplier? multiplier;
-  @override
-  ConsumerState<_MultiplierDialog> createState() => _MultiplierDialogState();
-}
-
-class _MultiplierDialogState extends ConsumerState<_MultiplierDialog> {
-  late final _label = TextEditingController(text: widget.multiplier?.label);
-  late final _factor = TextEditingController(text: Fmt.number(widget.multiplier?.factor ?? 2));
+class _MultiplierDialogState extends State<_MultiplierDialog> {
+  late final _label = TextEditingController(text: widget.value?.label);
+  late final _factor = TextEditingController(text: Fmt.number(widget.value?.factor ?? 1, precision: 6));
   final _form = GlobalKey<FormState>();
-  bool _busy = false;
+
+  double? get _factorValue => widget.value != null && _factor.text == Fmt.number(widget.value!.factor, precision: 6)
+      ? widget.value!.factor
+      : double.tryParse(_factor.text.replaceAll(',', '.'));
+
   @override
   void dispose() {
     _label.dispose();
@@ -351,72 +425,55 @@ class _MultiplierDialogState extends ConsumerState<_MultiplierDialog> {
 
   @override
   Widget build(BuildContext context) => AppDialog(
-    title: Text(widget.multiplier == null ? 'Weight multiplier' : 'Edit multiplier'),
+    title: Text(widget.value == null ? 'Add multiplier' : 'Edit multiplier'),
     content: Form(
       key: _form,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           TextFormField(
-            controller: _label,
-            maxLength: 80,
-            decoration: const InputDecoration(labelText: 'Name', hintText: 'e.g. Two dumbbells'),
-            validator: (v) => v!.trim().isEmpty ? 'Enter a name.' : null,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
             controller: _factor,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(labelText: 'Multiply by', prefixText: '× '),
-            validator: (v) => (double.tryParse(v!) ?? 0) > 0 && (double.tryParse(v) ?? 101) <= 100
-                ? null
-                : 'Use a number greater than 0, up to 100',
+            validator: (_) {
+              final factor = _factorValue;
+              if (factor == null) return 'Enter a number.';
+              try {
+                validateMultipliers([...widget.others, (label: '', factor: factor, enabled: widget.value?.enabled ?? true)]);
+                return null;
+              } on FormatException catch (error) {
+                return error.message;
+              }
+            },
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _label,
+            maxLength: 80,
+            decoration: InputDecoration(labelText: 'Name (optional)', hintText: widget.defaultName, counterText: ''),
           ),
         ],
       ),
     ),
     actions: [
-      if (widget.multiplier != null)
+      if (widget.onDelete != null)
         TextButton(
-          onPressed: _busy
-              ? null
-              : () async {
-                  if (await attempt(
-                        context,
-                        () => ref.read(exerciseRepositoryProvider).deleteMultiplier(widget.multiplier!.id),
-                      ) &&
-                      context.mounted) {
-                    Navigator.pop(context);
-                  }
-                },
+          onPressed: () {
+            widget.onDelete!();
+            Navigator.pop(context);
+          },
           child: const Text('Delete'),
         ),
-      TextButton(onPressed: _busy ? null : () => Navigator.pop(context), child: const Text('Cancel')),
+      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
       FilledButton(
-        onPressed: _busy
-            ? null
-            : () async {
-                if (!_form.currentState!.validate()) return;
-                setState(() => _busy = true);
-                final ok = await attempt(
-                  context,
-                  () => ref
-                      .read(exerciseRepositoryProvider)
-                      .saveMultiplier(
-                        id: widget.multiplier?.id,
-                        exerciseId: widget.exerciseId,
-                        label: _label.text,
-                        factor: double.parse(_factor.text),
-                        enabled: widget.multiplier?.enabled ?? true,
-                      ),
-                );
-                if (!context.mounted) return;
-                if (ok) {
-                  Navigator.pop(context);
-                } else {
-                  setState(() => _busy = false);
-                }
-              },
+        onPressed: () {
+          if (!_form.currentState!.validate()) return;
+          Navigator.pop(context, (
+            label: _label.text.trim().isEmpty ? widget.defaultName : _label.text.trim(),
+            factor: _factorValue!,
+            enabled: widget.value?.enabled ?? true,
+          ));
+        },
         child: const Text('Save'),
       ),
     ],

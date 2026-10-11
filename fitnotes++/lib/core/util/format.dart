@@ -1,13 +1,16 @@
 import '../database/tables.dart';
 
 class Units {
-  const Units([this.imperial = false]);
+  const Units([this.imperial = false, this.weightUnit]);
   final bool imperial;
-  String get weightLabel => imperial ? 'lb' : 'kg';
+  final WeightUnit? weightUnit;
+  bool get weightImperial => weightUnit == WeightUnit.pounds || (weightUnit == null && imperial);
+  Units withWeightUnit(WeightUnit? unit) => Units(imperial, unit);
+  String get weightLabel => weightImperial ? 'lb' : 'kg';
   String get distanceLabel => imperial ? 'mi' : 'km';
   String get lengthLabel => imperial ? 'in' : 'cm';
-  double weightFromKg(double kg) => imperial ? kg / 0.45359237 : kg;
-  double weightToKg(double value) => imperial ? value * 0.45359237 : value;
+  double weightFromKg(double kg) => weightImperial ? kg / 0.45359237 : kg;
+  double weightToKg(double value) => weightImperial ? value * 0.45359237 : value;
   double distanceFromMeters(double meters) => meters / (imperial ? 1609.344 : 1000);
   double distanceToMeters(double value) => value * (imperial ? 1609.344 : 1000);
   String weight(double kg) => '${Fmt.number(weightFromKg(kg))} $weightLabel';
