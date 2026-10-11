@@ -109,7 +109,6 @@ class RoutineRepository {
         exerciseId: s.exerciseId,
         date: date,
         planned: true,
-        groupName: s.groupName,
         rawWeight: s.rawWeight ?? previous?.rawWeight ?? 0,
         reps: type.hasReps ? s.reps ?? previous?.reps ?? 10 : 0,
         distance: type.hasDistance ? s.distance ?? previous?.distance ?? 1000 : 0,
@@ -136,7 +135,6 @@ class RoutineRepository {
               reps: Value(s.reps),
               distance: Value(s.distance),
               durationSeconds: Value(s.durationSeconds),
-              groupName: Value(s.groupName),
               sortOrder: Value(i),
             ),
           );

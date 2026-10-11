@@ -155,7 +155,6 @@ class WorkoutRepository {
     int durationSeconds = 0,
     double? rpe,
     String? note,
-    String? groupName,
     bool planned = false,
   }) => db.transaction(() async {
     Dates.validate(date);
@@ -177,7 +176,6 @@ class WorkoutRepository {
             durationSeconds: Value(exercise.type.hasTime ? durationSeconds : 0),
             rpe: Value(rpe),
             note: Value(note),
-            groupName: Value(groupName),
             isPlanned: Value(planned),
             isComplete: Value(!planned),
           ),
@@ -243,9 +241,6 @@ class WorkoutRepository {
 
   Future<void> setNote(int id, String? note) =>
       (db.update(db.workoutSets)..where((s) => s.id.equals(id))).write(WorkoutSetsCompanion(note: Value(note)));
-  Future<void> setGroup(int exerciseId, String date, String? group) => (db.update(
-    db.workoutSets,
-  )..where((s) => s.exerciseId.equals(exerciseId) & s.date.equals(date))).write(WorkoutSetsCompanion(groupName: Value(group)));
 
   Future<int> copyPreviousWorkout(String date) async {
     final previous = await previousWorkoutDate(date);
@@ -273,7 +268,6 @@ class WorkoutRepository {
               reps: Value(s.reps),
               distance: Value(s.distance),
               durationSeconds: Value(s.durationSeconds),
-              groupName: Value(s.groupName),
               isPlanned: const Value(true),
             ),
           );

@@ -13,6 +13,7 @@ import '../../core/util/dates.dart';
 import 'workout_session_card.dart';
 import '../../core/util/format.dart';
 import '../../shared/widgets.dart';
+import '../../shared/record_badge.dart';
 import 'workout_calendar.dart';
 import 'workout_week_strip.dart';
 
@@ -492,9 +493,8 @@ class _ExerciseCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final first = sets.first;
     final colors = Theme.of(context).colorScheme;
-    final prs = ref.watch(prSetIdsProvider(exerciseId));
+    final prs = ref.watch(recordBadgesProvider(exerciseId));
     final units = ref.watch(unitsProvider);
-    final group = first.set.groupName;
     return Semantics(
       selected: editing ? selected : null,
       child: Card(
@@ -532,14 +532,6 @@ class _ExerciseCard extends ConsumerWidget {
                         ),
                   ],
                 ),
-                if (group != null && group.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Superset · $group',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.primary),
-                    ),
-                  ),
                 for (var i = 0; i < sets.length.clamp(0, 5); i++)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 3),
@@ -573,11 +565,8 @@ class _ExerciseCard extends ConsumerWidget {
                             'Not completed',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
                           )
-                        else if (prs.contains(sets[i].set.id))
-                          const Tooltip(
-                            message: 'Personal record',
-                            child: Icon(Icons.emoji_events_outlined, size: 18, color: Color(0xFFAE7A25)),
-                          )
+                        else if (prs.containsKey(sets[i].set.id))
+                          RecordBadge(scope: prs[sets[i].set.id]!)
                         else
                           Icon(Icons.check_rounded, size: 18, color: colors.primary),
                       ],

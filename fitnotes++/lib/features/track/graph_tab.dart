@@ -14,6 +14,7 @@ import '../../core/util/workout_analysis.dart';
 import '../../shared/date_range_chips.dart';
 import '../../shared/progress_chart.dart';
 import '../../shared/widgets.dart';
+import '../../shared/record_badge.dart';
 
 class GraphTab extends ConsumerStatefulWidget {
   const GraphTab({super.key, required this.exercise});
@@ -134,6 +135,7 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
                   const SectionTitle('Rep records'),
                   Wrap(
                     spacing: 8,
+                    runSpacing: 8,
                     children: [
                       ChoiceChip(
                         label: const Text('Actual'),
@@ -145,11 +147,18 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
                         selected: _estimated,
                         onSelected: (_) => setState(() => _estimated = true),
                       ),
+                      ChoiceChip(
+                        label: const Text('All time'),
+                        avatar: const RecordBadge(scope: RecordScope.allTime),
+                        selected: !_currentSeason || season == null,
+                        onSelected: (_) => setState(() => _currentSeason = false),
+                      ),
                       if (season != null)
-                        FilterChip(
+                        ChoiceChip(
                           label: const Text('Current season'),
+                          avatar: const RecordBadge(scope: RecordScope.currentSeason),
                           selected: _currentSeason,
-                          onSelected: (v) => setState(() => _currentSeason = v),
+                          onSelected: (_) => setState(() => _currentSeason = true),
                         ),
                     ],
                   ),

@@ -11,7 +11,7 @@ import 'package:fitnotes_plus/core/providers.dart';
 import 'package:fitnotes_plus/core/repositories/exercise_repository.dart';
 import 'package:fitnotes_plus/core/repositories/workout_repository.dart';
 import 'package:fitnotes_plus/core/util/dates.dart';
-import 'package:fitnotes_plus/features/exercises/exercise_list_screen.dart';
+import 'package:fitnotes_plus/features/exercises/exercise_picker_screen.dart';
 import 'package:fitnotes_plus/features/track/exercise_detail_screen.dart';
 import 'package:fitnotes_plus/features/track/history_tab.dart';
 
@@ -122,7 +122,7 @@ Future<GoRouter> _show(WidgetTester tester, {String location = '/'}) async {
         exerciseProvider.overrideWith((ref, id) => Stream.value(_exercises.firstWhere((e) => e.id == id))),
         exerciseSetsProvider.overrideWith((ref, key) => Stream.value([])),
         exerciseHistoryProvider.overrideWith((ref, id) => Stream.value([_set(id, Dates.shift(Dates.today(), -1))])),
-        prSetIdsProvider.overrideWith((ref, id) => <int>{}),
+        recordBadgesProvider.overrideWith((ref, id) => {}),
         multipliersProvider.overrideWith((ref, id) => Stream.value([])),
         goalsProvider.overrideWith((ref, id) => Stream.value([])),
         seasonsProvider.overrideWith((ref) => Stream.value([])),
@@ -147,12 +147,17 @@ Future<void> _back(WidgetTester tester, {bool system = false}) async {
 }
 
 void main() {
-  testWidgets('editor Back returns to exercise selection with its search, category, and scroll position', (tester) async {
+  testWidgets('body-part picker keeps its search and scroll when returning from an exercise', (tester) async {
     await _show(tester);
+    expect(find.byType(NavigationDestination), findsNWidgets(4));
+    expect(find.text('Exercises'), findsNothing);
     await tester.tap(find.byTooltip('Add exercise'));
     await tester.pumpAndSettle();
+    expect(find.text('Body part'), findsOneWidget);
+    expect(find.byType(ChoiceChip), findsNothing);
+    await tester.tap(find.text('Chest'));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'Press');
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Chest'));
     await tester.pumpAndSettle();
     final list = find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable));
     await tester.scrollUntilVisible(find.text('Press 12'), 250, scrollable: list);
@@ -162,43 +167,40 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.widget<ExerciseDetailScreen>(find.byType(ExerciseDetailScreen)).exerciseId, 12);
     await _back(tester, system: true);
-    expect(tester.widget<ExerciseListScreen>(find.byType(ExerciseListScreen)).pickMode, true);
+    expect(find.byType(ExercisePickerScreen), findsOneWidget);
+    expect(find.text('Chest'), findsOneWidget);
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'Press');
-    expect(tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Chest')).selected, true);
     expect(tester.state<ScrollableState>(list).position.pixels, closeTo(offset, 0.1));
     await tester.tap(find.byTooltip('Create exercise'));
     await tester.pumpAndSettle();
     expect(find.text('New exercise'), findsOneWidget);
     await _back(tester);
-    expect(find.text('Choose an exercise'), findsOneWidget);
+    expect(find.text('Chest'), findsOneWidget);
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'Press');
+    await _back(tester, system: true);
+    expect(find.text('Body part'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
     await _back(tester);
     expect(find.text('Today'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('history and exercise switching return to the previous editor and keep its input and tab', (tester) async {
-    await _show(tester, location: '/exercises');
+  testWidgets('history and workout exercise switching preserve the previous editor and its input', (tester) async {
+    await _show(tester);
+    await tester.tap(find.byTooltip('Add exercise'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chest'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Bench press'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, '72.5');
     await tester.tap(find.byTooltip('Workout exercises'));
     await tester.pumpAndSettle();
+    expect(find.widgetWithText(ListTile, 'Add exercise'), findsNothing);
     await tester.tap(find.widgetWithText(ListTile, 'Row'));
     await tester.pumpAndSettle();
     expect(tester.widget<ExerciseDetailScreen>(find.byType(ExerciseDetailScreen)).exerciseId, 2);
-    await _back(tester);
-    expect(tester.widget<ExerciseDetailScreen>(find.byType(ExerciseDetailScreen)).exerciseId, 1);
-    expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '72.5');
-    await tester.tap(find.byTooltip('Workout exercises'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ListTile, 'Add exercise'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Row'));
-    await tester.pumpAndSettle();
-    await _back(tester, system: true);
-    expect(find.text('Choose an exercise'), findsOneWidget);
     await _back(tester);
     expect(tester.widget<ExerciseDetailScreen>(find.byType(ExerciseDetailScreen)).exerciseId, 1);
     expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '72.5');
@@ -211,20 +213,24 @@ void main() {
     expect(DefaultTabController.of(tester.element(find.byType(HistoryTab))).index, 1);
     expect(tester.widget<ExerciseDetailScreen>(find.byType(ExerciseDetailScreen)).date, Dates.today());
     await _back(tester);
-    expect(tester.widget<ExerciseListScreen>(find.byType(ExerciseListScreen)).pickMode, false);
+    expect(find.byType(ExercisePickerScreen), findsOneWidget);
+    expect(find.text('Chest'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('selection-only exercise pickers still return an ID without opening a set editor', (tester) async {
-    final router = await _show(tester, location: '/exercises');
+  testWidgets('routine exercise selection returns an ID after choosing a body part', (tester) async {
+    final router = await _show(tester);
     final picked = router.push<int>('/pick-exercise?return=1');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chest'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Bench press'));
     await tester.pumpAndSettle();
+    expect(find.byType(ExercisePickerScreen), findsNothing);
     expect(await picked, 1);
-    expect(tester.widget<ExerciseListScreen>(find.byType(ExerciseListScreen)).pickMode, false);
     expect(find.byType(ExerciseDetailScreen), findsNothing);
+    expect(find.text('Today'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

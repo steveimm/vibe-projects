@@ -4,17 +4,17 @@ An offline workout logger for Android, rebuilt with Flutter. No account, ads, or
 
 ## Features
 
-- **Workout log:** ten recording types, exercise reordering, exercise removal with undo, editable sets, RPE, per-set and daily notes, completion status, selective copying, deletion with undo, and an editable session timer with pause/resume.
-- **Exercise library:** 46 starter exercises, search, category filters, favorites, archive/restore, category management, and exercise-specific rest and weight increments.
-- **Routines:** named training days, ordered preset sets, optional previous-session values, superset labels, and saving an existing workout as a routine.
-- **Progress:** date-range and exercise-specific charts, Brzycki 1RM estimates, actual and estimated rep records, goals, training balance, and measurement history.
+- **Workout log:** ten recording types, exercise reordering, multiple-exercise deletion with confirmation, editable sets, per-set and daily notes, completion status, selective copying, and an editable session timer with pause/resume.
+- **Exercise picker:** body-part selection followed by exercises, search, favorites, archive/restore, body-part management, and exercise-specific rest and weight increments.
+- **Routines:** named training days, ordered preset sets, optional previous-session values, multiple-routine deletion, and saving an existing workout as a routine.
+- **Progress:** workout analysis with date filters and trends, exercise-specific charts, Brzycki 1RM estimates, actual and estimated rep records, goals, training balance, and measurement history.
 - **Weight multipliers:** named factors per exercise, with the combined factor stored on each new set. Existing sets retain their original factor.
-- **PR seasons:** reset the record-comparison window without deleting any history. All-time records remain available.
-- **Rest timer:** duration and auto-start controls in the set editor, per-exercise duration, editable remaining time, pause/resume, added time, sound and vibration, background notifications, and recovery of running or paused timers after reopening the app.
-- **Preferences:** light/dark/system appearance, metric/imperial units, week start, weight increments, record highlights, completion controls, keep-screen-on, and rep limits for max-weight estimates.
+- **PR seasons:** reset the record-comparison window without deleting history. All-time records use gold trophies, and current-season records use silver.
+- **Rest timer:** per-exercise duration and auto-start controls, pause/resume, added time, selectable sound and vibration, background countdown notifications, and recovery of running or paused timers after reopening the app.
+- **Preferences:** light/dark/system appearance, metric/imperial units, weight increments, record highlights, completion controls, keep-screen-on, and rep limits for max-weight estimates. Weeks start on Monday.
 - **Data:** full SQLite backup/restore with recovery of the previous state, CSV export/import, and original FitNotes workout import.
 
-The exercise counts and + button stay visible while scrolling. Holding an exercise selects it and enters edit mode. Tap more cards to select or deselect them, then use Delete beside Done to remove the selected exercises together. Undo restores their sets and order. Adding exercises, date navigation, and opening set editors are disabled until edit mode ends. Workout timer controls are available only for today. Other dates keep duration editing and reset in the timer menu. Menus and dialogs share sizing, typography, and spacing. Exercise selection, exercise switching, and history retain the previous screen so Back preserves filters, scroll position, tabs, and input.
+The exercise and set counts stay visible while scrolling, with a circular + button at the bottom right. Holding an exercise enters edit mode. Tap more cards to select them, then use Delete to remove them after confirmation. Adding exercises, date navigation, and opening set editors are disabled until edit mode ends. Selecting a logged set offers Delete and Update, and Back exits editing. Workout timer controls are available only for today. Other dates keep duration editing and reset in the timer menu. Exercise selection, exercise switching, and history retain the previous screen so Back preserves filters, scroll position, tabs, and input.
 
 ## Data behavior
 
@@ -28,7 +28,7 @@ Original `.fitnotes` imports merge categories, exercises, workout sets, set comm
 
 CSV exports contain performed sets in the standard ten-column FitNotes format, using canonical kg/meters and effective weights. CSV import also supports the legacy combined `Weight (lbs)` column. Reimporting an export does not duplicate matching sets. Use a full backup to retain raw weights, multipliers, RPE, routines, and preferences.
 
-Schema version 4 migrates existing version 1, 2, and 3 databases without discarding their workout history. Version 2 and 3 backups can also be restored. The reference backup and reconstruction notes are in [`ref/`](ref/) and [`FITNOTES_REFERENCE.md`](FITNOTES_REFERENCE.md).
+Schema version 5 migrates existing databases without discarding their workout history. Version 2 through 5 backups can be restored. The reference backup and reconstruction notes are in [`ref/`](ref/) and [`FITNOTES_REFERENCE.md`](FITNOTES_REFERENCE.md).
 
 ## Development
 

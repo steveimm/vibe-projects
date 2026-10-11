@@ -8,12 +8,14 @@ import '../../core/database/database.dart';
 import '../../core/database/tables.dart';
 import '../../core/models/set_values.dart';
 import '../../core/providers.dart';
+import '../../core/repositories/stats_repository.dart';
 import '../../core/services/rest_timer.dart';
 import '../../core/util/dates.dart';
 import '../../core/util/format.dart';
 import '../../shared/rest_timer_bar.dart';
 import '../../shared/rest_timer_settings.dart';
 import '../../shared/widgets.dart';
+import '../../shared/record_badge.dart';
 import 'graph_tab.dart';
 import 'history_tab.dart';
 
@@ -115,20 +117,13 @@ class ExerciseDetailScreen extends ConsumerWidget {
                     trailing: entry.key == exerciseId ? const Icon(Icons.check_rounded) : null,
                     onTap: () => Navigator.pop(context, entry.key),
                   ),
-                ListTile(
-                  leading: const Icon(Icons.add_rounded),
-                  title: const Text('Add exercise'),
-                  onTap: () => Navigator.pop(context, -1),
-                ),
               ],
             ),
           ),
         ),
       );
       if (!context.mounted || selected == null) return;
-      if (selected == -1) {
-        context.push('/pick-exercise?date=$date');
-      } else if (selected != exerciseId) {
+      if (selected != exerciseId) {
         context.push('/log/$selected?date=$date');
       }
     });
@@ -202,7 +197,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
     final units = ref.watch(unitsProvider);
     final settings = ref.watch(settingsProvider).asData?.value;
     final sets = ref.watch(exerciseSetsProvider((exerciseId: widget.exercise.id, date: widget.date)));
-    final prs = ref.watch(prSetIdsProvider(widget.exercise.id));
+    final prs = ref.watch(recordBadgesProvider(widget.exercise.id));
     final factors = ref.watch(multipliersProvider(widget.exercise.id)).asData?.value ?? [];
     final multiplier = _editing?.weightMultiplier ?? factors.where((m) => m.enabled).fold<double>(1, (v, m) => v * m.factor);
     final type = widget.exercise.type;
@@ -292,9 +287,13 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
       children: [
         if (_editing != null) ...[
           IconButton.filledTonal(
-            tooltip: 'Cancel editing',
-            onPressed: _saving ? null : _cancelEdit,
-            icon: const Icon(Icons.close_rounded),
+            tooltip: 'Delete set',
+            onPressed: _saving ? null : () => _setAction(_editing!, 'delete'),
+            style: IconButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+              backgroundColor: Theme.of(context).colorScheme.errorContainer,
+            ),
+            icon: const Icon(Icons.delete_outline_rounded),
           ),
           const SizedBox(width: 8),
         ],
@@ -319,32 +318,43 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
         itemBuilder: (_, i) => _setCard(items[i], i, prs, units, settings?.markSetsComplete ?? false),
       ),
     );
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: actions,
-      body: ContentWidth(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxHeight < 160) {
-                return SingleChildScrollView(
-                  key: const ValueKey('compact-log-scroll'),
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [editor, restControl, rows(shrinkWrap: true)]),
+    final tabs = DefaultTabController.of(context);
+    return ListenableBuilder(
+      listenable: tabs,
+      builder: (_, child) => PopScope(
+        canPop: _editing == null || tabs.index != 0,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop && _editing != null && tabs.index == 0 && !_saving) _cancelEdit();
+        },
+        child: child!,
+      ),
+      child: Scaffold(
+        resizeToAvoidBottomInset: false,
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButton: actions,
+        body: ContentWidth(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxHeight < 160) {
+                  return SingleChildScrollView(
+                    key: const ValueKey('compact-log-scroll'),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [editor, restControl, rows(shrinkWrap: true)]),
+                  );
+                }
+                return Column(
+                  children: [
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: constraints.maxHeight - 104),
+                      child: SingleChildScrollView(child: editor),
+                    ),
+                    restControl,
+                    Expanded(child: rows()),
+                  ],
                 );
-              }
-              return Column(
-                children: [
-                  ConstrainedBox(
-                    constraints: BoxConstraints(maxHeight: constraints.maxHeight - 104),
-                    child: SingleChildScrollView(child: editor),
-                  ),
-                  restControl,
-                  Expanded(child: rows()),
-                ],
-              );
-            },
+              },
+            ),
           ),
         ),
       ),
@@ -384,11 +394,14 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
     _touched = true;
     _error = null;
   });
-  void _cancelEdit() => setState(() {
-    _editing = null;
-    _error = null;
-    if (_previous != null) _fill(_previous!);
-  });
+  void _cancelEdit() {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _editing = null;
+      _error = null;
+      if (_previous != null) _fill(_previous!);
+    });
+  }
 
   void _startRest() {
     final settings = ref.read(settingsProvider).asData?.value;
@@ -473,7 +486,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
     }
   }
 
-  Widget _setCard(WorkoutSet s, int index, Set<int> prs, Units units, bool markComplete) {
+  Widget _setCard(WorkoutSet s, int index, Map<int, RecordScope> prs, Units units, bool markComplete) {
     final colors = Theme.of(context).colorScheme;
     final selected = _editing?.id == s.id;
     return Card(
@@ -485,7 +498,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => selected ? _cancelEdit() : _selectSet(s),
+        onTap: _saving ? null : () => _selectSet(s),
         child: Padding(
           padding: const EdgeInsets.only(left: 10),
           child: Row(
@@ -508,32 +521,27 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                     ),
                     if (s.note?.isNotEmpty == true) Text(s.note!, style: Theme.of(context).textTheme.bodySmall),
-                    if (s.groupName?.isNotEmpty == true) Text(s.groupName!, style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
               ),
+              if (prs.containsKey(s.id)) SizedBox(width: 48, child: RecordBadge(scope: prs[s.id]!)),
               if (markComplete || s.isPlanned)
                 Checkbox(value: !s.isPlanned, semanticLabel: 'Complete set ${index + 1}', onChanged: (v) => _completion(s, v!))
-              else
+              else if (!prs.containsKey(s.id))
                 SizedBox(
                   width: 48,
                   child: Tooltip(
-                    message: prs.contains(s.id) ? 'Personal record' : 'Completed',
-                    child: Icon(
-                      prs.contains(s.id) ? Icons.emoji_events_outlined : Icons.check_rounded,
-                      size: 18,
-                      color: prs.contains(s.id) ? const Color(0xFFAE7A25) : colors.primary,
-                    ),
+                    message: 'Completed',
+                    child: Icon(Icons.check_rounded, size: 18, color: colors.primary),
                   ),
                 ),
               AppMenuButton<String>(
                 tooltip: 'Set ${index + 1} options',
+                enabled: !_saving,
                 onSelected: (action) => _setAction(s, action),
                 itemBuilder: (_) => [
                   PopupMenuItem(value: 'completion', child: Text(s.isPlanned ? 'Mark complete' : 'Mark incomplete')),
                   const PopupMenuItem(value: 'note', child: Text('Set note')),
-                  const PopupMenuItem(value: 'group', child: Text('Superset name')),
-                  const PopupMenuItem(value: 'delete', child: Text('Delete set')),
                 ],
               ),
             ],
@@ -559,6 +567,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
   }
 
   void _selectSet(WorkoutSet set) {
+    if (_editing?.id == set.id) return;
     setState(() {
       _editing = set;
       _fill(set);
@@ -582,24 +591,14 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           maxLength: 1000,
         );
         if (note != null && mounted) await attempt(context, () => repo.setNote(s.id, note.isEmpty ? null : note));
-      case 'group':
-        final group = await prompt(
-          context,
-          title: 'Superset',
-          label: 'Use the same name for grouped exercises',
-          value: s.groupName ?? '',
-          optional: true,
-          maxLength: 40,
-        );
-        if (group != null && mounted) {
-          await attempt(context, () => repo.setGroup(widget.exercise.id, widget.date, group.isEmpty ? null : group));
-        }
       case 'delete':
         if (!await confirm(context, title: 'Delete set?', message: 'Remove this set from the workout?') || !mounted) return;
+        setState(() => _saving = true);
         await attempt(context, () async {
           await repo.deleteSet(s.id);
           final previous = await repo.lastSet(widget.exercise.id, widget.date);
           if (!mounted) return;
+          FocusScope.of(context).unfocus();
           setState(() {
             _previous = previous;
             _editing = null;
@@ -607,6 +606,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
             if (previous != null) _fill(previous);
           });
         });
+        if (mounted) setState(() => _saving = false);
     }
   }
 }

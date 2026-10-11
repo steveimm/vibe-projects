@@ -7,7 +7,7 @@ class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.child, required this.path});
   final Widget child;
   final String path;
-  static const paths = ['/', '/exercises', '/routines', '/progress', '/settings'];
+  static const paths = ['/', '/routines', '/progress', '/settings'];
   @override
   Widget build(BuildContext context) {
     final index = paths.indexWhere((p) => p == '/' ? path == p : path.startsWith(p));
@@ -30,11 +30,6 @@ class AppShell extends StatelessWidget {
                   icon: Icon(Icons.sports_gymnastics_outlined),
                   selectedIcon: Icon(Icons.sports_gymnastics_rounded),
                   label: 'Workout',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.fitness_center_outlined),
-                  selectedIcon: Icon(Icons.fitness_center_rounded),
-                  label: 'Exercises',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.view_week_outlined),

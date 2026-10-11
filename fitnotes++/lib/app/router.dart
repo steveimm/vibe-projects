@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../core/util/dates.dart';
 import '../features/exercises/categories_screen.dart';
 import '../features/exercises/edit_exercise_screen.dart';
-import '../features/exercises/exercise_list_screen.dart';
+import '../features/exercises/exercise_picker_screen.dart';
 import '../features/progress/progress_screen.dart';
 import '../features/routines/routine_detail_screen.dart';
 import '../features/routines/routines_screen.dart';
@@ -57,10 +57,6 @@ GoRouter createAppRouter({String initialLocation = '/'}) => GoRouter(
           pageBuilder: (_, state) => NoTransitionPage(key: state.pageKey, child: const HomeScreen()),
         ),
         GoRoute(
-          path: '/exercises',
-          pageBuilder: (_, state) => NoTransitionPage(key: state.pageKey, child: const ExerciseListScreen()),
-        ),
-        GoRoute(
           path: '/routines',
           pageBuilder: (_, state) => NoTransitionPage(
             key: state.pageKey,
@@ -79,10 +75,8 @@ GoRouter createAppRouter({String initialLocation = '/'}) => GoRouter(
     ),
     GoRoute(
       path: '/pick-exercise',
-      pageBuilder: (_, state) => _page(
-        state,
-        ExerciseListScreen(pickMode: true, date: _date(state), returnSelection: state.uri.queryParameters['return'] == '1'),
-      ),
+      pageBuilder: (_, state) =>
+          _page(state, ExercisePickerScreen(date: _date(state), returnSelection: state.uri.queryParameters['return'] == '1')),
     ),
     GoRoute(
       path: '/exercises/edit',

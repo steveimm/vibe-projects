@@ -38,6 +38,8 @@ enum GraphMetric {
 
 typedef MetricPoint = ({String date, double value});
 
+enum RecordScope { allTime, currentSeason }
+
 class Stats {
   Stats._();
   static const allTime = '0000-01-01';

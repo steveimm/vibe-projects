@@ -26,9 +26,9 @@ class CategoriesScreen extends ConsumerWidget {
   const CategoriesScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) => Scaffold(
-    appBar: AppBar(title: const Text('Categories')),
+    appBar: AppBar(title: const Text('Body parts')),
     floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-    floatingActionButton: AppFloatingActionButton(tooltip: 'Add category', onPressed: () => editCategory(context)),
+    floatingActionButton: AppFloatingActionButton(tooltip: 'Add body part', onPressed: () => editCategory(context)),
     body: ContentWidth(
       child: ref
           .watch(categoriesProvider)
@@ -43,6 +43,9 @@ class CategoriesScreen extends ConsumerWidget {
                 final c = categories[i];
                 return Card(
                   child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    minTileHeight: 64,
+                    minVerticalPadding: 8,
                     leading: CircleAvatar(radius: 10, backgroundColor: Color(c.colorArgb)),
                     title: Text(c.name),
                     trailing: const Icon(Icons.edit_outlined, size: 20),
@@ -76,7 +79,7 @@ class _CategoryDialogState extends ConsumerState<_CategoryDialog> {
 
   @override
   Widget build(BuildContext context) => AppDialog(
-    title: Text(widget.category == null ? 'New category' : 'Edit category'),
+    title: Text(widget.category == null ? 'New body part' : 'Edit body part'),
     content: Form(
       key: _form,
       child: Column(

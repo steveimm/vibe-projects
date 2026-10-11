@@ -152,9 +152,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       (v) => _update(AppSettingsCompanion(restTimerSound: Value(v))),
                     ),
                     if (s.restTimerSound)
-                      RestSoundTile(
-                        uri: s.restTimerSoundUri,
-                        onChanged: (uri) => _update(AppSettingsCompanion(restTimerSoundUri: Value(uri))),
+                      ListTileTheme.merge(
+                        minTileHeight: 64,
+                        minVerticalPadding: 8,
+                        child: RestSoundTile(
+                          uri: s.restTimerSoundUri,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          onChanged: (uri) => _update(AppSettingsCompanion(restTimerSoundUri: Value(uri))),
+                        ),
                       ),
                     _switch(
                       Icons.vibration_rounded,
@@ -270,7 +275,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _tile(IconData icon, String title, String subtitle, VoidCallback? tap) => Semantics(
     container: true,
     child: ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      minTileHeight: 64,
+      minVerticalPadding: 8,
       minLeadingWidth: 24,
       horizontalTitleGap: 12,
       leading: Icon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
@@ -282,9 +289,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ),
   );
   Widget _switch(IconData icon, String title, String? subtitle, bool value, ValueChanged<bool> change) => ListTileTheme(
-    data: const ListTileThemeData(minLeadingWidth: 24, horizontalTitleGap: 12),
+    data: const ListTileThemeData(minLeadingWidth: 24, horizontalTitleGap: 12, minTileHeight: 64, minVerticalPadding: 8),
     child: SwitchListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       secondary: Icon(icon, size: 22, color: Theme.of(context).colorScheme.primary),
       title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
       subtitle: subtitle == null ? null : Text(subtitle, style: const TextStyle(fontSize: 12)),

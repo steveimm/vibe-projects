@@ -8,6 +8,7 @@ import '../../core/providers.dart';
 import '../../core/util/dates.dart';
 import '../../core/util/format.dart';
 import '../../shared/widgets.dart';
+import '../../shared/record_badge.dart';
 
 class HistoryTab extends ConsumerWidget {
   const HistoryTab({super.key, required this.exercise});
@@ -15,7 +16,7 @@ class HistoryTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(exerciseHistoryProvider(exercise.id));
-    final prs = ref.watch(prSetIdsProvider(exercise.id));
+    final prs = ref.watch(recordBadgesProvider(exercise.id));
     final units = ref.watch(unitsProvider);
     return history.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -74,12 +75,7 @@ class HistoryTab extends ConsumerWidget {
                               : entry.value[j].note?.isNotEmpty == true
                               ? Text(entry.value[j].note!)
                               : null,
-                          trailing: prs.contains(entry.value[j].id)
-                              ? const Tooltip(
-                                  message: 'Personal record',
-                                  child: Icon(Icons.emoji_events_outlined, color: Color(0xFFAE7A25), size: 20),
-                                )
-                              : null,
+                          trailing: prs.containsKey(entry.value[j].id) ? RecordBadge(scope: prs[entry.value[j].id]!) : null,
                         ),
                       ],
                     ],

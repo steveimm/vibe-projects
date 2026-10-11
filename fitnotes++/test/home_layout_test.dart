@@ -75,7 +75,7 @@ void main() {
           settingsProvider.overrideWith((ref) => const Stream.empty()),
           allLogProvider.overrideWith((ref) => Stream.value([logged])),
           dayLogProvider.overrideWith((ref, date) => Stream.value(date == logged.set.date ? [logged] : [])),
-          prSetIdsProvider.overrideWith((ref, id) => <int>{}),
+          recordBadgesProvider.overrideWith((ref, id) => {}),
           dayNoteProvider.overrideWith((ref, date) => Stream.value(null)),
           sessionProvider.overrideWith((ref, date) => Stream.value(null)),
         ],

@@ -360,7 +360,7 @@ class _RoutineDetailScreenState extends ConsumerState<RoutineDetailScreen> {
       if (type.hasDistance && s.distance != null) units.distance(s.distance!),
       if (type.hasTime && s.durationSeconds != null) Fmt.duration(s.durationSeconds!),
     ];
-    return '${values.isEmpty ? 'Last values' : values.join(' × ')}${s.groupName == null ? '' : '\nSuperset · ${s.groupName}'}';
+    return values.isEmpty ? 'Last values' : values.join(' × ');
   }
 
   Future<void> _addDay() async {
@@ -480,11 +480,10 @@ class _PresetDialogState extends ConsumerState<_PresetDialog> {
   late final _time = TextEditingController(
     text: widget.set.durationSeconds == null ? '' : Fmt.duration(widget.set.durationSeconds!),
   );
-  late final _group = TextEditingController(text: widget.set.groupName ?? '');
   bool _all = false, _saving = false;
   @override
   void dispose() {
-    for (final c in [_weight, _reps, _distance, _time, _group]) {
+    for (final c in [_weight, _reps, _distance, _time]) {
       c.dispose();
     }
     super.dispose();
@@ -543,11 +542,6 @@ class _PresetDialogState extends ConsumerState<_PresetDialog> {
               padding: EdgeInsets.symmetric(vertical: 8),
               child: Text('Blank fields use the shown values.', style: TextStyle(fontSize: 12)),
             ),
-            TextFormField(
-              controller: _group,
-              maxLength: 40,
-              decoration: const InputDecoration(labelText: 'Superset (optional)', counterText: ''),
-            ),
             if (widget.siblings.length > 1)
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
@@ -599,7 +593,6 @@ class _PresetDialogState extends ConsumerState<_PresetDialog> {
             : units.distanceToMeters(distance),
       ),
       durationSeconds: Value(_time.text.isEmpty ? null : Fmt.parseDuration(_time.text)),
-      groupName: Value(_group.text.trim().isEmpty ? null : _group.text.trim()),
     );
     final ok = await attempt(
       context,
