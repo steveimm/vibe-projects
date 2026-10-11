@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../core/repositories/stats_repository.dart';
 import '../core/util/dates.dart';
 import '../core/util/format.dart';
+import 'chart_labels.dart';
 
 class ProgressChart extends StatelessWidget {
   const ProgressChart({super.key, required this.points, required this.label, this.height = 250, this.zeroBased = true});
@@ -30,6 +31,10 @@ class ProgressChart extends StatelessWidget {
     final interval = [1.0, 2.0, 5.0, 10.0].firstWhere((n) => n * magnitude >= roughStep) * magnitude;
     final minY = (lower / interval).floor() * interval;
     final maxY = (upper / interval).ceil() * interval;
+    String axisValue(double value) => value >= 1000 ? '${Fmt.number(value / 1000)}k' : Fmt.number(value);
+    final left = axisLabelWidth(context, [
+      for (var i = 0; i <= ((maxY - minY) / interval).round(); i++) axisValue(minY + i * interval),
+    ]);
     return SizedBox(
       height: height,
       child: Padding(
@@ -88,10 +93,10 @@ class ProgressChart extends StatelessWidget {
               leftTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
-                  reservedSize: 42,
+                  reservedSize: left,
                   interval: interval,
                   getTitlesWidget: (value, meta) => Text(
-                    value >= 1000 ? '${Fmt.number(value / 1000)}k' : Fmt.number(value),
+                    axisValue(value),
                     style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ),

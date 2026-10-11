@@ -1,0 +1,170 @@
+{
+  "version": "1.5.0+16",
+  "status": "complete",
+  "requirements": [
+    "Remove superset UI and grouping operations while keeping older backup data readable.",
+    "Remove the Exercises bottom tab. Add Exercise starts with body parts, then exercises, retaining Back/search/scroll behavior.",
+    "Gold trophy for all-time records, silver trophy for current-season records.",
+    "Selecting a set exposes Delete and Update. Back exits edit mode without leaving the exercise.",
+    "Restore comfortable settings and exercise-picker row spacing.",
+    "Measure Y-axis labels to remove unnecessary left chart padding."
+  ],
+  "fitnotes_time_check": {
+    "source": "/private/tmp/FitNotes-analysis-before.fitnotes",
+    "app_version": "25.1",
+    "time_columns": {
+      "exercise": [
+        "default_rest_time"
+      ],
+      "training_log": [
+        "date",
+        "timer_auto_start",
+        "is_pending_update"
+      ],
+      "Comment": [
+        "date"
+      ],
+      "BodyWeight": [
+        "date"
+      ],
+      "WorkoutGroup": [
+        "date",
+        "rest_timer_auto_start_enabled"
+      ],
+      "WorkoutGroupExercise": [
+        "date"
+      ],
+      "ExerciseGraphFavourite": [
+        "time_period"
+      ],
+      "Goal": [
+        "target_date",
+        "start_date"
+      ],
+      "WorkoutComment": [
+        "date"
+      ],
+      "MeasurementRecord": [
+        "date",
+        "time"
+      ],
+      "WorkoutTime": [
+        "workout_date",
+        "start_date_time",
+        "end_date_time"
+      ],
+      "settings": [
+        "rest_timer_seconds",
+        "rest_timer_vibrate",
+        "rest_timer_sound",
+        "rest_timer_volume",
+        "rest_timer_auto_start",
+        "workout_graph_default_time_period",
+        "analysis_breakdown_time_period",
+        "workout_timer_auto_start_enabled",
+        "workout_timer_auto_stop_enabled",
+        "home_screen_skip_empty_dates"
+      ]
+    },
+    "training_log_columns": [
+      "_id",
+      "exercise_id",
+      "date",
+      "metric_weight",
+      "reps",
+      "unit",
+      "routine_section_exercise_set_id",
+      "timer_auto_start",
+      "is_personal_record",
+      "is_personal_record_first",
+      "is_complete",
+      "is_pending_update",
+      "distance",
+      "duration_seconds"
+    ],
+    "result": "No per-set logging timestamp. Date is date-only; duration_seconds is exercise duration. Missing workout times are not inferred."
+  },
+  "reference_ui": "Original FitNotes inspected on emulator: body-part list -> Chest exercise list -> Back to body parts. No sets added.",
+  "validation": {
+    "tests": 54,
+    "additional_set_edit_tests": 3,
+    "static_analysis": "No issues found",
+    "additional_analysis_test": 1,
+    "static_analysis_log": "/private/tmp/fitnotes-picker-final-analysis.log",
+    "emulator": "FitNotes_API_36, emulator-5554, Android 16/API 36, ARM64",
+    "emulator_checks": [
+      "Four bottom tabs, no Exercises destination.",
+      "Home Add exercise opens body parts, then exercises. Back from logger returns to the same list, then body parts, then Home.",
+      "Routine Add exercise reuses the body-part-first picker and returns the chosen exercise to the preset-count dialog.",
+      "Legacy superset labels are absent from home, logging, routine cards, and preset dialogs.",
+      "Current-season-only records have silver trophies; all-time records have gold trophies on the same workout.",
+      "Selecting a set shows Delete and Update. Cancel keeps selection. Back exits edit mode. Confirmed deletion exits editing with no snackbar.",
+      "Settings, exercise picker, and PR season cards visually checked for row spacing.",
+      "Analysis axis spacing checked at 100% and 200% system font size, in light and dark mode. Labels fit without clipping.",
+      "No Flutter or Android runtime errors from the app process during final layout checks.",
+      "Installed final ARM64 release, confirmed 1.5.0 / versionCode 2016, and opened Home after original data restoration."
+    ],
+    "reviewer": {
+      "count": 1,
+      "result": "No functional findings. Removed stale feature claims from README as requested by the reviewer."
+    },
+    "screenshots": [
+      "/private/tmp/fitnotes-picker-home-records.png",
+      "/private/tmp/fitnotes-picker-body-parts.png",
+      "/private/tmp/fitnotes-picker-chest.png",
+      "/private/tmp/fitnotes-selected-set-actions.png",
+      "/private/tmp/fitnotes-routine-preset-no-superset.png",
+      "/private/tmp/fitnotes-settings-spacing.png",
+      "/private/tmp/fitnotes-pr-season-trophies.png",
+      "/private/tmp/fitnotes-analysis-axis-spacing.png",
+      "/private/tmp/fitnotes-analysis-axis-large-dark.png",
+      "/private/tmp/fitnotes-1.5.0-release-home.png"
+    ]
+  },
+  "restore": {
+    "status": "Original database and preferences restored and byte-for-byte verified before release installation.",
+    "archive": "/private/tmp/fitnotes-picker-original.tar",
+    "directory": "/private/tmp/fitnotes-picker-original",
+    "verified_sha256": {
+      "app_flutter/fitnotes_plus.sqlite": "2a3a7566aebd3d1e547fc24f65b1cf63aa520ca32f06e61f6a0967a61d38d453",
+      "shared_prefs/fitnotes_timer.xml": "3325d2a819fdd8062c2cdc48a09b995c9b012915bcdf88b1cf9742a7f057c793",
+      "shared_prefs/fitnotes_permissions.xml": "3c496b4fc0848ca6abba77ba4e75022cd1bf116f73ee11e22c002957c874c3e8"
+    },
+    "emulator_settings": {
+      "font_scale": 1.0,
+      "night_mode": "no"
+    },
+    "original_counts": {
+      "workout_sets": 0,
+      "routines": 0,
+      "pr_reset_markers": 0
+    }
+  },
+  "release": {
+    "build_command": "flutter build apk --release --split-per-abi",
+    "log": "/private/tmp/fitnotes-1.5.0-release.log",
+    "artifacts": [
+      {
+        "path": "build/releases/1.5.0/app-arm64-v8a-release.apk",
+        "bytes": 22165597,
+        "sha256": "cd2f651b3144ab2b7e887a48bf8a7d842816a644cc083183b1fa3ab564e89338"
+      },
+      {
+        "path": "build/releases/1.5.0/app-armeabi-v7a-release.apk",
+        "bytes": 19705765,
+        "sha256": "e928eca5d004dcfc74348dd82ddf050751555571ef86cf84faff0a4e1f228588"
+      },
+      {
+        "path": "build/releases/1.5.0/app-x86_64-release.apk",
+        "bytes": 23682865,
+        "sha256": "47153f91a1e7d9b3173a6e7b8f62c691f0b4f8036a13c02f8a26f68f78702fcf"
+      }
+    ],
+    "installed": {
+      "version_name": "1.5.0",
+      "version_code": 2016,
+      "abi": "arm64-v8a",
+      "launch": "Passed: Home displayed with original data and four bottom destinations."
+    }
+  }
+}

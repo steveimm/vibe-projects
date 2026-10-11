@@ -18,57 +18,67 @@ class SeasonsScreen extends ConsumerWidget {
       onPressed: () => showDialog(context: context, builder: (_) => const _SeasonDialog()),
     ),
     body: ContentWidth(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
-        children: [
-          const Text('A season tracks personal records from a chosen date without deleting past workouts.'),
-          const SizedBox(height: 12),
-          const Card(
-            child: ListTile(
-              leading: RecordBadge(scope: RecordScope.allTime, size: 24),
-              title: Text('All-time records'),
+      child: ListTileTheme.merge(
+        minTileHeight: 64,
+        minVerticalPadding: 8,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
+          children: [
+            const Text('A season tracks personal records from a chosen date without deleting past workouts.'),
+            const SizedBox(height: 12),
+            const Card(
+              child: ListTile(
+                leading: RecordBadge(scope: RecordScope.allTime, size: 24),
+                title: Text('All-time records'),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          ref
-              .watch(seasonsProvider)
-              .when(
-                loading: () => const LinearProgressIndicator(),
-                error: (_, _) => ErrorState(onRetry: () => ref.invalidate(seasonsProvider)),
-                data: (seasons) => Column(
-                  children: [
-                    for (var i = 0; i < seasons.length; i++)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Card(
-                          child: ListTile(
-                            leading: i == 0
-                                ? const RecordBadge(scope: RecordScope.currentSeason, size: 24)
-                                : const Icon(Icons.history_rounded),
-                            title: Text(seasons[i].note?.isNotEmpty == true ? seasons[i].note! : 'Season ${seasons.length - i}'),
-                            subtitle: Text('Since ${seasons[i].date}${i == 0 ? ' · Current season' : ''}'),
-                            trailing: IconButton(
-                              tooltip: 'Remove reset',
-                              icon: const Icon(Icons.delete_outline_rounded),
-                              onPressed: () async {
-                                if (await confirm(
+            const SizedBox(height: 8),
+            ref
+                .watch(seasonsProvider)
+                .when(
+                  loading: () => const LinearProgressIndicator(),
+                  error: (_, _) => ErrorState(onRetry: () => ref.invalidate(seasonsProvider)),
+                  data: (seasons) => Column(
+                    children: [
+                      for (var i = 0; i < seasons.length; i++)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Card(
+                            child: ListTile(
+                              leading: i == 0
+                                  ? const RecordBadge(scope: RecordScope.currentSeason, size: 24)
+                                  : const Icon(Icons.history_rounded),
+                              title: Text(
+                                seasons[i].note?.isNotEmpty == true ? seasons[i].note! : 'Season ${seasons.length - i}',
+                              ),
+                              subtitle: Text('Since ${seasons[i].date}${i == 0 ? ' · Current season' : ''}'),
+                              trailing: IconButton(
+                                tooltip: 'Remove reset',
+                                icon: const Icon(Icons.delete_outline_rounded),
+                                onPressed: () async {
+                                  if (await confirm(
+                                        context,
+                                        title: 'Remove this reset?',
+                                        message: 'The previous season will apply if this is the current reset. Your workouts remain unchanged.',
+                                        action: 'Remove',
+                                      ) &&
+                                      context.mounted) {
+                                    await attempt(
                                       context,
-                                      title: 'Remove this reset?',
-                                      message: 'The previous season will apply if this is the current reset. Your workouts remain unchanged.',
-                                      action: 'Remove',
-                                    ) &&
-                                    context.mounted) {
-                                  await attempt(context, () => ref.read(progressRepositoryProvider).deleteSeason(seasons[i].id));
-                                }
-                              },
+                                      () => ref.read(progressRepositoryProvider).deleteSeason(seasons[i].id),
+                                    );
+                                  }
+                                },
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-        ],
+          ],
+        ),
       ),
     ),
   );

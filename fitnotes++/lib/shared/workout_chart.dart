@@ -8,6 +8,7 @@ import '../core/repositories/stats_repository.dart';
 import '../core/util/dates.dart';
 import '../core/util/format.dart';
 import '../core/util/workout_analysis.dart';
+import 'chart_labels.dart';
 
 class WorkoutChart extends StatelessWidget {
   const WorkoutChart({super.key, required this.points, required this.valueLabel, this.integerAxis = false});
@@ -33,7 +34,7 @@ class WorkoutChart extends StatelessWidget {
     final gap = x.length < 2 ? 1.0 : [for (var i = 1; i < x.length; i++) x[i] - x[i - 1]].reduce(math.min);
     final minX = -gap / 2, maxX = x.last + gap / 2;
     final font = MediaQuery.textScalerOf(context).scale(10);
-    final left = math.max(40.0, _axisValue(maxY).length * font * 0.65 + 8);
+    final left = axisLabelWidth(context, [for (var i = 0; i <= (maxY / interval).round(); i++) _axisValue(i * interval)]);
     final bottom = math.max(30.0, font * 1.4 + 8);
     return SizedBox(
       height: 180,
