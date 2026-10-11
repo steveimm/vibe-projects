@@ -64,13 +64,14 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(find.text('2 selected'), findsOneWidget);
-    await tester.ensureVisible(find.text('Routine 8'));
+    final list = find.descendant(of: find.byType(ListView).first, matching: find.byType(Scrollable));
+    await tester.scrollUntilVisible(find.text('Routine 8'), 160, scrollable: list);
     await tester.pumpAndSettle();
     expect(find.byTooltip('Delete selected routines').hitTestable(), findsOneWidget);
     await tester.tap(find.byTooltip('Done'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('New routine'), findsOneWidget);
-    await tester.ensureVisible(first);
+    await tester.scrollUntilVisible(first, -160, scrollable: list);
     await tester.pumpAndSettle();
     await tester.longPress(first);
     await tester.pumpAndSettle();

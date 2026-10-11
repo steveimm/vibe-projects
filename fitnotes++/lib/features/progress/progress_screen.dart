@@ -21,7 +21,12 @@ class ProgressScreen extends StatelessWidget {
           ],
         ),
       ),
-      body: const ContentWidth(child: TabBarView(children: [AnalysisTab(), BodyTab()])),
+      body: const TabBarView(
+        children: [
+          ContentWidth(child: AnalysisTab()),
+          BodyTab(),
+        ],
+      ),
     ),
   );
 }

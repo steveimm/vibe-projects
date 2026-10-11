@@ -6,9 +6,9 @@ import '../repositories/workout_repository.dart';
 import 'dates.dart';
 
 enum WorkoutMetric {
-  volume('Volume per workout'),
-  sets('Sets per workout'),
-  reps('Reps per workout'),
+  volume('Volume'),
+  sets('Sets'),
+  reps('Reps'),
   duration('Workout duration');
 
   const WorkoutMetric(this.label);

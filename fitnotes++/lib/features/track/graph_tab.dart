@@ -10,6 +10,8 @@ import '../../core/repositories/stats_repository.dart';
 import '../../core/util/dates.dart';
 import '../../core/util/format.dart';
 import '../../core/util/onerm.dart';
+import '../../core/util/workout_analysis.dart';
+import '../../shared/date_range_chips.dart';
 import '../../shared/progress_chart.dart';
 import '../../shared/widgets.dart';
 
@@ -22,7 +24,7 @@ class GraphTab extends ConsumerStatefulWidget {
 
 class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClientMixin {
   GraphMetric? _metric;
-  int _days = 0, _atReps = 5;
+  int _months = 0, _atReps = 5;
   bool _currentSeason = true, _estimated = false;
   @override
   bool get wantKeepAlive => true;
@@ -34,7 +36,7 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
     final units = ref.watch(unitsProvider);
     final history = ref.watch(exerciseHistoryProvider(widget.exercise.id));
     final season = ref.watch(seasonsProvider).asData?.value.firstOrNull;
-    final since = _days == 0 ? Stats.allTime : Dates.shift(Dates.today(), -_days + 1);
+    final since = _months == 0 ? Stats.allTime : WorkoutAnalysis.monthsBefore(Dates.today(), _months);
     final cap = ref.watch(settingsProvider).asData?.value.estimated1rmMaxReps ?? 0;
     return history.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -48,133 +50,117 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
           atReps: _atReps,
         ).map((p) => (date: p.date, value: metricDisplayValue(_metric!, p.value, units))).toList();
         final logged = sets.where((s) => !s.isPlanned).toList();
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          children: [
-            DropdownButtonFormField<GraphMetric>(
-              initialValue: _metric,
-              key: ValueKey(_metric),
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Progress metric'),
-              items: [for (final m in metrics) DropdownMenuItem(value: m, child: Text(m.label))],
-              onChanged: (m) => setState(() => _metric = m),
+        return Scaffold(
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          floatingActionButton: AppFloatingActionButton(
+            tooltip: 'Add goal',
+            onPressed: () => showDialog(
+              context: context,
+              builder: (_) => _GoalDialog(exercise: widget.exercise),
             ),
-            if (_metric == GraphMetric.weightAtReps)
-              Row(
-                children: [
-                  const Expanded(child: Text('Rep count')),
-                  IconButton(
-                    tooltip: 'Fewer reps',
-                    onPressed: _atReps <= 1 ? null : () => setState(() => _atReps--),
-                    icon: const Icon(Icons.remove_rounded),
-                  ),
-                  Text('$_atReps'),
-                  IconButton(
-                    tooltip: 'More reps',
-                    onPressed: _atReps >= 100 ? null : () => setState(() => _atReps++),
-                    icon: const Icon(Icons.add_rounded),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 12),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final entry in const {30: '1M', 90: '3M', 180: '6M', 365: '1Y', 0: 'All'}.entries)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(entry.value),
-                        selected: _days == entry.key,
-                        onSelected: (_) => setState(() => _days = entry.key),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: points.isEmpty
-                    ? EmptyState(
-                        icon: Icons.show_chart_rounded,
-                        title: logged.isEmpty ? 'No logged sets yet' : 'No matching data',
-                        message: _metric == GraphMetric.maxSpeed || _metric == GraphMetric.bestPace
-                            ? 'Speed and pace need both distance and time in the same set.'
-                            : _metric == GraphMetric.estimated1rm
-                            ? 'Estimates need a positive weight and reps within your configured limit.'
-                            : _metric == GraphMetric.weightAtReps
-                            ? 'No logged sets with $_atReps reps in this range.'
-                            : 'Only completed sets are shown.',
-                        action: _days == 0
-                            ? null
-                            : TextButton(onPressed: () => setState(() => _days = 0), child: const Text('Show all time')),
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            metricLabel(_metric!, points.last.value, units),
-                            style: Theme.of(context).textTheme.headlineMedium,
-                          ),
-                          Text(
-                            points.last.date,
-                            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                          ),
-                          ProgressChart(height: 200, points: points, label: (v) => metricLabel(_metric!, v, units)),
-                        ],
-                      ),
-              ),
-            ),
-            if (_metric == GraphMetric.estimated1rm)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  'Estimated weight for one rep. Uses sets of up to ${cap == 0 ? 36 : cap} reps.',
-                  style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          ),
+          body: ContentWidth(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
+              children: [
+                DropdownButtonFormField<GraphMetric>(
+                  initialValue: _metric,
+                  key: ValueKey(_metric),
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Progress metric'),
+                  items: [for (final m in metrics) DropdownMenuItem(value: m, child: Text(m.label))],
+                  onChanged: (m) => setState(() => _metric = m),
                 ),
-              ),
-            if (widget.exercise.type.hasWeight && widget.exercise.type.hasReps) ...[
-              const SectionTitle('Rep records'),
-              Wrap(
-                spacing: 8,
-                children: [
-                  ChoiceChip(
-                    label: const Text('Actual'),
-                    selected: !_estimated,
-                    onSelected: (_) => setState(() => _estimated = false),
+                if (_metric == GraphMetric.weightAtReps)
+                  Row(
+                    children: [
+                      const Expanded(child: Text('Rep count')),
+                      IconButton(
+                        tooltip: 'Fewer reps',
+                        onPressed: _atReps <= 1 ? null : () => setState(() => _atReps--),
+                        icon: const Icon(Icons.remove_rounded),
+                      ),
+                      Text('$_atReps'),
+                      IconButton(
+                        tooltip: 'More reps',
+                        onPressed: _atReps >= 100 ? null : () => setState(() => _atReps++),
+                        icon: const Icon(Icons.add_rounded),
+                      ),
+                    ],
                   ),
-                  ChoiceChip(
-                    label: const Text('Estimated'),
-                    selected: _estimated,
-                    onSelected: (_) => setState(() => _estimated = true),
+                const SizedBox(height: 12),
+                DateRangeChips(months: _months, includeYear: true, onChanged: (value) => setState(() => _months = value)),
+                const SizedBox(height: 8),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: points.isEmpty
+                        ? EmptyState(
+                            icon: Icons.show_chart_rounded,
+                            title: logged.isEmpty ? 'No logged sets yet' : 'No matching data',
+                            message: _metric == GraphMetric.maxSpeed || _metric == GraphMetric.bestPace
+                                ? 'Speed and pace need both distance and time in the same set.'
+                                : _metric == GraphMetric.estimated1rm
+                                ? 'Estimates need a positive weight and reps within your configured limit.'
+                                : _metric == GraphMetric.weightAtReps
+                                ? 'No logged sets with $_atReps reps in this range.'
+                                : null,
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                metricLabel(_metric!, points.last.value, units),
+                                style: Theme.of(context).textTheme.headlineMedium,
+                              ),
+                              Text(
+                                points.last.date,
+                                style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                              ),
+                              ProgressChart(height: 200, points: points, label: (v) => metricLabel(_metric!, v, units)),
+                            ],
+                          ),
                   ),
-                  if (season != null)
-                    FilterChip(
-                      label: const Text('Current season'),
-                      selected: _currentSeason,
-                      onSelected: (v) => setState(() => _currentSeason = v),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _records(logged, units, _currentSeason ? season?.date ?? Stats.allTime : Stats.allTime, cap),
-            ],
-            SectionTitle(
-              'Goals',
-              trailing: TextButton.icon(
-                onPressed: () => showDialog(
-                  context: context,
-                  builder: (_) => _GoalDialog(exercise: widget.exercise),
                 ),
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Add'),
-              ),
+                if (_metric == GraphMetric.estimated1rm)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Estimated weight for one rep. Uses sets of up to ${cap == 0 ? 36 : cap} reps.',
+                      style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                if (widget.exercise.type.hasWeight && widget.exercise.type.hasReps) ...[
+                  const SectionTitle('Rep records'),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Actual'),
+                        selected: !_estimated,
+                        onSelected: (_) => setState(() => _estimated = false),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Estimated'),
+                        selected: _estimated,
+                        onSelected: (_) => setState(() => _estimated = true),
+                      ),
+                      if (season != null)
+                        FilterChip(
+                          label: const Text('Current season'),
+                          selected: _currentSeason,
+                          onSelected: (v) => setState(() => _currentSeason = v),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  _records(logged, units, _currentSeason ? season?.date ?? Stats.allTime : Stats.allTime, cap),
+                ],
+                const SectionTitle('Goals'),
+                _goals(logged, units, cap),
+              ],
             ),
-            _goals(logged, units, cap),
-          ],
+          ),
         );
       },
     );

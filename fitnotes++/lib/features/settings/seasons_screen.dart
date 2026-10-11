@@ -10,18 +10,17 @@ class SeasonsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => Scaffold(
     appBar: AppBar(title: const Text('PR seasons')),
+    floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    floatingActionButton: AppFloatingActionButton(
+      tooltip: 'Start a season',
+      onPressed: () => showDialog(context: context, builder: (_) => const _SeasonDialog()),
+    ),
     body: ContentWidth(
       child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
         children: [
           const Text('A season tracks personal records from a chosen date without deleting past workouts.'),
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: () => showDialog(context: context, builder: (_) => const _SeasonDialog()),
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Start a season'),
-          ),
-          const SectionTitle('Seasons'),
+          const SizedBox(height: 12),
           ref
               .watch(seasonsProvider)
               .when(
@@ -38,7 +37,7 @@ class SeasonsScreen extends ConsumerWidget {
                         children: [
                           for (var i = 0; i < seasons.length; i++)
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.only(bottom: 6),
                               child: Card(
                                 child: ListTile(
                                   leading: Icon(i == 0 ? Icons.flag_rounded : Icons.flag_outlined),

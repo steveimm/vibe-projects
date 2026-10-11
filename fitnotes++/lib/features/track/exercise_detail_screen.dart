@@ -36,7 +36,7 @@ class ExerciseDetailScreen extends ConsumerWidget {
           initialIndex: initialTab,
           child: Scaffold(
             appBar: AppBar(
-              title: Text(exercise.name, maxLines: 2, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              title: Text(exercise.name, maxLines: 2, overflow: TextOverflow.ellipsis),
               actions: [
                 IconButton(
                   tooltip: 'Workout exercises',
@@ -72,14 +72,12 @@ class ExerciseDetailScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            body: ContentWidth(
-              child: TabBarView(
-                children: [
-                  _TrackTab(exercise: exercise, date: date),
-                  HistoryTab(exercise: exercise),
-                  GraphTab(exercise: exercise),
-                ],
-              ),
+            body: TabBarView(
+              children: [
+                _TrackTab(exercise: exercise, date: date),
+                ContentWidth(child: HistoryTab(exercise: exercise)),
+                GraphTab(exercise: exercise),
+              ],
             ),
             bottomNavigationBar: const SafeArea(top: false, child: RestTimerBar()),
           ),
@@ -275,34 +273,37 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           ),
       ],
     );
-    final actions = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Tooltip(
-            message: 'Rest timer',
-            child: TextButton.icon(
-              onPressed: () => showRestTimerSettings(context, ref, exercise: widget.exercise),
-              icon: const Icon(Icons.timer_outlined, size: 20),
-              label: Text(Fmt.duration(widget.exercise.defaultRestTimeSeconds ?? settings?.restTimerSeconds ?? 60)),
-            ),
+    final restControl = Align(
+      alignment: Alignment.centerLeft,
+      child: Semantics(
+        container: true,
+        child: Tooltip(
+          message: 'Rest timer',
+          child: TextButton.icon(
+            onPressed: () => showRestTimerSettings(context, ref, exercise: widget.exercise),
+            icon: const Icon(Icons.timer_outlined, size: 20),
+            label: Text(Fmt.duration(widget.exercise.defaultRestTimeSeconds ?? settings?.restTimerSeconds ?? 60)),
           ),
-          const Spacer(),
-          if (_editing != null) ...[
-            IconButton(tooltip: 'Cancel editing', onPressed: _saving ? null : _cancelEdit, icon: const Icon(Icons.close_rounded)),
-            const SizedBox(width: 8),
-          ],
-          SizedBox.square(
-            dimension: 48,
-            child: IconButton.filled(
-              tooltip: _editing == null ? 'Log set' : 'Update set',
-              style: IconButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              onPressed: _saving || settings == null || widget.exercise.archived ? null : () => _save(multiplier),
-              icon: Icon(_editing == null ? Icons.add_rounded : Icons.check_rounded, size: 28),
-            ),
-          ),
-        ],
+        ),
       ),
+    );
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (_editing != null) ...[
+          IconButton.filledTonal(
+            tooltip: 'Cancel editing',
+            onPressed: _saving ? null : _cancelEdit,
+            icon: const Icon(Icons.close_rounded),
+          ),
+          const SizedBox(width: 8),
+        ],
+        AppFloatingActionButton(
+          tooltip: _editing == null ? 'Log set' : 'Update set',
+          onPressed: _saving || settings == null || widget.exercise.archived ? null : () => _save(multiplier),
+          icon: _editing == null ? Icons.add_rounded : Icons.check_rounded,
+        ),
+      ],
     );
     Widget rows({bool shrinkWrap = false}) => sets.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -312,33 +313,40 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
         controller: shrinkWrap ? null : _scroll,
         shrinkWrap: shrinkWrap,
         physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
-        padding: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.only(bottom: 88),
         itemCount: items.length,
         separatorBuilder: (_, _) => const SizedBox(height: 4),
         itemBuilder: (_, i) => _setCard(items[i], i, prs, units, settings?.markSetsComplete ?? false),
       ),
     );
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxHeight < 160) {
-            return SingleChildScrollView(
-              key: const ValueKey('compact-log-scroll'),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [editor, actions, rows(shrinkWrap: true)]),
-            );
-          }
-          return Column(
-            children: [
-              ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: constraints.maxHeight - 120),
-                child: SingleChildScrollView(child: editor),
-              ),
-              actions,
-              Expanded(child: rows()),
-            ],
-          );
-        },
+    return Scaffold(
+      resizeToAvoidBottomInset: false,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: actions,
+      body: ContentWidth(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxHeight < 160) {
+                return SingleChildScrollView(
+                  key: const ValueKey('compact-log-scroll'),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [editor, restControl, rows(shrinkWrap: true)]),
+                );
+              }
+              return Column(
+                children: [
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: constraints.maxHeight - 104),
+                    child: SingleChildScrollView(child: editor),
+                  ),
+                  restControl,
+                  Expanded(child: rows()),
+                ],
+              );
+            },
+          ),
+        ),
       ),
     );
   }

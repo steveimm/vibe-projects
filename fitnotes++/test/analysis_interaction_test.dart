@@ -68,7 +68,16 @@ void main() {
     expect(tester.widget<WorkoutChart>(find.byType(WorkoutChart)).points.map((p) => p.value), [200, 960, 730]);
     expect(tester.widget<PieChart>(find.byType(PieChart)).data.sections.map((s) => s.value), [4, 1]);
     expect(tester.getBottomRight(find.byType(PieChart)).dy, lessThan(850));
-    for (final entry in {'3m': 4, '6m': 5, 'All time': 6}.entries) {
+    final chipSurfaces = [
+      for (final label in ['1m', '3m', '6m', 'All', 'Custom'])
+        find.descendant(of: find.widgetWithText(ChoiceChip, label), matching: find.byType(Material)).first,
+    ];
+    final chipSize = tester.getSize(chipSurfaces.first);
+    for (final surface in chipSurfaces) {
+      expect(tester.getSize(surface).width, closeTo(chipSize.width, 0.1));
+      expect(tester.getSize(surface).height, closeTo(chipSize.height, 0.1));
+    }
+    for (final entry in {'3m': 4, '6m': 5, 'All': 6}.entries) {
       await tester.tap(find.text(entry.key));
       await flush(tester);
       expect(tester.widget<WorkoutChart>(find.byType(WorkoutChart)).points.length, entry.value);
@@ -78,7 +87,7 @@ void main() {
     final metric = find.byType(DropdownButtonFormField<WorkoutMetric>);
     await tester.tap(metric);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Sets per workout').last);
+    await tester.tap(find.text('Sets').last);
     await flush(tester);
     expect(tester.widget<WorkoutChart>(find.byType(WorkoutChart)).points.map((p) => p.value), [1, 2, 2]);
     await tester.tap(metric);
@@ -88,7 +97,7 @@ void main() {
     expect(tester.widget<WorkoutChart>(find.byType(WorkoutChart)).points.single.value, 20);
     await tester.tap(metric);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Volume per workout').last);
+    await tester.tap(find.text('Volume').last);
     await flush(tester);
     await tester.tap(find.byTooltip('Custom range'));
     await tester.pumpAndSettle();
@@ -108,6 +117,14 @@ void main() {
     expect(tester.widget<PieChart>(find.byType(PieChart)).data.sections.map((s) => s.value), [2, 1]);
     tester.platformDispatcher.textScaleFactorTestValue = 1.6;
     await flush(tester);
+    final largeChips = find.byType(ChoiceChip);
+    final largeHeight = tester.getSize(find.descendant(of: largeChips.first, matching: find.byType(Material)).first).height;
+    for (var i = 0; i < 5; i++) {
+      expect(
+        tester.getSize(find.descendant(of: largeChips.at(i), matching: find.byType(Material)).first).height,
+        closeTo(largeHeight, 0.1),
+      );
+    }
     final semantics = tester.ensureSemantics();
     expect(find.bySemanticsLabel('Custom range'), findsOneWidget);
     semantics.dispose();

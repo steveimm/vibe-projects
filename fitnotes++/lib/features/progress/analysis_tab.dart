@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../app/theme.dart';
 import '../../core/database/database.dart';
 import '../../core/providers.dart';
 import '../../core/util/dates.dart';
 import '../../core/util/format.dart';
 import '../../core/util/workout_analysis.dart';
+import '../../shared/date_range_chips.dart';
 import '../../shared/widgets.dart';
 import '../../shared/workout_chart.dart';
 
@@ -33,7 +33,6 @@ class _AnalysisTabState extends ConsumerState<AnalysisTab> with AutomaticKeepAli
     final sessions = ref.watch(workoutSessionsProvider).asData?.value ?? <WorkoutSession>[];
     final exercises = {for (final e in ref.watch(allExercisesProvider).asData?.value ?? <Exercise>[]) e.id: e};
     final categories = {for (final c in ref.watch(categoriesProvider).asData?.value ?? <Category>[]) c.id: c};
-    final colors = Theme.of(context).colorScheme;
     return all.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => ErrorState(onRetry: () => ref.invalidate(allLogProvider)),
@@ -65,43 +64,10 @@ class _AnalysisTabState extends ConsumerState<AnalysisTab> with AutomaticKeepAli
         return ListView(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
           children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 330 || MediaQuery.textScalerOf(context).scale(1) > 1.1;
-                return Row(
-                  children: [
-                    for (final option in const {1: '1 month', 3: '3 months', 6: '6 months', 0: 'All time', -1: 'Custom'}.entries)
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          child: Tooltip(
-                            message: option.key == -1 ? 'Custom range' : option.value,
-                            excludeFromSemantics: true,
-                            child: ChoiceChip(
-                              padding: EdgeInsets.zero,
-                              labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-                              showCheckmark: false,
-                              selected: _months == option.key,
-                              selectedColor: AppTheme.selectionColor(colors),
-                              side: BorderSide(color: _months == option.key ? colors.primary : colors.outlineVariant),
-                              label: option.key == -1 && compact
-                                  ? const Icon(Icons.date_range_rounded, size: 20, semanticLabel: 'Custom range')
-                                  : Text(
-                                      option.key > 0
-                                          ? '${option.key}m'
-                                          : compact && option.key == 0
-                                          ? 'All'
-                                          : option.value,
-                                      maxLines: 1,
-                                    ),
-                              onSelected: (_) => option.key == -1 ? _pickRange(from, to) : setState(() => _months = option.key),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
+            DateRangeChips(
+              months: _months,
+              onChanged: (value) => setState(() => _months = value),
+              onCustom: () => _pickRange(from, to),
             ),
             DropdownButtonFormField<WorkoutMetric>(
               key: ValueKey(_metric),
@@ -178,21 +144,6 @@ class _AnalysisTabState extends ConsumerState<AnalysisTab> with AutomaticKeepAli
                                   padding: const EdgeInsets.only(left: 8),
                                   child: Text(label, style: Theme.of(context).textTheme.bodySmall),
                                 ),
-                              if (points.length > 1)
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 8),
-                                  child: Tooltip(
-                                    message: 'Linear trend over the selected dates',
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text('┄', style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12)),
-                                        const SizedBox(width: 4),
-                                        Text('Trend', style: Theme.of(context).textTheme.bodySmall),
-                                      ],
-                                    ),
-                                  ),
-                                ),
                             ],
                           ),
                         ),
@@ -259,7 +210,7 @@ class _BalancePie extends StatelessWidget {
     final entries = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     final total = entries.fold<int>(0, (sum, e) => sum + e.value);
     final pie = SizedBox.square(
-      dimension: 132,
+      dimension: 160,
       child: PieChart(
         duration: Duration.zero,
         PieChartData(
@@ -271,17 +222,9 @@ class _BalancePie extends StatelessWidget {
             for (final entry in entries)
               PieChartSectionData(
                 value: entry.value.toDouble(),
-                radius: 62,
+                radius: 76,
                 color: Color(categories[entry.key]?.colorArgb ?? 0xFF7F8C8D),
-                title: '${(entry.value / total * 100).round()}%',
-                showTitle: entry.value / total >= 0.08,
-                titleStyle: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(categories[entry.key]?.colorArgb ?? 0xFF7F8C8D).computeLuminance() > 0.18
-                      ? Colors.black
-                      : Colors.white,
-                ),
+                showTitle: false,
               ),
           ],
         ),
@@ -292,7 +235,7 @@ class _BalancePie extends StatelessWidget {
       children: [
         for (final entry in entries)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
+            padding: const EdgeInsets.symmetric(vertical: 2),
             child: Row(
               children: [
                 Container(
@@ -322,16 +265,13 @@ class _BalancePie extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: LayoutBuilder(
-          builder: (context, constraints) => constraints.maxWidth < 300 || MediaQuery.textScalerOf(context).scale(1) > 1.4
-              ? Column(children: [pie, const SizedBox(height: 8), legend])
-              : Row(
-                  children: [
-                    pie,
-                    const SizedBox(width: 12),
-                    Expanded(child: legend),
-                  ],
-                ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(child: pie),
+            const SizedBox(height: 8),
+            legend,
+          ],
         ),
       ),
     );

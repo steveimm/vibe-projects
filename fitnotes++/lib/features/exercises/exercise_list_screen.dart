@@ -44,7 +44,6 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
       appBar: AppBar(
         title: Text(widget.pickMode ? 'Choose an exercise' : 'Exercises'),
         actions: [
-          IconButton(tooltip: 'Create exercise', onPressed: _create, icon: const Icon(Icons.add_rounded)),
           if (!widget.pickMode)
             AppMenuButton<String>(
               tooltip: 'Library options',
@@ -65,6 +64,8 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
             ),
         ],
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: AppFloatingActionButton(tooltip: 'Create exercise', onPressed: _create),
       body: ContentWidth(
         child: Column(
           children: [
@@ -124,7 +125,7 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
             ),
             if (_archived)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                 child: Text(
                   'Archived exercises remain in your history. Restore one to log it again.',
                   style: TextStyle(color: colors.onSurfaceVariant),
@@ -151,21 +152,11 @@ class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
                             : _favourites
                             ? 'Tap the star beside an exercise to add it to favorites.'
                             : 'Try a different search or add your own exercise.',
-                        action: _archived
-                            ? TextButton(
-                                onPressed: () => setState(() => _archived = false),
-                                child: const Text('Back to active exercises'),
-                              )
-                            : TextButton.icon(
-                                onPressed: _create,
-                                icon: const Icon(Icons.add_rounded),
-                                label: const Text('Create exercise'),
-                              ),
                       ),
                     );
                   }
                   return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
                     itemCount: list.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 4),
                     itemBuilder: (_, i) {

@@ -55,16 +55,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: _selecting
-          ? null
-          : FloatingActionButton(
-              tooltip: 'New routine',
-              onPressed: _create,
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.add_rounded, size: 28),
-            ),
+      floatingActionButton: _selecting ? null : AppFloatingActionButton(tooltip: 'New routine', onPressed: _create),
       body: ContentWidth(
         child: ref
             .watch(routinesProvider)

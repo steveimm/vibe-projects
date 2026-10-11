@@ -41,7 +41,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     final toolbar = find.byKey(const ValueKey('workout-list-toolbar'));
-    expect(tester.getSize(toolbar).height, 64);
+    expect(tester.getSize(toolbar).height, 63);
     expect(find.byTooltip('Add exercise').hitTestable(), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
@@ -193,17 +193,24 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        final finish = find.byTooltip('Finish').evaluate().isNotEmpty
-            ? find.byTooltip('Finish')
-            : find.widgetWithText(TextButton, 'Finish');
         final pause = find.byTooltip('Pause').evaluate().isNotEmpty
             ? find.byTooltip('Pause')
             : find.widgetWithText(TextButton, 'Pause');
         final duration = find.byKey(const ValueKey('workout-duration'));
         expect(tester.getCenter(find.byTooltip('Workout timer options')).dy, closeTo(tester.getCenter(duration).dy, 0.1));
-        expect(tester.getCenter(finish).dy, closeTo(tester.getCenter(duration).dy, 0.1));
+        expect(tester.getCenter(find.byKey(const ValueKey('workout-volume'))).dy, closeTo(tester.getCenter(duration).dy, 0.1));
+        expect(find.text('Sets'), findsNothing);
+        if (find.byTooltip('Finish').evaluate().isNotEmpty) {
+          expect(tester.getCenter(find.byTooltip('Finish')).dy, closeTo(tester.getCenter(duration).dy, 0.1));
+        } else {
+          await tester.tap(find.byTooltip('Workout timer options'));
+          await tester.pumpAndSettle();
+          expect(find.text('Finish'), findsOneWidget);
+          await tester.binding.handlePopRoute();
+          await tester.pumpAndSettle();
+        }
         expect(tester.getCenter(pause).dy, closeTo(tester.getCenter(duration).dy, 0.1));
-        if (scale == 1) expect(tester.getSize(find.byType(WorkoutSessionCard)).height, lessThan(160));
+        if (scale == 1) expect(tester.getSize(find.byType(WorkoutSessionCard)).height, lessThan(100));
         expect(tester.takeException(), isNull);
       }
     }

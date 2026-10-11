@@ -51,6 +51,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         if (!didPop && _editing) _setEditing(false);
       },
       child: Scaffold(
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButton: _editing
+            ? null
+            : AppFloatingActionButton(tooltip: 'Add exercise', onPressed: () => context.push('/pick-exercise?date=$date')),
         appBar: AppBar(
           title: Text(
             date == Dates.today()
@@ -98,7 +102,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                 child: IgnorePointer(
                   ignoring: _editing,
                   child: ExcludeSemantics(
@@ -228,12 +232,12 @@ class _DayViewState extends ConsumerState<_DayView> {
         if (listEquals(_order, groups.keys.toList())) _order = null;
         final ids = {...?_order, ...groups.keys}.where(groups.containsKey).toList();
         final scale = MediaQuery.textScalerOf(context);
-        final toolbarHeight = (16 + (scale.scale(16) * 1.25).clamp(48, double.infinity)).ceilToDouble();
+        final toolbarHeight = (8 + (scale.scale(16) * 1.25 + scale.scale(12) * 1.25).clamp(48, double.infinity)).ceilToDouble();
         return CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                 child: WorkoutSessionCard(date: date, sets: sets, enabled: !widget.editing),
               ),
             ),
@@ -242,15 +246,15 @@ class _DayViewState extends ConsumerState<_DayView> {
               delegate: _WorkoutToolbar(
                 height: toolbarHeight,
                 exerciseCount: groups.length,
+                setCount: sets.where((s) => !s.set.isPlanned).length,
                 editing: widget.editing,
                 selectedCount: _selected.length,
                 onDelete: _savingOrder || _selected.isEmpty ? null : _removeSelected,
                 onDone: () => widget.onEditingChanged(false),
-                onAdd: () => context.push('/pick-exercise?date=$date'),
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               sliver: SliverReorderableList(
                 itemCount: ids.length,
                 onReorderStart: (index) {
@@ -284,7 +288,7 @@ class _DayViewState extends ConsumerState<_DayView> {
             if (note != null)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                   child: Card(
                     child: ListTile(
                       enabled: !widget.editing,
@@ -300,6 +304,7 @@ class _DayViewState extends ConsumerState<_DayView> {
                   ),
                 ),
               ),
+            const SliverToBoxAdapter(child: SizedBox(height: 80)),
           ],
         );
       },
@@ -322,18 +327,21 @@ class _DayViewState extends ConsumerState<_DayView> {
         ? Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Checkbox(
-                value: _selected.contains(id),
-                onChanged: _savingOrder
-                    ? null
-                    : (value) => setState(() {
-                        if (value == true) {
-                          _selected.add(id);
-                        } else {
-                          _selected.remove(id);
-                        }
-                      }),
-                semanticLabel: 'Select ${sets.first.exerciseName}',
+              SizedBox.square(
+                dimension: 40,
+                child: Checkbox(
+                  value: _selected.contains(id),
+                  onChanged: _savingOrder
+                      ? null
+                      : (value) => setState(() {
+                          if (value == true) {
+                            _selected.add(id);
+                          } else {
+                            _selected.remove(id);
+                          }
+                        }),
+                  semanticLabel: 'Select ${sets.first.exerciseName}',
+                ),
               ),
               Tooltip(
                 message: 'Drag up or down',
@@ -342,7 +350,7 @@ class _DayViewState extends ConsumerState<_DayView> {
                   child: ReorderableDragStartListener(
                     index: index,
                     enabled: !_savingOrder,
-                    child: const SizedBox(width: 40, height: 48, child: Icon(Icons.swap_vert_rounded)),
+                    child: const SizedBox(width: 40, height: 40, child: Icon(Icons.swap_vert_rounded)),
                   ),
                 ),
               ),
@@ -397,17 +405,17 @@ class _WorkoutToolbar extends SliverPersistentHeaderDelegate {
   const _WorkoutToolbar({
     required this.height,
     required this.exerciseCount,
+    required this.setCount,
     required this.editing,
     required this.selectedCount,
     required this.onDelete,
     required this.onDone,
-    required this.onAdd,
   });
   final double height;
-  final int exerciseCount, selectedCount;
+  final int exerciseCount, setCount, selectedCount;
   final VoidCallback? onDelete;
   final bool editing;
-  final VoidCallback onDone, onAdd;
+  final VoidCallback onDone;
 
   @override
   double get minExtent => height;
@@ -426,15 +434,22 @@ class _WorkoutToolbar extends SliverPersistentHeaderDelegate {
         color: theme.colorScheme.surface,
         elevation: overlapsContent ? 2 : 0,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           child: Row(
             children: [
               Expanded(
-                child: Text(
-                  editing ? '$selectedCount selected' : Fmt.count(exerciseCount, 'exercise'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium?.copyWith(height: 1.25),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      editing ? '$selectedCount selected' : Fmt.count(exerciseCount, 'exercise'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(height: 1.25),
+                    ),
+                    Text(Fmt.count(setCount, 'set'), style: theme.textTheme.bodySmall),
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
@@ -446,8 +461,7 @@ class _WorkoutToolbar extends SliverPersistentHeaderDelegate {
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(tooltip: 'Done', onPressed: onDone, icon: const Icon(Icons.check_rounded)),
-              ] else
-                IconButton.filled(tooltip: 'Add exercise', onPressed: onAdd, icon: const Icon(Icons.add_rounded)),
+              ],
             ],
           ),
         ),
@@ -496,7 +510,7 @@ class _ExerciseCard extends ConsumerWidget {
         child: InkWell(
           onTap: editing ? onSelect : () => context.push('/log/$exerciseId?date=$date'),
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -505,15 +519,15 @@ class _ExerciseCard extends ConsumerWidget {
                   children: [
                     Container(
                       width: 5,
-                      height: 34,
+                      height: 28,
                       decoration: BoxDecoration(color: Color(first.colorArgb), borderRadius: BorderRadius.circular(4)),
                     ),
                     const SizedBox(width: 12),
                     Expanded(child: Text(first.exerciseName, style: Theme.of(context).textTheme.titleMedium)),
                     trailing ??
                         const SizedBox(
-                          width: 88,
-                          height: 48,
+                          width: 80,
+                          height: 40,
                           child: Align(alignment: Alignment.centerRight, child: Icon(Icons.chevron_right_rounded, size: 20)),
                         ),
                   ],
@@ -526,10 +540,9 @@ class _ExerciseCard extends ConsumerWidget {
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.primary),
                     ),
                   ),
-                const SizedBox(height: 12),
                 for (var i = 0; i < sets.length.clamp(0, 5); i++)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    padding: const EdgeInsets.symmetric(vertical: 3),
                     child: Row(
                       children: [
                         Padding(

@@ -53,6 +53,7 @@ class AppTheme {
         iconTheme: IconThemeData(color: scheme.onSurface),
       ),
       cardTheme: CardThemeData(
+        clipBehavior: Clip.antiAlias,
         color: scheme.surfaceContainerLow,
         elevation: 0,
         margin: EdgeInsets.zero,
@@ -60,6 +61,13 @@ class AppTheme {
           borderRadius: BorderRadius.circular(18),
           side: BorderSide(color: scheme.outlineVariant),
         ),
+      ),
+      listTileTheme: ListTileThemeData(
+        titleTextStyle: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+        subtitleTextStyle: text.bodySmall,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        minTileHeight: 56,
+        minVerticalPadding: 4,
       ),
       inputDecorationTheme: InputDecorationThemeData(
         filled: true,
@@ -85,6 +93,14 @@ class AppTheme {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: scheme.primary,
+        foregroundColor: scheme.onPrimary,
+        shape: const CircleBorder(),
+        elevation: 2,
+        highlightElevation: 4,
+        iconSize: 28,
+      ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(48, 40),
@@ -109,6 +125,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         side: BorderSide(color: scheme.outlineVariant),
         showCheckmark: false,
+        selectedColor: selectionColor(scheme),
       ),
       dividerTheme: DividerThemeData(color: scheme.outlineVariant, thickness: 1, space: 1),
       snackBarTheme: SnackBarThemeData(

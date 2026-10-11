@@ -37,72 +37,77 @@ class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClient
             (groups[record.typeId] ??= []).add(record);
           }
           final ordered = [...types.where((t) => groups.containsKey(t.id)), ...types.where((t) => !groups.containsKey(t.id))];
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            children: [
-              for (final type in ordered)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Card(
-                    child: Column(
-                      children: [
-                        Row(
+          return Scaffold(
+            floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+            floatingActionButton: AppFloatingActionButton(tooltip: 'Custom measurement', onPressed: _addType),
+            body: ContentWidth(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
+                children: [
+                  for (final type in ordered)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Card(
+                        child: Column(
                           children: [
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: InkWell(
-                                onTap: () => _history(type),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(type.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                      if (groups[type.id]?.firstOrNull case final latest?)
-                                        Text(
-                                          '${Fmt.number(_display(latest.value, type.unit, units))} ${_unit(type.unit, units)} · ${DateFormat('d MMM yyyy').format(Dates.parse(latest.date))}',
-                                          style: Theme.of(context).textTheme.bodySmall,
-                                        ),
-                                    ],
+                            Row(
+                              children: [
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () => _history(type),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 8),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(type.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                          if (groups[type.id]?.firstOrNull case final latest?)
+                                            Text(
+                                              '${Fmt.number(_display(latest.value, type.unit, units))} ${_unit(type.unit, units)} · ${DateFormat('d MMM yyyy').format(Dates.parse(latest.date))}',
+                                              style: Theme.of(context).textTheme.bodySmall,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
-                            IconButton(
-                              tooltip: 'Record ${type.name}',
-                              onPressed: () => _record(type, groups[type.id] ?? []),
-                              icon: const Icon(Icons.add_rounded),
-                            ),
-                            AppMenuButton<String>(
-                              tooltip: '${type.name} options',
-                              onSelected: (action) => _typeAction(type, action),
-                              itemBuilder: (_) => const [
-                                PopupMenuItem(value: 'history', child: Text('History')),
-                                PopupMenuItem(value: 'rename', child: Text('Rename')),
-                                PopupMenuItem(value: 'delete', child: Text('Delete measurement type')),
+                                IconButton(
+                                  tooltip: 'Record ${type.name}',
+                                  onPressed: () => _record(type, groups[type.id] ?? []),
+                                  icon: const Icon(Icons.add_rounded),
+                                ),
+                                AppMenuButton<String>(
+                                  tooltip: '${type.name} options',
+                                  onSelected: (action) => _typeAction(type, action),
+                                  itemBuilder: (_) => const [
+                                    PopupMenuItem(value: 'history', child: Text('History')),
+                                    PopupMenuItem(value: 'rename', child: Text('Rename')),
+                                    PopupMenuItem(value: 'delete', child: Text('Delete measurement type')),
+                                  ],
+                                ),
                               ],
                             ),
+                            if (groups[type.id] case final records?)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+                                child: ProgressChart(
+                                  key: ValueKey('measurement-chart-${type.id}'),
+                                  height: 140,
+                                  zeroBased: false,
+                                  points: records.reversed
+                                      .map((r) => (date: r.date, value: _display(r.value, type.unit, units)))
+                                      .toList(),
+                                  label: (v) => '${Fmt.number(v)} ${_unit(type.unit, units)}',
+                                ),
+                              ),
                           ],
                         ),
-                        if (groups[type.id] case final records?)
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
-                            child: ProgressChart(
-                              key: ValueKey('measurement-chart-${type.id}'),
-                              height: 140,
-                              zeroBased: false,
-                              points: records.reversed
-                                  .map((r) => (date: r.date, value: _display(r.value, type.unit, units)))
-                                  .toList(),
-                              label: (v) => '${Fmt.number(v)} ${_unit(type.unit, units)}',
-                            ),
-                          ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              TextButton.icon(onPressed: _addType, icon: const Icon(Icons.add_rounded), label: const Text('Custom measurement')),
-            ],
+                ],
+              ),
+            ),
           );
         },
       ),

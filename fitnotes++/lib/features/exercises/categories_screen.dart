@@ -26,10 +26,9 @@ class CategoriesScreen extends ConsumerWidget {
   const CategoriesScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Categories'),
-      actions: [IconButton(tooltip: 'Add category', onPressed: () => editCategory(context), icon: const Icon(Icons.add_rounded))],
-    ),
+    appBar: AppBar(title: const Text('Categories')),
+    floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    floatingActionButton: AppFloatingActionButton(tooltip: 'Add category', onPressed: () => editCategory(context)),
     body: ContentWidth(
       child: ref
           .watch(categoriesProvider)
@@ -37,9 +36,9 @@ class CategoriesScreen extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, _) => ErrorState(onRetry: () => ref.invalidate(categoriesProvider)),
             data: (categories) => ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
               itemCount: categories.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              separatorBuilder: (_, _) => const SizedBox(height: 6),
               itemBuilder: (_, i) {
                 final c = categories[i];
                 return Card(

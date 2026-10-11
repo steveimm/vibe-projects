@@ -47,151 +47,153 @@ class _RoutineDetailScreenState extends ConsumerState<RoutineDetailScreen> {
             ),
         ],
       ),
-      body: ContentWidth(
-        child: days.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, _) => ErrorState(onRetry: () => ref.invalidate(routineDaysProvider(widget.id))),
-          data: (days) {
-            if (!days.any((d) => d.id == _dayId)) _dayId = days.firstOrNull?.id;
-            final sets = _dayId == null ? null : ref.watch(routineSetsProvider(_dayId!));
-            final items = sets?.asData?.value ?? <RoutineSet>[];
-            final groups = <int, List<RoutineSet>>{};
-            for (final set in items) {
-              (groups[set.exerciseId] ??= []).add(set);
-            }
-            if (listEquals(_order, groups.keys.toList())) _order = null;
-            final ids = {...?_order, ...groups.keys}.where(groups.containsKey).toList();
-            return Column(
-              children: [
-                if (routine != null && routine.notes.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: InkWell(
-                        onTap: () => _routineAction(routine, 'notes'),
-                        child: Text(routine.notes, maxLines: 2, overflow: TextOverflow.ellipsis),
+      body: days.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, _) => ErrorState(onRetry: () => ref.invalidate(routineDaysProvider(widget.id))),
+        data: (days) {
+          if (!days.any((d) => d.id == _dayId)) _dayId = days.firstOrNull?.id;
+          final sets = _dayId == null ? null : ref.watch(routineSetsProvider(_dayId!));
+          final items = sets?.asData?.value ?? <RoutineSet>[];
+          final groups = <int, List<RoutineSet>>{};
+          for (final set in items) {
+            (groups[set.exerciseId] ??= []).add(set);
+          }
+          if (listEquals(_order, groups.keys.toList())) _order = null;
+          final ids = {...?_order, ...groups.keys}.where(groups.containsKey).toList();
+          return Scaffold(
+            floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+            floatingActionButton: AppFloatingActionButton(
+              tooltip: 'Add exercise',
+              onPressed: _dayId == null || _logging || _reordering ? null : _addExercise,
+            ),
+            bottomNavigationBar: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: items.isEmpty || _logging || _reordering ? null : () => _log(date),
+                  icon: _logging
+                      ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.playlist_add_rounded),
+                  label: Text(
+                    date == Dates.today() ? 'Add to today' : 'Add to ${DateFormat('d MMM yyyy').format(Dates.parse(date))}',
+                  ),
+                ),
+              ),
+            ),
+            body: ContentWidth(
+              child: Column(
+                children: [
+                  if (routine != null && routine.notes.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: InkWell(
+                          onTap: () => _routineAction(routine, 'notes'),
+                          child: Text(routine.notes, maxLines: 2, overflow: TextOverflow.ellipsis),
+                        ),
                       ),
                     ),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              for (final day in days)
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 6),
-                                  child: ChoiceChip(
-                                    label: Text(day.name),
-                                    selected: day.id == _dayId,
-                                    selectedColor: AppTheme.selectionColor(Theme.of(context).colorScheme),
-                                    onSelected: _logging || _reordering
-                                        ? null
-                                        : (_) => setState(() {
-                                            _dayId = day.id;
-                                            _order = null;
-                                          }),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                for (final day in days)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 6),
+                                    child: ChoiceChip(
+                                      label: Text(day.name),
+                                      selected: day.id == _dayId,
+                                      selectedColor: AppTheme.selectionColor(Theme.of(context).colorScheme),
+                                      onSelected: _logging || _reordering
+                                          ? null
+                                          : (_) => setState(() {
+                                              _dayId = day.id;
+                                              _order = null;
+                                            }),
+                                    ),
                                   ),
-                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Add day',
+                          onPressed: _logging || _reordering ? null : _addDay,
+                          icon: const Icon(Icons.add_rounded),
+                        ),
+                        if (_dayId != null)
+                          AppMenuButton<String>(
+                            tooltip: 'Day options',
+                            enabled: !_logging && !_reordering,
+                            onSelected: (value) => _dayAction(days.firstWhere((d) => d.id == _dayId), value),
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(value: 'rename', child: Text('Rename day')),
+                              PopupMenuItem(value: 'delete', child: Text('Delete day')),
                             ],
                           ),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Add day',
-                        onPressed: _logging || _reordering ? null : _addDay,
-                        icon: const Icon(Icons.add_rounded),
-                      ),
-                      if (_dayId != null)
-                        AppMenuButton<String>(
-                          tooltip: 'Day options',
-                          enabled: !_logging && !_reordering,
-                          onSelected: (value) => _dayAction(days.firstWhere((d) => d.id == _dayId), value),
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(value: 'rename', child: Text('Rename day')),
-                            PopupMenuItem(value: 'delete', child: Text('Delete day')),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${Fmt.count(groups.length, 'exercise')} · ${Fmt.count(items.length, 'set')}',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ),
-                      IconButton.filled(
-                        tooltip: 'Add exercise',
-                        onPressed: _dayId == null || _logging || _reordering ? null : _addExercise,
-                        icon: const Icon(Icons.add_rounded),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: sets?.isLoading == true
-                      ? const Center(child: CircularProgressIndicator())
-                      : sets?.hasError == true
-                      ? ErrorState(onRetry: () => ref.invalidate(routineSetsProvider(_dayId!)))
-                      : ReorderableListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          buildDefaultDragHandles: false,
-                          itemCount: ids.length,
-                          onReorderItem: (from, to) => _reorder(groups, ids, from, to),
-                          proxyDecorator: (_, index, animation) => AnimatedBuilder(
-                            animation: animation,
-                            builder: (_, _) => _exerciseCard(
-                              exercises[ids[index]],
-                              groups[ids[index]]!,
-                              index,
-                              ids,
-                              groups,
-                              date,
-                              dragging: true,
-                              elevation: animation.value * 4,
-                            ),
-                          ),
-                          itemBuilder: (_, i) => Padding(
-                            key: ValueKey(ids[i]),
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: ReorderableDelayedDragStartListener(
-                              index: i,
-                              enabled: !_logging && !_reordering,
-                              child: _exerciseCard(exercises[ids[i]], groups[ids[i]]!, i, ids, groups, date),
-                            ),
-                          ),
-                        ),
-                ),
-                SafeArea(
-                  top: false,
-                  minimum: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: items.isEmpty || _logging || _reordering ? null : () => _log(date),
-                      icon: _logging
-                          ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.playlist_add_rounded),
-                      label: Text(
-                        date == Dates.today() ? 'Add to today' : 'Add to ${DateFormat('d MMM yyyy').format(Dates.parse(date))}',
-                      ),
+                      ],
                     ),
                   ),
-                ),
-              ],
-            );
-          },
-        ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${Fmt.count(groups.length, 'exercise')} · ${Fmt.count(items.length, 'set')}',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: sets?.isLoading == true
+                        ? const Center(child: CircularProgressIndicator())
+                        : sets?.hasError == true
+                        ? ErrorState(onRetry: () => ref.invalidate(routineSetsProvider(_dayId!)))
+                        : ReorderableListView.builder(
+                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 88),
+                            buildDefaultDragHandles: false,
+                            itemCount: ids.length,
+                            onReorderItem: (from, to) => _reorder(groups, ids, from, to),
+                            proxyDecorator: (_, index, animation) => AnimatedBuilder(
+                              animation: animation,
+                              builder: (_, _) => _exerciseCard(
+                                exercises[ids[index]],
+                                groups[ids[index]]!,
+                                index,
+                                ids,
+                                groups,
+                                date,
+                                dragging: true,
+                                elevation: animation.value * 4,
+                              ),
+                            ),
+                            itemBuilder: (_, i) => Padding(
+                              key: ValueKey(ids[i]),
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: ReorderableDelayedDragStartListener(
+                                index: i,
+                                enabled: !_logging && !_reordering,
+                                child: _exerciseCard(exercises[ids[i]], groups[ids[i]]!, i, ids, groups, date),
+                              ),
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

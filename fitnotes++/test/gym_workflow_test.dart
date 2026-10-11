@@ -167,9 +167,10 @@ void main() {
       ),
     );
     await _flush(tester);
-    for (final label in ['1m', '3m', '6m', 'All time', 'Custom']) {
+    for (final label in ['1m', '3m', '6m', 'All']) {
       expect(tester.getCenter(find.text(label)).dy, tester.getCenter(find.text('1m')).dy);
     }
+    expect(tester.getCenter(find.byTooltip('Custom range')).dy, tester.getCenter(find.text('1m')).dy);
     tester.platformDispatcher.textScaleFactorTestValue = 2;
     await tester.pump();
     expect(find.text('All'), findsOneWidget);

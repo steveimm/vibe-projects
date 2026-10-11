@@ -1,5 +1,21 @@
 import 'package:flutter/material.dart';
 
+class AppFloatingActionButton extends StatelessWidget {
+  const AppFloatingActionButton({super.key, required this.tooltip, required this.onPressed, this.icon = Icons.add_rounded});
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final IconData icon;
+  @override
+  Widget build(BuildContext context) => FloatingActionButton(
+    heroTag: null,
+    tooltip: tooltip,
+    onPressed: onPressed,
+    backgroundColor: onPressed == null ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12) : null,
+    foregroundColor: onPressed == null ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38) : null,
+    child: Icon(icon),
+  );
+}
+
 class AppDialog extends AlertDialog {
   const AppDialog({
     super.key,
