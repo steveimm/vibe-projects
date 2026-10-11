@@ -20,10 +20,17 @@ import 'graph_tab.dart';
 import 'history_tab.dart';
 
 class ExerciseDetailScreen extends ConsumerWidget {
-  const ExerciseDetailScreen({super.key, required this.exerciseId, required this.date, this.initialTab = 0});
+  const ExerciseDetailScreen({
+    super.key,
+    required this.exerciseId,
+    required this.date,
+    this.initialTab = 0,
+    this.returnToWorkout = false,
+  });
   final int exerciseId;
   final int initialTab;
   final String date;
+  final bool returnToWorkout;
   @override
   Widget build(BuildContext context, WidgetRef ref) => ref
       .watch(exerciseProvider(exerciseId))
@@ -76,7 +83,7 @@ class ExerciseDetailScreen extends ConsumerWidget {
             ),
             body: TabBarView(
               children: [
-                _TrackTab(exercise: exercise, date: date),
+                _TrackTab(exercise: exercise, date: date, returnToWorkout: returnToWorkout),
                 ContentWidth(child: HistoryTab(exercise: exercise)),
                 GraphTab(exercise: exercise),
               ],
@@ -124,16 +131,17 @@ class ExerciseDetailScreen extends ConsumerWidget {
       );
       if (!context.mounted || selected == null) return;
       if (selected != exerciseId) {
-        context.push('/log/$selected?date=$date');
+        context.push('/log/$selected?date=$date${returnToWorkout ? '&returnToWorkout=1' : ''}');
       }
     });
   }
 }
 
 class _TrackTab extends ConsumerStatefulWidget {
-  const _TrackTab({required this.exercise, required this.date});
+  const _TrackTab({required this.exercise, required this.date, required this.returnToWorkout});
   final Exercise exercise;
   final String date;
+  final bool returnToWorkout;
   @override
   ConsumerState<_TrackTab> createState() => _TrackTabState();
 }
@@ -148,7 +156,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
   String? _loadedWeightText, _loadedDistanceText;
   WorkoutSet? _editing;
   WorkoutSet? _previous;
-  bool _saving = false, _touched = false;
+  bool _saving = false, _touched = false, _savedSet = false;
   String? _error;
   @override
   bool get wantKeepAlive => true;
@@ -322,9 +330,14 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
     return ListenableBuilder(
       listenable: tabs,
       builder: (_, child) => PopScope(
-        canPop: _editing == null || tabs.index != 0,
+        canPop: !_saving && !(widget.returnToWorkout && _savedSet) && (_editing == null || tabs.index != 0),
         onPopInvokedWithResult: (didPop, _) {
-          if (!didPop && _editing != null && tabs.index == 0 && !_saving) _cancelEdit();
+          if (didPop || _saving) return;
+          if (_editing != null && tabs.index == 0) {
+            _cancelEdit();
+          } else if (widget.returnToWorkout && _savedSet) {
+            context.go('/');
+          }
         },
         child: child!,
       ),
@@ -470,6 +483,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
     setState(() {
       _saving = false;
       if (ok) {
+        _savedSet = true;
         _editing = null;
         _touched = false;
       }

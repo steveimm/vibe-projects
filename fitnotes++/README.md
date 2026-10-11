@@ -5,7 +5,7 @@ An offline workout logger for Android, rebuilt with Flutter. No account, ads, or
 ## Features
 
 - **Workout log:** ten recording types, exercise reordering, multiple-exercise deletion with confirmation, editable sets, per-set and daily notes, completion status, selective copying, and an editable session timer with pause/resume.
-- **Exercise picker:** body-part selection followed by exercises, search, favorites, archive/restore, body-part management, and exercise-specific rest and weight increments.
+- **Exercise picker:** search across all exercises or select a body part, create exercises from either view, favorites, archive/restore, body-part management, and exercise-specific rest and weight increments.
 - **Routines:** named training days, ordered preset sets, optional previous-session values, multiple-routine deletion, and saving an existing workout as a routine.
 - **Progress:** workout analysis with date filters and trends, exercise-specific charts, Brzycki 1RM estimates, actual and estimated rep records, goals, training balance, and measurement history.
 - **Weight multipliers:** named factors per exercise, with the combined factor stored on each new set. Existing sets retain their original factor.
@@ -14,7 +14,7 @@ An offline workout logger for Android, rebuilt with Flutter. No account, ads, or
 - **Preferences:** light/dark/system appearance, metric/imperial units, weight increments, record highlights, completion controls, keep-screen-on, and rep limits for max-weight estimates. Weeks start on Monday.
 - **Data:** full SQLite backup/restore with recovery of the previous state, CSV export/import, and original FitNotes workout import.
 
-The exercise and set counts stay visible while scrolling, with a circular + button at the bottom right. Holding an exercise enters edit mode. Tap more cards to select them, then use Delete to remove them after confirmation. Adding exercises, date navigation, and opening set editors are disabled until edit mode ends. Selecting a logged set offers Delete and Update, and Back exits editing. Workout timer controls are available only for today. Other dates keep duration editing and reset in the timer menu. Exercise selection, exercise switching, and history retain the previous screen so Back preserves filters, scroll position, tabs, and input.
+The exercise and set counts stay visible while scrolling, with a circular + button at the bottom right. Holding an exercise enters edit mode. Tap more cards to select them, then use Delete to remove them after confirmation. Adding exercises, date navigation, and opening set editors are disabled until edit mode ends. Selecting a logged set offers Delete and Update, and Back exits editing. Workout timer controls are available only for today. Other dates keep duration editing and reset in the timer menu. Back from a newly selected exercise returns to the picker until a set is saved, then returns to Home. Browsing without saving preserves the picker's search and scroll position.
 
 ## Data behavior
 

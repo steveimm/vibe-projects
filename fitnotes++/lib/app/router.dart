@@ -110,6 +110,7 @@ GoRouter createAppRouter({String initialLocation = '/'}) => GoRouter(
           exerciseId: int.parse(state.pathParameters['exerciseId']!),
           date: _date(state),
           initialTab: (int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0).clamp(0, 2),
+          returnToWorkout: state.uri.queryParameters['returnToWorkout'] == '1',
         ),
       ),
     ),

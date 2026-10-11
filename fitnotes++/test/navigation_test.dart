@@ -89,6 +89,20 @@ class _Exercises extends ExerciseRepository {
 
 class _Workouts extends WorkoutRepository {
   _Workouts(super.db);
+  int savedSets = 0;
+  @override
+  Future<int> addSet({
+    required int exerciseId,
+    required String date,
+    double rawWeight = 0,
+    double? weightMultiplier,
+    int reps = 0,
+    double distance = 0,
+    int durationSeconds = 0,
+    double? rpe,
+    String? note,
+    bool planned = false,
+  }) async => ++savedSets;
   @override
   Future<WorkoutSet?> lastSet(int exerciseId, String date) async => null;
   @override
@@ -179,12 +193,68 @@ void main() {
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'Press');
     await _back(tester, system: true);
     expect(find.text('Body part'), findsOneWidget);
-    expect(find.byType(TextField), findsNothing);
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
     await _back(tester);
     expect(find.text('Today'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('body-part screen searches all exercises and opens exercise creation', (tester) async {
+    await _show(tester);
+    await tester.tap(find.byTooltip('Add exercise'));
+    await tester.pumpAndSettle();
+    final bodyPart = find.widgetWithText(ListTile, 'Chest');
+    expect(tester.getSize(bodyPart).height, 48);
+    await tester.enterText(find.byType(TextField), 'Row');
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(ListTile, 'Row'), findsOneWidget);
+    expect(find.widgetWithText(ListTile, 'Chest'), findsNothing);
+    await tester.tap(find.widgetWithText(ListTile, 'Row'));
+    await tester.pumpAndSettle();
+    await _back(tester);
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'Row');
+    await tester.tap(find.byTooltip('Create exercise'));
+    await tester.pumpAndSettle();
+    expect(find.text('New exercise'), findsOneWidget);
+    await _back(tester);
+    expect(find.text('Body part'), findsOneWidget);
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'Row');
+    await _back(tester, system: true);
+    expect(find.widgetWithText(ListTile, 'Chest'), findsOneWidget);
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  for (final system in [false, true]) {
+    testWidgets('saving from the picker returns Home with ${system ? 'system' : 'app bar'} Back', (tester) async {
+      await _show(tester);
+      await tester.tap(find.byTooltip('Add exercise'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Bench');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bench press'));
+      await tester.pumpAndSettle();
+      final container = ProviderScope.containerOf(tester.element(find.byType(ExerciseDetailScreen)));
+      final workouts = container.read(workoutRepositoryProvider) as _Workouts;
+      await tester.enterText(find.byType(TextField).first, '60');
+      await tester.enterText(find.byType(TextField).at(1), '8');
+      await tester.tap(find.byTooltip('Log set'));
+      await tester.pumpAndSettle();
+      expect(workouts.savedSets, 1);
+      if (system) {
+        await tester.tap(find.text('History'));
+        await tester.pumpAndSettle();
+      }
+      await _back(tester, system: system);
+      expect(find.text('Today'), findsOneWidget);
+      expect(find.byType(ExercisePickerScreen), findsNothing);
+      expect(find.byType(ExerciseDetailScreen), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
 
   testWidgets('history and workout exercise switching preserve the previous editor and its input', (tester) async {
     await _show(tester);
