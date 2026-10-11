@@ -6,6 +6,7 @@ import '../../core/database/tables.dart';
 import '../../core/providers.dart';
 import '../../core/models/weight_multiplier.dart';
 import '../../core/util/format.dart';
+import '../../core/util/dates.dart';
 import '../../shared/widgets.dart';
 import 'categories_screen.dart';
 
@@ -25,6 +26,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
   final _increment = TextEditingController();
   int? _category;
   WeightUnit? _weightUnit;
+  bool _includeBodyweight = false;
   final _multipliers = <MultiplierValue>[];
   double? _incrementKg;
   String? _incrementText;
@@ -49,6 +51,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
       await ref.read(settingsProvider.future);
       if (!mounted) return;
       _weightUnit = ex.weightUnit;
+      _includeBodyweight = ex.includeBodyweight;
       _multipliers
         ..clear()
         ..addAll(multipliers.map((m) => (label: m.label, factor: m.factor, enabled: m.enabled)));
@@ -87,6 +90,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
     final systemUnits = ref.watch(unitsProvider);
     final units = systemUnits.withWeightUnit(_weightUnit);
     final categories = ref.watch(categoriesProvider);
+    final bodyweight = ref.watch(bodyweightProvider(Dates.today())).asData?.value;
     final history = widget.exerciseId == null ? null : ref.watch(exerciseHistoryProvider(widget.exerciseId!)).asData?.value;
     return Scaffold(
       appBar: AppBar(
@@ -199,6 +203,17 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
                               const DropdownMenuItem(value: 1, child: Text('lb')),
                             ],
                             onChanged: (value) => _changeWeightUnit(value == -1 ? null : WeightUnit.values[value!]),
+                          ),
+                          const SizedBox(height: 8),
+                          Card(
+                            child: SwitchListTile(
+                              title: const Text('Add bodyweight'),
+                              subtitle: Text(
+                                bodyweight == null ? 'Record bodyweight in Progress' : systemUnits.weight(bodyweight.value),
+                              ),
+                              value: _includeBodyweight && bodyweight != null,
+                              onChanged: bodyweight == null ? null : (value) => setState(() => _includeBodyweight = value),
+                            ),
                           ),
                           Row(
                             children: [
@@ -348,6 +363,10 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
       final notes = _notes.text.trim().isEmpty ? null : _notes.text.trim();
       final increment = double.tryParse(_increment.text);
       final units = ref.read(unitsProvider).withWeightUnit(_weightUnit);
+      final includeBodyweight =
+          _type.hasWeight &&
+          _includeBodyweight &&
+          await ref.read(progressRepositoryProvider).latestBodyweight(Dates.today()) != null;
       final kg = increment == null
           ? null
           : _incrementKg != null && _increment.text == _incrementText
@@ -362,6 +381,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
           restSeconds: int.tryParse(_rest.text),
           weightIncrement: kg,
           weightUnit: Value(_weightUnit),
+          includeBodyweight: Value(includeBodyweight),
           multipliers: List.of(_multipliers),
         );
       } else {
@@ -374,6 +394,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
           restSeconds: int.tryParse(_rest.text),
           weightIncrement: kg,
           weightUnit: Value(_weightUnit),
+          includeBodyweight: Value(includeBodyweight),
           multipliers: List.of(_multipliers),
         );
       }

@@ -36,14 +36,7 @@ class CsvImporter {
         '$date:$exerciseId:${weight.toStringAsFixed(6)}:$reps:${distance.toStringAsFixed(6)}:$seconds';
     final matching = <String, List<WorkoutSet>>{};
     for (final set in saved.where((s) => !s.isPlanned)) {
-      final key = signature(
-        set.date,
-        set.exerciseId,
-        set.rawWeight * set.weightMultiplier,
-        set.reps,
-        set.distance,
-        set.durationSeconds,
-      );
+      final key = signature(set.date, set.exerciseId, set.effectiveWeight, set.reps, set.distance, set.durationSeconds);
       (matching[key] ??= []).add(set);
     }
     final occurrences = <String, int>{};

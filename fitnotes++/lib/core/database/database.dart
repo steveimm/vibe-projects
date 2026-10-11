@@ -50,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -63,6 +63,10 @@ class AppDatabase extends _$AppDatabase {
     },
     onUpgrade: (m, from, to) async {
       if (from < 6) await m.addColumn(exercises, exercises.weightUnit);
+      if (from < 7) {
+        await m.addColumn(exercises, exercises.includeBodyweight);
+        await m.addColumn(workoutSets, workoutSets.bodyweight);
+      }
       if (from < 2) {
         await m.addColumn(exercises, exercises.weightIncrement);
         await m.addColumn(workoutSets, workoutSets.sourceKey);
@@ -204,6 +208,10 @@ class AppDatabase extends _$AppDatabase {
     // Single settings row with column defaults.
     await into(appSettings).insert(const AppSettingsCompanion(id: Value(1)), mode: InsertMode.insertOrIgnore);
   }
+}
+
+extension WorkoutSetWeight on WorkoutSet {
+  double get effectiveWeight => rawWeight * weightMultiplier + bodyweight;
 }
 
 /// App connection: a lazily-opened native SQLite file in the app documents dir.

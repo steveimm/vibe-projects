@@ -118,6 +118,9 @@ final routineSetsProvider = StreamProvider.autoDispose.family<List<RoutineSet>, 
   (ref, id) => ref.watch(routineRepositoryProvider).watchSets(id),
 );
 final progressRepositoryProvider = Provider((ref) => ProgressRepository(ref.watch(databaseProvider)));
+final bodyweightProvider = StreamProvider.autoDispose.family<Measurement?, String>(
+  (ref, date) => ref.watch(progressRepositoryProvider).watchLatestBodyweight(date),
+);
 final seasonsProvider = StreamProvider((ref) => ref.watch(progressRepositoryProvider).watchSeasons());
 final measurementTypesProvider = StreamProvider((ref) => ref.watch(progressRepositoryProvider).watchTypes());
 final allMeasurementsProvider = StreamProvider((ref) => ref.watch(progressRepositoryProvider).watchAllMeasurements());

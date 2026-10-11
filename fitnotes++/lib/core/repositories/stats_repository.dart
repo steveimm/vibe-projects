@@ -43,7 +43,7 @@ enum RecordScope { allTime, currentSeason }
 class Stats {
   Stats._();
   static const allTime = '0000-01-01';
-  static double effective(WorkoutSet s) => s.rawWeight * s.weightMultiplier;
+  static double effective(WorkoutSet s) => s.effectiveWeight;
 
   static List<WorkoutSet> _chronological(List<WorkoutSet> sets) => [...sets]
     ..sort((a, b) {

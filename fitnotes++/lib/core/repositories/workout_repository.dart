@@ -4,6 +4,7 @@ import '../database/database.dart';
 import '../database/tables.dart';
 import '../models/set_values.dart';
 import '../util/dates.dart';
+import 'progress_repository.dart';
 
 class LoggedSet {
   LoggedSet({required this.set, required this.exerciseName, required this.colorArgb, required this.exerciseType});
@@ -11,7 +12,7 @@ class LoggedSet {
   final String exerciseName;
   final int colorArgb;
   final int exerciseType;
-  double get effectiveWeight => set.rawWeight * set.weightMultiplier;
+  double get effectiveWeight => set.effectiveWeight;
 }
 
 class DaySnapshot {
@@ -145,6 +146,15 @@ class WorkoutRepository {
     return factors.fold<double>(1, (product, m) => product * m.factor);
   }
 
+  Future<double> _bodyweightFor(Exercise exercise, String date) async {
+    if (!exercise.type.hasWeight || !exercise.includeBodyweight) return 0;
+    final record = await ProgressRepository(db).latestBodyweight(date);
+    if (record == null || !record.value.isFinite) {
+      throw FormatException('Record bodyweight on or before $date in Progress.');
+    }
+    return record.value;
+  }
+
   Future<int> addSet({
     required int exerciseId,
     required String date,
@@ -162,6 +172,7 @@ class WorkoutRepository {
     SetValues(weight: rawWeight, reps: reps, distance: distance, seconds: durationSeconds, rpe: rpe).validate(exercise.type);
     final factor = weightMultiplier ?? await multiplier(exerciseId);
     if (!factor.isFinite || factor <= 0) throw const FormatException('Weight multiplier must be greater than zero.');
+    final bodyweight = await _bodyweightFor(exercise, date);
     final id = await db
         .into(db.workoutSets)
         .insert(
@@ -171,6 +182,7 @@ class WorkoutRepository {
             createdAt: DateTime.now(),
             rawWeight: Value(exercise.type.hasWeight ? rawWeight : 0),
             weightMultiplier: Value(factor),
+            bodyweight: Value(bodyweight),
             reps: Value(exercise.type.hasReps ? reps : 0),
             distance: Value(exercise.type.hasDistance ? distance : 0),
             durationSeconds: Value(exercise.type.hasTime ? durationSeconds : 0),
@@ -256,6 +268,7 @@ class WorkoutRepository {
     for (final id in setIds.toSet()) {
       final s = byId[id];
       if (s == null) continue;
+      final exercise = await (db.select(db.exercises)..where((e) => e.id.equals(s.exerciseId))).getSingle();
       await db
           .into(db.workoutSets)
           .insert(
@@ -265,6 +278,7 @@ class WorkoutRepository {
               createdAt: DateTime.now(),
               rawWeight: Value(s.rawWeight),
               weightMultiplier: Value(await multiplier(s.exerciseId)),
+              bodyweight: Value(await _bodyweightFor(exercise, targetDate)),
               reps: Value(s.reps),
               distance: Value(s.distance),
               durationSeconds: Value(s.durationSeconds),

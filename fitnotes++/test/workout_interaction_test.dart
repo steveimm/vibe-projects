@@ -18,6 +18,7 @@ class _Workouts extends WorkoutRepository {
     for (final entry in const {1: 'Bench press', 2: 'Curl', 3: 'Row'}.entries)
       LoggedSet(
         set: WorkoutSet(
+          bodyweight: 0,
           id: entry.key,
           exerciseId: entry.key,
           date: Dates.today(),

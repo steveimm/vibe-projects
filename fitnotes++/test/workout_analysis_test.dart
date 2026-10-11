@@ -3,6 +3,7 @@ import 'package:fitnotes_plus/core/database/database.dart';
 import 'package:fitnotes_plus/core/util/workout_analysis.dart';
 
 WorkoutSet set(String date, double weight, int reps, {bool planned = false, double multiplier = 1}) => WorkoutSet(
+  bodyweight: 0,
   id: 1,
   exerciseId: 1,
   date: date,

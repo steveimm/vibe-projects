@@ -53,6 +53,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     final logged = LoggedSet(
       set: WorkoutSet(
+        bodyweight: 0,
         id: 1,
         exerciseId: 1,
         date: Dates.today(),

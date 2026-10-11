@@ -109,6 +109,8 @@ void main() {
     final file = File('${folder.path}/v5.fitnotesplus')..writeAsBytesSync(await service.backup(directory: folder));
     final raw = sqlite.sqlite3.open(file.path);
     raw.execute('ALTER TABLE exercises DROP COLUMN weight_unit');
+    raw.execute('ALTER TABLE exercises DROP COLUMN include_bodyweight');
+    raw.execute('ALTER TABLE workout_sets DROP COLUMN bodyweight');
     raw.execute('PRAGMA user_version = 5');
     raw.close();
     final migrated = AppDatabase(NativeDatabase(file.copySync('${folder.path}/migrate.sqlite')));
@@ -194,6 +196,7 @@ void main() {
   testWidgets('lb input logs kg after multipliers, edits retain precision, and changing the exercise unit converts the input', (
     tester,
   ) async {
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     tester.view.physicalSize = const Size(390, 850);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -221,10 +224,29 @@ void main() {
     );
     await _flush(tester);
     expect(find.text('Weight · lb'), findsOneWidget);
+    for (final width in [320.0, 360.0, 390.0]) {
+      tester.view.physicalSize = Size(width, 850);
+      for (final scale in [1.0, 1.3, 2.0]) {
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        await tester.enterText(find.byType(TextField).first, '999.99');
+        await tester.pump();
+        final editable = tester.state<EditableTextState>(find.byType(EditableText).first).renderEditable;
+        expect(editable.maxScrollExtent, 0, reason: '999.99 must fit at width $width and text scale $scale');
+        if (scale <= 1.3) {
+          final weightCard = find.ancestor(of: find.byType(TextField).first, matching: find.byType(Card));
+          final repsCard = find.ancestor(of: find.byType(TextField).at(1), matching: find.byType(Card));
+          expect(tester.getSize(weightCard).height, tester.getSize(repsCard).height);
+        }
+        expect(tester.takeException(), isNull);
+      }
+    }
+    tester.platformDispatcher.clearTextScaleFactorTestValue();
+    tester.view.physicalSize = const Size(390, 850);
+    await tester.pump();
     await tester.enterText(find.byType(TextField).first, '100');
     await tester.enterText(find.byType(TextField).at(1), '8');
     await tester.pump();
-    expect(find.text('× 0.4 · 18.14 kg'), findsOneWidget);
+    expect(find.text('× 0.45 (lb to kg) × 0.5 (Pulley) × 0.8 (Cable) = 18.14 kg'), findsOneWidget);
     await tester.tap(find.byTooltip('Log set'));
     await _flush(tester);
     List<LoggedSet>? logged;
@@ -258,6 +280,20 @@ void main() {
     expect(logged!.single.set.rawWeight, original.rawWeight);
     expect(logged!.single.set.weightMultiplier, original.weightMultiplier);
     expect(logged!.single.set.reps, 9);
+    await tester.runAsync(() async {
+      await repo.updateExercise(
+        id: id,
+        name: 'Pulley',
+        categoryId: (await repo.getExercise(id)).categoryId,
+        type: ExerciseType.weightAndReps,
+        multipliers: [(label: 'New pulley', factor: 0.5, enabled: true)],
+      );
+    });
+    await _flush(tester);
+    await tester.tap(find.byKey(ValueKey('logged-set-${original.id}')));
+    await tester.pump();
+    expect(find.text('× 0.4 (Saved multiplier) = 18.14 kg'), findsOneWidget);
+    expect(find.textContaining('New pulley'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     router.dispose();

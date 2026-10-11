@@ -143,6 +143,8 @@ void main() {
     raw.execute('DROP TABLE workout_exercise_orders');
     raw.execute('ALTER TABLE app_settings DROP COLUMN rest_timer_sound_uri');
     raw.execute('ALTER TABLE exercises DROP COLUMN weight_unit');
+    raw.execute('ALTER TABLE exercises DROP COLUMN include_bodyweight');
+    raw.execute('ALTER TABLE workout_sets DROP COLUMN bodyweight');
     raw.execute('PRAGMA user_version = 3');
     raw.close();
     final migrated = AppDatabase(NativeDatabase(old.copySync('${folder.path}/migration.sqlite')));

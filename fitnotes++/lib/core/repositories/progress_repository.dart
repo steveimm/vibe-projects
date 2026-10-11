@@ -7,6 +7,22 @@ class ProgressRepository {
   ProgressRepository(this.db);
   final AppDatabase db;
 
+  Selectable<Measurement> _bodyweightQuery(String date) => db
+      .customSelect(
+        '''
+    SELECT m.* FROM measurements m JOIN measurement_types t ON t.id = m.type_id
+    WHERE t.unit = 'kg' AND (t.id = 1 OR LOWER(TRIM(t.name)) IN ('bodyweight', 'body weight'))
+      AND m.date <= ? AND m.value > 0
+    ORDER BY m.date DESC, m.id DESC LIMIT 1
+  ''',
+        variables: [Variable.withString(date)],
+        readsFrom: {db.measurements, db.measurementTypes},
+      )
+      .map((row) => db.measurements.map(row.data));
+
+  Stream<Measurement?> watchLatestBodyweight(String date) => _bodyweightQuery(date).watchSingleOrNull();
+  Future<Measurement?> latestBodyweight(String date) => _bodyweightQuery(date).getSingleOrNull();
+
   Stream<List<PrResetMarker>> watchSeasons() =>
       (db.select(db.prResetMarkers)..orderBy([(s) => OrderingTerm.desc(s.date), (s) => OrderingTerm.desc(s.id)])).watch();
   Future<void> startSeason(String date, String name) async {

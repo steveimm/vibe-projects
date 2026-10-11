@@ -8,7 +8,7 @@ An offline workout logger for Android, rebuilt with Flutter. No account, ads, or
 - **Exercise picker:** search across all exercises or select a body part, create exercises from either view, favorites, archive/restore, body-part management, and exercise-specific rest and weight increments.
 - **Routines:** named training days, ordered preset sets, optional previous-session values, multiple-routine deletion, and saving an existing workout as a routine.
 - **Progress:** workout analysis with date filters and trends, exercise-specific charts, Brzycki 1RM estimates, actual and estimated rep records, goals, training balance, and measurement history.
-- **Exercise weight units and multipliers:** enter weights in kg, lb, or the app unit. Optional names default to Multiplier 1, Multiplier 2, etc. Enabled factors multiply together, and the log shows the result in the app unit. Existing sets retain their original factor.
+- **Exercise weight units and multipliers:** enter weights in kg, lb, or the app unit. Optional names default to Multiplier 1, Multiplier 2, etc. Enabled factors multiply together, and the log shows the result in the app unit. Optional bodyweight is added after the factors. Existing sets retain their original factor and bodyweight.
 - **PR seasons:** reset the record-comparison window without deleting history. All-time records use gold trophies, and current-season records use silver.
 - **Rest timer:** per-exercise duration and auto-start controls, pause/resume, added time, selectable sound and vibration, background countdown notifications, and recovery of running or paused timers after reopening the app.
 - **Preferences:** light/dark/system appearance, metric/imperial units, weight increments, record highlights, completion controls, keep-screen-on, and rep limits for max-weight estimates. Weeks start on Monday.
@@ -18,7 +18,7 @@ The exercise and set counts stay visible while scrolling, with a circular + butt
 
 ## Data behavior
 
-Weights are stored in kilograms and distances in meters. Exercise weight units control input, including routine presets and weight increments. Logs and graphs use the app unit. Unit changes preserve physical weights. A combined multiplier is captured when a set is added, including a copied or routine-generated set. Editing a set preserves its captured multiplier. For example, 100 lb with factors 0.5 and 0.8 records 18.1436948 kg, displayed as 18.14 kg.
+Weights are stored in kilograms and distances in meters. Exercise weight units control input, including routine presets and weight increments. Logs and graphs use the app unit. Unit changes preserve physical weights. A combined multiplier is captured when a set is added, including a copied or routine-generated set. Bodyweight uses the latest measurement on or before the workout date. Editing a set preserves its captured multiplier and bodyweight. The counter contains only the entered weight. The calculation below it shows conversion, named factors, bodyweight, and the kg total. The displayed 0.45 lb-to-kg factor is rounded, while calculations use 0.45359237. For example, 100 lb with factors 0.5 and 0.8 records 18.1436948 kg, displayed as 18.14 kg.
 
 Copied and routine sets appear as "Not completed" in the log and calendar. They do not count toward volume, records, graphs, or performed-workout counts until marked complete. Logging a new set records it as performed.
 
@@ -28,7 +28,7 @@ Original `.fitnotes` imports merge categories, exercises, workout sets, set comm
 
 CSV exports contain performed sets in the standard ten-column FitNotes format, using canonical kg/meters and effective weights. CSV import also supports the legacy combined `Weight (lbs)` column. Reimporting an export does not duplicate matching sets. Use a full backup to retain raw weights, multipliers, RPE, routines, and preferences.
 
-Schema version 6 migrates existing databases without discarding their workout history. Version 2 through 6 backups can be restored. The reference backup and reconstruction notes are in [`ref/`](ref/) and [`FITNOTES_REFERENCE.md`](FITNOTES_REFERENCE.md).
+Schema version 7 migrates existing databases without discarding their workout history. Version 2 through 7 backups can be restored. The reference backup and reconstruction notes are in [`ref/`](ref/) and [`FITNOTES_REFERENCE.md`](FITNOTES_REFERENCE.md).
 
 ## Development
 

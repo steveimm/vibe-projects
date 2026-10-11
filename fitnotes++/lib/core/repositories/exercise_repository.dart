@@ -103,6 +103,7 @@ class ExerciseRepository {
     int? restSeconds,
     double? weightIncrement,
     Value<WeightUnit?> weightUnit = const Value.absent(),
+    Value<bool> includeBodyweight = const Value.absent(),
     List<MultiplierValue>? multipliers,
   }) => db.transaction(() async {
     final id = await db
@@ -116,6 +117,7 @@ class ExerciseRepository {
             defaultRestTimeSeconds: Value(restSeconds),
             weightIncrement: Value(weightIncrement),
             weightUnit: weightUnit,
+            includeBodyweight: includeBodyweight,
           ),
         );
     if (multipliers != null) await _replaceMultipliers(id, multipliers);
@@ -138,6 +140,7 @@ class ExerciseRepository {
     int? restSeconds,
     double? weightIncrement,
     Value<WeightUnit?> weightUnit = const Value.absent(),
+    Value<bool> includeBodyweight = const Value.absent(),
     List<MultiplierValue>? multipliers,
   }) => db.transaction(() async {
     final old = await getExercise(id);
@@ -165,6 +168,7 @@ class ExerciseRepository {
         defaultRestTimeSeconds: Value(restSeconds),
         weightIncrement: Value(weightIncrement),
         weightUnit: weightUnit,
+        includeBodyweight: includeBodyweight,
       ),
     );
     if (multipliers != null) await _replaceMultipliers(id, multipliers);

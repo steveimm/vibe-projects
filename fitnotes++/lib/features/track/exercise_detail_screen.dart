@@ -224,9 +224,20 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
     final prs = ref.watch(recordBadgesProvider(widget.exercise.id));
     final factorData = ref.watch(multipliersProvider(widget.exercise.id));
     final factors = factorData.asData?.value ?? [];
-    final multiplier = _editing?.weightMultiplier ?? factors.where((m) => m.enabled).fold<double>(1, (v, m) => v * m.factor);
+    final activeFactors = factors.where((m) => m.enabled).toList();
+    final currentMultiplier = activeFactors.fold<double>(1, (v, m) => v * m.factor);
+    final multiplier = _editing?.weightMultiplier ?? currentMultiplier;
+    final savedMultiplier = _editing != null && multiplier != currentMultiplier;
+    final bodyweightData = widget.exercise.includeBodyweight && _editing == null
+        ? ref.watch(bodyweightProvider(widget.date))
+        : null;
+    final missingBodyweight = widget.exercise.includeBodyweight && _editing == null && bodyweightData?.asData?.value == null;
+    final bodyweight =
+        _editing?.bodyweight ?? (widget.exercise.includeBodyweight ? bodyweightData?.asData?.value?.value ?? 0.0 : 0.0);
     final typedWeight = double.tryParse(_weight.text.replaceAll(',', '.'));
-    final effectiveWeight = typedWeight == null || !typedWeight.isFinite ? null : _weightInKg(units, typedWeight) * multiplier;
+    final effectiveWeight = typedWeight == null || !typedWeight.isFinite || missingBodyweight
+        ? null
+        : _weightInKg(units, typedWeight) * multiplier + bodyweight;
     final type = widget.exercise.type;
     final fields = <Widget>[
       if (type.hasWeight)
@@ -277,13 +288,23 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
                   ],
                 ),
         ),
-        if (type.hasWeight && effectiveWeight != null && (multiplier != 1 || units.weightImperial != systemUnits.weightImperial))
+        if (type.hasWeight &&
+            effectiveWeight != null &&
+            (units.weightImperial || activeFactors.isNotEmpty || savedMultiplier || bodyweight > 0))
           Align(
             alignment: Alignment.centerLeft,
             child: Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                '${multiplier == 1 ? '' : '× ${Fmt.number(multiplier, precision: 6)} · '}${systemUnits.weight(effectiveWeight)}',
+                [
+                  if (units.weightImperial) '× 0.45 (lb to kg)',
+                  if (savedMultiplier)
+                    '× ${Fmt.number(multiplier, precision: 6)} (Saved multiplier)'
+                  else
+                    for (final factor in activeFactors) '× ${Fmt.number(factor.factor, precision: 6)} (${factor.label})',
+                  if (bodyweight > 0) '+ ${Fmt.weight(bodyweight)} (Bodyweight)',
+                  '= ${Fmt.weight(effectiveWeight)}',
+                ].join(' '),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -292,6 +313,14 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ),
+        if (missingBodyweight && bodyweightData?.hasValue == true)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Record bodyweight on or before ${widget.date} in Progress.',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ),
       ],
     );
@@ -326,7 +355,9 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
         ],
         AppFloatingActionButton(
           tooltip: _editing == null ? 'Log set' : 'Update set',
-          onPressed: _saving || settings == null || !factorData.hasValue || widget.exercise.archived ? null : _save,
+          onPressed: _saving || settings == null || !factorData.hasValue || missingBodyweight || widget.exercise.archived
+              ? null
+              : _save,
           icon: _editing == null ? Icons.add_rounded : Icons.check_rounded,
         ),
       ],
@@ -547,7 +578,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
                     Text(
                       describeSet(
                         type: widget.exercise.type,
-                        effectiveWeight: s.rawWeight * s.weightMultiplier,
+                        effectiveWeight: s.effectiveWeight,
                         reps: s.reps,
                         distance: s.distance,
                         durationSeconds: s.durationSeconds,
@@ -663,6 +694,19 @@ class _StepField extends StatelessWidget {
   final bool integer, duration;
   final VoidCallback onChanged;
   final ValueChanged<double>? onStep;
+
+  TextStyle _numberStyle(BuildContext context, double width) {
+    final style = Theme.of(context).textTheme.bodyLarge!.copyWith(fontSize: 22, fontWeight: FontWeight.w700);
+    final painter = TextPainter(
+      text: TextSpan(text: controller.text.isEmpty ? '0' : controller.text, style: style),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout();
+    final textWidth = painter.width;
+    painter.dispose();
+    return style.copyWith(fontSize: textWidth <= width - 8 ? 22 : (22 * (width - 8) / textWidth).clamp(14.0, 22.0));
+  }
+
   void _bump(double delta) {
     if (onStep != null) {
       onStep!(delta);
@@ -684,61 +728,74 @@ class _StepField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(0, 6, 0, 0),
-      child: Column(
-        children: [
-          Text(
-            '$label${unit.isEmpty ? '' : ' · $unit'}',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 2),
-          Row(
-            children: [
-              IconButton(
-                tooltip: 'Decrease $label',
-                onPressed: () => _bump(-step),
-                icon: const Icon(Icons.remove_rounded, size: 19),
-              ),
-              Expanded(
-                child: Semantics(
-                  label: '$label $unit',
-                  container: true,
-                  child: TextField(
-                    controller: controller,
-                    textAlign: TextAlign.center,
-                    keyboardType: duration ? TextInputType.datetime : TextInputType.numberWithOptions(decimal: !integer),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(
-                          duration
-                              ? '[0-9:-]'
-                              : integer
-                              ? '[0-9-]'
-                              : '[0-9.,-]',
-                        ),
-                      ),
-                    ],
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      filled: false,
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                      hintText: '0',
-                    ),
-                    onChanged: (_) => onChanged(),
-                    onTap: () => controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length),
+    child: Column(
+      children: [
+        Row(
+          children: [
+            IconButton(
+              tooltip: 'Decrease $label',
+              onPressed: () => _bump(-step),
+              icon: const Icon(Icons.remove_rounded, size: 19),
+            ),
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  '$label${unit.isEmpty ? '' : ' · $unit'}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
-              IconButton(tooltip: 'Increase $label', onPressed: () => _bump(step), icon: const Icon(Icons.add_rounded, size: 19)),
-            ],
+            ),
+            IconButton(tooltip: 'Increase $label', onPressed: () => _bump(step), icon: const Icon(Icons.add_rounded, size: 19)),
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+          child: Semantics(
+            label: '$label $unit',
+            container: true,
+            child: SizedBox(
+              height: MediaQuery.textScalerOf(context).scale(22) * (Theme.of(context).textTheme.bodyLarge!.height ?? 1) + 8,
+              child: LayoutBuilder(
+                builder: (context, constraints) => TextField(
+                  controller: controller,
+                  textAlign: TextAlign.center,
+                  textAlignVertical: TextAlignVertical.center,
+                  keyboardType: duration ? TextInputType.datetime : TextInputType.numberWithOptions(decimal: !integer),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                      RegExp(
+                        duration
+                            ? '[0-9:-]'
+                            : integer
+                            ? '[0-9-]'
+                            : '[0-9.,-]',
+                      ),
+                    ),
+                  ],
+                  style: _numberStyle(context, constraints.maxWidth),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    filled: false,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 4),
+                    hintText: '0',
+                  ),
+                  onChanged: (_) => onChanged(),
+                  onTap: () => controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length),
+                ),
+              ),
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
     ),
   );
 }

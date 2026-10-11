@@ -18,6 +18,7 @@ import 'package:fitnotes_plus/features/track/history_tab.dart';
 final _exercises = [
   for (var id = 1; id <= 16; id++)
     Exercise(
+      includeBodyweight: false,
       id: id,
       name: id == 1
           ? 'Bench press'
@@ -48,6 +49,7 @@ const _settings = AppSettingsRow(
 );
 
 WorkoutSet _set(int id, String date) => WorkoutSet(
+  bodyweight: 0,
   id: id,
   exerciseId: id,
   date: date,

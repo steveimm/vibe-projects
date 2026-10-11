@@ -60,6 +60,7 @@ class Exercises extends Table {
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   RealColumn get weightIncrement => real().nullable()();
   IntColumn get weightUnit => intEnum<WeightUnit>().nullable()();
+  BoolColumn get includeBodyweight => boolean().withDefault(const Constant(false))();
 }
 
 /// Named factors are multiplied together when adding a workout set.
@@ -85,8 +86,9 @@ class WorkoutSets extends Table {
   RealColumn get rawWeight => real().withDefault(const Constant(0))();
 
   /// Product of enabled factors captured when the set was added.
-  /// `effectiveWeight = rawWeight * weightMultiplier`.
+  /// Applied to the entered weight, before adding bodyweight.
   RealColumn get weightMultiplier => real().withDefault(const Constant(1.0))();
+  RealColumn get bodyweight => real().withDefault(const Constant(0))();
   IntColumn get reps => integer().withDefault(const Constant(0))();
   RealColumn get distance => real().withDefault(const Constant(0))();
   IntColumn get durationSeconds => integer().withDefault(const Constant(0))();

@@ -61,6 +61,8 @@ class BackupService {
         final columns = source.select('PRAGMA table_info("${table.actualTableName}")').map((r) => r['name']).toSet();
         final expected = table.$columns.map((c) => c.$name).toSet();
         if (version < 6 && table.actualTableName == 'exercises') expected.remove('weight_unit');
+        if (version < 7 && table.actualTableName == 'exercises') expected.remove('include_bodyweight');
+        if (version < 7 && table.actualTableName == 'workout_sets') expected.remove('bodyweight');
         if (version < 5 && table.actualTableName == 'app_settings') expected.remove('rest_timer_sound_uri');
         if (version == 2 && table.actualTableName == 'workout_sessions') {
           expected.removeAll(['elapsed_seconds', 'running_since']);
@@ -139,7 +141,7 @@ class BackupService {
         s.date,
         row.read<String>('exercise'),
         row.read<String>('category'),
-        type.hasWeight ? Fmt.number(s.rawWeight * s.weightMultiplier, precision: 6) : '',
+        type.hasWeight ? Fmt.number(s.effectiveWeight, precision: 6) : '',
         type.hasWeight ? 'kgs' : '',
         type.hasReps ? s.reps : '',
         type.hasDistance ? Fmt.number(s.distance, precision: 6) : '',

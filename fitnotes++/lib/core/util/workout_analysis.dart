@@ -46,7 +46,7 @@ class WorkoutAnalysis {
           (
             date: date,
             value: switch (metric) {
-              WorkoutMetric.volume => days[date]!.fold<double>(0, (sum, s) => sum + s.rawWeight * s.weightMultiplier * s.reps),
+              WorkoutMetric.volume => days[date]!.fold<double>(0, (sum, s) => sum + s.effectiveWeight * s.reps),
               WorkoutMetric.sets => days[date]!.length.toDouble(),
               WorkoutMetric.reps => days[date]!.fold<double>(0, (sum, s) => sum + s.reps),
               WorkoutMetric.duration => times[date]!.durationAt(now).toDouble(),

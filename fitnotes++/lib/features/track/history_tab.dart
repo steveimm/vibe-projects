@@ -62,7 +62,7 @@ class HistoryTab extends ConsumerWidget {
                           title: Text(
                             describeSet(
                               type: exercise.type,
-                              effectiveWeight: entry.value[j].rawWeight * entry.value[j].weightMultiplier,
+                              effectiveWeight: entry.value[j].effectiveWeight,
                               reps: entry.value[j].reps,
                               distance: entry.value[j].distance,
                               durationSeconds: entry.value[j].durationSeconds,
