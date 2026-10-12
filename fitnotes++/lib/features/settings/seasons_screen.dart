@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/database/database.dart';
 import '../../core/providers.dart';
 import '../../core/models/season.dart';
 import '../../core/util/dates.dart';
@@ -20,19 +21,20 @@ class SeasonsScreen extends ConsumerWidget {
     ),
     body: ContentWidth(
       child: ListTileTheme.merge(
-        minTileHeight: 64,
-        minVerticalPadding: 8,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        minTileHeight: 56,
+        minVerticalPadding: 4,
+        horizontalTitleGap: 8,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
           children: [
             const Card(
               child: ListTile(
-                leading: SizedBox(width: 72, child: RecordBadge(scope: RecordScope.allTime, size: 24)),
+                leading: SizedBox(width: 60, child: RecordBadge(scope: RecordScope.allTime, size: 20)),
                 title: Text('All-time records'),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             ref
                 .watch(seasonsProvider)
                 .when(
@@ -44,13 +46,18 @@ class SeasonsScreen extends ConsumerWidget {
                         Padding(
                           padding: const EdgeInsets.only(bottom: 6),
                           child: Card(
+                            key: ValueKey('season-${seasons[i].id}'),
                             child: ListTile(
+                              onTap: () => showDialog(
+                                context: context,
+                                builder: (_) => _SeasonDialog(season: seasons[i]),
+                              ),
                               leading: SizedBox(
-                                width: 72,
-                                child: RecordBadge(scope: RecordScope.season, season: seasons[i], size: 24),
+                                width: 60,
+                                child: RecordBadge(scope: RecordScope.season, season: seasons[i], size: 20),
                               ),
                               title: Text(seasons[i].displayName),
-                              subtitle: Text('Since ${seasons[i].date}${i == 0 ? ' · Current season' : ''}'),
+                              subtitle: Text('${seasons[i].date}${i == 0 ? ' · Current' : ''}'),
                               trailing: IconButton(
                                 tooltip: 'Remove season',
                                 icon: const Icon(Icons.delete_outline_rounded),
@@ -84,15 +91,16 @@ class SeasonsScreen extends ConsumerWidget {
 }
 
 class _SeasonDialog extends ConsumerStatefulWidget {
-  const _SeasonDialog();
+  const _SeasonDialog({this.season});
+  final PrResetMarker? season;
   @override
   ConsumerState<_SeasonDialog> createState() => _SeasonDialogState();
 }
 
 class _SeasonDialogState extends ConsumerState<_SeasonDialog> {
-  final _name = TextEditingController();
-  final _initials = TextEditingController();
-  String _date = Dates.today();
+  late final _name = TextEditingController(text: widget.season?.note ?? '');
+  late final _initials = TextEditingController(text: widget.season?.initials ?? '');
+  late String _date = widget.season?.date ?? Dates.today();
   bool _busy = false;
   @override
   void dispose() {
@@ -103,7 +111,7 @@ class _SeasonDialogState extends ConsumerState<_SeasonDialog> {
 
   @override
   Widget build(BuildContext context) => AppDialog(
-    title: const Text('Start a PR season'),
+    title: Text(widget.season == null ? 'Start a PR season' : 'Edit PR season'),
     content: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -123,7 +131,9 @@ class _SeasonDialogState extends ConsumerState<_SeasonDialog> {
           decoration: InputDecoration(
             labelText: 'Initials (optional)',
             floatingLabelBehavior: FloatingLabelBehavior.always,
-            hintText: initialsFromName(_name.text),
+            hintText: initialsFromName(
+              _name.text.trim().isEmpty && widget.season != null ? 'Season ${widget.season!.id}' : _name.text,
+            ),
             counterText: '',
           ),
         ),
@@ -151,10 +161,12 @@ class _SeasonDialogState extends ConsumerState<_SeasonDialog> {
             ? null
             : () async {
                 setState(() => _busy = true);
-                final ok = await attempt(
-                  context,
-                  () => ref.read(progressRepositoryProvider).startSeason(_date, _name.text, initials: _initials.text),
-                );
+                final ok = await attempt(context, () {
+                  final repo = ref.read(progressRepositoryProvider);
+                  return widget.season == null
+                      ? repo.startSeason(_date, _name.text, initials: _initials.text)
+                      : repo.updateSeason(widget.season!.id, _date, _name.text, initials: _initials.text);
+                });
                 if (!context.mounted) return;
                 if (ok) {
                   Navigator.pop(context);
@@ -162,7 +174,7 @@ class _SeasonDialogState extends ConsumerState<_SeasonDialog> {
                   setState(() => _busy = false);
                 }
               },
-        child: const Text('Start season'),
+        child: Text(widget.season == null ? 'Start season' : 'Save'),
       ),
     ],
   );

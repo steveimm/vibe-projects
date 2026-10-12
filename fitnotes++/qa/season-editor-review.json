@@ -1,0 +1,16 @@
+{
+  "version": "1.9.1+22",
+  "schema_version": 9,
+  "status": "in_progress",
+  "requirements": [
+    "Reduce PR season list padding while keeping trophy alignment and usable touch targets.",
+    "Tap a season to edit its name, initials, and start date in the existing season dialog.",
+    "Preserve the season ID and creation timestamp when editing. Update PR windows and labels from the saved values.",
+    "Clearing custom initials restores automatic initials from the name. Cancel does not change the season.",
+    "Preserve the user's data during emulator checks."
+  ],
+  "validation": {
+    "focused_suite": 21,
+    "static_analysis": "No issues found"
+  }
+}
