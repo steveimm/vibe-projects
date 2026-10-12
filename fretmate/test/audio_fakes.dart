@@ -28,6 +28,11 @@ class FakeMicrophone implements MicrophoneInput {
 
 class FakeClicks implements ClickOutput {
   final events = StreamController<int?>.broadcast();
+  final toneEvents = StreamController<int>.broadcast();
+  final tones = <({double frequency, int requestId, bool requestFocus})>[];
+  int? activeTone;
+  Completer<void>? toneGate;
+  Completer<void>? stopGate;
   bool playing = false;
   bool fail = false;
   int starts = 0;
@@ -36,6 +41,22 @@ class FakeClicks implements ClickOutput {
 
   @override
   Stream<int?> get beats => events.stream;
+
+  @override
+  Stream<int> get toneEnds => toneEvents.stream;
+
+  @override
+  Future<void> playTone(double frequency, {required int requestId, bool requestFocus = true}) async {
+    await toneGate?.future;
+    if (fail) throw StateError('No audio device');
+    activeTone = requestId;
+    tones.add((frequency: frequency, requestId: requestId, requestFocus: requestFocus));
+  }
+
+  void finishTone() {
+    if (activeTone != null) toneEvents.add(activeTone!);
+    activeTone = null;
+  }
 
   @override
   Future<void> start({required int bpm, required int beats, required bool accent, required double volume}) async {
@@ -47,8 +68,15 @@ class FakeClicks implements ClickOutput {
   }
 
   @override
-  Future<void> stop() async => playing = false;
+  Future<void> stop() async {
+    await stopGate?.future;
+    playing = false;
+    finishTone();
+  }
 
   @override
-  Future<void> dispose() => events.close();
+  Future<void> dispose() async {
+    await events.close();
+    await toneEvents.close();
+  }
 }
