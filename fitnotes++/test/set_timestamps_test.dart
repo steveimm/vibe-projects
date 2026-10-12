@@ -35,7 +35,7 @@ void main() {
     await repo.setComplete(second, true);
     expect((await get(second)).loggedAt, now);
     await repo.copySetsToDate([first], '2026-10-12');
-    final copied = (await repo.dayLog('2026-10-12')).last.set;
+    final copied = (await repo.dayLog('2026-10-12')).singleWhere((entry) => entry.set.isPlanned).set;
     expect(copied.loggedAt, isNull);
     await repo.setComplete(copied.id, true);
     expect((await get(copied.id)).loggedAt, now);

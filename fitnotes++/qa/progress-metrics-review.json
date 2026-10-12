@@ -1,6 +1,6 @@
 {
   "version": "1.8.0+20",
-  "status": "in_progress",
+  "status": "complete",
   "requirements": [
     "Measurements uses the Analysis date filters: 1m, 3m, 6m, All, and Custom.",
     "Training balance uses the selected volume, set, rep, or duration metric and date range.",
@@ -11,7 +11,69 @@
   "validation": {
     "full_suite": 69,
     "final_focused_suite": 3,
-    "static_analysis": "No issues found"
+    "static_analysis": "No issues found",
+    "final_timestamp_suite": 2,
+    "emulator": "FitNotes_API_36, Android 16/API 36, ARM64, 1080x2400 at 420 dpi",
+    "emulator_checks": [
+      "All original database tables and values survive migration to schema 8. Existing logging timestamps remain NULL.",
+      "Measurements uses 1m, 3m, 6m, All, and Custom. All displays imported history, and 24\u201331 March 2024 filters every chart and its latest value.",
+      "Four temporary sets recorded timestamps. Editing the final set from 5 to 6 reps preserved its original timestamp.",
+      "Volume, Sets, Reps, and Workout duration pie totals, ordering, and percentages match an independent SQL calculation over the emulator database.",
+      "Duration breakdown displayed Chest 0:15 (88.2%) and Shoulders 0:02 (11.8%), matching actual first-to-last set intervals.",
+      "Set rows remain 48 dp tall with timestamps at normal text size. Automated tests cover 200% text in Log and History.",
+      "Release 1.8.0 launched with restored user data and Measurements open with All selected."
+    ],
+    "app_errors": "No Flutter or AndroidRuntime errors during this build verification.",
+    "screenshots": [
+      "build/qa/1.8.0/measurements-all.png",
+      "build/qa/1.8.0/measurements-custom.png",
+      "build/qa/1.8.0/log-timestamps.png",
+      "build/qa/1.8.0/analysis-volume.png",
+      "build/qa/1.8.0/analysis-sets.png",
+      "build/qa/1.8.0/analysis-reps.png",
+      "build/qa/1.8.0/analysis-workout-duration.png",
+      "build/qa/1.8.0/release-measurements.png"
+    ]
   },
-  "schema_version": 8
+  "schema_version": 8,
+  "implementation_commits": [
+    "ba05afa",
+    "94d4e8f"
+  ],
+  "data_preservation": {
+    "checkpoint": "build/qa/1.8.0/original.tar",
+    "migrated_checkpoint": "build/qa/1.8.0/migrated.tar",
+    "original_rows_preserved": true,
+    "restored_sets": 8463,
+    "restored_measurements": 108,
+    "temporary_sets_removed": 4,
+    "remaining_timestamped_sets": 0,
+    "source_files_unchanged": true
+  },
+  "release": {
+    "build_commands": [
+      "flutter build apk --debug --split-per-abi",
+      "flutter build apk --release --split-per-abi"
+    ],
+    "artifacts": [
+      {
+        "path": "build/releases/1.8.0/app-arm64-v8a-release.apk",
+        "sha256": "9eca1b6b4490463fd6a72ecad98e46ba2c12e15d27adbe3e86f4ef5c6197ed69"
+      },
+      {
+        "path": "build/releases/1.8.0/app-armeabi-v7a-release.apk",
+        "sha256": "66bcda0a8c4c3467aaa65274b55eb1b6d32b528454f4be9e8ed21ddf689d51c7"
+      },
+      {
+        "path": "build/releases/1.8.0/app-x86_64-release.apk",
+        "sha256": "1d3f37b5c7cad8082de1d15fc6ea0de59a12671b1ed86eba8ce565f4aaeb825a"
+      }
+    ],
+    "installed": {
+      "version_name": "1.8.0",
+      "version_code": 2020,
+      "abi": "arm64-v8a",
+      "debuggable": false
+    }
+  }
 }
