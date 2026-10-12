@@ -41,11 +41,13 @@ class _AnalysisTabState extends ConsumerState<AnalysisTab> with AutomaticKeepAli
         final selected = all
             .where((s) => !s.set.isPlanned && s.set.date.compareTo(from) >= 0 && s.set.date.compareTo(to) <= 0)
             .toList();
-        final counts = <int, int>{};
-        for (final entry in selected) {
-          final id = exercises[entry.set.exerciseId]?.categoryId;
-          if (id != null) counts.update(id, (v) => v + 1, ifAbsent: () => 1);
-        }
+        final totals = WorkoutAnalysis.categoryTotals(
+          selected.map((s) => s.set),
+          _metric,
+          {for (final exercise in exercises.values) exercise.id: exercise.categoryId},
+          from: from,
+          to: to,
+        );
         final timed =
             _metric == WorkoutMetric.duration &&
             sessions.any(
@@ -164,9 +166,23 @@ class _AnalysisTabState extends ConsumerState<AnalysisTab> with AutomaticKeepAli
                 );
               },
             ),
-            if (counts.isNotEmpty) ...[
+            if (totals.isNotEmpty) ...[
               const SectionTitle('Training balance'),
-              _BalancePie(counts: counts, categories: categories),
+              _BalancePie(
+                totals: totals,
+                categories: categories,
+                valueLabel: (value) => switch (_metric) {
+                  WorkoutMetric.volume => '${Fmt.number(units.weightFromKg(value))} ${units.weightLabel}',
+                  WorkoutMetric.sets => Fmt.count(value.round(), 'set'),
+                  WorkoutMetric.reps => Fmt.count(value.round(), 'rep'),
+                  WorkoutMetric.duration => Fmt.duration(value.round()),
+                },
+              ),
+            ] else if (_metric == WorkoutMetric.duration && selected.isNotEmpty) ...[
+              const SectionTitle('Training balance'),
+              const Card(
+                child: Padding(padding: EdgeInsets.all(12), child: Text('No exercise durations in this range')),
+              ),
             ],
           ],
         );
@@ -181,13 +197,14 @@ class _AnalysisTabState extends ConsumerState<AnalysisTab> with AutomaticKeepAli
 }
 
 class _BalancePie extends StatelessWidget {
-  const _BalancePie({required this.counts, required this.categories});
-  final Map<int, int> counts;
+  const _BalancePie({required this.totals, required this.categories, required this.valueLabel});
+  final Map<int, double> totals;
   final Map<int, Category> categories;
+  final String Function(double) valueLabel;
   @override
   Widget build(BuildContext context) {
-    final entries = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-    final total = entries.fold<int>(0, (sum, e) => sum + e.value);
+    final entries = totals.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final total = entries.fold<double>(0, (sum, e) => sum + e.value);
     final pie = SizedBox.square(
       dimension: 160,
       child: PieChart(
@@ -200,7 +217,7 @@ class _BalancePie extends StatelessWidget {
           sections: [
             for (final entry in entries)
               PieChartSectionData(
-                value: entry.value.toDouble(),
+                value: entry.value,
                 radius: 76,
                 color: Color(categories[entry.key]?.colorArgb ?? 0xFF7F8C8D),
                 showTitle: false,
@@ -233,7 +250,7 @@ class _BalancePie extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  '${Fmt.count(entry.value, 'set')} · ${Fmt.number(entry.value / total * 100, precision: 1)}%',
+                  '${valueLabel(entry.value)} · ${Fmt.number(entry.value / total * 100, precision: 1)}%',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],

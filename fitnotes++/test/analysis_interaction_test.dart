@@ -32,6 +32,7 @@ void main() {
       final exercises = await db.select(db.exercises).get();
       final bench = exercises.firstWhere((e) => e.name == 'Flat Barbell Bench Press');
       final row = exercises.firstWhere((e) => e.name == 'Barbell Row');
+      var minute = 0;
       for (final entry in [
         (400, bench.id, 80.0, 4),
         (150, bench.id, 70.0, 5),
@@ -42,12 +43,15 @@ void main() {
         (0, bench.id, 50.0, 8),
         (0, bench.id, 55.0, 6),
       ]) {
-        await workouts.addSet(
+        final id = await workouts.addSet(
           exerciseId: entry.$2,
           date: Dates.shift(Dates.today(), -entry.$1),
           rawWeight: entry.$3,
           reps: entry.$4,
         );
+        final time = Dates.parse(Dates.shift(Dates.today(), -entry.$1)).add(Duration(hours: 10, minutes: minute));
+        minute += 2;
+        await (db.update(db.workoutSets)..where((s) => s.id.equals(id))).write(WorkoutSetsCompanion(loggedAt: Value(time)));
       }
       await workouts.addSet(exerciseId: row.id, date: Dates.today(), rawWeight: 100, reps: 10, planned: true);
       await db
@@ -66,7 +70,7 @@ void main() {
     expect(find.text('Training'), findsNothing);
     expect(find.text('Personal records'), findsNothing);
     expect(tester.widget<WorkoutChart>(find.byType(WorkoutChart)).points.map((p) => p.value), [200, 960, 730]);
-    expect(tester.widget<PieChart>(find.byType(PieChart)).data.sections.map((s) => s.value), [4, 1]);
+    expect(tester.widget<PieChart>(find.byType(PieChart)).data.sections.map((s) => s.value), [1690, 200]);
     expect(tester.getBottomRight(find.byType(PieChart)).dy, lessThan(850));
     final chipSurfaces = [
       for (final label in ['1m', '3m', '6m', 'All', 'Custom'])
@@ -90,10 +94,23 @@ void main() {
     await tester.tap(find.text('Sets').last);
     await flush(tester);
     expect(tester.widget<WorkoutChart>(find.byType(WorkoutChart)).points.map((p) => p.value), [1, 2, 2]);
+    expect(tester.widget<PieChart>(find.byType(PieChart)).data.sections.map((s) => s.value), [4, 1]);
+    await tester.tap(metric);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reps').last);
+    await flush(tester);
+    expect(tester.widget<PieChart>(find.byType(PieChart)).data.sections.map((s) => s.value), [30, 10]);
     await tester.tap(metric);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Workout duration').last);
     await flush(tester);
+    expect(tester.widget<WorkoutChart>(find.byType(WorkoutChart)).points.single.value, 20);
+    expect(tester.widget<PieChart>(find.byType(PieChart)).data.sections.single.value, 240);
+    expect(find.text('4:00 · 100%'), findsOneWidget);
+    await tester.runAsync(() => db.update(db.workoutSets).write(const WorkoutSetsCompanion(loggedAt: Value(null))));
+    await flush(tester);
+    expect(find.byType(PieChart), findsNothing);
+    expect(find.text('No exercise durations in this range'), findsOneWidget);
     expect(tester.widget<WorkoutChart>(find.byType(WorkoutChart)).points.single.value, 20);
     await tester.tap(metric);
     await tester.pumpAndSettle();
@@ -114,7 +131,7 @@ void main() {
     await tester.tap(find.text('OK'));
     await flush(tester);
     expect(tester.widget<WorkoutChart>(find.byType(WorkoutChart)).points.map((p) => p.value), [200, 960]);
-    expect(tester.widget<PieChart>(find.byType(PieChart)).data.sections.map((s) => s.value), [2, 1]);
+    expect(tester.widget<PieChart>(find.byType(PieChart)).data.sections.map((s) => s.value), [960, 200]);
     tester.platformDispatcher.textScaleFactorTestValue = 1.6;
     await flush(tester);
     final largeChips = find.byType(ChoiceChip);

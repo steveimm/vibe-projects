@@ -14,6 +14,7 @@ import '../../core/util/dates.dart';
 import '../../core/util/format.dart';
 import '../../shared/rest_timer_bar.dart';
 import '../../shared/rest_timer_settings.dart';
+import '../../shared/set_number.dart';
 import '../../shared/widgets.dart';
 import '../../shared/record_badge.dart';
 import 'graph_tab.dart';
@@ -572,7 +573,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           padding: const EdgeInsets.only(left: 10),
           child: Row(
             children: [
-              SizedBox(width: 24, child: Text('${index + 1}', style: Theme.of(context).textTheme.bodySmall)),
+              SetNumber(number: index + 1, loggedAt: s.loggedAt),
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

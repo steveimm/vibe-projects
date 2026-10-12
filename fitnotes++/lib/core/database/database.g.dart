@@ -1303,6 +1303,15 @@ class $WorkoutSetsTable extends WorkoutSets with TableInfo<$WorkoutSetsTable, Wo
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _loggedAtMeta = const VerificationMeta('loggedAt');
+  @override
+  late final GeneratedColumn<DateTime> loggedAt = GeneratedColumn<DateTime>(
+    'logged_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _sourceKeyMeta = const VerificationMeta('sourceKey');
   @override
   late final GeneratedColumn<String> sourceKey = GeneratedColumn<String>(
@@ -1355,6 +1364,7 @@ class $WorkoutSetsTable extends WorkoutSets with TableInfo<$WorkoutSetsTable, Wo
     isComplete,
     note,
     createdAt,
+    loggedAt,
     sourceKey,
     isPlanned,
     rpe,
@@ -1417,6 +1427,9 @@ class $WorkoutSetsTable extends WorkoutSets with TableInfo<$WorkoutSetsTable, Wo
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('logged_at')) {
+      context.handle(_loggedAtMeta, loggedAt.isAcceptableOrUnknown(data['logged_at']!, _loggedAtMeta));
+    }
     if (data.containsKey('source_key')) {
       context.handle(_sourceKeyMeta, sourceKey.isAcceptableOrUnknown(data['source_key']!, _sourceKeyMeta));
     }
@@ -1450,6 +1463,7 @@ class $WorkoutSetsTable extends WorkoutSets with TableInfo<$WorkoutSetsTable, Wo
       isComplete: attachedDatabase.typeMapping.read(DriftSqlType.bool, data['${effectivePrefix}is_complete'])!,
       note: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}note']),
       createdAt: attachedDatabase.typeMapping.read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      loggedAt: attachedDatabase.typeMapping.read(DriftSqlType.dateTime, data['${effectivePrefix}logged_at']),
       sourceKey: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}source_key']),
       isPlanned: attachedDatabase.typeMapping.read(DriftSqlType.bool, data['${effectivePrefix}is_planned'])!,
       rpe: attachedDatabase.typeMapping.read(DriftSqlType.double, data['${effectivePrefix}rpe']),
@@ -1483,6 +1497,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
   final bool isComplete;
   final String? note;
   final DateTime createdAt;
+  final DateTime? loggedAt;
   final String? sourceKey;
   final bool isPlanned;
   final double? rpe;
@@ -1500,6 +1515,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
     required this.isComplete,
     this.note,
     required this.createdAt,
+    this.loggedAt,
     this.sourceKey,
     required this.isPlanned,
     this.rpe,
@@ -1522,6 +1538,9 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
       map['note'] = Variable<String>(note);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || loggedAt != null) {
+      map['logged_at'] = Variable<DateTime>(loggedAt);
+    }
     if (!nullToAbsent || sourceKey != null) {
       map['source_key'] = Variable<String>(sourceKey);
     }
@@ -1549,6 +1568,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
       isComplete: Value(isComplete),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       createdAt: Value(createdAt),
+      loggedAt: loggedAt == null && nullToAbsent ? const Value.absent() : Value(loggedAt),
       sourceKey: sourceKey == null && nullToAbsent ? const Value.absent() : Value(sourceKey),
       isPlanned: Value(isPlanned),
       rpe: rpe == null && nullToAbsent ? const Value.absent() : Value(rpe),
@@ -1571,6 +1591,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
       isComplete: serializer.fromJson<bool>(json['isComplete']),
       note: serializer.fromJson<String?>(json['note']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      loggedAt: serializer.fromJson<DateTime?>(json['loggedAt']),
       sourceKey: serializer.fromJson<String?>(json['sourceKey']),
       isPlanned: serializer.fromJson<bool>(json['isPlanned']),
       rpe: serializer.fromJson<double?>(json['rpe']),
@@ -1593,6 +1614,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
       'isComplete': serializer.toJson<bool>(isComplete),
       'note': serializer.toJson<String?>(note),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'loggedAt': serializer.toJson<DateTime?>(loggedAt),
       'sourceKey': serializer.toJson<String?>(sourceKey),
       'isPlanned': serializer.toJson<bool>(isPlanned),
       'rpe': serializer.toJson<double?>(rpe),
@@ -1613,6 +1635,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
     bool? isComplete,
     Value<String?> note = const Value.absent(),
     DateTime? createdAt,
+    Value<DateTime?> loggedAt = const Value.absent(),
     Value<String?> sourceKey = const Value.absent(),
     bool? isPlanned,
     Value<double?> rpe = const Value.absent(),
@@ -1630,6 +1653,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
     isComplete: isComplete ?? this.isComplete,
     note: note.present ? note.value : this.note,
     createdAt: createdAt ?? this.createdAt,
+    loggedAt: loggedAt.present ? loggedAt.value : this.loggedAt,
     sourceKey: sourceKey.present ? sourceKey.value : this.sourceKey,
     isPlanned: isPlanned ?? this.isPlanned,
     rpe: rpe.present ? rpe.value : this.rpe,
@@ -1649,6 +1673,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
       isComplete: data.isComplete.present ? data.isComplete.value : this.isComplete,
       note: data.note.present ? data.note.value : this.note,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      loggedAt: data.loggedAt.present ? data.loggedAt.value : this.loggedAt,
       sourceKey: data.sourceKey.present ? data.sourceKey.value : this.sourceKey,
       isPlanned: data.isPlanned.present ? data.isPlanned.value : this.isPlanned,
       rpe: data.rpe.present ? data.rpe.value : this.rpe,
@@ -1671,6 +1696,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
           ..write('isComplete: $isComplete, ')
           ..write('note: $note, ')
           ..write('createdAt: $createdAt, ')
+          ..write('loggedAt: $loggedAt, ')
           ..write('sourceKey: $sourceKey, ')
           ..write('isPlanned: $isPlanned, ')
           ..write('rpe: $rpe, ')
@@ -1693,6 +1719,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
     isComplete,
     note,
     createdAt,
+    loggedAt,
     sourceKey,
     isPlanned,
     rpe,
@@ -1714,6 +1741,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
           other.isComplete == this.isComplete &&
           other.note == this.note &&
           other.createdAt == this.createdAt &&
+          other.loggedAt == this.loggedAt &&
           other.sourceKey == this.sourceKey &&
           other.isPlanned == this.isPlanned &&
           other.rpe == this.rpe &&
@@ -1733,6 +1761,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
   final Value<bool> isComplete;
   final Value<String?> note;
   final Value<DateTime> createdAt;
+  final Value<DateTime?> loggedAt;
   final Value<String?> sourceKey;
   final Value<bool> isPlanned;
   final Value<double?> rpe;
@@ -1750,6 +1779,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
     this.isComplete = const Value.absent(),
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.loggedAt = const Value.absent(),
     this.sourceKey = const Value.absent(),
     this.isPlanned = const Value.absent(),
     this.rpe = const Value.absent(),
@@ -1768,6 +1798,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
     this.isComplete = const Value.absent(),
     this.note = const Value.absent(),
     required DateTime createdAt,
+    this.loggedAt = const Value.absent(),
     this.sourceKey = const Value.absent(),
     this.isPlanned = const Value.absent(),
     this.rpe = const Value.absent(),
@@ -1788,6 +1819,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
     Expression<bool>? isComplete,
     Expression<String>? note,
     Expression<DateTime>? createdAt,
+    Expression<DateTime>? loggedAt,
     Expression<String>? sourceKey,
     Expression<bool>? isPlanned,
     Expression<double>? rpe,
@@ -1806,6 +1838,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
       if (isComplete != null) 'is_complete': isComplete,
       if (note != null) 'note': note,
       if (createdAt != null) 'created_at': createdAt,
+      if (loggedAt != null) 'logged_at': loggedAt,
       if (sourceKey != null) 'source_key': sourceKey,
       if (isPlanned != null) 'is_planned': isPlanned,
       if (rpe != null) 'rpe': rpe,
@@ -1826,6 +1859,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
     Value<bool>? isComplete,
     Value<String?>? note,
     Value<DateTime>? createdAt,
+    Value<DateTime?>? loggedAt,
     Value<String?>? sourceKey,
     Value<bool>? isPlanned,
     Value<double?>? rpe,
@@ -1844,6 +1878,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
       isComplete: isComplete ?? this.isComplete,
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
+      loggedAt: loggedAt ?? this.loggedAt,
       sourceKey: sourceKey ?? this.sourceKey,
       isPlanned: isPlanned ?? this.isPlanned,
       rpe: rpe ?? this.rpe,
@@ -1890,6 +1925,9 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (loggedAt.present) {
+      map['logged_at'] = Variable<DateTime>(loggedAt.value);
+    }
     if (sourceKey.present) {
       map['source_key'] = Variable<String>(sourceKey.value);
     }
@@ -1920,6 +1958,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
           ..write('isComplete: $isComplete, ')
           ..write('note: $note, ')
           ..write('createdAt: $createdAt, ')
+          ..write('loggedAt: $loggedAt, ')
           ..write('sourceKey: $sourceKey, ')
           ..write('isPlanned: $isPlanned, ')
           ..write('rpe: $rpe, ')
@@ -6451,6 +6490,7 @@ typedef $$WorkoutSetsTableCreateCompanionBuilder = WorkoutSetsCompanion Function
   Value<bool> isComplete,
   Value<String?> note,
   required DateTime createdAt,
+  Value<DateTime?> loggedAt,
   Value<String?> sourceKey,
   Value<bool> isPlanned,
   Value<double?> rpe,
@@ -6469,6 +6509,7 @@ typedef $$WorkoutSetsTableUpdateCompanionBuilder = WorkoutSetsCompanion Function
   Value<bool> isComplete,
   Value<String?> note,
   Value<DateTime> createdAt,
+  Value<DateTime?> loggedAt,
   Value<String?> sourceKey,
   Value<bool> isPlanned,
   Value<double?> rpe,
@@ -6524,6 +6565,8 @@ class $$WorkoutSetsTableFilterComposer extends Composer<_$AppDatabase, $WorkoutS
 
   ColumnFilters<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get loggedAt => $composableBuilder(column: $table.loggedAt, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get sourceKey => $composableBuilder(column: $table.sourceKey, builder: (column) => ColumnFilters(column));
 
@@ -6589,6 +6632,9 @@ class $$WorkoutSetsTableOrderingComposer extends Composer<_$AppDatabase, $Workou
   ColumnOrderings<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<DateTime> get loggedAt =>
+      $composableBuilder(column: $table.loggedAt, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get sourceKey =>
       $composableBuilder(column: $table.sourceKey, builder: (column) => ColumnOrderings(column));
 
@@ -6649,6 +6695,8 @@ class $$WorkoutSetsTableAnnotationComposer extends Composer<_$AppDatabase, $Work
   GeneratedColumn<String> get note => $composableBuilder(column: $table.note, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt => $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get loggedAt => $composableBuilder(column: $table.loggedAt, builder: (column) => column);
 
   GeneratedColumn<String> get sourceKey => $composableBuilder(column: $table.sourceKey, builder: (column) => column);
 
@@ -6714,6 +6762,7 @@ class $$WorkoutSetsTableTableManager
                 Value<bool> isComplete = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> loggedAt = const Value.absent(),
                 Value<String?> sourceKey = const Value.absent(),
                 Value<bool> isPlanned = const Value.absent(),
                 Value<double?> rpe = const Value.absent(),
@@ -6731,6 +6780,7 @@ class $$WorkoutSetsTableTableManager
                 isComplete: isComplete,
                 note: note,
                 createdAt: createdAt,
+                loggedAt: loggedAt,
                 sourceKey: sourceKey,
                 isPlanned: isPlanned,
                 rpe: rpe,
@@ -6750,6 +6800,7 @@ class $$WorkoutSetsTableTableManager
                 Value<bool> isComplete = const Value.absent(),
                 Value<String?> note = const Value.absent(),
                 required DateTime createdAt,
+                Value<DateTime?> loggedAt = const Value.absent(),
                 Value<String?> sourceKey = const Value.absent(),
                 Value<bool> isPlanned = const Value.absent(),
                 Value<double?> rpe = const Value.absent(),
@@ -6767,6 +6818,7 @@ class $$WorkoutSetsTableTableManager
                 isComplete: isComplete,
                 note: note,
                 createdAt: createdAt,
+                loggedAt: loggedAt,
                 sourceKey: sourceKey,
                 isPlanned: isPlanned,
                 rpe: rpe,

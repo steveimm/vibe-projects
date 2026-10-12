@@ -86,6 +86,8 @@ void main() {
     await _flush(tester);
     expect(saved!.length, 7);
     expect(saved!.first.set.reps, 9);
+    expect(saved!.first.set.loggedAt, isNotNull);
+    expect(find.text(DateFormat.Hm().format(saved!.first.set.loggedAt!.toLocal())), findsWidgets);
     expect(find.byType(SnackBar), findsNothing);
     await tester.tap(find.byTooltip('Log set'));
     await _flush(tester);
@@ -119,6 +121,11 @@ void main() {
     tester.platformDispatcher.textScaleFactorTestValue = 2;
     await tester.pump();
     expect(tester.takeException(), isNull);
+    await tester.tap(find.text('History'));
+    await _flush(tester);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Log'));
+    await _flush(tester);
     tester.platformDispatcher.clearTextScaleFactorTestValue();
     tester.view.physicalSize = const Size(640, 240);
     await tester.pump();

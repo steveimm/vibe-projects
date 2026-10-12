@@ -173,13 +173,15 @@ class WorkoutRepository {
     final factor = weightMultiplier ?? await multiplier(exerciseId);
     if (!factor.isFinite || factor <= 0) throw const FormatException('Weight multiplier must be greater than zero.');
     final bodyweight = await _bodyweightFor(exercise, date);
+    final now = _now();
     final id = await db
         .into(db.workoutSets)
         .insert(
           WorkoutSetsCompanion.insert(
             exerciseId: exerciseId,
             date: date,
-            createdAt: DateTime.now(),
+            createdAt: now,
+            loggedAt: Value(!planned && date == Dates.iso(now) ? now : null),
             rawWeight: Value(exercise.type.hasWeight ? rawWeight : 0),
             weightMultiplier: Value(factor),
             bodyweight: Value(bodyweight),
@@ -234,9 +236,17 @@ class WorkoutRepository {
   });
   Future<void> setComplete(int id, bool value) => db.transaction(() async {
     final set = await (db.select(db.workoutSets)..where((s) => s.id.equals(id))).getSingle();
-    await (db.update(
-      db.workoutSets,
-    )..where((s) => s.id.equals(id))).write(WorkoutSetsCompanion(isComplete: Value(value), isPlanned: Value(!value)));
+    final now = _now();
+    final loggedAt = !value
+        ? null
+        : !set.isPlanned
+        ? set.loggedAt
+        : set.date == Dates.iso(now)
+        ? now
+        : null;
+    await (db.update(db.workoutSets)..where((s) => s.id.equals(id))).write(
+      WorkoutSetsCompanion(isComplete: Value(value), isPlanned: Value(!value), loggedAt: Value(loggedAt)),
+    );
     if (value) await _startSessionIfNeeded(set.date);
   });
 

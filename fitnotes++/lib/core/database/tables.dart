@@ -95,6 +95,7 @@ class WorkoutSets extends Table {
   BoolColumn get isComplete => boolean().withDefault(const Constant(false))();
   TextColumn get note => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get loggedAt => dateTime().nullable()();
   TextColumn get sourceKey => text().nullable()();
   BoolColumn get isPlanned => boolean().withDefault(const Constant(false))();
   RealColumn get rpe => real().nullable()();

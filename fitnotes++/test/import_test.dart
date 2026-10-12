@@ -30,6 +30,7 @@ void main() {
     expect(exercises.length, 180, reason: 'exercises');
     expect(result.sets, 7560, reason: 'imported set count');
     expect(sets.length, 7560, reason: 'persisted set count');
+    expect(sets.every((set) => set.loggedAt == null), true, reason: 'FitNotes has no per-set logging time');
     expect(distinctDays.length, 338, reason: 'distinct workout days');
 
     // Seed categories already covered all 9 names, so none were newly created.

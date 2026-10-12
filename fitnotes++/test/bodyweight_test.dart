@@ -111,6 +111,7 @@ void main() {
     final raw = sqlite.sqlite3.open(file.path);
     raw.execute('ALTER TABLE exercises DROP COLUMN include_bodyweight');
     raw.execute('ALTER TABLE workout_sets DROP COLUMN bodyweight');
+    raw.execute('ALTER TABLE workout_sets DROP COLUMN logged_at');
     raw.execute('PRAGMA user_version = 6');
     raw.close();
     final migrated = AppDatabase(NativeDatabase(file.copySync('${directory.path}/migrate.sqlite')));

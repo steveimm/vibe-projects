@@ -2,10 +2,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fitnotes_plus/core/database/database.dart';
 import 'package:fitnotes_plus/core/util/workout_analysis.dart';
 
-WorkoutSet set(String date, double weight, int reps, {bool planned = false, double multiplier = 1}) => WorkoutSet(
-  bodyweight: 0,
+WorkoutSet set(
+  String date,
+  double weight,
+  int reps, {
+  bool planned = false,
+  double multiplier = 1,
+  double bodyweight = 0,
+  int exerciseId = 1,
+  DateTime? loggedAt,
+}) => WorkoutSet(
+  bodyweight: bodyweight,
   id: 1,
-  exerciseId: 1,
+  exerciseId: exerciseId,
   date: date,
   rawWeight: weight,
   weightMultiplier: multiplier,
@@ -15,6 +24,7 @@ WorkoutSet set(String date, double weight, int reps, {bool planned = false, doub
   isComplete: !planned,
   isPlanned: planned,
   createdAt: DateTime(2026),
+  loggedAt: loggedAt,
 );
 
 void main() {
@@ -61,6 +71,76 @@ void main() {
     expect(WorkoutAnalysis.monthsBefore('2025-03-31', 1), '2025-02-28');
     expect(WorkoutAnalysis.monthsBefore('2026-01-31', 3), '2025-10-31');
     expect(WorkoutAnalysis.monthsBefore('2026-10-10', 6), '2026-04-10');
+  });
+
+  test('category volume, set and rep totals respect snapshots, dates and performed status', () {
+    final sets = [
+      set('2026-10-10', 100, 10, multiplier: 0.5, bodyweight: 80),
+      set('2026-10-10', 20, 5, exerciseId: 2),
+      set('2026-10-11', 40, 3, exerciseId: 3),
+      set('2026-10-09', 100, 10),
+      set('2026-10-12', 100, 10),
+      set('2026-10-10', 100, 10, planned: true),
+    ];
+    final categories = {1: 10, 2: 10, 3: 20};
+    for (final entry in {
+      WorkoutMetric.volume: {10: 1400.0, 20: 120.0},
+      WorkoutMetric.sets: {10: 2.0, 20: 1.0},
+      WorkoutMetric.reps: {10: 15.0, 20: 3.0},
+    }.entries) {
+      expect(WorkoutAnalysis.categoryTotals(sets, entry.key, categories, from: '2026-10-10', to: '2026-10-11'), entry.value);
+    }
+    expect(
+      WorkoutAnalysis.categoryTotals(
+        [set('2026-10-10', 0, 0)],
+        WorkoutMetric.volume,
+        categories,
+        from: '2026-10-10',
+        to: '2026-10-11',
+      ),
+      isEmpty,
+    );
+  });
+
+  test('duration sums each exercise span per day, ignoring unknown, single and planned times', () {
+    WorkoutSet timed(String day, int exercise, int minute, {bool planned = false}) => set(
+      day,
+      20,
+      10,
+      exerciseId: exercise,
+      loggedAt: DateTime.parse('${day}T10:00:00').add(Duration(minutes: minute)),
+      planned: planned,
+    );
+    final sets = [
+      timed('2026-10-10', 1, 4),
+      timed('2026-10-10', 1, 0),
+      timed('2026-10-10', 2, 10),
+      timed('2026-10-10', 2, 16),
+      timed('2026-10-10', 3, 20),
+      timed('2026-10-10', 3, 22),
+      timed('2026-10-11', 1, 0),
+      timed('2026-10-11', 1, 3),
+      timed('2026-10-10', 1, 45, planned: true),
+      timed('2026-10-09', 1, 0),
+      timed('2026-10-09', 1, 55),
+      timed('2026-10-12', 1, 0),
+      timed('2026-10-12', 1, 55),
+      timed('2026-10-10', 4, 30),
+      timed('2026-10-10', 5, 30),
+      timed('2026-10-10', 5, 30),
+      set('2026-10-10', 20, 10),
+      set('2026-10-10', 20, 10, exerciseId: 6),
+    ];
+    expect(
+      WorkoutAnalysis.categoryTotals(
+        sets,
+        WorkoutMetric.duration,
+        {1: 10, 2: 10, 3: 20, 4: 30, 5: 30, 6: 30},
+        from: '2026-10-10',
+        to: '2026-10-11',
+      ),
+      {10: 780.0, 20: 120.0},
+    );
   });
 
   test('duration includes recorded elapsed time and running time without inventing missing times', () {

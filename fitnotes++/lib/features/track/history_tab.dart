@@ -55,10 +55,7 @@ class HistoryTab extends ConsumerWidget {
                         ListTile(
                           minTileHeight: 48,
                           minVerticalPadding: 4,
-                          leading: Text(
-                            '${j + 1}'.padLeft(2, '0'),
-                            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                          ),
+                          leading: Text('${j + 1}', style: Theme.of(context).textTheme.bodySmall),
                           title: Text(
                             describeSet(
                               type: exercise.type,
@@ -72,8 +69,13 @@ class HistoryTab extends ConsumerWidget {
                           ),
                           subtitle: entry.value[j].isPlanned
                               ? const Text('Not completed')
-                              : entry.value[j].note?.isNotEmpty == true
-                              ? Text(entry.value[j].note!)
+                              : entry.value[j].loggedAt != null || entry.value[j].note?.isNotEmpty == true
+                              ? Text(
+                                  [
+                                    if (entry.value[j].loggedAt case final time?) DateFormat.Hm().format(time.toLocal()),
+                                    if (entry.value[j].note?.isNotEmpty == true) entry.value[j].note!,
+                                  ].join(' · '),
+                                )
                               : null,
                           trailing: prs.containsKey(entry.value[j].id) ? RecordBadge(scope: prs[entry.value[j].id]!) : null,
                         ),
