@@ -77,7 +77,7 @@ class HistoryTab extends ConsumerWidget {
                                   ].join(' · '),
                                 )
                               : null,
-                          trailing: prs.containsKey(entry.value[j].id) ? RecordBadge(scope: prs[entry.value[j].id]!) : null,
+                          trailing: prs.containsKey(entry.value[j].id) ? RecordBadge.achievement(prs[entry.value[j].id]!) : null,
                         ),
                       ],
                     ],

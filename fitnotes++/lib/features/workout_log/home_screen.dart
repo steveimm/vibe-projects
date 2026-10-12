@@ -566,7 +566,7 @@ class _ExerciseCard extends ConsumerWidget {
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colors.onSurfaceVariant),
                           )
                         else if (prs.containsKey(sets[i].set.id))
-                          RecordBadge(scope: prs[sets[i].set.id]!)
+                          RecordBadge.achievement(prs[sets[i].set.id]!)
                         else
                           Icon(Icons.check_rounded, size: 18, color: colors.primary),
                       ],

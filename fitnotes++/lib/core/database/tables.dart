@@ -109,13 +109,14 @@ class WorkoutDayNotes extends Table {
   TextColumn get comment => text()();
 }
 
-/// PR windows start at the most recent reset date. Historical sets remain intact.
+/// Each PR season ends at the next marker's date.
 @DataClassName('PrResetMarker')
 class PrResetMarkers extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get date => text()(); // yyyy-MM-dd
   TextColumn get note => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
+  TextColumn get initials => text().nullable()();
 }
 
 /// Single-row settings table (id always 1).

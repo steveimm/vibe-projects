@@ -556,7 +556,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
     }
   }
 
-  Widget _setCard(WorkoutSet s, int index, Map<int, RecordScope> prs, Units units, bool markComplete) {
+  Widget _setCard(WorkoutSet s, int index, Map<int, RecordAchievement> prs, Units units, bool markComplete) {
     final colors = Theme.of(context).colorScheme;
     final selected = _editing?.id == s.id;
     return Card(
@@ -594,7 +594,8 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
                   ],
                 ),
               ),
-              if (prs.containsKey(s.id)) SizedBox(width: 48, child: RecordBadge(scope: prs[s.id]!)),
+              if (prs.containsKey(s.id))
+                Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: RecordBadge.achievement(prs[s.id]!)),
               if (markComplete || s.isPlanned)
                 Checkbox(value: !s.isPlanned, semanticLabel: 'Complete set ${index + 1}', onChanged: (v) => _completion(s, v!))
               else if (!prs.containsKey(s.id))

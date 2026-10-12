@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/database.dart';
 import '../../core/database/tables.dart';
+import '../../core/models/season.dart';
 import '../../core/providers.dart';
 import '../../core/repositories/stats_repository.dart';
 import '../../core/util/dates.dart';
@@ -155,8 +156,8 @@ class _GraphTabState extends ConsumerState<GraphTab> with AutomaticKeepAliveClie
                       ),
                       if (season != null)
                         ChoiceChip(
-                          label: const Text('Current season'),
-                          avatar: const RecordBadge(scope: RecordScope.currentSeason),
+                          label: Text('Current season · ${season.displayInitials}'),
+                          avatar: const RecordBadge(scope: RecordScope.season),
                           selected: _currentSeason,
                           onSelected: (_) => setState(() => _currentSeason = true),
                         ),

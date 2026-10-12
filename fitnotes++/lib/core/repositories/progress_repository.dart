@@ -25,11 +25,18 @@ class ProgressRepository {
 
   Stream<List<PrResetMarker>> watchSeasons() =>
       (db.select(db.prResetMarkers)..orderBy([(s) => OrderingTerm.desc(s.date), (s) => OrderingTerm.desc(s.id)])).watch();
-  Future<void> startSeason(String date, String name) async {
+  Future<void> startSeason(String date, String name, {String? initials}) async {
     Dates.validate(date);
     await db
         .into(db.prResetMarkers)
-        .insert(PrResetMarkersCompanion.insert(date: date, createdAt: DateTime.now(), note: Value(name.trim())));
+        .insert(
+          PrResetMarkersCompanion.insert(
+            date: date,
+            createdAt: DateTime.now(),
+            note: Value(name.trim()),
+            initials: Value(initials?.trim().isNotEmpty == true ? initials!.trim() : null),
+          ),
+        );
   }
 
   Future<void> deleteSeason(int id) => (db.delete(db.prResetMarkers)..where((s) => s.id.equals(id))).go();

@@ -38,7 +38,9 @@ enum GraphMetric {
 
 typedef MetricPoint = ({String date, double value});
 
-enum RecordScope { allTime, currentSeason }
+enum RecordScope { allTime, season }
+
+typedef RecordAchievement = ({RecordScope scope, PrResetMarker? season});
 
 class Stats {
   Stats._();
@@ -86,6 +88,31 @@ class Stats {
       best[reps] = math.max(best[reps] ?? 0, value);
     }
     return ids;
+  }
+
+  static Map<int, RecordAchievement> recordAchievements(
+    List<WorkoutSet> sets,
+    List<PrResetMarker> seasons, {
+    ExerciseType type = ExerciseType.weightAndReps,
+  }) {
+    final ordered = [...seasons]
+      ..sort((a, b) {
+        final date = a.date.compareTo(b.date);
+        return date != 0 ? date : a.id.compareTo(b.id);
+      });
+    final grouped = <int, List<WorkoutSet>>{};
+    for (final set in sets) {
+      final started = ordered.where((season) => season.date.compareTo(set.date) <= 0).toList();
+      if (started.isEmpty || set.isPlanned) continue;
+      final season = started.last;
+      (grouped[season.id] ??= []).add(set);
+    }
+    return {
+      for (final season in ordered)
+        for (final id in personalRecordSetIds(grouped[season.id] ?? [], type: type))
+          id: (scope: RecordScope.season, season: season),
+      for (final id in personalRecordSetIds(sets, type: type)) id: (scope: RecordScope.allTime, season: null),
+    };
   }
 
   static Map<int, double> repMaxes(List<WorkoutSet> sets, {String sinceDate = allTime}) {

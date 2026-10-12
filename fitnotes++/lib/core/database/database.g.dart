@@ -2205,8 +2205,17 @@ class $PrResetMarkersTable extends PrResetMarkers with TableInfo<$PrResetMarkers
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _initialsMeta = const VerificationMeta('initials');
   @override
-  List<GeneratedColumn> get $columns => [id, date, note, createdAt];
+  late final GeneratedColumn<String> initials = GeneratedColumn<String>(
+    'initials',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, date, note, createdAt, initials];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2232,6 +2241,9 @@ class $PrResetMarkersTable extends PrResetMarkers with TableInfo<$PrResetMarkers
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('initials')) {
+      context.handle(_initialsMeta, initials.isAcceptableOrUnknown(data['initials']!, _initialsMeta));
+    }
     return context;
   }
 
@@ -2245,6 +2257,7 @@ class $PrResetMarkersTable extends PrResetMarkers with TableInfo<$PrResetMarkers
       date: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}date'])!,
       note: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}note']),
       createdAt: attachedDatabase.typeMapping.read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      initials: attachedDatabase.typeMapping.read(DriftSqlType.string, data['${effectivePrefix}initials']),
     );
   }
 
@@ -2259,7 +2272,8 @@ class PrResetMarker extends DataClass implements Insertable<PrResetMarker> {
   final String date;
   final String? note;
   final DateTime createdAt;
-  const PrResetMarker({required this.id, required this.date, this.note, required this.createdAt});
+  final String? initials;
+  const PrResetMarker({required this.id, required this.date, this.note, required this.createdAt, this.initials});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2269,6 +2283,9 @@ class PrResetMarker extends DataClass implements Insertable<PrResetMarker> {
       map['note'] = Variable<String>(note);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || initials != null) {
+      map['initials'] = Variable<String>(initials);
+    }
     return map;
   }
 
@@ -2278,6 +2295,7 @@ class PrResetMarker extends DataClass implements Insertable<PrResetMarker> {
       date: Value(date),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       createdAt: Value(createdAt),
+      initials: initials == null && nullToAbsent ? const Value.absent() : Value(initials),
     );
   }
 
@@ -2288,6 +2306,7 @@ class PrResetMarker extends DataClass implements Insertable<PrResetMarker> {
       date: serializer.fromJson<String>(json['date']),
       note: serializer.fromJson<String?>(json['note']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      initials: serializer.fromJson<String?>(json['initials']),
     );
   }
   @override
@@ -2298,22 +2317,30 @@ class PrResetMarker extends DataClass implements Insertable<PrResetMarker> {
       'date': serializer.toJson<String>(date),
       'note': serializer.toJson<String?>(note),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'initials': serializer.toJson<String?>(initials),
     };
   }
 
-  PrResetMarker copyWith({int? id, String? date, Value<String?> note = const Value.absent(), DateTime? createdAt}) =>
-      PrResetMarker(
-        id: id ?? this.id,
-        date: date ?? this.date,
-        note: note.present ? note.value : this.note,
-        createdAt: createdAt ?? this.createdAt,
-      );
+  PrResetMarker copyWith({
+    int? id,
+    String? date,
+    Value<String?> note = const Value.absent(),
+    DateTime? createdAt,
+    Value<String?> initials = const Value.absent(),
+  }) => PrResetMarker(
+    id: id ?? this.id,
+    date: date ?? this.date,
+    note: note.present ? note.value : this.note,
+    createdAt: createdAt ?? this.createdAt,
+    initials: initials.present ? initials.value : this.initials,
+  );
   PrResetMarker copyWithCompanion(PrResetMarkersCompanion data) {
     return PrResetMarker(
       id: data.id.present ? data.id.value : this.id,
       date: data.date.present ? data.date.value : this.date,
       note: data.note.present ? data.note.value : this.note,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      initials: data.initials.present ? data.initials.value : this.initials,
     );
   }
 
@@ -2323,13 +2350,14 @@ class PrResetMarker extends DataClass implements Insertable<PrResetMarker> {
           ..write('id: $id, ')
           ..write('date: $date, ')
           ..write('note: $note, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('initials: $initials')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, date, note, createdAt);
+  int get hashCode => Object.hash(id, date, note, createdAt, initials);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2337,7 +2365,8 @@ class PrResetMarker extends DataClass implements Insertable<PrResetMarker> {
           other.id == this.id &&
           other.date == this.date &&
           other.note == this.note &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.initials == this.initials);
 }
 
 class PrResetMarkersCompanion extends UpdateCompanion<PrResetMarker> {
@@ -2345,17 +2374,20 @@ class PrResetMarkersCompanion extends UpdateCompanion<PrResetMarker> {
   final Value<String> date;
   final Value<String?> note;
   final Value<DateTime> createdAt;
+  final Value<String?> initials;
   const PrResetMarkersCompanion({
     this.id = const Value.absent(),
     this.date = const Value.absent(),
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.initials = const Value.absent(),
   });
   PrResetMarkersCompanion.insert({
     this.id = const Value.absent(),
     required String date,
     this.note = const Value.absent(),
     required DateTime createdAt,
+    this.initials = const Value.absent(),
   }) : date = Value(date),
        createdAt = Value(createdAt);
   static Insertable<PrResetMarker> custom({
@@ -2363,21 +2395,30 @@ class PrResetMarkersCompanion extends UpdateCompanion<PrResetMarker> {
     Expression<String>? date,
     Expression<String>? note,
     Expression<DateTime>? createdAt,
+    Expression<String>? initials,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (date != null) 'date': date,
       if (note != null) 'note': note,
       if (createdAt != null) 'created_at': createdAt,
+      if (initials != null) 'initials': initials,
     });
   }
 
-  PrResetMarkersCompanion copyWith({Value<int>? id, Value<String>? date, Value<String?>? note, Value<DateTime>? createdAt}) {
+  PrResetMarkersCompanion copyWith({
+    Value<int>? id,
+    Value<String>? date,
+    Value<String?>? note,
+    Value<DateTime>? createdAt,
+    Value<String?>? initials,
+  }) {
     return PrResetMarkersCompanion(
       id: id ?? this.id,
       date: date ?? this.date,
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
+      initials: initials ?? this.initials,
     );
   }
 
@@ -2396,6 +2437,9 @@ class PrResetMarkersCompanion extends UpdateCompanion<PrResetMarker> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (initials.present) {
+      map['initials'] = Variable<String>(initials.value);
+    }
     return map;
   }
 
@@ -2405,7 +2449,8 @@ class PrResetMarkersCompanion extends UpdateCompanion<PrResetMarker> {
           ..write('id: $id, ')
           ..write('date: $date, ')
           ..write('note: $note, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('initials: $initials')
           ..write(')'))
         .toString();
   }
@@ -6999,12 +7044,14 @@ typedef $$PrResetMarkersTableCreateCompanionBuilder = PrResetMarkersCompanion Fu
   required String date,
   Value<String?> note,
   required DateTime createdAt,
+  Value<String?> initials,
 });
 typedef $$PrResetMarkersTableUpdateCompanionBuilder = PrResetMarkersCompanion Function({
   Value<int> id,
   Value<String> date,
   Value<String?> note,
   Value<DateTime> createdAt,
+  Value<String?> initials,
 });
 
 class $$PrResetMarkersTableFilterComposer extends Composer<_$AppDatabase, $PrResetMarkersTable> {
@@ -7023,6 +7070,8 @@ class $$PrResetMarkersTableFilterComposer extends Composer<_$AppDatabase, $PrRes
 
   ColumnFilters<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get initials => $composableBuilder(column: $table.initials, builder: (column) => ColumnFilters(column));
 }
 
 class $$PrResetMarkersTableOrderingComposer extends Composer<_$AppDatabase, $PrResetMarkersTable> {
@@ -7041,6 +7090,9 @@ class $$PrResetMarkersTableOrderingComposer extends Composer<_$AppDatabase, $PrR
 
   ColumnOrderings<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get initials =>
+      $composableBuilder(column: $table.initials, builder: (column) => ColumnOrderings(column));
 }
 
 class $$PrResetMarkersTableAnnotationComposer extends Composer<_$AppDatabase, $PrResetMarkersTable> {
@@ -7058,6 +7110,8 @@ class $$PrResetMarkersTableAnnotationComposer extends Composer<_$AppDatabase, $P
   GeneratedColumn<String> get note => $composableBuilder(column: $table.note, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt => $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get initials => $composableBuilder(column: $table.initials, builder: (column) => column);
 }
 
 class $$PrResetMarkersTableTableManager
@@ -7088,13 +7142,15 @@ class $$PrResetMarkersTableTableManager
             Value<String> date = const Value.absent(),
             Value<String?> note = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
-          }) => PrResetMarkersCompanion(id: id, date: date, note: note, createdAt: createdAt),
+            Value<String?> initials = const Value.absent(),
+          }) => PrResetMarkersCompanion(id: id, date: date, note: note, createdAt: createdAt, initials: initials),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required String date,
             Value<String?> note = const Value.absent(),
             required DateTime createdAt,
-          }) => PrResetMarkersCompanion.insert(id: id, date: date, note: note, createdAt: createdAt),
+            Value<String?> initials = const Value.absent(),
+          }) => PrResetMarkersCompanion.insert(id: id, date: date, note: note, createdAt: createdAt, initials: initials),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (

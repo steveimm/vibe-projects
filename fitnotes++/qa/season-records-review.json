@@ -1,0 +1,17 @@
+{
+  "version": "1.9.0+21",
+  "schema_version": 9,
+  "status": "in_progress",
+  "requirements": [
+    "Keep records earned in earlier seasons when another season starts or later records are logged.",
+    "Show the season's initials with silver trophies in Home, Log, and History.",
+    "Accept optional initials when creating a season. Otherwise concatenate uppercase first characters of whitespace-separated name words.",
+    "Generate initials for existing seasons and preserve custom initials in full backups.",
+    "Use season start dates without adding special same-day handling, as requested.",
+    "Preserve the user's workout and measurement data through emulator testing."
+  ],
+  "validation": {
+    "full_suite": 74,
+    "static_analysis": "No issues found"
+  }
+}

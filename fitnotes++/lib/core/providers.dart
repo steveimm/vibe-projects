@@ -73,18 +73,13 @@ final exerciseHistoryProvider = StreamProvider.autoDispose.family<List<WorkoutSe
   (ref, id) => ref.watch(workoutRepositoryProvider).watchExerciseHistory(id),
 );
 
-final recordBadgesProvider = Provider.autoDispose.family<Map<int, RecordScope>, int>((ref, id) {
+final recordBadgesProvider = Provider.autoDispose.family<Map<int, RecordAchievement>, int>((ref, id) {
   final history = ref.watch(exerciseHistoryProvider(id)).asData?.value ?? const <WorkoutSet>[];
   final enabled = ref.watch(settingsProvider).asData?.value.trackPersonalRecords ?? true;
   if (!enabled) return {};
-  final season = ref.watch(seasonsProvider).asData?.value.firstOrNull;
+  final seasons = ref.watch(seasonsProvider).asData?.value ?? const <PrResetMarker>[];
   final type = ref.watch(exerciseProvider(id)).asData?.value.type ?? ExerciseType.weightAndReps;
-  final allTime = Stats.personalRecordSetIds(history, type: type);
-  final currentSeason = season == null ? <int>{} : Stats.personalRecordSetIds(history, sinceDate: season.date, type: type);
-  return {
-    for (final setId in currentSeason) setId: RecordScope.currentSeason,
-    for (final setId in allTime) setId: RecordScope.allTime,
-  };
+  return Stats.recordAchievements(history, seasons, type: type);
 });
 
 typedef GraphKey = ({int exerciseId, GraphMetric metric});

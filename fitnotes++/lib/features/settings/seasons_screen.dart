@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
+import '../../core/models/season.dart';
 import '../../core/util/dates.dart';
 import '../../shared/widgets.dart';
 import '../../shared/record_badge.dart';
@@ -25,8 +26,6 @@ class SeasonsScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
           children: [
-            const Text('A season tracks personal records from a chosen date without deleting past workouts.'),
-            const SizedBox(height: 12),
             const Card(
               child: ListTile(
                 leading: RecordBadge(scope: RecordScope.allTime, size: 24),
@@ -46,21 +45,18 @@ class SeasonsScreen extends ConsumerWidget {
                           padding: const EdgeInsets.only(bottom: 6),
                           child: Card(
                             child: ListTile(
-                              leading: i == 0
-                                  ? const RecordBadge(scope: RecordScope.currentSeason, size: 24)
-                                  : const Icon(Icons.history_rounded),
-                              title: Text(
-                                seasons[i].note?.isNotEmpty == true ? seasons[i].note! : 'Season ${seasons.length - i}',
-                              ),
+                              leading: RecordBadge(scope: RecordScope.season, season: seasons[i], size: 24),
+                              title: Text(seasons[i].displayName),
                               subtitle: Text('Since ${seasons[i].date}${i == 0 ? ' · Current season' : ''}'),
                               trailing: IconButton(
-                                tooltip: 'Remove reset',
+                                tooltip: 'Remove season',
                                 icon: const Icon(Icons.delete_outline_rounded),
                                 onPressed: () async {
                                   if (await confirm(
                                         context,
-                                        title: 'Remove this reset?',
-                                        message: 'The previous season will apply if this is the current reset. Your workouts remain unchanged.',
+                                        title: 'Remove season?',
+                                        message:
+                                            'Remove ${seasons[i].displayName}? This changes the PR dates. Your sets stay in history.',
                                         action: 'Remove',
                                       ) &&
                                       context.mounted) {
@@ -92,11 +88,13 @@ class _SeasonDialog extends ConsumerStatefulWidget {
 
 class _SeasonDialogState extends ConsumerState<_SeasonDialog> {
   final _name = TextEditingController();
+  final _initials = TextEditingController();
   String _date = Dates.today();
   bool _busy = false;
   @override
   void dispose() {
     _name.dispose();
+    _initials.dispose();
     super.dispose();
   }
 
@@ -110,7 +108,16 @@ class _SeasonDialogState extends ConsumerState<_SeasonDialog> {
           controller: _name,
           maxLength: 80,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(labelText: 'Name (optional)', hintText: 'e.g. Autumn training'),
+          textInputAction: TextInputAction.next,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(labelText: 'Name (optional)', hintText: 'Autumn training', counterText: ''),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _initials,
+          maxLength: 80,
+          textCapitalization: TextCapitalization.characters,
+          decoration: InputDecoration(labelText: 'Initials (optional)', hintText: initialsFromName(_name.text), counterText: ''),
         ),
         ListTile(
           contentPadding: EdgeInsets.zero,
@@ -136,7 +143,10 @@ class _SeasonDialogState extends ConsumerState<_SeasonDialog> {
             ? null
             : () async {
                 setState(() => _busy = true);
-                final ok = await attempt(context, () => ref.read(progressRepositoryProvider).startSeason(_date, _name.text));
+                final ok = await attempt(
+                  context,
+                  () => ref.read(progressRepositoryProvider).startSeason(_date, _name.text, initials: _initials.text),
+                );
                 if (!context.mounted) return;
                 if (ok) {
                   Navigator.pop(context);

@@ -64,6 +64,7 @@ class BackupService {
         if (version < 7 && table.actualTableName == 'exercises') expected.remove('include_bodyweight');
         if (version < 7 && table.actualTableName == 'workout_sets') expected.remove('bodyweight');
         if (version < 8 && table.actualTableName == 'workout_sets') expected.remove('logged_at');
+        if (version < 9 && table.actualTableName == 'pr_reset_markers') expected.remove('initials');
         if (version < 5 && table.actualTableName == 'app_settings') expected.remove('rest_timer_sound_uri');
         if (version == 2 && table.actualTableName == 'workout_sessions') {
           expected.removeAll(['elapsed_seconds', 'running_since']);
