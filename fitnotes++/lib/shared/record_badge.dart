@@ -35,14 +35,15 @@ class RecordBadge extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 72),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Icon(Icons.emoji_events_rounded, size: size, color: color),
             if (label != null) ...[
-              const SizedBox(width: 3),
               Flexible(
                 child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall),
               ),
+              const SizedBox(width: 3),
             ],
+            Icon(Icons.emoji_events_rounded, size: size, color: color),
           ],
         ),
       ),

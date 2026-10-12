@@ -1,10 +1,11 @@
 {
   "version": "1.9.0+21",
   "schema_version": 9,
-  "status": "in_progress",
+  "status": "complete",
   "requirements": [
     "Keep records earned in earlier seasons when another season starts or later records are logged.",
     "Show the season's initials with silver trophies in Home, Log, and History.",
+    "Place initials to the left of the trophy and align gold and silver trophy icons.",
     "Accept optional initials when creating a season. Otherwise concatenate uppercase first characters of whitespace-separated name words.",
     "Generate initials for existing seasons and preserve custom initials in full backups.",
     "Use season start dates without adding special same-day handling, as requested.",
@@ -12,6 +13,69 @@
   ],
   "validation": {
     "full_suite": 74,
-    "static_analysis": "No issues found"
+    "static_analysis": "No issues found",
+    "final_focused_suite": 9,
+    "emulator": "FitNotes_API_36, Android 16/API 36, ARM64, 1080x2400 at 420 dpi",
+    "emulator_checks": [
+      "Every original database table and value survived migration from schema 8 to 9.",
+      "Existing season name Let's GO automatically displays LG without changing stored season data.",
+      "Created Winter Build with custom initials WB26 and a 1 September start date through Settings.",
+      "Created Autumn Strength with initials omitted and a 1 October start date. AS is derived from its name.",
+      "The September 80 kg and 85 kg records retained WB26 trophies after October records gained AS trophies.",
+      "The older 100 kg and newer 110 kg all-time records both retain gold trophies.",
+      "Verified season badges in History and the old workout Log. Final release Home and Settings show initials to the left with trophy icons aligned.",
+      "Final release shows AS as a visible default before the initials field is focused. Cancel closes the preview without saving another season."
+    ],
+    "screenshots": [
+      "build/qa/1.9.0/season-dialog-custom.png",
+      "build/qa/1.9.0/history-before-new-season.png",
+      "build/qa/1.9.0/history-after-new-season.png",
+      "build/qa/1.9.0/old-season-log.png",
+      "build/qa/1.9.0/release-home.png",
+      "build/qa/1.9.0/release-seasons.png",
+      "build/qa/1.9.0/release-initials-preview.png"
+    ],
+    "release_errors": "No release application errors."
+  },
+  "implementation_commit": "2424cb5",
+  "data_preservation": {
+    "checkpoint": "build/qa/1.9.0/original.tar",
+    "migrated_checkpoint": "build/qa/1.9.0/migrated.tar",
+    "all_original_rows_preserved": true,
+    "final_counts": {
+      "workout_sets": 8463,
+      "measurements": 108,
+      "exercises": 184,
+      "pr_reset_markers": 1
+    },
+    "temporary_data_removed": {
+      "sets": 6,
+      "exercise": 1,
+      "seasons": 2
+    },
+    "source_files_unchanged": true
+  },
+  "release": {
+    "build_command": "flutter build apk --release --split-per-abi",
+    "artifacts": [
+      {
+        "path": "build/releases/1.9.0/app-arm64-v8a-release.apk",
+        "sha256": "cd80102638d802d9203381dd53d3dbb49587167ac13a69835950ed60a696824e"
+      },
+      {
+        "path": "build/releases/1.9.0/app-armeabi-v7a-release.apk",
+        "sha256": "59e52e0be8064bc2852d6bbf86c38395f0242f8d301794f5ebbe2f7f01a7abfd"
+      },
+      {
+        "path": "build/releases/1.9.0/app-x86_64-release.apk",
+        "sha256": "d1bdcf3322da305da83feefb4c052ed9e1ec01e2d1025ffc6a893a584b7cd9f6"
+      }
+    ],
+    "installed": {
+      "version_name": "1.9.0",
+      "version_code": 2021,
+      "abi": "arm64-v8a",
+      "debuggable": false
+    }
   }
 }

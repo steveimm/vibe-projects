@@ -85,6 +85,7 @@ void main() {
       await tester.enterText(fields.first, 'Autumn strength training');
       await tester.pump();
       expect(tester.widget<TextField>(fields.at(1)).decoration!.hintText, 'AST');
+      expect(find.text('AST'), findsOneWidget);
       if (custom) await tester.enterText(fields.at(1), 'A26');
       await tester.tap(find.text('Start season'));
       await flush(tester);
@@ -93,6 +94,8 @@ void main() {
       expect(saved!.single.displayInitials, custom ? 'A26' : 'AST');
       expect(saved!.single.initials, custom ? 'A26' : null);
       expect(find.text(custom ? 'A26' : 'AST'), findsOneWidget);
+      final trophies = find.byIcon(Icons.emoji_events_rounded);
+      expect(tester.getCenter(trophies.first).dx, tester.getCenter(trophies.last).dx);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       container.dispose();
@@ -114,10 +117,16 @@ void main() {
               body: Center(
                 child: SizedBox(
                   width: 300,
-                  child: Row(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Expanded(child: Text('60 kg × 8 reps')),
-                      RecordBadge(scope: RecordScope.season, season: season),
+                      for (final scope in RecordScope.values)
+                        Row(
+                          children: [
+                            const Expanded(child: Text('60 kg × 8 reps')),
+                            RecordBadge(scope: scope, season: scope == RecordScope.season ? season : null),
+                          ],
+                        ),
                     ],
                   ),
                 ),
@@ -128,7 +137,12 @@ void main() {
       );
       expect(find.text('AST'), findsOneWidget);
       expect(find.byTooltip('Season record · Autumn strength training · 2025-03-01'), findsOneWidget);
-      expect(tester.getSize(find.byType(RecordBadge)).width, lessThanOrEqualTo(72));
+      for (final badge in find.byType(RecordBadge).evaluate()) {
+        expect(tester.getSize(find.byWidget(badge.widget)).width, lessThanOrEqualTo(72));
+      }
+      final trophies = find.byIcon(Icons.emoji_events_rounded);
+      expect(tester.getCenter(trophies.first).dx, tester.getCenter(trophies.last).dx);
+      expect(tester.getBottomRight(find.text('AST')).dx, lessThan(tester.getTopLeft(trophies.last).dx));
       expect(tester.takeException(), isNull);
     }
   });

@@ -28,7 +28,7 @@ class SeasonsScreen extends ConsumerWidget {
           children: [
             const Card(
               child: ListTile(
-                leading: RecordBadge(scope: RecordScope.allTime, size: 24),
+                leading: SizedBox(width: 72, child: RecordBadge(scope: RecordScope.allTime, size: 24)),
                 title: Text('All-time records'),
               ),
             ),
@@ -45,7 +45,10 @@ class SeasonsScreen extends ConsumerWidget {
                           padding: const EdgeInsets.only(bottom: 6),
                           child: Card(
                             child: ListTile(
-                              leading: RecordBadge(scope: RecordScope.season, season: seasons[i], size: 24),
+                              leading: SizedBox(
+                                width: 72,
+                                child: RecordBadge(scope: RecordScope.season, season: seasons[i], size: 24),
+                              ),
                               title: Text(seasons[i].displayName),
                               subtitle: Text('Since ${seasons[i].date}${i == 0 ? ' · Current season' : ''}'),
                               trailing: IconButton(
@@ -117,7 +120,12 @@ class _SeasonDialogState extends ConsumerState<_SeasonDialog> {
           controller: _initials,
           maxLength: 80,
           textCapitalization: TextCapitalization.characters,
-          decoration: InputDecoration(labelText: 'Initials (optional)', hintText: initialsFromName(_name.text), counterText: ''),
+          decoration: InputDecoration(
+            labelText: 'Initials (optional)',
+            floatingLabelBehavior: FloatingLabelBehavior.always,
+            hintText: initialsFromName(_name.text),
+            counterText: '',
+          ),
         ),
         ListTile(
           contentPadding: EdgeInsets.zero,
