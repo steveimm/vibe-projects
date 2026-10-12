@@ -1,7 +1,7 @@
 {
   "version": "1.9.1+22",
   "schema_version": 9,
-  "status": "in_progress",
+  "status": "complete",
   "requirements": [
     "Reduce PR season list padding while keeping trophy alignment and usable touch targets.",
     "Tap a season to edit its name, initials, and start date in the existing season dialog.",
@@ -11,6 +11,60 @@
   ],
   "validation": {
     "focused_suite": 21,
-    "static_analysis": "No issues found"
+    "static_analysis": "No issues found",
+    "final_focused_suite": 8,
+    "emulator": "FitNotes_API_36, Android 16/API 36, ARM64, 1080x2400 at 420 dpi",
+    "emulator_checks": [
+      "Season and all-time cards now measure 56 dp at normal text size, down from 72 dp. The delete target remains 48 dp and stays inside the card.",
+      "Tapped the existing season to open its saved name, custom-initials field, and start date.",
+      "Saved an edited name, custom initials SET, and a different start date, then reopened all values successfully.",
+      "Cleared custom initials and saved a new name. The label changed automatically to EB.",
+      "Cancelled a later name edit and confirmed the saved season remained unchanged.",
+      "Database comparison verified the original season ID and creation timestamp were preserved. All other tables remained unchanged.",
+      "Restored the exact original database and preferences before release installation. The final release opens the original season for editing and returns to the compact list on Cancel."
+    ],
+    "screenshots": [
+      "build/qa/1.9.1/prefilled-editor.png",
+      "build/qa/1.9.1/saved-editor.png",
+      "build/qa/1.9.1/release-seasons.png",
+      "build/qa/1.9.1/release-editor.png"
+    ],
+    "release_errors": "No release application errors."
+  },
+  "implementation_commit": "fff5d0f",
+  "data_preservation": {
+    "checkpoint": "build/qa/1.9.1/original.tar",
+    "all_original_tables_and_values_restored": true,
+    "final_counts": {
+      "workout_sets": 8463,
+      "measurements": 108,
+      "exercises": 184,
+      "pr_reset_markers": 1
+    },
+    "test_rows_added": 0,
+    "source_files_unchanged": true
+  },
+  "release": {
+    "build_command": "flutter build apk --release --split-per-abi",
+    "artifacts": [
+      {
+        "path": "build/releases/1.9.1/app-arm64-v8a-release.apk",
+        "sha256": "ac210e7056fb46623b25d92a1080e731a131ac8cde3fb25c70e8b4a3420b2d66"
+      },
+      {
+        "path": "build/releases/1.9.1/app-armeabi-v7a-release.apk",
+        "sha256": "1ac7b0a14360d1bff009d269dd036907bf7ee3dcb56d9b32439d1c45897e4867"
+      },
+      {
+        "path": "build/releases/1.9.1/app-x86_64-release.apk",
+        "sha256": "6d96e25c6588ee2ff87e68c493647779884ac8613231d817aacf6e5dc1d09b43"
+      }
+    ],
+    "installed": {
+      "version_name": "1.9.1",
+      "version_code": 2022,
+      "abi": "arm64-v8a",
+      "debuggable": false
+    }
   }
 }

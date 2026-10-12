@@ -162,6 +162,9 @@ void main() {
     final card = find.byKey(ValueKey('season-${original.id}'));
     expect(tester.getSize(card).height, lessThanOrEqualTo(80));
     expect(tester.getSize(find.widgetWithIcon(IconButton, Icons.delete_outline_rounded)).height, greaterThanOrEqualTo(48));
+    final deleteBounds = tester.getRect(find.widgetWithIcon(IconButton, Icons.delete_outline_rounded));
+    expect(deleteBounds.top, greaterThanOrEqualTo(tester.getRect(card).top));
+    expect(deleteBounds.bottom, lessThanOrEqualTo(tester.getRect(card).bottom));
     await tester.tap(card);
     await tester.pumpAndSettle();
     expect(find.text('Edit PR season'), findsOneWidget);

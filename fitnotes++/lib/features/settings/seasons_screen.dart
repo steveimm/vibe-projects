@@ -56,8 +56,17 @@ class SeasonsScreen extends ConsumerWidget {
                                 width: 60,
                                 child: RecordBadge(scope: RecordScope.season, season: seasons[i], size: 20),
                               ),
-                              title: Text(seasons[i].displayName),
-                              subtitle: Text('${seasons[i].date}${i == 0 ? ' · Current' : ''}'),
+                              title: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(seasons[i].displayName),
+                                  Text(
+                                    '${seasons[i].date}${i == 0 ? ' · Current' : ''}',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
                               trailing: IconButton(
                                 tooltip: 'Remove season',
                                 icon: const Icon(Icons.delete_outline_rounded),
