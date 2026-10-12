@@ -1,10 +1,10 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/database/database.dart';
 import '../../core/providers.dart';
+import '../../core/util/date_filter.dart';
 import '../../core/util/dates.dart';
 import '../../core/util/format.dart';
 import '../../core/util/workout_analysis.dart';
@@ -19,8 +19,7 @@ class AnalysisTab extends ConsumerStatefulWidget {
 }
 
 class _AnalysisTabState extends ConsumerState<AnalysisTab> with AutomaticKeepAliveClientMixin {
-  int _months = 1;
-  DateTimeRange? _custom;
+  DateFilter _filter = const DateFilter();
   WorkoutMetric _metric = WorkoutMetric.volume;
   @override
   bool get wantKeepAlive => true;
@@ -38,16 +37,7 @@ class _AnalysisTabState extends ConsumerState<AnalysisTab> with AutomaticKeepAli
       error: (_, _) => ErrorState(onRetry: () => ref.invalidate(allLogProvider)),
       data: (all) {
         final today = Dates.today();
-        final earliest =
-            (all.where((s) => !s.set.isPlanned && s.set.date.compareTo(today) <= 0).map((s) => s.set.date).toList()..sort())
-                .firstOrNull ??
-            today;
-        final from = _months == -1
-            ? Dates.iso(_custom!.start)
-            : _months == 0
-            ? earliest
-            : WorkoutAnalysis.monthsBefore(today, _months);
-        final to = _months == -1 ? Dates.iso(_custom!.end) : today;
+        final (:from, :to) = _filter.range(today, all.where((s) => !s.set.isPlanned).map((s) => s.set.date));
         final selected = all
             .where((s) => !s.set.isPlanned && s.set.date.compareTo(from) >= 0 && s.set.date.compareTo(to) <= 0)
             .toList();
@@ -65,8 +55,8 @@ class _AnalysisTabState extends ConsumerState<AnalysisTab> with AutomaticKeepAli
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
           children: [
             DateRangeChips(
-              months: _months,
-              onChanged: (value) => setState(() => _months = value),
+              months: _filter.months,
+              onChanged: (value) => setState(() => _filter = _filter.withMonths(value)),
               onCustom: () => _pickRange(from, to),
             ),
             DropdownButtonFormField<WorkoutMetric>(
@@ -132,7 +122,7 @@ class _AnalysisTabState extends ConsumerState<AnalysisTab> with AutomaticKeepAli
                                 child: Tooltip(
                                   message: '$from – $to',
                                   child: Text(
-                                    '${DateFormat(Dates.parse(from).year == Dates.parse(to).year ? 'd MMM' : 'd MMM yy').format(Dates.parse(from))} – ${DateFormat('d MMM yy').format(Dates.parse(to))}',
+                                    Dates.rangeLabel(from, to),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: Theme.of(context).textTheme.bodySmall,
@@ -185,19 +175,8 @@ class _AnalysisTabState extends ConsumerState<AnalysisTab> with AutomaticKeepAli
   }
 
   Future<void> _pickRange(String from, String to) async {
-    final selected = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(1900),
-      lastDate: Dates.parse(Dates.today()),
-      initialDateRange: _custom ?? DateTimeRange(start: Dates.parse(from), end: Dates.parse(to)),
-      helpText: 'Custom range',
-    );
-    if (selected != null && mounted) {
-      setState(() {
-        _custom = selected;
-        _months = -1;
-      });
-    }
+    final selected = await pickChartDateRange(context, _filter, from, to);
+    if (selected != null && mounted) setState(() => _filter = selected);
   }
 }
 

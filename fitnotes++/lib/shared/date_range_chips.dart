@@ -1,6 +1,30 @@
 import 'package:flutter/material.dart';
 
 import '../app/theme.dart';
+import '../core/util/date_filter.dart';
+import '../core/util/dates.dart';
+
+Future<DateFilter?> pickChartDateRange(BuildContext context, DateFilter filter, String from, String to) async {
+  final selected = await showDateRangePicker(
+    context: context,
+    firstDate: DateTime(1900),
+    lastDate: Dates.parse(Dates.today()),
+    initialDateRange: DateTimeRange(start: Dates.parse(filter.customFrom ?? from), end: Dates.parse(filter.customTo ?? to)),
+    helpText: 'Custom range',
+    builder: (context, child) {
+      final theme = Theme.of(context);
+      return Theme(
+        data: theme.copyWith(
+          datePickerTheme: theme.datePickerTheme.copyWith(rangePickerHeaderHeadlineStyle: theme.textTheme.titleMedium),
+        ),
+        child: child!,
+      );
+    },
+  );
+  return selected == null
+      ? null
+      : DateFilter(months: -1, customFrom: Dates.iso(selected.start), customTo: Dates.iso(selected.end));
+}
 
 class DateRangeChips extends StatelessWidget {
   const DateRangeChips({super.key, required this.months, required this.onChanged, this.onCustom, this.includeYear = false});

@@ -4,8 +4,10 @@ import 'package:intl/intl.dart';
 
 import '../../core/database/database.dart';
 import '../../core/providers.dart';
+import '../../core/util/date_filter.dart';
 import '../../core/util/dates.dart';
 import '../../core/util/format.dart';
+import '../../shared/date_range_chips.dart';
 import '../../shared/progress_chart.dart';
 import '../../shared/widgets.dart';
 
@@ -16,6 +18,7 @@ class BodyTab extends ConsumerStatefulWidget {
 }
 
 class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClientMixin {
+  DateFilter _filter = const DateFilter();
   @override
   bool get wantKeepAlive => true;
 
@@ -32,9 +35,14 @@ class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClient
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => ErrorState(onRetry: () => ref.invalidate(allMeasurementsProvider)),
         data: (all) {
+          final (:from, :to) = _filter.range(Dates.today(), all.map((r) => r.date));
           final groups = <int, List<Measurement>>{};
+          final filtered = <int, List<Measurement>>{};
           for (final record in all) {
             (groups[record.typeId] ??= []).add(record);
+            if (record.date.compareTo(from) >= 0 && record.date.compareTo(to) <= 0) {
+              (filtered[record.typeId] ??= []).add(record);
+            }
           }
           final ordered = [...types.where((t) => groups.containsKey(t.id)), ...types.where((t) => !groups.containsKey(t.id))];
           return Scaffold(
@@ -44,6 +52,21 @@ class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClient
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 88),
                 children: [
+                  DateRangeChips(
+                    months: _filter.months,
+                    onChanged: (value) => setState(() => _filter = _filter.withMonths(value)),
+                    onCustom: () => _pickRange(from, to),
+                  ),
+                  if (_filter.isCustom)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(Dates.rangeLabel(from, to), style: Theme.of(context).textTheme.bodySmall),
+                    ),
+                  if (filtered.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text('No measurements in this range', style: Theme.of(context).textTheme.bodySmall),
+                    ),
                   for (final type in ordered)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
@@ -62,7 +85,7 @@ class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClient
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(type.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                          if (groups[type.id]?.firstOrNull case final latest?)
+                                          if (filtered[type.id]?.firstOrNull case final latest?)
                                             Text(
                                               '${Fmt.number(_display(latest.value, type.unit, units))} ${_unit(type.unit, units)} · ${DateFormat('d MMM yyyy').format(Dates.parse(latest.date))}',
                                               style: Theme.of(context).textTheme.bodySmall,
@@ -88,7 +111,7 @@ class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClient
                                 ),
                               ],
                             ),
-                            if (groups[type.id] case final records?)
+                            if (filtered[type.id] case final records?)
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
                                 child: ProgressChart(
@@ -112,6 +135,11 @@ class _BodyTabState extends ConsumerState<BodyTab> with AutomaticKeepAliveClient
         },
       ),
     );
+  }
+
+  Future<void> _pickRange(String from, String to) async {
+    final selected = await pickChartDateRange(context, _filter, from, to);
+    if (selected != null && mounted) setState(() => _filter = selected);
   }
 
   Future<void> _record(MeasurementType type, List<Measurement> records) => showDialog<void>(

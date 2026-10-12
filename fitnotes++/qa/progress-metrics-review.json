@@ -1,0 +1,12 @@
+{
+  "version": "1.8.0+20",
+  "status": "in_progress",
+  "requirements": [
+    "Measurements uses the Analysis date filters: 1m, 3m, 6m, All, and Custom.",
+    "Training balance uses the selected volume, set, rep, or duration metric and date range.",
+    "New performed sets capture a nullable logging timestamp. Old and imported sets keep unknown times.",
+    "Duration groups timed sets by workout date and exercise, subtracts first from last, and sums by category.",
+    "Preserve the user's restored workout and measurement data during emulator verification."
+  ],
+  "validation": {}
+}

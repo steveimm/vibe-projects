@@ -18,6 +18,9 @@ class Dates {
 
   static String today() => iso(DateTime.now());
 
+  static String rangeLabel(String from, String to) =>
+      '${DateFormat(parse(from).year == parse(to).year ? 'd MMM' : 'd MMM yy').format(parse(from))} – ${DateFormat('d MMM yy').format(parse(to))}';
+
   static String shift(String isoDate, int days) =>
       iso(DateTime(parse(isoDate).year, parse(isoDate).month, parse(isoDate).day + days));
 
