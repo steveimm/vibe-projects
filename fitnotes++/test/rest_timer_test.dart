@@ -5,6 +5,35 @@ import 'package:fitnotes_plus/core/services/rest_timer.dart';
 import 'package:fitnotes_plus/shared/rest_timer_bar.dart';
 
 void main() {
+  for (final paused in [false, true]) {
+    testWidgets('dismissing a ${paused ? 'paused' : 'running'} rest stays dismissed past its deadline', (tester) async {
+      var now = DateTime.utc(2026, 10, 15);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [restClockProvider.overrideWithValue(() => now)],
+          child: const MaterialApp(home: Scaffold(bottomNavigationBar: RestTimerBar())),
+        ),
+      );
+      final container = ProviderScope.containerOf(tester.element(find.byType(RestTimerBar)));
+      final timer = container.read(restTimerProvider.notifier);
+      timer.start(60);
+      if (paused) timer.pauseOrResume();
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Stop rest timer'));
+      await tester.pumpAndSettle();
+      expect(container.read(restTimerProvider).status, RestStatus.idle);
+      expect(tester.getSize(find.byType(RestTimerBar)).height, 0);
+
+      now = now.add(const Duration(minutes: 2));
+      timer.setVisible(false);
+      timer.setVisible(true);
+      await tester.pump(const Duration(seconds: 2));
+      expect(container.read(restTimerProvider).status, RestStatus.idle);
+      expect(find.textContaining('Rest complete'), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
   testWidgets('rest timer stays compact inside a scaffold and supports pause/resume', (tester) async {
     var now = DateTime.utc(2026, 10, 7);
     await tester.pumpWidget(

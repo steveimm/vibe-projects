@@ -31,18 +31,19 @@ class RestTimerService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == STOP) {
-            preferences.edit().clear().apply()
+            clearSavedTimer(this)
+            completed = false
+            stopCallbacks()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            notifications.cancel(ONGOING_ID)
             notifications.cancel(COMPLETE_ID)
             stopSelf()
             return START_NOT_STICKY
         }
         val deadline = preferences.getLong("deadline", 0)
         if (deadline <= 0 || preferences.getBoolean("paused", false) || preferences.getBoolean("finished", false)) { stopSelf(); return START_NOT_STICKY }
-        alert?.let(handler::removeCallbacks)
-        countdown?.let(handler::removeCallbacks)
-        finish?.let(handler::removeCallbacks)
+        stopCallbacks()
         completed = false
-        sound.stop()
         if (Build.VERSION.SDK_INT >= 26) {
             val previous = notifications.getNotificationChannel("fitnotes_rest")
             val importance = if (previous != null && (Build.VERSION.SDK_INT < 29 || previous.hasUserSetImportance()))
@@ -59,7 +60,7 @@ class RestTimerService : Service() {
             .setContentTitle("Rest timer")
             .setContentText(remainingText(deadline)).setShowWhen(false)
             .setOngoing(true).setOnlyAlertOnce(true)
-            .addAction(Notification.Action.Builder(null, "Stop", PendingIntent.getService(this, 2,
+            .addAction(Notification.Action.Builder(null, "Cancel", PendingIntent.getService(this, 2,
                 Intent(this, RestTimerService::class.java).setAction(STOP), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)).build())
         val notification = builder.build()
         if (Build.VERSION.SDK_INT >= 34) startForeground(ONGOING_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
@@ -70,12 +71,12 @@ class RestTimerService : Service() {
         wakeLock = (getSystemService(POWER_SERVICE) as PowerManager).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "FitNotes:rest").apply {
             acquire(remaining + RestAlertPlayer.MAX_DURATION_MS + 2000)
         }
-        alert = Runnable { complete() }
+        alert = Runnable { if (isCurrent(deadline)) complete() }
         handler.postDelayed(alert!!, remaining)
         countdown = object : Runnable {
             override fun run() {
                 val left = deadline - System.currentTimeMillis()
-                if (completed || left <= 0) return
+                if (completed || left <= 0 || !isCurrent(deadline)) return
                 notifications.notify(ONGOING_ID, builder.setContentText(remainingText(deadline)).build())
                 handler.postDelayed(this, minOf(1000L, left))
             }
@@ -83,6 +84,9 @@ class RestTimerService : Service() {
         handler.postDelayed(countdown!!, minOf(1000L, remaining))
         return START_STICKY
     }
+
+    private fun isCurrent(deadline: Long): Boolean = preferences.getLong("deadline", 0) == deadline &&
+        !preferences.getBoolean("paused", false)
 
     private fun remainingText(deadline: Long): String {
         val seconds = ((deadline - System.currentTimeMillis() + 999) / 1000).coerceAtLeast(0)
@@ -107,8 +111,8 @@ class RestTimerService : Service() {
         val vibrate = preferences.getBoolean("vibrate", false)
         val soundUri = preferences.getString("soundUri", null)
         countdown?.let(handler::removeCallbacks)
-        preferences.edit().clear().apply()
         completed = true
+        clearSavedTimer(this)
         if (vibrate) {
             val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
             if (Build.VERSION.SDK_INT >= 26) vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
@@ -134,11 +138,15 @@ class RestTimerService : Service() {
 
     }
 
-    override fun onDestroy() {
+    private fun stopCallbacks() {
         alert?.let(handler::removeCallbacks)
         countdown?.let(handler::removeCallbacks)
         finish?.let(handler::removeCallbacks)
         sound.stop()
+    }
+
+    override fun onDestroy() {
+        stopCallbacks()
         if (Build.VERSION.SDK_INT < 26) notifications.cancel(COMPLETE_ID)
         if (wakeLock?.isHeld == true) wakeLock?.release()
         stopForeground(if (completed && Build.VERSION.SDK_INT >= 26) STOP_FOREGROUND_DETACH else STOP_FOREGROUND_REMOVE)
@@ -152,16 +160,24 @@ class RestTimerService : Service() {
         private const val COMPLETE_ID = 3102
         private const val STOP = "fitnotes.stop_rest"
 
+        private fun clearSavedTimer(context: Context) {
+            val saved = context.getSharedPreferences("fitnotes_timer", Context.MODE_PRIVATE)
+            // Removing keys also notifies listeners on Android versions where clear() does not.
+            val edit = saved.edit()
+            saved.all.keys.forEach(edit::remove)
+            edit.apply()
+        }
+
         fun start(context: Context) {
             val intent = Intent(context, RestTimerService::class.java)
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent) else context.startService(intent)
         }
         fun stop(context: Context, clear: Boolean = true) {
+            if (clear) clearSavedTimer(context)
             context.stopService(Intent(context, RestTimerService::class.java))
             val manager = context.getSystemService(NotificationManager::class.java)
             manager.cancel(ONGOING_ID)
             manager.cancel(COMPLETE_ID)
-            if (clear) context.getSharedPreferences("fitnotes_timer", Context.MODE_PRIVATE).edit().clear().apply()
         }
     }
 }

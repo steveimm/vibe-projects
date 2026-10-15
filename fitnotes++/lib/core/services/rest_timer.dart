@@ -27,14 +27,18 @@ class RestTimerController extends Notifier<RestState> {
 
   @override
   RestState build() {
-    ref.onDispose(() => _ticker?.cancel());
+    final subscription = DeviceService.restCleared.listen((_) => unawaited(sync()));
+    ref.onDispose(() {
+      _ticker?.cancel();
+      unawaited(subscription.cancel());
+    });
     Future.microtask(sync);
     return const RestState();
   }
 
   Future<void> sync() async {
     if (!DeviceService.nativeTimers) return;
-    final generation = _generation;
+    final generation = ++_generation;
     final saved = await DeviceService.call<Map>('getRest');
     if (!ref.mounted || generation != _generation) return;
     if (saved == null) {
@@ -170,7 +174,7 @@ class RestTimerController extends Notifier<RestState> {
   void stop() {
     _generation++;
     _ticker?.cancel();
-    DeviceService.call('cancelRest');
+    unawaited(DeviceService.call('cancelRest'));
     state = const RestState();
   }
 
