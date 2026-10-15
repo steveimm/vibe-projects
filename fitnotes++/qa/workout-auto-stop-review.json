@@ -1,0 +1,69 @@
+{
+  "version": "1.10.0+25",
+  "schema_version": 10,
+  "status": "verification in progress",
+  "implementation_commit": "5d34f56",
+  "requirements": [
+    "Default to 15 minutes without a logged set, configurable in Settings > Logging > Workout auto-stop.",
+    "Finish at the latest logged set timestamp, using elapsed time captured at that set so pauses remain excluded.",
+    "Keep automatically stopped workouts stopped. No automatic resume on a later set.",
+    "Use a single deadline timer in the foreground, cancel it in the background, and reconcile persisted timestamps on return.",
+    "Suspend the visible stopwatch refresh when the app is backgrounded or its route is hidden."
+  ],
+  "validation": {
+    "full_suite": 91,
+    "static_analysis": "No issues found",
+    "regressions": [
+      "Exact timeout boundary and replacement deadline after another set",
+      "Editing a set does not extend inactivity",
+      "Manual start, pause, resume, duration edit, and finish behavior",
+      "Expired workouts stay stopped on later logging",
+      "Custom timeout and planned-set completion",
+      "Reopening and current backup restore",
+      "Version 9 migration and legacy backup restore",
+      "A single scheduled expiry, no repeating checks, no background timer, immediate reconciliation on return"
+    ],
+    "emulator": "FitNotes_API_36, Android 16/API 36, ARM64",
+    "emulator_checks": [
+      "Default 15-minute setting rendered consistently with other Logging rows.",
+      "Zero minutes was rejected, then one minute was saved.",
+      "Logged two temporary sets 18 seconds apart. One minute after the last set, Home showed 0:18 with Resume, and the persisted session ended at that set timestamp.",
+      "No Android service was running for the workout stopwatch.",
+      "Started a fresh interval, logged two sets 16 seconds apart, then closed the app before expiry. Reopening after the deadline showed 0:16 and the database ended at the last set, with no running stopwatch."
+    ],
+    "screenshots": [
+      "build/qa/1.10.0/settings-default.png",
+      "build/qa/1.10.0/foreground-running.png",
+      "build/qa/1.10.0/foreground-stopped.png",
+      "build/qa/1.10.0/reopened.png"
+    ],
+    "android_crash_log": "Empty"
+  },
+  "data_preservation": {
+    "checkpoint": "build/qa/1.10.0/original.tar",
+    "temporary_sets": 4
+  },
+  "release": {
+    "build_commands": [
+      "flutter build apk --debug --split-per-abi",
+      "flutter build apk --release --split-per-abi"
+    ],
+    "artifacts": [
+      {
+        "path": "build/releases/1.10.0/app-arm64-v8a-release.apk",
+        "sha256": "4db1ffc8ff0ab4f1652152c618c4c1262802dae104a3bb0e779380c5782a787d"
+      },
+      {
+        "path": "build/releases/1.10.0/app-armeabi-v7a-release.apk",
+        "sha256": "8b456f55d2e818324e914cb4b0fbaa1bdbe8bd8a52bbe5e2f8ab09aa03625266"
+      },
+      {
+        "path": "build/releases/1.10.0/app-x86_64-release.apk",
+        "sha256": "b29b8fe0e9c7c1f6c00b3783e54075c9a40de6867d2ea40c2e63779de8469711"
+      }
+    ]
+  },
+  "api_references": [
+    "https://api.flutter.dev/flutter/widgets/TickerMode/valuesOf.html"
+  ]
+}
