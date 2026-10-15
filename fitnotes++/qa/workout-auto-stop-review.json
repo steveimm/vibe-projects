@@ -21,7 +21,8 @@
       "Custom timeout and planned-set completion",
       "Reopening and current backup restore",
       "Version 9 migration and legacy backup restore",
-      "A single scheduled expiry, no repeating checks, no background timer, immediate reconciliation on return"
+      "A single scheduled expiry, no repeating checks, no background timer, immediate reconciliation on return",
+      "Early callbacks after a backwards clock adjustment reschedule for the remaining time without polling."
     ],
     "emulator": "FitNotes_API_36, Android 16/API 36, ARM64",
     "emulator_checks": [
@@ -39,7 +40,8 @@
       "build/qa/1.10.0/reopened.png",
       "build/qa/1.10.0/release-settings.png"
     ],
-    "android_crash_log": "No crash entries during the 1.10.0 emulator checks."
+    "android_crash_log": "No crash entries during the 1.10.0 emulator checks.",
+    "final_build": "Repeated static analysis and all 91 tests after the scheduling guard. Installed APK SHA-256 matches the final ARM64 artifact."
   },
   "data_preservation": {
     "checkpoint": "build/qa/1.10.0/original.tar",
@@ -62,22 +64,23 @@
     "artifacts": [
       {
         "path": "build/releases/1.10.0/app-arm64-v8a-release.apk",
-        "sha256": "4db1ffc8ff0ab4f1652152c618c4c1262802dae104a3bb0e779380c5782a787d"
+        "sha256": "f7f0aca37d98d3bd0c76d2a95684d5ce5dd9e53e389088fa426c247ba267d948"
       },
       {
         "path": "build/releases/1.10.0/app-armeabi-v7a-release.apk",
-        "sha256": "8b456f55d2e818324e914cb4b0fbaa1bdbe8bd8a52bbe5e2f8ab09aa03625266"
+        "sha256": "4512f16deabcc9d8e26b4df502feca365a2eea9224cba6bfe77f27e3eef0817d"
       },
       {
         "path": "build/releases/1.10.0/app-x86_64-release.apk",
-        "sha256": "b29b8fe0e9c7c1f6c00b3783e54075c9a40de6867d2ea40c2e63779de8469711"
+        "sha256": "ee142e1aefbb287f91bb3b80eacf8cd300f753644abb72572c46dc8b4bdff87b"
       }
     ],
     "installed": {
       "version_name": "1.10.0",
       "version_code": 2025,
       "abi": "arm64-v8a",
-      "debuggable": false
+      "debuggable": false,
+      "sha256": "f7f0aca37d98d3bd0c76d2a95684d5ce5dd9e53e389088fa426c247ba267d948"
     }
   },
   "api_references": [
