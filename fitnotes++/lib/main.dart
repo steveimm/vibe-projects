@@ -7,6 +7,7 @@ import 'app/calendar_localizations.dart';
 import 'core/providers.dart';
 import 'core/services/device_service.dart';
 import 'core/services/rest_timer.dart';
+import 'core/services/workout_auto_stop.dart';
 
 void main() {
   runApp(const ProviderScope(child: FitNotesApp()));
@@ -49,11 +50,13 @@ class _FitNotesAppState extends ConsumerState<FitNotesApp> with WidgetsBindingOb
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     ref.read(restTimerProvider.notifier).setVisible(state == AppLifecycleState.resumed);
+    ref.read(workoutAutoStopProvider).setVisible(state == AppLifecycleState.resumed);
     if (state == AppLifecycleState.resumed) ref.read(selectedDateProvider.notifier).refreshToday();
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(workoutAutoStopProvider);
     final settings = ref.watch(settingsProvider).asData?.value;
     final themeMode = switch (settings?.themeMode) {
       1 => ThemeMode.light,

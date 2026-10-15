@@ -116,6 +116,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       s.keepScreenOn,
                       (v) => _update(AppSettingsCompanion(keepScreenOn: Value(v))),
                     ),
+                    _tile(
+                      Icons.timer_off_outlined,
+                      'Workout auto-stop',
+                      'After ${s.workoutAutoStopMinutes} min without a set',
+                      () async {
+                        final value = await prompt(
+                          context,
+                          title: 'Workout auto-stop',
+                          label: 'Minutes without a set',
+                          value: '${s.workoutAutoStopMinutes}',
+                          keyboard: TextInputType.number,
+                          maxLength: 3,
+                          validate: (v) {
+                            final minutes = int.tryParse(v);
+                            return minutes != null && minutes >= 1 && minutes <= 180 ? null : 'Use 1 to 180 minutes.';
+                          },
+                        );
+                        if (value != null) await _update(AppSettingsCompanion(workoutAutoStopMinutes: Value(int.parse(value))));
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -326,6 +346,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     setState(() => _busy = csv ? 'Preparing CSV…' : 'Preparing backup…');
     final backup = BackupService(ref.read(databaseProvider));
     await attempt(context, () async {
+      await ref.read(workoutRepositoryProvider).finishInactiveSessions();
       final bytes = csv ? await backup.csv() : await backup.backup();
       final saved = await DeviceService.saveFile(
         'FitNotes-${Dates.today()}.${csv ? 'csv' : 'fitnotesplus'}',

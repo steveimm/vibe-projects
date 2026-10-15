@@ -44,6 +44,7 @@ const _settings = AppSettingsRow(
   trackPersonalRecords: true,
   markSetsComplete: false,
   keepScreenOn: false,
+  workoutAutoStopMinutes: 15,
   estimated1rmMaxReps: 0,
   useImperial: false,
 );

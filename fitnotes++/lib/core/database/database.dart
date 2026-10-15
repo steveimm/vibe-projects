@@ -50,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -102,11 +102,33 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 4) await m.createTable(workoutExerciseOrders);
       if (from < 5) await m.addColumn(appSettings, appSettings.restTimerSoundUri);
+      if (from < 10) {
+        await m.addColumn(appSettings, appSettings.workoutAutoStopMinutes);
+        if (from >= 2) {
+          await m.addColumn(workoutSessions, workoutSessions.lastSetAt);
+          await m.addColumn(workoutSessions, workoutSessions.elapsedAtLastSet);
+        }
+        await backfillSessionActivity();
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+
+  Future<void> backfillSessionActivity() async {
+    await customStatement('''
+      UPDATE workout_sessions SET last_set_at = (
+        SELECT MAX(logged_at) FROM workout_sets
+        WHERE date = workout_sessions.date AND is_planned = 0 AND logged_at >= workout_sessions.started_at
+      ) WHERE last_set_at IS NULL
+    ''');
+    await customStatement('''
+      UPDATE workout_sessions SET elapsed_at_last_set = elapsed_seconds +
+        MAX(0, last_set_at - COALESCE(running_since, last_set_at))
+      WHERE last_set_at IS NOT NULL AND elapsed_at_last_set IS NULL
+    ''');
+  }
 
   Future<void> _indexes() async {
     await customStatement('CREATE UNIQUE INDEX IF NOT EXISTS workout_source_key ON workout_sets(source_key)');

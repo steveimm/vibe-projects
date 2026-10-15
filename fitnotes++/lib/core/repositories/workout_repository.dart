@@ -174,6 +174,7 @@ class WorkoutRepository {
     if (!factor.isFinite || factor <= 0) throw const FormatException('Weight multiplier must be greater than zero.');
     final bodyweight = await _bodyweightFor(exercise, date);
     final now = _now();
+    if (!planned && date == Dates.iso(now)) await _finishInactiveSessions(now);
     final id = await db
         .into(db.workoutSets)
         .insert(
@@ -194,7 +195,7 @@ class WorkoutRepository {
             isComplete: Value(!planned),
           ),
         );
-    if (!planned) await _startSessionIfNeeded(date);
+    if (!planned) await _recordSetActivity(date, now);
     return id;
   });
 
@@ -237,6 +238,7 @@ class WorkoutRepository {
   Future<void> setComplete(int id, bool value) => db.transaction(() async {
     final set = await (db.select(db.workoutSets)..where((s) => s.id.equals(id))).getSingle();
     final now = _now();
+    if (value && set.isPlanned && set.date == Dates.iso(now)) await _finishInactiveSessions(now);
     final loggedAt = !value
         ? null
         : !set.isPlanned
@@ -247,18 +249,29 @@ class WorkoutRepository {
     await (db.update(db.workoutSets)..where((s) => s.id.equals(id))).write(
       WorkoutSetsCompanion(isComplete: Value(value), isPlanned: Value(!value), loggedAt: Value(loggedAt)),
     );
-    if (value) await _startSessionIfNeeded(set.date);
+    if (value && set.isPlanned) await _recordSetActivity(set.date, now);
   });
 
-  Future<void> _startSessionIfNeeded(String date) async {
-    final now = _now();
+  Future<void> _recordSetActivity(String date, DateTime now) async {
     if (date != Dates.iso(now)) return;
-    await db
-        .into(db.workoutSessions)
-        .insert(
-          WorkoutSessionsCompanion.insert(date: date, startedAt: now, runningSince: Value(now)),
-          mode: InsertMode.insertOrIgnore,
-        );
+    final session = await _session(date);
+    if (session == null) {
+      await db
+          .into(db.workoutSessions)
+          .insert(
+            WorkoutSessionsCompanion.insert(
+              date: date,
+              startedAt: now,
+              runningSince: Value(now),
+              lastSetAt: Value(now),
+              elapsedAtLastSet: const Value(0),
+            ),
+          );
+    } else {
+      await (db.update(db.workoutSessions)..where((s) => s.date.equals(date))).write(
+        WorkoutSessionsCompanion(lastSetAt: Value(now), elapsedAtLastSet: Value(session.durationAt(now))),
+      );
+    }
   }
 
   Future<void> setNote(int id, String? note) =>
@@ -343,10 +356,32 @@ class WorkoutRepository {
 
   Stream<WorkoutSession?> watchSession(String date) =>
       (db.select(db.workoutSessions)..where((s) => s.date.equals(date))).watchSingleOrNull();
+  Future<WorkoutSession?> _session(String date) =>
+      (db.select(db.workoutSessions)..where((s) => s.date.equals(date))).getSingleOrNull();
+
+  Future<void> finishInactiveSessions() => db.transaction(() => _finishInactiveSessions(_now()));
+
+  Future<void> _finishInactiveSessions(DateTime now) async {
+    final running = await (db.select(db.workoutSessions)..where((s) => s.runningSince.isNotNull())).get();
+    if (running.isEmpty) return;
+    final settings = await (db.select(db.appSettings)..where((s) => s.id.equals(1))).getSingle();
+    for (final session in running) {
+      if (now.isBefore(session.inactivityDeadline(settings.workoutAutoStopMinutes)!)) continue;
+      await (db.update(db.workoutSessions)..where((s) => s.date.equals(session.date))).write(
+        WorkoutSessionsCompanion(
+          elapsedSeconds: Value(session.elapsedAtLastSet ?? session.elapsedSeconds),
+          runningSince: const Value(null),
+          endedAt: Value(session.lastSetAt ?? session.runningSince),
+        ),
+      );
+    }
+  }
+
   Future<void> startSession(String date) => db.transaction(() async {
     Dates.validate(date);
-    final session = await watchSession(date).first;
     final now = _now();
+    await _finishInactiveSessions(now);
+    final session = await _session(date);
     if (session == null) {
       await db
           .into(db.workoutSessions)
@@ -362,9 +397,10 @@ class WorkoutRepository {
   Future<void> finishSession(String date) => _stopSession(date, finish: true);
 
   Future<void> _stopSession(String date, {required bool finish}) => db.transaction(() async {
-    final session = await watchSession(date).first;
-    if (session == null) return;
     final now = _now();
+    await _finishInactiveSessions(now);
+    final session = await _session(date);
+    if (session == null || session.endedAt != null) return;
     await (db.update(db.workoutSessions)..where((s) => s.date.equals(date))).write(
       WorkoutSessionsCompanion(
         elapsedSeconds: Value(session.durationAt(now)),
@@ -376,8 +412,9 @@ class WorkoutRepository {
 
   Future<void> editSessionDuration(String date, int seconds) => db.transaction(() async {
     if (seconds < 0 || seconds > 604800) throw const FormatException('Use a duration between 0 and 168 hours.');
-    final session = await watchSession(date).first;
     final now = _now();
+    await _finishInactiveSessions(now);
+    final session = await _session(date);
     if (session == null) {
       Dates.validate(date);
       await db
@@ -387,7 +424,13 @@ class WorkoutRepository {
           );
     } else {
       await (db.update(db.workoutSessions)..where((s) => s.date.equals(date))).write(
-        WorkoutSessionsCompanion(elapsedSeconds: Value(seconds), runningSince: Value(session.runningSince == null ? null : now)),
+        WorkoutSessionsCompanion(
+          elapsedSeconds: Value(seconds),
+          runningSince: Value(session.runningSince == null ? null : now),
+          elapsedAtLastSet: session.elapsedAtLastSet == null
+              ? const Value.absent()
+              : Value((session.elapsedAtLastSet! + seconds - session.durationAt(now)).clamp(0, 604800)),
+        ),
       );
     }
   });
@@ -403,6 +446,12 @@ class WorkoutRepository {
 extension WorkoutSessionDuration on WorkoutSession {
   int durationAt(DateTime now) =>
       elapsedSeconds + (runningSince == null ? 0 : now.difference(runningSince!).inSeconds.clamp(0, 604800));
+
+  DateTime? inactivityDeadline(int minutes) {
+    if (runningSince == null) return null;
+    final activity = lastSetAt != null && lastSetAt!.isAfter(runningSince!) ? lastSetAt! : runningSince!;
+    return activity.add(Duration(minutes: minutes.clamp(1, 180)));
+  }
 }
 
 Map<String, List<int>> workoutDayColors(Iterable<LoggedSet> sets) {

@@ -2586,6 +2586,16 @@ class $AppSettingsTable extends AppSettings with TableInfo<$AppSettingsTable, Ap
     defaultConstraints: GeneratedColumn.constraintIsAlways('CHECK ("keep_screen_on" IN (0, 1))'),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _workoutAutoStopMinutesMeta = const VerificationMeta('workoutAutoStopMinutes');
+  @override
+  late final GeneratedColumn<int> workoutAutoStopMinutes = GeneratedColumn<int>(
+    'workout_auto_stop_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(15),
+  );
   static const VerificationMeta _estimated1rmMaxRepsMeta = const VerificationMeta('estimated1rmMaxReps');
   @override
   late final GeneratedColumn<int> estimated1rmMaxReps = GeneratedColumn<int>(
@@ -2621,6 +2631,7 @@ class $AppSettingsTable extends AppSettings with TableInfo<$AppSettingsTable, Ap
     trackPersonalRecords,
     markSetsComplete,
     keepScreenOn,
+    workoutAutoStopMinutes,
     estimated1rmMaxReps,
     useImperial,
   ];
@@ -2690,6 +2701,12 @@ class $AppSettingsTable extends AppSettings with TableInfo<$AppSettingsTable, Ap
     if (data.containsKey('keep_screen_on')) {
       context.handle(_keepScreenOnMeta, keepScreenOn.isAcceptableOrUnknown(data['keep_screen_on']!, _keepScreenOnMeta));
     }
+    if (data.containsKey('workout_auto_stop_minutes')) {
+      context.handle(
+        _workoutAutoStopMinutesMeta,
+        workoutAutoStopMinutes.isAcceptableOrUnknown(data['workout_auto_stop_minutes']!, _workoutAutoStopMinutesMeta),
+      );
+    }
     if (data.containsKey('estimated1rm_max_reps')) {
       context.handle(
         _estimated1rmMaxRepsMeta,
@@ -2726,6 +2743,10 @@ class $AppSettingsTable extends AppSettings with TableInfo<$AppSettingsTable, Ap
       )!,
       markSetsComplete: attachedDatabase.typeMapping.read(DriftSqlType.bool, data['${effectivePrefix}mark_sets_complete'])!,
       keepScreenOn: attachedDatabase.typeMapping.read(DriftSqlType.bool, data['${effectivePrefix}keep_screen_on'])!,
+      workoutAutoStopMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}workout_auto_stop_minutes'],
+      )!,
       estimated1rmMaxReps: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}estimated1rm_max_reps'])!,
       useImperial: attachedDatabase.typeMapping.read(DriftSqlType.bool, data['${effectivePrefix}use_imperial'])!,
     );
@@ -2750,6 +2771,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
   final bool trackPersonalRecords;
   final bool markSetsComplete;
   final bool keepScreenOn;
+  final int workoutAutoStopMinutes;
   final int estimated1rmMaxReps;
   final bool useImperial;
   const AppSettingsRow({
@@ -2765,6 +2787,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     required this.trackPersonalRecords,
     required this.markSetsComplete,
     required this.keepScreenOn,
+    required this.workoutAutoStopMinutes,
     required this.estimated1rmMaxReps,
     required this.useImperial,
   });
@@ -2785,6 +2808,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     map['track_personal_records'] = Variable<bool>(trackPersonalRecords);
     map['mark_sets_complete'] = Variable<bool>(markSetsComplete);
     map['keep_screen_on'] = Variable<bool>(keepScreenOn);
+    map['workout_auto_stop_minutes'] = Variable<int>(workoutAutoStopMinutes);
     map['estimated1rm_max_reps'] = Variable<int>(estimated1rmMaxReps);
     map['use_imperial'] = Variable<bool>(useImperial);
     return map;
@@ -2804,6 +2828,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       trackPersonalRecords: Value(trackPersonalRecords),
       markSetsComplete: Value(markSetsComplete),
       keepScreenOn: Value(keepScreenOn),
+      workoutAutoStopMinutes: Value(workoutAutoStopMinutes),
       estimated1rmMaxReps: Value(estimated1rmMaxReps),
       useImperial: Value(useImperial),
     );
@@ -2824,6 +2849,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       trackPersonalRecords: serializer.fromJson<bool>(json['trackPersonalRecords']),
       markSetsComplete: serializer.fromJson<bool>(json['markSetsComplete']),
       keepScreenOn: serializer.fromJson<bool>(json['keepScreenOn']),
+      workoutAutoStopMinutes: serializer.fromJson<int>(json['workoutAutoStopMinutes']),
       estimated1rmMaxReps: serializer.fromJson<int>(json['estimated1rmMaxReps']),
       useImperial: serializer.fromJson<bool>(json['useImperial']),
     );
@@ -2844,6 +2870,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       'trackPersonalRecords': serializer.toJson<bool>(trackPersonalRecords),
       'markSetsComplete': serializer.toJson<bool>(markSetsComplete),
       'keepScreenOn': serializer.toJson<bool>(keepScreenOn),
+      'workoutAutoStopMinutes': serializer.toJson<int>(workoutAutoStopMinutes),
       'estimated1rmMaxReps': serializer.toJson<int>(estimated1rmMaxReps),
       'useImperial': serializer.toJson<bool>(useImperial),
     };
@@ -2862,6 +2889,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     bool? trackPersonalRecords,
     bool? markSetsComplete,
     bool? keepScreenOn,
+    int? workoutAutoStopMinutes,
     int? estimated1rmMaxReps,
     bool? useImperial,
   }) => AppSettingsRow(
@@ -2877,6 +2905,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     trackPersonalRecords: trackPersonalRecords ?? this.trackPersonalRecords,
     markSetsComplete: markSetsComplete ?? this.markSetsComplete,
     keepScreenOn: keepScreenOn ?? this.keepScreenOn,
+    workoutAutoStopMinutes: workoutAutoStopMinutes ?? this.workoutAutoStopMinutes,
     estimated1rmMaxReps: estimated1rmMaxReps ?? this.estimated1rmMaxReps,
     useImperial: useImperial ?? this.useImperial,
   );
@@ -2896,6 +2925,9 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       trackPersonalRecords: data.trackPersonalRecords.present ? data.trackPersonalRecords.value : this.trackPersonalRecords,
       markSetsComplete: data.markSetsComplete.present ? data.markSetsComplete.value : this.markSetsComplete,
       keepScreenOn: data.keepScreenOn.present ? data.keepScreenOn.value : this.keepScreenOn,
+      workoutAutoStopMinutes: data.workoutAutoStopMinutes.present
+          ? data.workoutAutoStopMinutes.value
+          : this.workoutAutoStopMinutes,
       estimated1rmMaxReps: data.estimated1rmMaxReps.present ? data.estimated1rmMaxReps.value : this.estimated1rmMaxReps,
       useImperial: data.useImperial.present ? data.useImperial.value : this.useImperial,
     );
@@ -2916,6 +2948,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
           ..write('trackPersonalRecords: $trackPersonalRecords, ')
           ..write('markSetsComplete: $markSetsComplete, ')
           ..write('keepScreenOn: $keepScreenOn, ')
+          ..write('workoutAutoStopMinutes: $workoutAutoStopMinutes, ')
           ..write('estimated1rmMaxReps: $estimated1rmMaxReps, ')
           ..write('useImperial: $useImperial')
           ..write(')'))
@@ -2936,6 +2969,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     trackPersonalRecords,
     markSetsComplete,
     keepScreenOn,
+    workoutAutoStopMinutes,
     estimated1rmMaxReps,
     useImperial,
   );
@@ -2955,6 +2989,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
           other.trackPersonalRecords == this.trackPersonalRecords &&
           other.markSetsComplete == this.markSetsComplete &&
           other.keepScreenOn == this.keepScreenOn &&
+          other.workoutAutoStopMinutes == this.workoutAutoStopMinutes &&
           other.estimated1rmMaxReps == this.estimated1rmMaxReps &&
           other.useImperial == this.useImperial);
 }
@@ -2972,6 +3007,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
   final Value<bool> trackPersonalRecords;
   final Value<bool> markSetsComplete;
   final Value<bool> keepScreenOn;
+  final Value<int> workoutAutoStopMinutes;
   final Value<int> estimated1rmMaxReps;
   final Value<bool> useImperial;
   const AppSettingsCompanion({
@@ -2987,6 +3023,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
     this.trackPersonalRecords = const Value.absent(),
     this.markSetsComplete = const Value.absent(),
     this.keepScreenOn = const Value.absent(),
+    this.workoutAutoStopMinutes = const Value.absent(),
     this.estimated1rmMaxReps = const Value.absent(),
     this.useImperial = const Value.absent(),
   });
@@ -3003,6 +3040,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
     this.trackPersonalRecords = const Value.absent(),
     this.markSetsComplete = const Value.absent(),
     this.keepScreenOn = const Value.absent(),
+    this.workoutAutoStopMinutes = const Value.absent(),
     this.estimated1rmMaxReps = const Value.absent(),
     this.useImperial = const Value.absent(),
   });
@@ -3019,6 +3057,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
     Expression<bool>? trackPersonalRecords,
     Expression<bool>? markSetsComplete,
     Expression<bool>? keepScreenOn,
+    Expression<int>? workoutAutoStopMinutes,
     Expression<int>? estimated1rmMaxReps,
     Expression<bool>? useImperial,
   }) {
@@ -3035,6 +3074,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
       if (trackPersonalRecords != null) 'track_personal_records': trackPersonalRecords,
       if (markSetsComplete != null) 'mark_sets_complete': markSetsComplete,
       if (keepScreenOn != null) 'keep_screen_on': keepScreenOn,
+      if (workoutAutoStopMinutes != null) 'workout_auto_stop_minutes': workoutAutoStopMinutes,
       if (estimated1rmMaxReps != null) 'estimated1rm_max_reps': estimated1rmMaxReps,
       if (useImperial != null) 'use_imperial': useImperial,
     });
@@ -3053,6 +3093,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
     Value<bool>? trackPersonalRecords,
     Value<bool>? markSetsComplete,
     Value<bool>? keepScreenOn,
+    Value<int>? workoutAutoStopMinutes,
     Value<int>? estimated1rmMaxReps,
     Value<bool>? useImperial,
   }) {
@@ -3069,6 +3110,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
       trackPersonalRecords: trackPersonalRecords ?? this.trackPersonalRecords,
       markSetsComplete: markSetsComplete ?? this.markSetsComplete,
       keepScreenOn: keepScreenOn ?? this.keepScreenOn,
+      workoutAutoStopMinutes: workoutAutoStopMinutes ?? this.workoutAutoStopMinutes,
       estimated1rmMaxReps: estimated1rmMaxReps ?? this.estimated1rmMaxReps,
       useImperial: useImperial ?? this.useImperial,
     );
@@ -3113,6 +3155,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
     if (keepScreenOn.present) {
       map['keep_screen_on'] = Variable<bool>(keepScreenOn.value);
     }
+    if (workoutAutoStopMinutes.present) {
+      map['workout_auto_stop_minutes'] = Variable<int>(workoutAutoStopMinutes.value);
+    }
     if (estimated1rmMaxReps.present) {
       map['estimated1rm_max_reps'] = Variable<int>(estimated1rmMaxReps.value);
     }
@@ -3137,6 +3182,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSettingsRow> {
           ..write('trackPersonalRecords: $trackPersonalRecords, ')
           ..write('markSetsComplete: $markSetsComplete, ')
           ..write('keepScreenOn: $keepScreenOn, ')
+          ..write('workoutAutoStopMinutes: $workoutAutoStopMinutes, ')
           ..write('estimated1rmMaxReps: $estimated1rmMaxReps, ')
           ..write('useImperial: $useImperial')
           ..write(')'))
@@ -4847,8 +4893,26 @@ class $WorkoutSessionsTable extends WorkoutSessions with TableInfo<$WorkoutSessi
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _lastSetAtMeta = const VerificationMeta('lastSetAt');
   @override
-  List<GeneratedColumn> get $columns => [date, startedAt, endedAt, elapsedSeconds, runningSince];
+  late final GeneratedColumn<DateTime> lastSetAt = GeneratedColumn<DateTime>(
+    'last_set_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _elapsedAtLastSetMeta = const VerificationMeta('elapsedAtLastSet');
+  @override
+  late final GeneratedColumn<int> elapsedAtLastSet = GeneratedColumn<int>(
+    'elapsed_at_last_set',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [date, startedAt, endedAt, elapsedSeconds, runningSince, lastSetAt, elapsedAtLastSet];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -4877,6 +4941,15 @@ class $WorkoutSessionsTable extends WorkoutSessions with TableInfo<$WorkoutSessi
     if (data.containsKey('running_since')) {
       context.handle(_runningSinceMeta, runningSince.isAcceptableOrUnknown(data['running_since']!, _runningSinceMeta));
     }
+    if (data.containsKey('last_set_at')) {
+      context.handle(_lastSetAtMeta, lastSetAt.isAcceptableOrUnknown(data['last_set_at']!, _lastSetAtMeta));
+    }
+    if (data.containsKey('elapsed_at_last_set')) {
+      context.handle(
+        _elapsedAtLastSetMeta,
+        elapsedAtLastSet.isAcceptableOrUnknown(data['elapsed_at_last_set']!, _elapsedAtLastSetMeta),
+      );
+    }
     return context;
   }
 
@@ -4891,6 +4964,8 @@ class $WorkoutSessionsTable extends WorkoutSessions with TableInfo<$WorkoutSessi
       endedAt: attachedDatabase.typeMapping.read(DriftSqlType.dateTime, data['${effectivePrefix}ended_at']),
       elapsedSeconds: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}elapsed_seconds'])!,
       runningSince: attachedDatabase.typeMapping.read(DriftSqlType.dateTime, data['${effectivePrefix}running_since']),
+      lastSetAt: attachedDatabase.typeMapping.read(DriftSqlType.dateTime, data['${effectivePrefix}last_set_at']),
+      elapsedAtLastSet: attachedDatabase.typeMapping.read(DriftSqlType.int, data['${effectivePrefix}elapsed_at_last_set']),
     );
   }
 
@@ -4906,12 +4981,16 @@ class WorkoutSession extends DataClass implements Insertable<WorkoutSession> {
   final DateTime? endedAt;
   final int elapsedSeconds;
   final DateTime? runningSince;
+  final DateTime? lastSetAt;
+  final int? elapsedAtLastSet;
   const WorkoutSession({
     required this.date,
     required this.startedAt,
     this.endedAt,
     required this.elapsedSeconds,
     this.runningSince,
+    this.lastSetAt,
+    this.elapsedAtLastSet,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4925,6 +5004,12 @@ class WorkoutSession extends DataClass implements Insertable<WorkoutSession> {
     if (!nullToAbsent || runningSince != null) {
       map['running_since'] = Variable<DateTime>(runningSince);
     }
+    if (!nullToAbsent || lastSetAt != null) {
+      map['last_set_at'] = Variable<DateTime>(lastSetAt);
+    }
+    if (!nullToAbsent || elapsedAtLastSet != null) {
+      map['elapsed_at_last_set'] = Variable<int>(elapsedAtLastSet);
+    }
     return map;
   }
 
@@ -4935,6 +5020,8 @@ class WorkoutSession extends DataClass implements Insertable<WorkoutSession> {
       endedAt: endedAt == null && nullToAbsent ? const Value.absent() : Value(endedAt),
       elapsedSeconds: Value(elapsedSeconds),
       runningSince: runningSince == null && nullToAbsent ? const Value.absent() : Value(runningSince),
+      lastSetAt: lastSetAt == null && nullToAbsent ? const Value.absent() : Value(lastSetAt),
+      elapsedAtLastSet: elapsedAtLastSet == null && nullToAbsent ? const Value.absent() : Value(elapsedAtLastSet),
     );
   }
 
@@ -4946,6 +5033,8 @@ class WorkoutSession extends DataClass implements Insertable<WorkoutSession> {
       endedAt: serializer.fromJson<DateTime?>(json['endedAt']),
       elapsedSeconds: serializer.fromJson<int>(json['elapsedSeconds']),
       runningSince: serializer.fromJson<DateTime?>(json['runningSince']),
+      lastSetAt: serializer.fromJson<DateTime?>(json['lastSetAt']),
+      elapsedAtLastSet: serializer.fromJson<int?>(json['elapsedAtLastSet']),
     );
   }
   @override
@@ -4957,6 +5046,8 @@ class WorkoutSession extends DataClass implements Insertable<WorkoutSession> {
       'endedAt': serializer.toJson<DateTime?>(endedAt),
       'elapsedSeconds': serializer.toJson<int>(elapsedSeconds),
       'runningSince': serializer.toJson<DateTime?>(runningSince),
+      'lastSetAt': serializer.toJson<DateTime?>(lastSetAt),
+      'elapsedAtLastSet': serializer.toJson<int?>(elapsedAtLastSet),
     };
   }
 
@@ -4966,12 +5057,16 @@ class WorkoutSession extends DataClass implements Insertable<WorkoutSession> {
     Value<DateTime?> endedAt = const Value.absent(),
     int? elapsedSeconds,
     Value<DateTime?> runningSince = const Value.absent(),
+    Value<DateTime?> lastSetAt = const Value.absent(),
+    Value<int?> elapsedAtLastSet = const Value.absent(),
   }) => WorkoutSession(
     date: date ?? this.date,
     startedAt: startedAt ?? this.startedAt,
     endedAt: endedAt.present ? endedAt.value : this.endedAt,
     elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
     runningSince: runningSince.present ? runningSince.value : this.runningSince,
+    lastSetAt: lastSetAt.present ? lastSetAt.value : this.lastSetAt,
+    elapsedAtLastSet: elapsedAtLastSet.present ? elapsedAtLastSet.value : this.elapsedAtLastSet,
   );
   WorkoutSession copyWithCompanion(WorkoutSessionsCompanion data) {
     return WorkoutSession(
@@ -4980,6 +5075,8 @@ class WorkoutSession extends DataClass implements Insertable<WorkoutSession> {
       endedAt: data.endedAt.present ? data.endedAt.value : this.endedAt,
       elapsedSeconds: data.elapsedSeconds.present ? data.elapsedSeconds.value : this.elapsedSeconds,
       runningSince: data.runningSince.present ? data.runningSince.value : this.runningSince,
+      lastSetAt: data.lastSetAt.present ? data.lastSetAt.value : this.lastSetAt,
+      elapsedAtLastSet: data.elapsedAtLastSet.present ? data.elapsedAtLastSet.value : this.elapsedAtLastSet,
     );
   }
 
@@ -4990,13 +5087,15 @@ class WorkoutSession extends DataClass implements Insertable<WorkoutSession> {
           ..write('startedAt: $startedAt, ')
           ..write('endedAt: $endedAt, ')
           ..write('elapsedSeconds: $elapsedSeconds, ')
-          ..write('runningSince: $runningSince')
+          ..write('runningSince: $runningSince, ')
+          ..write('lastSetAt: $lastSetAt, ')
+          ..write('elapsedAtLastSet: $elapsedAtLastSet')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(date, startedAt, endedAt, elapsedSeconds, runningSince);
+  int get hashCode => Object.hash(date, startedAt, endedAt, elapsedSeconds, runningSince, lastSetAt, elapsedAtLastSet);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5005,7 +5104,9 @@ class WorkoutSession extends DataClass implements Insertable<WorkoutSession> {
           other.startedAt == this.startedAt &&
           other.endedAt == this.endedAt &&
           other.elapsedSeconds == this.elapsedSeconds &&
-          other.runningSince == this.runningSince);
+          other.runningSince == this.runningSince &&
+          other.lastSetAt == this.lastSetAt &&
+          other.elapsedAtLastSet == this.elapsedAtLastSet);
 }
 
 class WorkoutSessionsCompanion extends UpdateCompanion<WorkoutSession> {
@@ -5014,6 +5115,8 @@ class WorkoutSessionsCompanion extends UpdateCompanion<WorkoutSession> {
   final Value<DateTime?> endedAt;
   final Value<int> elapsedSeconds;
   final Value<DateTime?> runningSince;
+  final Value<DateTime?> lastSetAt;
+  final Value<int?> elapsedAtLastSet;
   final Value<int> rowid;
   const WorkoutSessionsCompanion({
     this.date = const Value.absent(),
@@ -5021,6 +5124,8 @@ class WorkoutSessionsCompanion extends UpdateCompanion<WorkoutSession> {
     this.endedAt = const Value.absent(),
     this.elapsedSeconds = const Value.absent(),
     this.runningSince = const Value.absent(),
+    this.lastSetAt = const Value.absent(),
+    this.elapsedAtLastSet = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   WorkoutSessionsCompanion.insert({
@@ -5029,6 +5134,8 @@ class WorkoutSessionsCompanion extends UpdateCompanion<WorkoutSession> {
     this.endedAt = const Value.absent(),
     this.elapsedSeconds = const Value.absent(),
     this.runningSince = const Value.absent(),
+    this.lastSetAt = const Value.absent(),
+    this.elapsedAtLastSet = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : date = Value(date),
        startedAt = Value(startedAt);
@@ -5038,6 +5145,8 @@ class WorkoutSessionsCompanion extends UpdateCompanion<WorkoutSession> {
     Expression<DateTime>? endedAt,
     Expression<int>? elapsedSeconds,
     Expression<DateTime>? runningSince,
+    Expression<DateTime>? lastSetAt,
+    Expression<int>? elapsedAtLastSet,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -5046,6 +5155,8 @@ class WorkoutSessionsCompanion extends UpdateCompanion<WorkoutSession> {
       if (endedAt != null) 'ended_at': endedAt,
       if (elapsedSeconds != null) 'elapsed_seconds': elapsedSeconds,
       if (runningSince != null) 'running_since': runningSince,
+      if (lastSetAt != null) 'last_set_at': lastSetAt,
+      if (elapsedAtLastSet != null) 'elapsed_at_last_set': elapsedAtLastSet,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -5056,6 +5167,8 @@ class WorkoutSessionsCompanion extends UpdateCompanion<WorkoutSession> {
     Value<DateTime?>? endedAt,
     Value<int>? elapsedSeconds,
     Value<DateTime?>? runningSince,
+    Value<DateTime?>? lastSetAt,
+    Value<int?>? elapsedAtLastSet,
     Value<int>? rowid,
   }) {
     return WorkoutSessionsCompanion(
@@ -5064,6 +5177,8 @@ class WorkoutSessionsCompanion extends UpdateCompanion<WorkoutSession> {
       endedAt: endedAt ?? this.endedAt,
       elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
       runningSince: runningSince ?? this.runningSince,
+      lastSetAt: lastSetAt ?? this.lastSetAt,
+      elapsedAtLastSet: elapsedAtLastSet ?? this.elapsedAtLastSet,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5086,6 +5201,12 @@ class WorkoutSessionsCompanion extends UpdateCompanion<WorkoutSession> {
     if (runningSince.present) {
       map['running_since'] = Variable<DateTime>(runningSince.value);
     }
+    if (lastSetAt.present) {
+      map['last_set_at'] = Variable<DateTime>(lastSetAt.value);
+    }
+    if (elapsedAtLastSet.present) {
+      map['elapsed_at_last_set'] = Variable<int>(elapsedAtLastSet.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5100,6 +5221,8 @@ class WorkoutSessionsCompanion extends UpdateCompanion<WorkoutSession> {
           ..write('endedAt: $endedAt, ')
           ..write('elapsedSeconds: $elapsedSeconds, ')
           ..write('runningSince: $runningSince, ')
+          ..write('lastSetAt: $lastSetAt, ')
+          ..write('elapsedAtLastSet: $elapsedAtLastSet, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7191,6 +7314,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder = AppSettingsCompanion Function
   Value<bool> trackPersonalRecords,
   Value<bool> markSetsComplete,
   Value<bool> keepScreenOn,
+  Value<int> workoutAutoStopMinutes,
   Value<int> estimated1rmMaxReps,
   Value<bool> useImperial,
 });
@@ -7207,6 +7331,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder = AppSettingsCompanion Function
   Value<bool> trackPersonalRecords,
   Value<bool> markSetsComplete,
   Value<bool> keepScreenOn,
+  Value<int> workoutAutoStopMinutes,
   Value<int> estimated1rmMaxReps,
   Value<bool> useImperial,
 });
@@ -7252,6 +7377,9 @@ class $$AppSettingsTableFilterComposer extends Composer<_$AppDatabase, $AppSetti
 
   ColumnFilters<bool> get keepScreenOn =>
       $composableBuilder(column: $table.keepScreenOn, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get workoutAutoStopMinutes =>
+      $composableBuilder(column: $table.workoutAutoStopMinutes, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get estimated1rmMaxReps =>
       $composableBuilder(column: $table.estimated1rmMaxReps, builder: (column) => ColumnFilters(column));
@@ -7303,6 +7431,9 @@ class $$AppSettingsTableOrderingComposer extends Composer<_$AppDatabase, $AppSet
   ColumnOrderings<bool> get keepScreenOn =>
       $composableBuilder(column: $table.keepScreenOn, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get workoutAutoStopMinutes =>
+      $composableBuilder(column: $table.workoutAutoStopMinutes, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get estimated1rmMaxReps =>
       $composableBuilder(column: $table.estimated1rmMaxReps, builder: (column) => ColumnOrderings(column));
 
@@ -7345,6 +7476,9 @@ class $$AppSettingsTableAnnotationComposer extends Composer<_$AppDatabase, $AppS
   GeneratedColumn<bool> get markSetsComplete => $composableBuilder(column: $table.markSetsComplete, builder: (column) => column);
 
   GeneratedColumn<bool> get keepScreenOn => $composableBuilder(column: $table.keepScreenOn, builder: (column) => column);
+
+  GeneratedColumn<int> get workoutAutoStopMinutes =>
+      $composableBuilder(column: $table.workoutAutoStopMinutes, builder: (column) => column);
 
   GeneratedColumn<int> get estimated1rmMaxReps =>
       $composableBuilder(column: $table.estimated1rmMaxReps, builder: (column) => column);
@@ -7389,6 +7523,7 @@ class $$AppSettingsTableTableManager
                 Value<bool> trackPersonalRecords = const Value.absent(),
                 Value<bool> markSetsComplete = const Value.absent(),
                 Value<bool> keepScreenOn = const Value.absent(),
+                Value<int> workoutAutoStopMinutes = const Value.absent(),
                 Value<int> estimated1rmMaxReps = const Value.absent(),
                 Value<bool> useImperial = const Value.absent(),
               }) => AppSettingsCompanion(
@@ -7404,6 +7539,7 @@ class $$AppSettingsTableTableManager
                 trackPersonalRecords: trackPersonalRecords,
                 markSetsComplete: markSetsComplete,
                 keepScreenOn: keepScreenOn,
+                workoutAutoStopMinutes: workoutAutoStopMinutes,
                 estimated1rmMaxReps: estimated1rmMaxReps,
                 useImperial: useImperial,
               ),
@@ -7421,6 +7557,7 @@ class $$AppSettingsTableTableManager
                 Value<bool> trackPersonalRecords = const Value.absent(),
                 Value<bool> markSetsComplete = const Value.absent(),
                 Value<bool> keepScreenOn = const Value.absent(),
+                Value<int> workoutAutoStopMinutes = const Value.absent(),
                 Value<int> estimated1rmMaxReps = const Value.absent(),
                 Value<bool> useImperial = const Value.absent(),
               }) => AppSettingsCompanion.insert(
@@ -7436,6 +7573,7 @@ class $$AppSettingsTableTableManager
                 trackPersonalRecords: trackPersonalRecords,
                 markSetsComplete: markSetsComplete,
                 keepScreenOn: keepScreenOn,
+                workoutAutoStopMinutes: workoutAutoStopMinutes,
                 estimated1rmMaxReps: estimated1rmMaxReps,
                 useImperial: useImperial,
               ),
@@ -8950,6 +9088,8 @@ typedef $$WorkoutSessionsTableCreateCompanionBuilder = WorkoutSessionsCompanion 
   Value<DateTime?> endedAt,
   Value<int> elapsedSeconds,
   Value<DateTime?> runningSince,
+  Value<DateTime?> lastSetAt,
+  Value<int?> elapsedAtLastSet,
   Value<int> rowid,
 });
 typedef $$WorkoutSessionsTableUpdateCompanionBuilder = WorkoutSessionsCompanion Function({
@@ -8958,6 +9098,8 @@ typedef $$WorkoutSessionsTableUpdateCompanionBuilder = WorkoutSessionsCompanion 
   Value<DateTime?> endedAt,
   Value<int> elapsedSeconds,
   Value<DateTime?> runningSince,
+  Value<DateTime?> lastSetAt,
+  Value<int?> elapsedAtLastSet,
   Value<int> rowid,
 });
 
@@ -8981,6 +9123,12 @@ class $$WorkoutSessionsTableFilterComposer extends Composer<_$AppDatabase, $Work
 
   ColumnFilters<DateTime> get runningSince =>
       $composableBuilder(column: $table.runningSince, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastSetAt =>
+      $composableBuilder(column: $table.lastSetAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get elapsedAtLastSet =>
+      $composableBuilder(column: $table.elapsedAtLastSet, builder: (column) => ColumnFilters(column));
 }
 
 class $$WorkoutSessionsTableOrderingComposer extends Composer<_$AppDatabase, $WorkoutSessionsTable> {
@@ -9004,6 +9152,12 @@ class $$WorkoutSessionsTableOrderingComposer extends Composer<_$AppDatabase, $Wo
 
   ColumnOrderings<DateTime> get runningSince =>
       $composableBuilder(column: $table.runningSince, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastSetAt =>
+      $composableBuilder(column: $table.lastSetAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get elapsedAtLastSet =>
+      $composableBuilder(column: $table.elapsedAtLastSet, builder: (column) => ColumnOrderings(column));
 }
 
 class $$WorkoutSessionsTableAnnotationComposer extends Composer<_$AppDatabase, $WorkoutSessionsTable> {
@@ -9023,6 +9177,10 @@ class $$WorkoutSessionsTableAnnotationComposer extends Composer<_$AppDatabase, $
   GeneratedColumn<int> get elapsedSeconds => $composableBuilder(column: $table.elapsedSeconds, builder: (column) => column);
 
   GeneratedColumn<DateTime> get runningSince => $composableBuilder(column: $table.runningSince, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSetAt => $composableBuilder(column: $table.lastSetAt, builder: (column) => column);
+
+  GeneratedColumn<int> get elapsedAtLastSet => $composableBuilder(column: $table.elapsedAtLastSet, builder: (column) => column);
 }
 
 class $$WorkoutSessionsTableTableManager
@@ -9055,6 +9213,8 @@ class $$WorkoutSessionsTableTableManager
                 Value<DateTime?> endedAt = const Value.absent(),
                 Value<int> elapsedSeconds = const Value.absent(),
                 Value<DateTime?> runningSince = const Value.absent(),
+                Value<DateTime?> lastSetAt = const Value.absent(),
+                Value<int?> elapsedAtLastSet = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => WorkoutSessionsCompanion(
                 date: date,
@@ -9062,6 +9222,8 @@ class $$WorkoutSessionsTableTableManager
                 endedAt: endedAt,
                 elapsedSeconds: elapsedSeconds,
                 runningSince: runningSince,
+                lastSetAt: lastSetAt,
+                elapsedAtLastSet: elapsedAtLastSet,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -9071,6 +9233,8 @@ class $$WorkoutSessionsTableTableManager
                 Value<DateTime?> endedAt = const Value.absent(),
                 Value<int> elapsedSeconds = const Value.absent(),
                 Value<DateTime?> runningSince = const Value.absent(),
+                Value<DateTime?> lastSetAt = const Value.absent(),
+                Value<int?> elapsedAtLastSet = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => WorkoutSessionsCompanion.insert(
                 date: date,
@@ -9078,6 +9242,8 @@ class $$WorkoutSessionsTableTableManager
                 endedAt: endedAt,
                 elapsedSeconds: elapsedSeconds,
                 runningSince: runningSince,
+                lastSetAt: lastSetAt,
+                elapsedAtLastSet: elapsedAtLastSet,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
