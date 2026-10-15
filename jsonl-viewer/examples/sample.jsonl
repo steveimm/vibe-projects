@@ -1,0 +1,5 @@
+{"id":1,"event":"session.started","user":{"name":"Alex","roles":["admin","editor"]},"active":true}
+{"id":2,"event":"page.viewed","path":"/projects","duration_ms":42,"metadata":{"source":"sidebar","tags":["work","review"]}}
+{"id":3,"event":"upload.completed","file":{"name":"records.jsonl","rows":1250000,"size_bytes":93841276},"success":true}
+{"id":4,"event":"precision.example","large_integer":9007199254740993,"decimal":1.2300,"exponent":1e+30,"message":"Number spelling is preserved."}
+{"id":5,"event":"unicode.example","message":"Hello, 안녕하세요, こんにちは","nested":{"items":[{"name":"First","value":null},{"name":"Second","value":false}]}}

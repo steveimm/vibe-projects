@@ -1,0 +1,11 @@
+{
+  "version": "0.2.0",
+  "configurations": [{
+    "name": "Run JSONL Viewer",
+    "type": "extensionHost",
+    "request": "launch",
+    "args": ["--extensionDevelopmentPath=${workspaceFolder}", "${workspaceFolder}/examples/sample.jsonl"],
+    "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+    "preLaunchTask": "npm: compile"
+  }]
+}
