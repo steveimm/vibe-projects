@@ -27,9 +27,12 @@
     let selectionTimer;
     let rowWidth = 0;
     let pendingRestore = true;
+    let wordWrap = state.wordWrap === true;
+    let codeLayout = { lines: [], total: 0, offsets: null };
+    const textMeasure = document.createElement('canvas').getContext('2d');
 
     const send = message => vscode.postMessage({ generation, ...message });
-    const persist = () => vscode.setState({ selected, sidebarWidth: state.sidebarWidth });
+    const persist = () => vscode.setState({ selected, sidebarWidth: state.sidebarWidth, wordWrap });
     const number = value => value.toLocaleString();
     const bytes = value => value < 1024 ? `${value} B` : value < 1048576 ? `${(value / 1024).toFixed(1)} KiB` : `${(value / 1048576).toFixed(1)} MiB`;
     const notice = text => { get('notice').textContent = text || ''; get('notice').hidden = !text; };
@@ -110,13 +113,81 @@
         if (last < text.length) node.append(document.createTextNode(text.slice(last)));
     }
 
+    const lineOffset = (layout, index) => layout.offsets ? layout.offsets[index] : index * LINE_HEIGHT;
+
+    function codePosition(layout) {
+        const physical = Math.min(MAX_SCROLL_HEIGHT, layout.total);
+        return layout.total > MAX_SCROLL_HEIGHT
+            ? codeView.scrollTop / Math.max(1, physical - codeView.clientHeight) * Math.max(0, layout.total - codeView.clientHeight)
+            : codeView.scrollTop;
+    }
+
+    function lineAt(layout, position) {
+        if (!layout.offsets) return Math.min(Math.max(0, layout.lines.length - 1), Math.floor(position / LINE_HEIGHT));
+        let low = 0;
+        let high = layout.lines.length;
+        while (low < high) {
+            const middle = Math.floor((low + high) / 2);
+            if (layout.offsets[middle + 1] <= position) low = middle + 1;
+            else high = middle;
+        }
+        return Math.min(low, Math.max(0, layout.lines.length - 1));
+    }
+
+    function codeAnchor(layout) {
+        const position = codePosition(layout);
+        const index = lineAt(layout, position);
+        const height = lineOffset(layout, index + 1) - lineOffset(layout, index);
+        return {
+            index, fraction: height > 0 ? (position - lineOffset(layout, index)) / height : 0,
+            atEnd: position > 0 && position >= layout.total - codeView.clientHeight - 1,
+        };
+    }
+
+    function restoreCodeAnchor(layout, anchor) {
+        const height = lineOffset(layout, anchor.index + 1) - lineOffset(layout, anchor.index);
+        const maxPosition = Math.max(0, layout.total - codeView.clientHeight);
+        const position = anchor.atEnd ? maxPosition : Math.max(0, Math.min(maxPosition,
+            lineOffset(layout, anchor.index) + anchor.fraction * height));
+        codeView.scrollTop = layout.total > MAX_SCROLL_HEIGHT
+            ? position / Math.max(1, maxPosition) * (MAX_SCROLL_HEIGHT - codeView.clientHeight)
+            : position;
+    }
+
+    function ensureCodeLayout() {
+        const width = codeView.clientWidth;
+        const font = getComputedStyle(codeView).font;
+        if (codeLayout.lines === lines && codeLayout.width === width && codeLayout.font === font && codeLayout.wrap === wordWrap) return;
+        const anchor = codeLayout.lines === lines && lines.length ? codeAnchor(codeLayout) : null;
+        textMeasure.font = font;
+        const characterWidth = Math.max(1, textMeasure.measureText('M').width);
+        const gutter = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gutter-width'));
+        const columns = Math.max(1, Math.floor((width - gutter - 24) / characterWidth));
+        const heights = wordWrap ? new Float64Array(lines.length) : null;
+        const offsets = wordWrap ? new Float64Array(lines.length + 1) : null;
+        let maxLength = 0;
+        for (let i = 0; i < lines.length; i++) {
+            maxLength = Math.max(maxLength, lines[i].length);
+            if (wordWrap) {
+                heights[i] = Math.max(1, Math.ceil(lines[i].length / columns)) * LINE_HEIGHT;
+                offsets[i + 1] = offsets[i] + heights[i];
+            }
+        }
+        rowWidth = 100 + maxLength * characterWidth;
+        codeLayout = { lines, width, font, wrap: wordWrap, heights, offsets, total: offsets ? offsets[lines.length] : lines.length * LINE_HEIGHT };
+        codeSpacer.style.height = `${Math.min(MAX_SCROLL_HEIGHT, codeLayout.total)}px`;
+        codeSpacer.style.width = wordWrap ? '100%' : `${Math.max(width, rowWidth)}px`;
+        if (anchor) restoreCodeAnchor(codeLayout, anchor);
+    }
+
     function renderCode() {
-        const window = windowFor(codeView, lines.length, LINE_HEIGHT);
-        codeSpacer.style.height = `${window.physical}px`;
-        codeSpacer.style.width = `${Math.max(codeView.clientWidth, rowWidth)}px`;
-        codeCanvas.style.top = `${window.top}px`;
+        ensureCodeLayout();
+        const position = codePosition(codeLayout);
+        const start = Math.max(0, lineAt(codeLayout, position) - 3);
+        const end = Math.min(lines.length, lineAt(codeLayout, position + codeView.clientHeight) + 4);
+        codeCanvas.style.top = `${codeView.scrollTop + lineOffset(codeLayout, start) - position}px`;
         const fragment = document.createDocumentFragment();
-        for (let i = window.start; i < window.end; i++) {
+        for (let i = start; i < end; i++) {
             const line = document.createElement('div');
             line.className = 'code-line';
             const gutter = document.createElement('span');
@@ -130,6 +201,25 @@
             fragment.append(line);
         }
         codeCanvas.replaceChildren(fragment);
+        if (wordWrap) {
+            const anchor = codeAnchor(codeLayout);
+            let changed = lines.length;
+            for (let i = 0; i < codeCanvas.children.length; i++) {
+                const index = start + i;
+                const height = Math.max(LINE_HEIGHT, codeCanvas.children[i].getBoundingClientRect().height);
+                if (codeLayout.heights[index] !== height) {
+                    codeLayout.heights[index] = height;
+                    changed = Math.min(changed, index);
+                }
+            }
+            if (changed < lines.length) {
+                for (let i = changed; i < lines.length; i++) codeLayout.offsets[i + 1] = codeLayout.offsets[i] + codeLayout.heights[i];
+                codeLayout.total = codeLayout.offsets[lines.length];
+                codeSpacer.style.height = `${Math.min(MAX_SCROLL_HEIGHT, codeLayout.total)}px`;
+                restoreCodeAnchor(codeLayout, anchor);
+                scheduleRender();
+            }
+        }
     }
 
     function scheduleRender() {
@@ -224,12 +314,6 @@
             loaded = selected;
             rowKind = message.kind;
             lines = message.text ? message.text.split('\n') : [];
-            let maxLength = 0;
-            for (const line of lines) maxLength = Math.max(maxLength, line.length);
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            context.font = getComputedStyle(codeView).font;
-            rowWidth = 100 + maxLength * context.measureText('M').width;
             get('row-info').textContent = `${message.kind === 'json' ? 'JSON' : message.kind === 'empty' ? 'EMPTY' : message.kind === 'invalid' ? 'INVALID JSON' : 'ROW TOO LARGE'} · ${bytes(message.bytes)}`;
             notice(message.error);
             codeView.setAttribute('aria-busy', 'false');
@@ -270,6 +354,18 @@
     });
     get('previous').addEventListener('click', () => select(selected - 1, true, true));
     get('next').addEventListener('click', () => select(selected + 1, true, true));
+    function updateWordWrap() {
+        codeView.classList.toggle('word-wrap', wordWrap);
+        get('word-wrap').setAttribute('aria-pressed', String(wordWrap));
+    }
+    updateWordWrap();
+    get('word-wrap').addEventListener('click', () => {
+        wordWrap = !wordWrap;
+        updateWordWrap();
+        codeView.scrollLeft = 0;
+        persist();
+        scheduleRender();
+    });
     get('jump-form').addEventListener('submit', event => {
         event.preventDefault();
         const index = Number(get('jump').value) - 1;
@@ -280,7 +376,8 @@
     get('refresh').addEventListener('click', () => send({ type: 'refresh' }));
     list.addEventListener('scroll', scheduleRender, { passive: true });
     codeView.addEventListener('scroll', scheduleRender, { passive: true });
-    new ResizeObserver(scheduleRender).observe(document.querySelector('.workspace'));
+    new ResizeObserver(scheduleRender).observe(codeView);
+    new MutationObserver(scheduleRender).observe(document.body, { attributes: true, attributeFilter: ['class', 'style'] });
 
     const divider = get('divider');
     function resize(width) {

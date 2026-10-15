@@ -1,13 +1,13 @@
 {
   "name": "jsonl-viewer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Browse JSON Lines one formatted row at a time, with a fast row list.",
   "main": "./dist/extension.js",
   "scripts": {
     "compile": "tsc -p .",
     "watch": "tsc -w -p .",
     "vscode:prepublish": "npm run compile",
-    "package": "vsce package --out jsonl-viewer-0.1.0.vsix",
+    "package": "vsce package",
     "test": "npm run compile && node --test test/*.cjs",
     "benchmark": "npm run compile && node scripts/benchmark.cjs"
   },

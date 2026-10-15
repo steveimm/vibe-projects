@@ -17,7 +17,7 @@ Press **F5** to launch the Extension Development Host with the example file. Ope
 
 ```sh
 npm run package
-code --install-extension jsonl-viewer-0.1.0.vsix
+code --install-extension jsonl-viewer-0.1.1.vsix
 ```
 
 You can also use **Extensions: Install from VSIX** in VS Code. The extension requires VS Code 1.95 or newer.
@@ -29,6 +29,7 @@ You can also use **Extensions: Install from VSIX** in VS Code. The extension req
 - Use **Alt+Up** and **Alt+Down** from either pane for the previous or next row.
 - Enter a number in **Row** and press **Enter** to jump directly to it.
 - **Copy JSON** copies the entire selected row, including lines outside the visible area.
+- **Word wrap** toggles wrapping in the main JSON pane. The viewer remembers the choice when switching rows or restoring the editor.
 - **Open text** opens the source file at the selected line for editing.
 - Drag the divider, or focus it and use **Left** and **Right**, to resize the list.
 - **Refresh** reindexes the file. File changes on disk also trigger a refresh.
