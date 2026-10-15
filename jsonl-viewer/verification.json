@@ -22,6 +22,25 @@
     "actualWorkerFormattedRowDelivered": true,
     "actualRowPreviewsDelivered": true
   },
+  "monacoViewer": {
+    "version": "0.2.0",
+    "method": "Headless Chrome serving the packaged webview assets with the same content-security policy, actual Monaco JSON and editor workers, and a temporary host bridge. Extension activation and the row message bridge were also checked in VS Code.",
+    "passed": true,
+    "jsonSyntaxColorsInLightAndDarkThemes": true,
+    "visibleGutterArrows": true,
+    "individualAndNestedKeyFolding": true,
+    "collapseAndExpandAll": true,
+    "copyEntireRowWhileCollapsed": true,
+    "numericPrecisionPreserved": true,
+    "wordWrapAndRestoredPreference": true,
+    "readOnly": true,
+    "largeRowRendersOnlyVisibleLines": true,
+    "tenThousandthArrayElementReachable": true,
+    "initialRowDisplayMs": 368,
+    "consoleErrors": 0,
+    "consoleWarnings": 0,
+    "buildWatchStarted": true
+  },
   "webview": {
     "method": "Headless Chrome with the actual HTML, CSS and JavaScript assets. A temporary host bridge used the actual file worker and indexed-file implementation.",
     "passed": true,

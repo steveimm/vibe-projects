@@ -76,6 +76,7 @@ export function createJsonEditor(container, { wordWrap }) {
         lineNumbers: 'on',
         lineNumbersMinChars: 4,
         scrollBeyondLastLine: false,
+        stopRenderingLineAfter: -1,
         padding: { top: 8, bottom: 16 },
         renderLineHighlight: 'none',
         renderValidationDecorations: 'off',

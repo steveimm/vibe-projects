@@ -31,7 +31,9 @@ async function build() {
     if (process.argv.includes('--watch')) {
         const context = await esbuild.context(options);
         await context.watch();
-        const compiler = spawn(process.execPath, [require.resolve('typescript/lib/tsc.js'), '-w', '-p', '.'], { stdio: 'inherit' });
+        const typescript = require('typescript/package.json');
+        const compilerPath = path.resolve(path.dirname(require.resolve('typescript/package.json')), typescript.bin.tsc);
+        const compiler = spawn(process.execPath, [compilerPath, '-w', '-p', '.'], { stdio: 'inherit' });
         const stop = async () => { compiler.kill(); await context.dispose(); };
         process.once('SIGINT', stop);
         process.once('SIGTERM', stop);
