@@ -9,14 +9,40 @@ import '../../core/util/format.dart';
 import '../../core/util/dates.dart';
 import '../../shared/widgets.dart';
 
-class WorkoutSessionCard extends ConsumerWidget {
+class WorkoutSessionCard extends ConsumerStatefulWidget {
   const WorkoutSessionCard({super.key, required this.date, required this.sets, this.enabled = true});
   final String date;
   final List<LoggedSet> sets;
   final bool enabled;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WorkoutSessionCard> createState() => _WorkoutSessionCardState();
+}
+
+class _WorkoutSessionCardState extends ConsumerState<WorkoutSessionCard> with WidgetsBindingObserver {
+  bool _foreground =
+      WidgetsBinding.instance.lifecycleState == null || WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+  String get date => widget.date;
+  List<LoggedSet> get sets => widget.sets;
+  bool get enabled => widget.enabled;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) => setState(() => _foreground = state == AppLifecycleState.resumed);
+
+  @override
+  Widget build(BuildContext context) {
     final done = sets.where((s) => !s.set.isPlanned).toList();
     final volume = done.fold<double>(0, (v, s) => v + s.effectiveWeight * s.set.reps);
     final units = ref.watch(unitsProvider);
@@ -110,7 +136,9 @@ class WorkoutSessionCard extends ConsumerWidget {
                               ),
                             ),
                             StreamBuilder<int>(
-                              stream: isToday && running ? Stream.periodic(const Duration(seconds: 1), (i) => i) : null,
+                              stream: isToday && running && _foreground && TickerMode.valuesOf(context).enabled
+                                  ? Stream.periodic(const Duration(seconds: 1), (i) => i)
+                                  : null,
                               builder: (_, _) => FittedBox(
                                 fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerLeft,

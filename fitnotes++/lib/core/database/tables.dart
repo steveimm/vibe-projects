@@ -134,6 +134,7 @@ class AppSettings extends Table {
   BoolColumn get trackPersonalRecords => boolean().withDefault(const Constant(true))();
   BoolColumn get markSetsComplete => boolean().withDefault(const Constant(false))();
   BoolColumn get keepScreenOn => boolean().withDefault(const Constant(false))();
+  IntColumn get workoutAutoStopMinutes => integer().withDefault(const Constant(15))();
   IntColumn get estimated1rmMaxReps => integer().withDefault(const Constant(0))(); // 0 = no cap
   BoolColumn get useImperial => boolean().withDefault(const Constant(false))();
 
@@ -199,6 +200,8 @@ class WorkoutSessions extends Table {
   DateTimeColumn get endedAt => dateTime().nullable()();
   IntColumn get elapsedSeconds => integer().withDefault(const Constant(0))();
   DateTimeColumn get runningSince => dateTime().nullable()();
+  DateTimeColumn get lastSetAt => dateTime().nullable()();
+  IntColumn get elapsedAtLastSet => integer().nullable()();
 
   @override
   Set<Column> get primaryKey => {date};

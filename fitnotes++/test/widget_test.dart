@@ -25,6 +25,7 @@ void main() {
       trackPersonalRecords: true,
       markSetsComplete: false,
       keepScreenOn: false,
+      workoutAutoStopMinutes: 15,
       estimated1rmMaxReps: 0,
       useImperial: false,
     );
@@ -32,6 +33,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          workoutSessionsProvider.overrideWith((ref) => Stream.value(const [])),
           settingsProvider.overrideWith((ref) => Stream.value(settings)),
           dayLogProvider(Dates.today()).overrideWith((ref) => Stream.value(const <LoggedSet>[])),
           allLogProvider.overrideWith((ref) => Stream.value(const <LoggedSet>[])),

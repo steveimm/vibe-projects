@@ -65,6 +65,10 @@ class BackupService {
         if (version < 7 && table.actualTableName == 'workout_sets') expected.remove('bodyweight');
         if (version < 8 && table.actualTableName == 'workout_sets') expected.remove('logged_at');
         if (version < 9 && table.actualTableName == 'pr_reset_markers') expected.remove('initials');
+        if (version < 10 && table.actualTableName == 'app_settings') expected.remove('workout_auto_stop_minutes');
+        if (version < 10 && table.actualTableName == 'workout_sessions') {
+          expected.removeAll(['last_set_at', 'elapsed_at_last_set']);
+        }
         if (version < 5 && table.actualTableName == 'app_settings') expected.remove('rest_timer_sound_uri');
         if (version == 2 && table.actualTableName == 'workout_sessions') {
           expected.removeAll(['elapsed_seconds', 'running_since']);
@@ -122,6 +126,7 @@ class BackupService {
             await db.customStatement('INSERT INTO "$table" ($columns) VALUES ($slots)', row.values.toList());
           }
         }
+        if (version < 10) await db.backfillSessionActivity();
       });
       db.markTablesUpdated(db.allTables);
     } finally {

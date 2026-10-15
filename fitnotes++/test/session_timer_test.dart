@@ -105,6 +105,9 @@ void main() {
     raw.execute('ALTER TABLE workout_sets DROP COLUMN bodyweight');
     raw.execute('ALTER TABLE workout_sets DROP COLUMN logged_at');
     raw.execute('ALTER TABLE pr_reset_markers DROP COLUMN initials');
+    raw.execute('ALTER TABLE app_settings DROP COLUMN workout_auto_stop_minutes');
+    raw.execute('ALTER TABLE workout_sessions DROP COLUMN last_set_at');
+    raw.execute('ALTER TABLE workout_sessions DROP COLUMN elapsed_at_last_set');
     raw.execute('PRAGMA user_version = 2');
     final start = DateTime.utc(2026, 10, 8, 10);
     raw.execute('INSERT INTO workout_sessions VALUES (?,?,?)', [
