@@ -7,6 +7,8 @@ import 'monaco-editor/editor/contrib/contextmenu/browser/contextmenu.js';
 import 'monaco-editor/editor/contrib/wordOperations/browser/wordOperations.js';
 import 'monaco-editor/base/browser/ui/codicons/codicon/codicon.css';
 import { jsonDefaults } from 'monaco-editor/languages/features/json/register.js';
+import { addStringHover } from './string-hover.js';
+import { stringValueAtPath } from './json-values.mjs';
 
 jsonDefaults.setModeConfiguration({ tokens: true, foldingRanges: true });
 jsonDefaults.setDiagnosticsOptions({ validate: false, enableSchemaRequest: false });
@@ -26,7 +28,7 @@ globalThis.MonacoEnvironment = {
     },
 };
 
-export function createJsonEditor(container, { wordWrap }) {
+export function createJsonEditor(container, { wordWrap, plainText = false, onPreviewValue }) {
     let editor;
     function applyTheme() {
         const style = getComputedStyle(document.body);
@@ -68,12 +70,12 @@ export function createJsonEditor(container, { wordWrap }) {
         fontSize,
         lineHeight: Math.max(22, Math.round(fontSize * 1.6)),
         wordWrap: wordWrap ? 'on' : 'off',
-        wrappingIndent: 'same',
-        folding: true,
+        wrappingIndent: plainText ? 'none' : 'same',
+        folding: !plainText,
         foldingStrategy: 'auto',
         showFoldingControls: 'always',
         foldingHighlight: true,
-        lineNumbers: 'on',
+        lineNumbers: plainText ? 'off' : 'on',
         lineNumbersMinChars: 4,
         scrollBeyondLastLine: false,
         stopRenderingLineAfter: -1,
@@ -85,9 +87,10 @@ export function createJsonEditor(container, { wordWrap }) {
         links: false,
         unicodeHighlight: { ambiguousCharacters: false, invisibleCharacters: false },
         bracketPairColorization: { enabled: true },
-        guides: { indentation: true, bracketPairs: true },
-        ariaLabel: 'Selected row as formatted JSON',
+        guides: { indentation: !plainText, bracketPairs: !plainText },
+        ariaLabel: plainText ? 'Decoded string value as plain text' : 'Selected row as formatted JSON',
     });
+    const stringHover = onPreviewValue ? addStringHover(editor, onPreviewValue) : null;
     const themeObserver = new MutationObserver(applyTheme);
     themeObserver.observe(document.body, { attributes: true });
 
@@ -107,9 +110,14 @@ export function createJsonEditor(container, { wordWrap }) {
             editor.setScrollPosition({ scrollTop: 0, scrollLeft: 0 });
         },
         setWordWrap(enabled) { editor.updateOptions({ wordWrap: enabled ? 'on' : 'off' }); },
+        focus() { editor.focus(); },
+        stringAtPath(path) {
+            const model = editor.getModel();
+            return model?.getLanguageId() === 'json' ? stringValueAtPath(model.getValue(), path) : { kind: 'invalid' };
+        },
         foldAll() { return editor.getAction('editor.foldAll')?.run(); },
         unfoldAll() { return editor.getAction('editor.unfoldAll')?.run(); },
-        dispose() { themeObserver.disconnect(); clear(); editor.dispose(); },
+        dispose() { themeObserver.disconnect(); stringHover?.dispose(); clear(); editor.dispose(); },
     };
     window.addEventListener('pagehide', () => {
         api.dispose();

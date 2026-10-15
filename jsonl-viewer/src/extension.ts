@@ -158,6 +158,10 @@ class JsonlEditorProvider implements vscode.CustomReadonlyEditorProvider<JsonlDo
                 } else if (message.type === 'copy' && selected && selected.index === message.index && selectedGeneration === generation) {
                     await vscode.env.clipboard.writeText(selected.text);
                     post({ type: 'copied', generation });
+                } else if (message.type === 'copyText' && selected && selected.index === message.index && selectedGeneration === generation
+                    && typeof message.text === 'string' && message.text.length <= selected.text.length) {
+                    await vscode.env.clipboard.writeText(message.text);
+                    post({ type: 'textCopied', generation, request: message.request });
                 } else if (message.type === 'openText') {
                     await vscode.commands.executeCommand('vscode.openWith', document.uri, 'default');
                     const editor = vscode.window.activeTextEditor;

@@ -1,4 +1,5 @@
 import { createJsonEditor } from './json-editor.js';
+import { createTextPreview } from './text-preview.js';
 
 (() => {
     'use strict';
@@ -26,13 +27,15 @@ import { createJsonEditor } from './json-editor.js';
     let selectionTimer;
     let pendingRestore = true;
     let wordWrap = state.wordWrap === true;
-    const jsonEditor = createJsonEditor(codeView, { wordWrap });
+    const jsonEditor = createJsonEditor(codeView, { wordWrap, onPreviewValue: value => textPreview.open(value) });
 
     const send = message => vscode.postMessage({ generation, ...message });
-    const persist = () => vscode.setState({ selected, sidebarWidth: state.sidebarWidth, wordWrap });
+    const persist = () => vscode.setState({ ...state, selected, sidebarWidth: state.sidebarWidth, wordWrap });
     const number = value => value.toLocaleString();
     const bytes = value => value < 1024 ? `${value} B` : value < 1048576 ? `${(value / 1024).toFixed(1)} KiB` : `${(value / 1048576).toFixed(1)} MiB`;
     const notice = text => { get('notice').textContent = text || ''; get('notice').hidden = !text; };
+    const textPreview = createTextPreview({ state, onStateChange: persist, onClose: () => jsonEditor.focus(),
+        onCopy: (text, request) => send({ type: 'copyText', index: selected, text, request }) });
 
     function windowFor(view, total, height) {
         const physical = Math.min(MAX_SCROLL_HEIGHT, total * height);
@@ -118,6 +121,7 @@ import { createJsonEditor } from './json-editor.js';
         loaded = -1;
         hasText = false;
         jsonEditor.clear();
+        textPreview.loading();
         notice('');
         get('row-heading').textContent = `ROW ${number(selected + 1)}`;
         get('row-info').textContent = 'Loading…';
@@ -141,6 +145,7 @@ import { createJsonEditor } from './json-editor.js';
                 loaded = -1;
                 hasText = false;
                 jsonEditor.clear();
+                textPreview.loading();
                 count = 0;
                 pendingRestore = true;
                 clearTimeout(selectionTimer);
@@ -168,6 +173,7 @@ import { createJsonEditor } from './json-editor.js';
                 get('row-heading').textContent = 'NO ROWS';
                 get('row-info').textContent = '';
                 codeView.setAttribute('aria-busy', 'false');
+                textPreview.loading(message.error ? 'Unable to load this row.' : 'This file is empty.');
             }
             updateControls();
             scheduleRender();
@@ -187,11 +193,14 @@ import { createJsonEditor } from './json-editor.js';
             rowKind = message.kind;
             hasText = message.text.length > 0;
             jsonEditor.setValue(message.text, message.kind);
+            textPreview.update(jsonEditor);
             get('row-info').textContent = `${message.kind === 'json' ? 'JSON' : message.kind === 'empty' ? 'EMPTY' : message.kind === 'invalid' ? 'INVALID JSON' : 'ROW TOO LARGE'} · ${bytes(message.bytes)}`;
             notice(message.error);
             codeView.setAttribute('aria-busy', 'false');
             updateControls();
             scheduleRender();
+        } else if (message.type === 'textCopied') {
+            textPreview.copied(message.request);
         } else if (message.type === 'copied') {
             get('copy').textContent = 'Copied';
             setTimeout(() => { get('copy').textContent = 'Copy JSON'; }, 1500);
@@ -202,6 +211,7 @@ import { createJsonEditor } from './json-editor.js';
             if (message.operation === 'rows') pendingRange = '';
             if (message.operation === 'select') {
                 get('row-info').textContent = 'Unable to load row';
+                textPreview.loading('Unable to load this row.');
                 codeView.setAttribute('aria-busy', 'false');
             }
         }

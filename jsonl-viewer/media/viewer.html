@@ -28,6 +28,11 @@
             <div id="notice" role="status" hidden></div>
             <div id="code-view" aria-busy="true" data-editor-worker="{{editorWorker}}" data-json-worker="{{jsonWorker}}"></div>
             <div id="empty-state"><span class="empty-icon" aria-hidden="true">{ }</span><strong>Opening JSON Lines</strong><span>Rows will appear as the file is indexed.</span></div>
+            <div id="preview-divider" role="separator" tabindex="0" aria-orientation="horizontal" aria-label="Resize text preview" hidden></div>
+            <section id="text-preview" aria-labelledby="preview-title preview-path" hidden>
+                <header class="preview-heading"><div class="preview-label"><span id="preview-title">TEXT PREVIEW</span><code id="preview-path"></code></div><div class="preview-tools"><button id="preview-copy" disabled>Copy text</button><button id="preview-wrap" aria-pressed="true">Word wrap</button><button id="preview-close" aria-label="Close text preview">Close</button></div></header>
+                <div class="preview-body"><div id="preview-editor" hidden></div><div id="preview-status" role="status"></div></div>
+            </section>
         </section>
         <div id="divider" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize row list" aria-valuemin="220" aria-valuemax="620" aria-valuenow="320"></div>
         <aside class="rows-pane" aria-label="File rows">
