@@ -1,7 +1,8 @@
 import { parentPort, workerData } from 'node:worker_threads';
 import { IndexedFile } from './indexed-file';
+import { ParquetFile } from './parquet-file';
 
-const file = new IndexedFile();
+const file = /\.parquet$/i.test(workerData.path) ? new ParquetFile() : new IndexedFile();
 const port = parentPort!;
 let failure: string | undefined;
 

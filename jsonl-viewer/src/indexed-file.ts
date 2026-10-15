@@ -2,7 +2,7 @@ import { open, type FileHandle } from 'node:fs/promises';
 import { StringDecoder } from 'node:string_decoder';
 import { formatRow } from './format';
 
-export type Metadata = { count: number; size: number; scanned: number; indexing: boolean; error?: string };
+export type Metadata = { count: number; size: number; scanned: number; indexing: boolean; format?: 'jsonl' | 'parquet'; error?: string };
 const PAGE_SIZE = 65536;
 
 export class IndexedFile {

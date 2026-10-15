@@ -6,6 +6,7 @@ tsconfig.json
 node_modules/**
 package-lock.json
 examples/**
+example.parquet
 test/**
 scripts/**
 verification.json

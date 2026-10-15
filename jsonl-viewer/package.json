@@ -1,7 +1,7 @@
 {
   "name": "jsonl-viewer",
   "version": "0.3.0",
-  "description": "Browse JSON Lines one formatted row at a time, with a fast row list.",
+  "description": "Browse JSON Lines and Parquet one formatted record at a time, with a fast row list.",
   "main": "./dist/extension.js",
   "scripts": {
     "compile": "tsc -p . && node scripts/build-webview.cjs",
@@ -15,7 +15,8 @@
     "jsonl",
     "ndjson",
     "json",
-    "viewer"
+    "viewer",
+    "parquet"
   ],
   "license": "MIT",
   "type": "commonjs",
@@ -24,6 +25,9 @@
     "@types/vscode": "1.95.0",
     "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2",
+    "hyparquet": "^1.31.4",
+    "hyparquet-compressors": "^1.1.2",
+    "hyparquet-writer": "^0.16.12",
     "jsonc-parser": "^3.3.1",
     "monaco-editor": "^0.57.0",
     "typescript": "^7.0.2"
@@ -62,6 +66,9 @@
           },
           {
             "filenamePattern": "*.ndjson"
+          },
+          {
+            "filenamePattern": "*.parquet"
           }
         ],
         "priority": "default"
@@ -77,7 +84,7 @@
       "explorer/context": [
         {
           "command": "jsonlViewer.open",
-          "when": "resourceExtname == .jsonl || resourceExtname == .ndjson",
+          "when": "resourceExtname == .jsonl || resourceExtname == .ndjson || resourceExtname == .parquet",
           "group": "navigation@10"
         }
       ]

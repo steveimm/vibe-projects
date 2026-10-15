@@ -16,7 +16,7 @@ class WorkerClient implements vscode.Disposable {
     private disposed = false;
 
     constructor(filePath: string, onMeta: (meta: Metadata) => void) {
-        this.worker = new Worker(path.join(__dirname, 'index-worker.js'), { workerData: { path: filePath } });
+        this.worker = new Worker(path.join(__dirname, 'file-worker.cjs'), { workerData: { path: filePath } });
         this.worker.on('message', message => {
             if (this.disposed) return;
             if (message.type === 'meta') { onMeta(message.meta); return; }
@@ -137,7 +137,8 @@ class JsonlEditorProvider implements vscode.CustomReadonlyEditorProvider<JsonlDo
         let selectedGeneration = -1;
         let selectionRequest = 0;
         const post = (message: object) => { if (alive) void panel.webview.postMessage(message); };
-        const sendMeta = () => post({ type: 'meta', generation: document.generation, name: path.basename(document.uri.fsPath), ...document.meta });
+        const sendMeta = () => post({ type: 'meta', generation: document.generation, name: path.basename(document.uri.fsPath),
+            ...document.meta, format: document.meta.format ?? (/\.parquet$/i.test(document.uri.fsPath) ? 'parquet' : 'jsonl') });
         const changeListener = document.onDidChange(sendMeta);
         const messageListener = panel.webview.onDidReceiveMessage(async message => {
             const generation = document.generation;
@@ -189,7 +190,7 @@ export function activate(context: vscode.ExtensionContext): void {
         }),
         vscode.commands.registerCommand('jsonlViewer.open', async (uri?: vscode.Uri) => {
             uri ??= vscode.window.activeTextEditor?.document.uri;
-            if (!uri) uri = (await vscode.window.showOpenDialog({ filters: { 'JSON Lines': ['jsonl', 'ndjson'], 'All files': ['*'] } }))?.[0];
+            if (!uri) uri = (await vscode.window.showOpenDialog({ filters: { 'JSON Lines and Parquet': ['jsonl', 'ndjson', 'parquet'], 'All files': ['*'] } }))?.[0];
             if (uri) await vscode.commands.executeCommand('vscode.openWith', uri, VIEW_TYPE);
         }),
     );

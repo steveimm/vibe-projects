@@ -17,7 +17,7 @@ async function benchmark() {
         } finally { await handle.close(); }
 
         const started = performance.now();
-        worker = new Worker(path.join(__dirname, '../dist/index-worker.js'), { workerData: { path: filePath } });
+        worker = new Worker(path.join(__dirname, '../dist/file-worker.cjs'), { workerData: { path: filePath } });
         const pending = new Map();
         let nextId = 0;
         let firstRowsMs = 0;

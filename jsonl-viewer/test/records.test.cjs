@@ -72,7 +72,7 @@ test('file truncation during indexing is detected', async t => {
 
 test('worker indexes across offset pages and serves arbitrary rows and preview ranges', async t => {
     const { filePath } = await fixture(t, '{"ok":true}\n'.repeat(200000));
-    const worker = new Worker(path.join(__dirname, '../dist/index-worker.js'), { workerData: { path: filePath } });
+    const worker = new Worker(path.join(__dirname, '../dist/file-worker.cjs'), { workerData: { path: filePath } });
     t.after(() => worker.terminate());
     const pending = new Map();
     let nextId = 0;

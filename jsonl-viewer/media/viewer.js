@@ -155,12 +155,14 @@ import { createTextPreview } from './text-preview.js';
             }
             count = message.count;
             indexing = message.indexing;
+            const parquet = message.format === 'parquet';
+            get('open-text').hidden = parquet;
             get('file-name').textContent = message.name;
             get('row-count').textContent = number(count);
             list.setAttribute('aria-busy', String(indexing));
             get('status').textContent = message.error || (indexing
-                ? `Indexing ${message.size ? Math.floor(message.scanned / message.size * 100) : 0}% · ${number(count)} rows`
-                : `${number(count)} rows · ${bytes(message.size)}`);
+                ? (parquet ? 'Reading Parquet metadata…' : `Indexing ${message.size ? Math.floor(message.scanned / message.size * 100) : 0}% · ${number(count)} rows`)
+                : `${parquet ? 'Parquet · ' : ''}${number(count)} rows · ${bytes(message.size)}`);
             if (message.error) notice(message.error);
             if (count && pendingRestore && (selected < count || !indexing)) {
                 pendingRestore = false;
@@ -169,7 +171,8 @@ import { createTextPreview } from './text-preview.js';
             if (!count && !indexing) {
                 get('empty-state').hidden = false;
                 get('empty-state').querySelector('strong').textContent = message.error ? 'Unable to open file' : 'This file is empty';
-                get('empty-state').querySelector('span:last-child').textContent = message.error || 'Add JSON records, one per line, to get started.';
+                get('empty-state').querySelector('span:last-child').textContent = message.error
+                    || (parquet ? 'This Parquet file contains no records.' : 'Add JSON records, one per line, to get started.');
                 get('row-heading').textContent = 'NO ROWS';
                 get('row-info').textContent = '';
                 codeView.setAttribute('aria-busy', 'false');

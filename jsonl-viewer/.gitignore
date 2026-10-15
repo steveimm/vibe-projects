@@ -4,3 +4,4 @@ media/build/
 *.vsix
 *.log
 .DS_Store
+/example.parquet
