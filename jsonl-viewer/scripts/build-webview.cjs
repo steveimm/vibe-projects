@@ -10,6 +10,8 @@ async function build() {
     for (const name of ['LICENSE', 'ThirdPartyNotices.txt']) {
         await fs.copyFile(path.join(monaco, name), path.join(output, `monaco-${name}`));
     }
+    const jsonParser = path.dirname(require.resolve('jsonc-parser/package.json'));
+    await fs.copyFile(path.join(jsonParser, 'LICENSE.md'), path.join(output, 'jsonc-parser-LICENSE.md'));
     const options = {
         entryPoints: {
             viewer: path.join(__dirname, '../media/viewer.js'),

@@ -17,7 +17,7 @@ Press **F5** to launch the Extension Development Host with the example file. Ope
 
 ```sh
 npm run package
-code --install-extension jsonl-viewer-0.2.0.vsix
+code --install-extension jsonl-viewer-0.3.0.vsix
 ```
 
 You can also use **Extensions: Install from VSIX** in VS Code. The extension requires VS Code 1.95 or newer.
@@ -32,6 +32,8 @@ You can also use **Extensions: Install from VSIX** in VS Code. The extension req
 - **Word wrap** toggles wrapping in the main JSON pane. The viewer remembers the choice when switching rows or restoring the editor.
 - Click the arrow in the editor gutter next to an object or array key to collapse or expand it, including nested values.
 - **Collapse all** and **Expand all** fold or unfold the selected row. **Copy JSON** still copies the complete row when parts are collapsed.
+- Hover over a string value and click **View as text** to open a resizable drawer below the JSON. The drawer shows the field path and decoded text, with newlines, tabs, quotes, and Unicode escapes rendered as characters. Strings are decoded once, so a literal `\n` remains literal text. The context menu also offers **View value as text** when the cursor is inside a string value.
+- The drawer follows the same field when you change rows. Missing fields and non-string values show a message. **Copy text** copies the complete decoded value, and the drawer has its own **Word wrap** and **Close** controls. Drag its divider, or focus it and use **Up/Down**, to resize it. The field path, drawer height, and wrap choice are restored with the editor.
 - **Open text** opens the source file at the selected line for editing.
 - Drag the divider, or focus it and use **Left** and **Right**, to resize the list.
 - **Refresh** reindexes the file. File changes on disk also trigger a refresh.
@@ -67,3 +69,5 @@ The record tests cover physical line counts, invalid and blank lines, BOM and CR
 Initial checks also ran the actual VS Code extension host and a headless webview backed by the file worker. The webview checks covered selection, keyboard navigation to the millionth row, row jumping, full-row copying, resizing, refresh, stale replies, empty and invalid rows, script-like text, and scrolling a JSON array with 10,000 elements. Results and measurement conditions are recorded in [verification.json](verification.json).
 
 The Monaco integration was checked for JSON colors in light and dark themes, visible folding arrows, individual and nested key folding, collapse/expand all, complete copying while collapsed, word wrap and editor restoration, read-only behavior, and virtual rendering through the last element of a 10,000-element array. Its real JavaScript and JSON workers ran under the webview's content-security policy without console errors or warnings.
+
+String-preview checks cover the hover action, decoded newlines, tabs, quotes and Unicode, literal backslashes, exact copying, drawer resizing, independent wrapping, field tracking across rows, missing and non-string fields, empty and root strings, array values, editor restoration, and virtual scrolling through a 10,000-line value. HTML-like string contents remain plain text. The browser check completed with no console errors or warnings.

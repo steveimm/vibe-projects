@@ -1,7 +1,7 @@
 import * as monaco from 'monaco-editor/editor/editor.api.js';
 import { formatJsonPath, stringTokenAt, stringValueAt } from './json-values.mjs';
 
-export function addStringHover(editor, onPreview) {
+export function addStringHover(editor, onPreview, editorNode) {
     const button = document.createElement('button');
     button.className = 'string-preview-action';
     button.textContent = 'View as text';
@@ -40,6 +40,7 @@ export function addStringHover(editor, onPreview) {
         editor.layoutContentWidget(widget);
     };
     const hideSoon = () => { clearTimeout(showTimer); clearTimeout(hideTimer); hideTimer = setTimeout(hide, 180); };
+    editorNode.addEventListener('pointerleave', hideSoon);
     const listeners = [
         editor.onMouseMove(event => {
             if (button.contains(event.target.element)) { clearTimeout(hideTimer); return; }
@@ -56,8 +57,7 @@ export function addStringHover(editor, onPreview) {
                 editor.layoutContentWidget(widget);
             }, 120);
         }),
-        editor.onMouseLeave(hideSoon),
-        editor.onDidScrollChange(hide),
+        editor.onDidScrollChange(event => { if (event.scrollTopChanged || event.scrollLeftChanged) hide(); }),
         editor.onDidChangeModel(() => { hide(); source = undefined; cached = null; canPreview.set(false); }),
         editor.onDidChangeCursorPosition(event => canPreview.set(Boolean(valueAt(event.position)))),
         editor.addAction({
@@ -69,5 +69,10 @@ export function addStringHover(editor, onPreview) {
     button.addEventListener('pointerenter', () => { clearTimeout(hideTimer); });
     button.addEventListener('pointerleave', hideSoon);
     button.addEventListener('click', () => { if (hovered) { const value = hovered; hide(); onPreview(value); } });
-    return { dispose() { hide(); for (const listener of listeners) listener.dispose(); editor.removeContentWidget(widget); } };
+    return { dispose() {
+        hide();
+        editorNode.removeEventListener('pointerleave', hideSoon);
+        for (const listener of listeners) listener.dispose();
+        editor.removeContentWidget(widget);
+    } };
 }

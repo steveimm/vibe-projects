@@ -1,7 +1,24 @@
 {
   "date": "2026-10-15",
   "environment": { "platform": "macOS arm64", "node": "24.13.0", "vscode": "1.139.1" },
-  "recordTests": { "command": "npm test", "passed": 6, "failed": 0 },
+  "recordTests": { "command": "npm test", "passed": 11, "failed": 0 },
+  "textPreview": {
+    "version": "0.3.0",
+    "method": "Headless Chrome with the actual bundled viewer and both Monaco editors under the webview content-security policy. Node tests separately check decoded values and field-path lookup.",
+    "passed": true,
+    "hoverAction": true,
+    "decodedNewlinesTabsQuotesUnicode": true,
+    "exactCopyAndLiteralBackslashes": true,
+    "resizableDrawerAndSeparateWordWrap": true,
+    "followsFieldAcrossRows": true,
+    "missingNonStringAndInvalidRows": true,
+    "emptyRootAndArrayStrings": true,
+    "tenThousandLineValueVirtualization": true,
+    "restoredFieldHeightAndWrap": true,
+    "htmlLikeContentDisplayedAsText": true,
+    "consoleErrors": 0,
+    "consoleWarnings": 0
+  },
   "benchmark": {
     "command": "npm run benchmark",
     "rows": 1000000,

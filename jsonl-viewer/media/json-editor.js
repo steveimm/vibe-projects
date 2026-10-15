@@ -1,4 +1,6 @@
 import * as monaco from 'monaco-editor/editor/editor.api.js';
+// Register shared services before creating the JSON and text editors.
+import 'monaco-editor/internal/common/workers.js';
 import 'monaco-editor/editor/contrib/folding/browser/folding.js';
 import 'monaco-editor/editor/contrib/find/browser/findController.js';
 import 'monaco-editor/editor/contrib/bracketMatching/browser/bracketMatching.js';
@@ -90,7 +92,7 @@ export function createJsonEditor(container, { wordWrap, plainText = false, onPre
         guides: { indentation: !plainText, bracketPairs: !plainText },
         ariaLabel: plainText ? 'Decoded string value as plain text' : 'Selected row as formatted JSON',
     });
-    const stringHover = onPreviewValue ? addStringHover(editor, onPreviewValue) : null;
+    const stringHover = onPreviewValue ? addStringHover(editor, onPreviewValue, container) : null;
     const themeObserver = new MutationObserver(applyTheme);
     themeObserver.observe(document.body, { attributes: true });
 
@@ -104,7 +106,7 @@ export function createJsonEditor(container, { wordWrap, plainText = false, onPre
         setValue(text, kind) {
             clear();
             const model = monaco.editor.createModel(text, kind === 'json' ? 'json' : 'plaintext');
-            model.updateOptions({ tabSize: 2, insertSpaces: true });
+            model.updateOptions({ tabSize: plainText ? 4 : 2, insertSpaces: true });
             editor.setModel(model);
             editor.setPosition({ lineNumber: 1, column: 1 });
             editor.setScrollPosition({ scrollTop: 0, scrollLeft: 0 });
