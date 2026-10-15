@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.app.Activity
 import android.content.Intent
+import android.content.SharedPreferences
 import android.media.RingtoneManager
 import android.os.Build
 import android.net.Uri
@@ -12,6 +13,7 @@ import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.EventChannel
 
 class MainActivity : FlutterActivity() {
     private val channelName = "fitnotes/device"
@@ -21,9 +23,27 @@ class MainActivity : FlutterActivity() {
     private var pendingBytes: ByteArray? = null
     private val restSound by lazy { RestAlertPlayer(this) }
     private val preferences by lazy { getSharedPreferences("fitnotes_timer", MODE_PRIVATE) }
+    private var restEvents: EventChannel? = null
+    private var restListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        restEvents = EventChannel(flutterEngine.dartExecutor.binaryMessenger, "fitnotes/rest_cleared").also { channel ->
+            channel.setStreamHandler(object : EventChannel.StreamHandler {
+                override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+                    restListener?.let(preferences::unregisterOnSharedPreferenceChangeListener)
+                    restListener = SharedPreferences.OnSharedPreferenceChangeListener { saved, key ->
+                        if ((key == null || key == "deadline" || key == "paused") &&
+                            !saved.contains("deadline") && !saved.getBoolean("paused", false)) events.success(null)
+                    }.also(preferences::registerOnSharedPreferenceChangeListener)
+                }
+
+                override fun onCancel(arguments: Any?) {
+                    restListener?.let(preferences::unregisterOnSharedPreferenceChangeListener)
+                    restListener = null
+                }
+            })
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName).setMethodCallHandler { call, result ->
             when (call.method) {
                 "keepAwake" -> {
@@ -135,6 +155,14 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        restListener?.let(preferences::unregisterOnSharedPreferenceChangeListener)
+        restListener = null
+        restEvents?.setStreamHandler(null)
+        restEvents = null
+        super.cleanUpFlutterEngine(flutterEngine)
     }
 
     override fun onDestroy() {

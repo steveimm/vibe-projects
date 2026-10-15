@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 class DeviceService {
   static const channel = MethodChannel('fitnotes/device');
   static bool get nativeTimers => Platform.isAndroid;
+  static Stream<void> get restCleared =>
+      nativeTimers ? const EventChannel('fitnotes/rest_cleared').receiveBroadcastStream().map((_) {}) : const Stream.empty();
 
   static Future<T?> call<T>(String method, [Map<String, Object?>? arguments]) async {
     if (!Platform.isAndroid) return null;
