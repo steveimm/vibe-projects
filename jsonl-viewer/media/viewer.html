@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{cspSource}}; script-src 'nonce-{{nonce}}';">
+    <link rel="stylesheet" href="{{style}}">
+    <title>JSONL Viewer</title>
+</head>
+<body>
+    <header class="toolbar">
+        <div class="file-heading"><span class="file-icon" aria-hidden="true">{ }</span><strong id="file-name">JSONL Viewer</strong></div>
+        <div class="tools">
+            <button id="previous" title="Previous row (Alt+Up)" aria-label="Previous row" disabled>↑</button>
+            <button id="next" title="Next row (Alt+Down)" aria-label="Next row" disabled>↓</button>
+            <form id="jump-form"><label for="jump">Row</label><input id="jump" type="number" min="1" step="1" value="1" aria-label="Go to row" disabled><span id="total">/ 0</span></form>
+            <span class="tool-divider"></span>
+            <button id="copy" disabled>Copy JSON</button>
+            <button id="open-text" title="Open the original file in the text editor">Open text</button>
+            <button id="refresh" title="Reload the file">Refresh</button>
+        </div>
+    </header>
+    <main class="workspace">
+        <section class="detail" aria-label="Selected JSON row">
+            <header class="pane-heading"><span id="row-heading">SELECT A ROW</span><span id="row-info"></span></header>
+            <div id="notice" role="status" hidden></div>
+            <div id="code-view" class="viewport code-view" tabindex="0" aria-label="Formatted JSON" aria-busy="true">
+                <div id="code-spacer" class="spacer"><div id="code-canvas" class="canvas"></div></div>
+            </div>
+            <div id="empty-state"><span class="empty-icon" aria-hidden="true">{ }</span><strong>Opening JSON Lines</strong><span>Rows will appear as the file is indexed.</span></div>
+        </section>
+        <div id="divider" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize row list" aria-valuemin="220" aria-valuemax="620" aria-valuenow="320"></div>
+        <aside class="rows-pane" aria-label="File rows">
+            <header class="pane-heading"><span>ROWS</span><span id="row-count">0</span></header>
+            <div class="list-hint">Select a row to view its JSON</div>
+            <div id="row-list" class="viewport" role="listbox" tabindex="0" aria-label="JSONL rows" aria-busy="true">
+                <div id="row-spacer" class="spacer"><div id="row-canvas" class="canvas"></div></div>
+            </div>
+        </aside>
+    </main>
+    <footer><span id="status">Indexing file…</span><span id="footer-hint">Read only · ↑ ↓ to select rows</span></footer>
+    <script nonce="{{nonce}}" src="{{script}}"></script>
+</body>
+</html>

@@ -26,8 +26,9 @@ class WorkerClient implements vscode.Disposable {
             if (message.error) request.reject(new Error(message.error));
             else request.resolve(message.result);
         });
-        this.worker.on('error', error => {
+        this.worker.on('error', value => {
             if (this.disposed) return;
+            const error = value instanceof Error ? value : new Error(String(value));
             this.rejectPending(error);
             onMeta({ count: 0, size: 0, scanned: 0, indexing: false, error: error.message });
         });
@@ -151,7 +152,7 @@ class JsonlEditorProvider implements vscode.CustomReadonlyEditorProvider<JsonlDo
                     selected = row;
                     selectedGeneration = generation;
                     post({ type: 'row', generation, request: message.request, ...row });
-                } else if (message.type === 'copy' && selected?.index === message.index && selectedGeneration === generation) {
+                } else if (message.type === 'copy' && selected && selected.index === message.index && selectedGeneration === generation) {
                     await vscode.env.clipboard.writeText(selected.text);
                     post({ type: 'copied', generation });
                 } else if (message.type === 'openText') {

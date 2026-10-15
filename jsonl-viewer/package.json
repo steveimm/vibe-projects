@@ -1,0 +1,93 @@
+{
+  "name": "jsonl-viewer",
+  "version": "0.1.0",
+  "description": "Browse JSON Lines one formatted row at a time, with a fast row list.",
+  "main": "./dist/extension.js",
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -w -p .",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package --out jsonl-viewer-0.1.0.vsix"
+  },
+  "keywords": [
+    "jsonl",
+    "ndjson",
+    "json",
+    "viewer"
+  ],
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/vscode": "1.95.0",
+    "@vscode/vsce": "^4.0.0",
+    "typescript": "^7.0.2"
+  },
+  "displayName": "JSONL Viewer",
+  "publisher": "steveimm",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SteveImmanuel/vibe-projects.git",
+    "directory": "jsonl-viewer"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "capabilities": {
+    "virtualWorkspaces": false,
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "jsonlViewer.viewer",
+        "displayName": "JSONL Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.jsonl"
+          },
+          {
+            "filenamePattern": "*.ndjson"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "commands": [
+      {
+        "command": "jsonlViewer.open",
+        "title": "JSONL Viewer: Open File"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "jsonlViewer.open",
+          "when": "resourceExtname == .jsonl || resourceExtname == .ndjson",
+          "group": "navigation@10"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "JSONL Viewer",
+      "properties": {
+        "jsonlViewer.maxRowSizeMB": {
+          "type": "integer",
+          "default": 8,
+          "minimum": 1,
+          "maximum": 128,
+          "description": "Maximum size of a single row to load and format, in MiB. Larger rows stay listed and show a message when selected."
+        }
+      }
+    }
+  }
+}
