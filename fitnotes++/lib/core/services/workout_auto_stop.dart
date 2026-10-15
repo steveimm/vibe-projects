@@ -38,9 +38,14 @@ class WorkoutAutoStop {
       if (deadline != null && (next == null || deadline.isBefore(next))) next = deadline;
     }
     if (next == null) return;
-    final delay = next.difference(_now());
+    final deadline = next;
+    final delay = Duration(milliseconds: (deadline.difference(_now()).inMicroseconds / 1000).ceil());
     _timer = Timer(delay.isNegative ? Duration.zero : delay, () async {
       _timer = null;
+      if (_now().isBefore(deadline)) {
+        _schedule();
+        return;
+      }
       try {
         await expire();
       } catch (error, stack) {

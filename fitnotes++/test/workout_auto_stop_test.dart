@@ -206,8 +206,15 @@ void schedulingTests() {
     timer.update([running().copyWith(lastSetAt: Value(now.subtract(const Duration(minutes: 2))))], 1);
     await tester.pump(const Duration(milliseconds: 1));
     expect(expirations, 3, reason: 'Shortening the setting applies to an existing timer.');
+    timer.update([running()], 15);
+    await advance(const Duration(minutes: 14));
+    now = now.subtract(const Duration(minutes: 2));
+    await advance(const Duration(minutes: 1));
+    expect(expirations, 3, reason: 'A clock adjustment must not finish the workout before its saved deadline.');
+    await advance(const Duration(minutes: 2));
+    expect(expirations, 4);
     timer.update([], 15);
     await advance(const Duration(hours: 1));
-    expect(expirations, 3);
+    expect(expirations, 4);
   });
 }
