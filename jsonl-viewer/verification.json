@@ -1,7 +1,32 @@
 {
   "date": "2026-10-15",
   "environment": { "platform": "macOS arm64", "node": "24.13.0", "vscode": "1.139.1" },
-  "recordTests": { "command": "npm test", "passed": 11, "failed": 0 },
+  "recordTests": { "command": "npm test", "passed": 17, "failed": 0 },
+  "parquet": {
+    "version": "0.4.0",
+    "method": "Generated Parquet fixtures and the bundled file worker, plus the actual five-record ZSTD example in a headless browser using the viewer and real worker.",
+    "passed": true,
+    "nestedJsonColumnsAndNativeStructs": true,
+    "stringPreviewsAndFieldTracking": true,
+    "exactDecodedCopy": true,
+    "nativeInt64AndJsonNumberPrecision": true,
+    "snappyGzipBrotliZstd": true,
+    "emptyCorruptAndOversizedRows": true,
+    "randomAccessAcrossRowGroups": true,
+    "defaultParquetEditorInVsCode": true,
+    "sample": { "rows": 5, "bytes": 75844, "codec": "ZSTD", "keptLocal": true },
+    "benchmark": {
+      "command": "npm run benchmark -- --parquet",
+      "rows": 1000000,
+      "fileBytes": 4028926,
+      "metadataAndWorkerStartupMs": 22,
+      "selectionMeanMs": 0.25,
+      "selectionMaxMs": 2.98,
+      "conditions": "Generated small records, Snappy compression, warm filesystem cache. Alternating between the first and last record, including their initial reads. Excludes UI rendering."
+    },
+    "consoleErrors": 0,
+    "consoleWarnings": 0
+  },
   "textPreview": {
     "version": "0.3.0",
     "method": "Headless Chrome with the actual bundled viewer and both Monaco editors under the webview content-security policy. Node tests separately check decoded values and field-path lookup.",

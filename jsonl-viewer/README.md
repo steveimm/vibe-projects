@@ -1,6 +1,6 @@
 # JSONL Viewer
 
-A read-only VS Code extension for `.jsonl` and `.ndjson` files. The main pane shows one selected row in [Monaco Editor](https://github.com/microsoft/monaco-editor), the editor component used by VS Code, with JSON syntax colors, collapsible objects and arrays, and word wrap. A list on the right shows every row with a short preview. Click a row, use the arrow keys, or enter a row number to change the selection.
+A read-only VS Code extension for `.jsonl`, `.ndjson`, and `.parquet` files. The main pane shows one selected record in [Monaco Editor](https://github.com/microsoft/monaco-editor), the editor component used by VS Code, with JSON syntax colors, collapsible objects and arrays, and word wrap. A list on the right shows every record with a short preview. Click a record, use the arrow keys, or enter a row number to change the selection.
 
 ## Run locally
 
@@ -11,13 +11,13 @@ npm run compile
 code .
 ```
 
-Press **F5** to launch the Extension Development Host with the example file. Open any `.jsonl` or `.ndjson` file to use the viewer. For an existing text editor, use **Reopen Editor With → JSONL Viewer**, or run **JSONL Viewer: Open File** from the command palette.
+Press **F5** to launch the Extension Development Host with the example file. Open any `.jsonl`, `.ndjson`, or `.parquet` file to use the viewer. For an existing editor, use **Reopen Editor With → JSONL Viewer**, or run **JSONL Viewer: Open File** from the command palette.
 
 ## Install
 
 ```sh
 npm run package
-code --install-extension jsonl-viewer-0.3.0.vsix
+code --install-extension jsonl-viewer-0.4.0.vsix
 ```
 
 You can also use **Extensions: Install from VSIX** in VS Code. The extension requires VS Code 1.95 or newer.
@@ -34,7 +34,7 @@ You can also use **Extensions: Install from VSIX** in VS Code. The extension req
 - **Collapse all** and **Expand all** fold or unfold the selected row. **Copy JSON** still copies the complete row when parts are collapsed.
 - Hover over a string value and click **View as text** to open a resizable drawer below the JSON. The drawer shows the field path and decoded text, with newlines, tabs, quotes, and Unicode escapes rendered as characters. Strings are decoded once, so a literal `\n` remains literal text. The context menu also offers **View value as text** when the cursor is inside a string value.
 - The drawer follows the same field when you change rows. Missing fields and non-string values show a message. **Copy text** copies the complete decoded value, and the drawer has its own **Word wrap** and **Close** controls. Drag its divider, or focus it and use **Up/Down**, to resize it. The field path, drawer height, and wrap choice are restored with the editor.
-- **Open text** opens the source file at the selected line for editing.
+- **Open text** opens a JSONL/NDJSON source file at the selected line for editing. Parquet records are displayed as JSON in the viewer.
 - Drag the divider, or focus it and use **Left** and **Right**, to resize the list.
 - **Refresh** reindexes the file. File changes on disk also trigger a refresh.
 
@@ -48,6 +48,14 @@ Formatting preserves the original numbers and key order, including large integer
 
 The default maximum selected row size is 8 MiB. Change **JSONL Viewer: Max Row Size MB** in Settings to allow up to 128 MiB. Very large individual rows take longer to parse and display. If formatting would exceed 32 million characters, the original JSON is shown with a message. The viewer supports files on disk and does not load virtual filesystem documents or unsaved text edits.
 
+## Parquet
+
+Each Parquet record becomes one selectable JSON object. A file with one record shows that dictionary, and a file with multiple records uses the same right-hand row list as JSONL. Native structs, maps and lists appear as nested dictionaries and arrays. Columns annotated as JSON are decoded into their JSON values, so fields such as `input`, `output` and `metadata` can be expanded and collapsed. Strings remain strings, including JSON-looking completion text, and support the same **View as text** drawer with exact decoded copying and field tracking across records.
+
+The reader gets the record count from the file metadata, then reads requested row ranges in the background worker. It uses page indexes when available, shares pending reads, and keeps bounded caches of compressed bytes and decoded record text. It does not convert the whole file into JSON before opening it. Parquet compression support is bundled, including Snappy, GZIP, Brotli and ZSTD, with no Python installation or system codec required. The reader uses [hyparquet](https://github.com/hyparam/hyparquet) and [hyparquet-compressors](https://github.com/hyparam/hyparquet-compressors).
+
+Plain 64-bit integer fields retain their exact digits in the JSON representation. JSON-typed columns retain the spelling of their original numbers. Dates and timestamps are shown as ISO strings. Unannotated binary values are represented with `encoding: "base64"` and `data`, and non-finite floating-point values use the strings `"NaN"`, `"Infinity"` and `"-Infinity"`.
+
 ## Development
 
 ```sh
@@ -56,6 +64,7 @@ npm run watch
 npm run package
 npm test
 npm run benchmark
+npm run benchmark -- --parquet
 ```
 
 Monaco, its JSON support, fonts, and web workers are bundled into the VSIX. The viewer works offline and does not use a CDN. Syntax colors follow Monaco's light, dark, or high-contrast theme, with editor background and interface colors taken from VS Code. VS Code extensions that customize TextMate syntax colors are not loaded into the embedded editor.
@@ -71,3 +80,5 @@ Initial checks also ran the actual VS Code extension host and a headless webview
 The Monaco integration was checked for JSON colors in light and dark themes, visible folding arrows, individual and nested key folding, collapse/expand all, complete copying while collapsed, word wrap and editor restoration, read-only behavior, and virtual rendering through the last element of a 10,000-element array. Its real JavaScript and JSON workers ran under the webview's content-security policy without console errors or warnings.
 
 String-preview checks cover the hover action, decoded newlines, tabs, quotes and Unicode, literal backslashes, exact copying, drawer resizing, independent wrapping, field tracking across rows, missing and non-string fields, empty and root strings, array values, editor restoration, and virtual scrolling through a 10,000-line value. HTML-like string contents remain plain text. The browser check completed with no console errors or warnings.
+
+Parquet checks cover JSON columns, native structs, nullable values, INT64 precision, compression, empty and corrupt files, row limits, and worker requests across row groups. The provided five-record ZSTD example was checked in the browser with the actual file worker, including dictionary folding, selecting records, jumping to the final record, whole-record copying, and hovering `output.reasoning_content` for exact text copying and tracking across records. The local example is excluded from Git and the VSIX.
