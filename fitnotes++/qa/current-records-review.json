@@ -1,0 +1,19 @@
+{
+  "version": "1.9.2+23",
+  "schema_version": 9,
+  "status": "in_progress",
+  "requirements": [
+    "120 kg x 10 replaces the trophy for 100 kg x 10 within the same record scope.",
+    "Match original FitNotes: equal ties retain the first set, and equal or higher weight at more reps supersedes lower-rep records.",
+    "Apply current-best selection independently to all time and every season. Completed seasons keep their own best sets.",
+    "Recalculate badges after edits and deletions without changing workout data.",
+    "Verify the original app and FitNotes++ on the emulator, then restore both apps' pre-test data."
+  ],
+  "validation": {
+    "full_suite": 82,
+    "static_analysis": "No issues found",
+    "reference_app": "FitNotes 25.1, version code 64",
+    "reference_flags_verified": true,
+    "reference_original_data_restored": true
+  }
+}

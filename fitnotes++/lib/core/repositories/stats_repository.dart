@@ -60,17 +60,16 @@ class Stats {
     String sinceDate = allTime,
     ExerciseType type = ExerciseType.weightAndReps,
   }) {
-    final best = <int, double>{};
-    final ids = <int>{};
+    final best = <int, ({int id, double value})>{};
+    void recordBest(int key, double value, int id) {
+      if (value.isFinite && value > 0 && value > (best[key]?.value ?? 0)) best[key] = (id: id, value: value);
+    }
+
     for (final s in _chronological(sets)) {
       if (s.isPlanned || s.date.compareTo(sinceDate) < 0) continue;
       if (type == ExerciseType.distanceAndTime) {
-        for (final metric in {0: s.distance, 1: s.durationSeconds.toDouble()}.entries) {
-          if (metric.value > (best[metric.key] ?? 0)) {
-            ids.add(s.id);
-            best[metric.key] = metric.value;
-          }
-        }
+        recordBest(0, s.distance, s.id);
+        recordBest(1, s.durationSeconds.toDouble(), s.id);
         continue;
       }
       final value = type.hasWeight
@@ -80,14 +79,16 @@ class Stats {
           : type.hasReps
           ? s.reps.toDouble()
           : s.durationSeconds.toDouble();
-      if (value <= 0) continue;
       final reps = type.hasWeight && type.hasReps ? s.reps : 0;
       if (type.hasReps && s.reps <= 0) continue;
-      final superseded = best.entries.any((e) => e.key >= reps && e.value >= value);
-      if (!superseded) ids.add(s.id);
-      best[reps] = math.max(best[reps] ?? 0, value);
+      recordBest(reps, value, s.id);
     }
-    return ids;
+    return {
+      for (final entry in best.entries)
+        if (!(type.hasWeight && type.hasReps) ||
+            !best.entries.any((other) => other.key > entry.key && other.value.value >= entry.value.value))
+          entry.value.id,
+    };
   }
 
   static Map<int, RecordAchievement> recordAchievements(

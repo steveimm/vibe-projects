@@ -121,6 +121,10 @@ FitNotes names the **Brzycki formula** explicitly in its glossary (empirically v
 - `[BACKUP]`: `training_log.is_personal_record`, `is_personal_record_first` flag PR sets
   (307 flagged in this backup); trophy icon + "new PR" highlighting when enabled.
 
+Verified in FitNotes 25.1 on the emulator, 2026-10-15: saving 120 kg × 10 removes the trophy from an earlier 100 kg × 10.
+Repeating 120 kg × 10 keeps the trophy on the first matching set. Saving 120 kg × 12 removes both lower-rep trophies.
+The exported database confirms that only 120 kg × 12 remains marked. Trophies indicate current records, not every past improvement.
+
 ---
 
 ## 7. Routines / templates `[DOCS]`  (schema `[BACKUP]`)

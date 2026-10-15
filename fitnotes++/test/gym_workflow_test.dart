@@ -15,6 +15,7 @@ import 'package:fitnotes_plus/core/util/dates.dart';
 import 'package:fitnotes_plus/features/progress/progress_screen.dart';
 import 'package:fitnotes_plus/features/track/exercise_detail_screen.dart';
 import 'package:fitnotes_plus/shared/progress_chart.dart';
+import 'package:fitnotes_plus/shared/record_badge.dart';
 
 Future<void> _flush(WidgetTester tester) async {
   for (var i = 0; i < 8; i++) {
@@ -31,6 +32,67 @@ void _viewport(WidgetTester tester) {
 }
 
 void main() {
+  testWidgets('logging, editing, and deleting sets moves the trophy to the current record in Log and History', (tester) async {
+    _viewport(tester);
+    final db = AppDatabase.memory();
+    final repo = WorkoutRepository(db);
+    late int exerciseId, firstId;
+    await tester.runAsync(() async {
+      exerciseId = (await db.select(db.exercises).get()).firstWhere((e) => e.name == 'Flat Barbell Bench Press').id;
+      await ProgressRepository(db).startSeason(Dates.today(), 'Current');
+      firstId = await repo.addSet(exerciseId: exerciseId, date: Dates.today(), rawWeight: 100, reps: 10);
+    });
+    final container = ProviderContainer(overrides: [databaseProvider.overrideWithValue(db)]);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: ExerciseDetailScreen(exerciseId: exerciseId, date: Dates.today()),
+        ),
+      ),
+    );
+    await _flush(tester);
+    Finder badge(int id) => find.descendant(of: find.byKey(ValueKey('logged-set-$id')), matching: find.byType(RecordBadge));
+    expect(badge(firstId), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, '120');
+    await tester.tap(find.byTooltip('Log set'));
+    await _flush(tester);
+    late int secondId;
+    await tester.runAsync(() async => secondId = (await repo.dayLog(Dates.today())).last.set.id);
+    expect(badge(firstId), findsNothing);
+    expect(badge(secondId), findsOneWidget);
+    await tester.tap(find.text('History'));
+    await _flush(tester);
+    for (final (weight, count) in [('100', 0), ('120', 1)]) {
+      final row = find.widgetWithText(ListTile, '$weight kg × 10 reps');
+      expect(find.descendant(of: row, matching: find.byType(RecordBadge)), findsNWidgets(count));
+    }
+    await tester.tap(find.text('Log'));
+    await _flush(tester);
+    await tester.tap(find.byKey(ValueKey('logged-set-$secondId')));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField).first, '90');
+    await tester.tap(find.byTooltip('Update set'));
+    await _flush(tester);
+    expect(badge(firstId), findsOneWidget);
+    expect(badge(secondId), findsNothing);
+    await tester.tap(find.byKey(ValueKey('logged-set-$firstId')));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Delete set'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await _flush(tester);
+    expect(find.byKey(ValueKey('logged-set-$firstId')), findsNothing);
+    expect(badge(secondId), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    container.dispose();
+    final closed = db.close();
+    await _flush(tester);
+    await closed;
+  });
+
   testWidgets('gym logging keeps controls stable, edits without extra sets, and rest disappears', (tester) async {
     _viewport(tester);
     final db = AppDatabase.memory();

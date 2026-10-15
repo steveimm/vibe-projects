@@ -151,11 +151,11 @@ void main() {
 
   test('PR seasons reset comparison without changing all-time history', () async {
     final old = await workouts.addSet(exerciseId: bench.id, date: '2026-01-01', rawWeight: 100, reps: 5);
-    final first = await workouts.addSet(exerciseId: bench.id, date: '2026-02-01', rawWeight: 90, reps: 5);
+    await workouts.addSet(exerciseId: bench.id, date: '2026-02-01', rawWeight: 90, reps: 5);
     final next = await workouts.addSet(exerciseId: bench.id, date: '2026-02-02', rawWeight: 95, reps: 5);
     final history = await workouts.watchExerciseHistory(bench.id).first;
     expect(Stats.personalRecordSetIds(history), {old});
-    expect(Stats.personalRecordSetIds(history, sinceDate: '2026-02-01'), {first, next});
+    expect(Stats.personalRecordSetIds(history, sinceDate: '2026-02-01'), {next});
     expect(Stats.repMaxes(history)[5], 100);
     expect(Stats.repMaxes(history, sinceDate: '2026-02-01')[5], 95);
     expect((await workouts.watchExerciseHistory(bench.id).first).length, 3);
