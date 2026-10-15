@@ -124,8 +124,11 @@ class JsonlEditorProvider implements vscode.CustomReadonlyEditorProvider<JsonlDo
         const replacements: Record<string, string> = {
             '{{cspSource}}': panel.webview.cspSource,
             '{{nonce}}': nonce,
-            '{{script}}': panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'viewer.js')).toString(),
+            '{{script}}': panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'build', 'viewer.js')).toString(),
             '{{style}}': panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'viewer.css')).toString(),
+            '{{editorStyle}}': panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'build', 'viewer.css')).toString(),
+            '{{editorWorker}}': panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'build', 'editor.worker.js')).toString(),
+            '{{jsonWorker}}': panel.webview.asWebviewUri(vscode.Uri.joinPath(media, 'build', 'json.worker.js')).toString(),
         };
         for (const [key, value] of Object.entries(replacements)) html = html.replaceAll(key, value);
         panel.webview.html = html;

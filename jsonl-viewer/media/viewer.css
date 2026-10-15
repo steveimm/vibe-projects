@@ -3,7 +3,6 @@
     --sidebar-width: 320px;
     --line-height: 22px;
     --row-height: 48px;
-    --gutter-width: 66px;
     --border: var(--vscode-panel-border, #444);
     --muted: var(--vscode-descriptionForeground, #999);
 }
@@ -58,19 +57,10 @@ button:disabled { opacity: .4; cursor: default; }
 .viewport { position: relative; overflow: auto; flex: 1; min-height: 0; scrollbar-color: var(--vscode-scrollbarSlider-background) transparent; }
 .spacer { position: relative; width: 100%; }
 .canvas { position: absolute; left: 0; right: 0; top: 0; }
-.code-view { font: var(--vscode-editor-font-size, 13px)/var(--line-height) var(--vscode-editor-font-family, monospace); }
-#code-spacer { min-width: 100%; }
-.code-line { display: flex; height: var(--line-height); white-space: pre; }
-.line-number { position: sticky; left: 0; display: block; width: var(--gutter-width); flex: 0 0 var(--gutter-width); padding-right: 18px; text-align: right; color: var(--vscode-editorLineNumber-foreground, #777); background: var(--vscode-editor-background); user-select: none; z-index: 1; }
-.line-text { display: block; padding-right: 24px; }
-.code-view.word-wrap { overflow-x: hidden; }
-.word-wrap #code-spacer { overflow: clip; }
-.word-wrap .code-line { height: auto; min-height: var(--line-height); align-items: flex-start; }
-.word-wrap .line-text { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.token-key { color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe); }
-.token-string { color: var(--vscode-debugTokenExpression-string, #ce9178); }
-.token-number { color: var(--vscode-debugTokenExpression-number, #b5cea8); }
-.token-literal { color: var(--vscode-debugTokenExpression-boolean, #569cd6); }
+#code-view { flex: 1; min-height: 0; overflow: hidden; }
+.detail-tools { display: flex; align-items: center; gap: 8px; letter-spacing: 0; }
+.detail-tools button { font-size: 11px; padding: 2px 5px; }
+.detail > .pane-heading { align-items: center; padding-top: 7px; padding-bottom: 7px; }
 #empty-state { position: absolute; inset: 70px 20px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--muted); pointer-events: none; text-align: center; }
 #empty-state strong { color: var(--vscode-foreground); font-size: 16px; font-weight: 500; }
 .empty-icon { font: 38px monospace; opacity: .5; margin-bottom: 6px; }
@@ -89,10 +79,8 @@ footer { height: 27px; flex-shrink: 0; display: flex; align-items: center; justi
 #status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #footer-hint { white-space: nowrap; }
 @media (max-width: 640px) {
-    :root { --gutter-width: 45px; }
     .toolbar { padding: 6px 8px; gap: 6px; }
     .tools { flex-wrap: wrap; }
     .rows-pane { width: 220px; }
     #footer-hint { display: none; }
-    .line-number { padding-right: 10px; }
 }

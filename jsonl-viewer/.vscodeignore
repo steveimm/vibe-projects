@@ -1,5 +1,6 @@
 .vscode/**
 src/**
+media/*.js
 tsconfig.json
 node_modules/**
 package-lock.json

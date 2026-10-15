@@ -4,8 +4,8 @@
   "description": "Browse JSON Lines one formatted row at a time, with a fast row list.",
   "main": "./dist/extension.js",
   "scripts": {
-    "compile": "tsc -p .",
-    "watch": "tsc -w -p .",
+    "compile": "tsc -p . && node scripts/build-webview.cjs",
+    "watch": "node scripts/build-webview.cjs --watch",
     "vscode:prepublish": "npm run compile",
     "package": "vsce package",
     "test": "npm run compile && node --test test/*.cjs",
@@ -23,6 +23,8 @@
     "@types/node": "^26.6.5",
     "@types/vscode": "1.95.0",
     "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "monaco-editor": "^0.57.0",
     "typescript": "^7.0.2"
   },
   "displayName": "JSONL Viewer",

@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{cspSource}}; script-src 'nonce-{{nonce}}';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{cspSource}} 'unsafe-inline'; script-src {{cspSource}} 'nonce-{{nonce}}'; font-src {{cspSource}}; connect-src {{cspSource}}; worker-src blob:;">
+    <link rel="stylesheet" href="{{editorStyle}}">
     <link rel="stylesheet" href="{{style}}">
     <title>JSONL Viewer</title>
 </head>
@@ -23,11 +24,9 @@
     </header>
     <main class="workspace">
         <section class="detail" aria-label="Selected JSON row">
-            <header class="pane-heading"><span id="row-heading">SELECT A ROW</span><span id="row-info"></span></header>
+            <header class="pane-heading"><span id="row-heading">SELECT A ROW</span><div class="detail-tools"><button id="fold-all" title="Collapse all objects and arrays" disabled>Collapse all</button><button id="unfold-all" title="Expand all objects and arrays" disabled>Expand all</button><span id="row-info"></span></div></header>
             <div id="notice" role="status" hidden></div>
-            <div id="code-view" class="viewport code-view" tabindex="0" aria-label="Formatted JSON" aria-busy="true">
-                <div id="code-spacer" class="spacer"><div id="code-canvas" class="canvas"></div></div>
-            </div>
+            <div id="code-view" aria-busy="true" data-editor-worker="{{editorWorker}}" data-json-worker="{{jsonWorker}}"></div>
             <div id="empty-state"><span class="empty-icon" aria-hidden="true">{ }</span><strong>Opening JSON Lines</strong><span>Rows will appear as the file is indexed.</span></div>
         </section>
         <div id="divider" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize row list" aria-valuemin="220" aria-valuemax="620" aria-valuenow="320"></div>

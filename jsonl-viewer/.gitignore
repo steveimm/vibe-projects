@@ -1,5 +1,6 @@
 node_modules/
 dist/
+media/build/
 *.vsix
 *.log
 .DS_Store
