@@ -4,6 +4,9 @@ tsconfig.json
 node_modules/**
 package-lock.json
 examples/**
+test/**
+scripts/**
+verification.json
 **/*.map
 **/*.vsix
 .gitignore

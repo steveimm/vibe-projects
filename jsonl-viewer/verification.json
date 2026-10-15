@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-15",
+  "environment": { "platform": "macOS arm64", "node": "24.13.0", "vscode": "1.139.1" },
+  "recordTests": { "command": "npm test", "passed": 6, "failed": 0 },
+  "benchmark": {
+    "command": "npm run benchmark",
+    "rows": 1000000,
+    "fileBytes": 96000000,
+    "firstRowsMs": 27,
+    "indexMs": 55,
+    "selectMeanMs": 0.09,
+    "selectMaxMs": 0.5,
+    "conditions": "Generated file with repeated small records and a warm filesystem cache. Index timing includes worker startup. Selection timing measures worker replies and excludes UI rendering."
+  },
+  "extensionHost": {
+    "method": "Installed VS Code extension test runner in an isolated temporary profile, with passive observation of the actual webview message bridge.",
+    "passed": true,
+    "activation": true,
+    "customEditorOpen": true,
+    "reopenAsTextAndViewer": true,
+    "webviewScriptInitialized": true,
+    "actualWorkerFormattedRowDelivered": true,
+    "actualRowPreviewsDelivered": true
+  },
+  "webview": {
+    "method": "Headless Chrome with the actual HTML, CSS and JavaScript assets. A temporary host bridge used the actual file worker and indexed-file implementation.",
+    "passed": true,
+    "millionRowListWithBoundedDOM": true,
+    "rowSelectionAndHighlight": true,
+    "keyboardNavigationToFinalRow": true,
+    "rowJumpAndPreviousNext": true,
+    "copyEntireSelectedRow": true,
+    "resizeDivider": true,
+    "refreshAndStaleSelectionReplies": true,
+    "blankAndInvalidRows": true,
+    "htmlLikeContentRenderedAsText": true,
+    "scrollTenThousandElementJsonArray": true,
+    "oversizedRowLimit": true,
+    "emptyFile": true,
+    "consoleErrors": 0
+  }
+}

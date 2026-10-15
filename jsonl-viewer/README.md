@@ -49,6 +49,14 @@ The default maximum selected row size is 8 MiB. Change **JSONL Viewer: Max Row S
 npm run compile
 npm run watch
 npm run package
+npm test
+npm run benchmark
 ```
 
 The runtime has no third-party dependencies. TypeScript and the VSIX packager are development tools. Source lives in `src/`, webview assets in `media/`, and generated JavaScript in `dist/`.
+
+## Verification
+
+The record tests cover physical line counts, invalid and blank lines, BOM and CRLF, UTF-8 and read-chunk boundaries, number preservation, size limits, file truncation, and worker requests across index pages. `npm run benchmark` creates and indexes one million small records in a temporary file, measures worker replies, and removes the file.
+
+Initial checks also ran the actual VS Code extension host and a headless webview backed by the file worker. The webview checks covered selection, keyboard navigation to the millionth row, row jumping, full-row copying, resizing, refresh, stale replies, empty and invalid rows, script-like text, and scrolling a JSON array with 10,000 elements. Results and measurement conditions are recorded in [verification.json](verification.json).

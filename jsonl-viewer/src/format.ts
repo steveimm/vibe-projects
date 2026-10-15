@@ -1,6 +1,6 @@
 export type FormattedRow = { text: string; kind: 'json' | 'invalid' | 'empty'; error?: string };
 
-export function formatRow(raw: string, maxOutputBytes = 32 * 1024 * 1024): FormattedRow {
+export function formatRow(raw: string, maxOutputCharacters = 32 * 1024 * 1024): FormattedRow {
     if (!raw.trim()) return { text: raw, kind: 'empty', error: 'This line is empty.' };
     try {
         JSON.parse(raw);
@@ -14,7 +14,7 @@ export function formatRow(raw: string, maxOutputBytes = 32 * 1024 * 1024): Forma
     let size = 0;
     const append = (value: string) => {
         size += value.length;
-        if (size > maxOutputBytes) throw new Error('Formatted row is too large. Showing the original JSON.');
+        if (size > maxOutputCharacters) throw new Error('Formatted row is too large. Showing the original JSON.');
         output.push(value);
     };
     const newline = () => append('\n' + '  '.repeat(depth));
