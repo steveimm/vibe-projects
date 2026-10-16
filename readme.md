@@ -18,3 +18,4 @@ Here are the current list of projects:
 | [scrollmuch](./scrollmuch/) | Android app that tracks how much you scroll across all apps, measured in meters | Claude Opus 4.5 + Opus 4.8 |
 | [cherry-diff](./cherry-diff/) | VS Code extension for reviewing file edits one hunk at a time with per-hunk accept/reject | Claude Opus 4.8 + Fable 5 + GPT 5.6 Sol |
 | [Fretmate](./fretmate/) | Android guitar tuner for six-string standard tuning with a metronome | GPT-6 |
+| [Record Explorer](./record-explorer/) | VS Code extension for browsing JSONL and Parquet records with collapsible JSON and readable text previews | GPT-6.1-Sol |
