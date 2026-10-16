@@ -1,7 +1,7 @@
 {
   "version": "0.2.0",
   "configurations": [{
-    "name": "Run JSONL Viewer",
+    "name": "Run Record Explorer",
     "type": "extensionHost",
     "request": "launch",
     "args": ["--extensionDevelopmentPath=${workspaceFolder}", "${workspaceFolder}/examples/sample.jsonl"],

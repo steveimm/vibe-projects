@@ -6,7 +6,7 @@ const { performance } = require('node:perf_hooks');
 const assert = require('node:assert/strict');
 
 async function benchmark() {
-    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'jsonl-viewer-benchmark-'));
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'record-explorer-benchmark-'));
     let worker;
     try {
         const parquet = process.argv.includes('--parquet');

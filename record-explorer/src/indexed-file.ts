@@ -101,7 +101,7 @@ export class IndexedFile {
         const { length } = this.bounds(index);
         if (length > maxBytes) return {
             index, bytes: length, text: '', kind: 'tooLarge',
-            error: `This row exceeds the ${Math.round(maxBytes / 1024 / 1024)} MiB row limit. Increase JSONL Viewer: Max Row Size MB in Settings.`,
+            error: `This row exceeds the ${Math.round(maxBytes / 1024 / 1024)} MiB row limit. Increase Record Explorer: Max Row Size MB in Settings.`,
         };
         const row = await this.read(index, maxBytes);
         return { index, bytes: row.bytes, ...formatRow(row.text) };

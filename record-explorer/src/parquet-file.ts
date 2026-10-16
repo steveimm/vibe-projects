@@ -181,7 +181,7 @@ export class ParquetFile {
         const { text, bytes } = rows[index - page.start];
         if (bytes > maxBytes) return {
             index, bytes, text: '', kind: 'tooLarge',
-            error: `This record exceeds the ${Math.round(maxBytes / 1024 / 1024)} MiB row limit. Increase JSONL Viewer: Max Row Size MB in Settings.`,
+            error: `This record exceeds the ${Math.round(maxBytes / 1024 / 1024)} MiB row limit. Increase Record Explorer: Max Row Size MB in Settings.`,
         };
         return { index, bytes, ...formatRow(text) };
     }

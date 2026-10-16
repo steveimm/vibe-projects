@@ -9,7 +9,7 @@ const { IndexedFile } = require('../dist/indexed-file');
 const { formatRow } = require('../dist/format');
 
 async function fixture(t, text) {
-    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'jsonl-viewer-test-'));
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'record-explorer-test-'));
     const filePath = path.join(directory, 'records.jsonl');
     await fs.writeFile(filePath, text);
     const file = new IndexedFile();

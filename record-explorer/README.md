@@ -1,24 +1,26 @@
-# JSONL Viewer
+# Record Explorer
 
 A read-only VS Code extension for `.jsonl`, `.ndjson`, and `.parquet` files. The main pane shows one selected record in [Monaco Editor](https://github.com/microsoft/monaco-editor), the editor component used by VS Code, with JSON syntax colors, collapsible objects and arrays, and word wrap. A list on the right shows every record with a short preview. Click a record, use the arrow keys, or enter a row number to change the selection.
 
 ## Run locally
 
 ```sh
-cd jsonl-viewer
+cd record-explorer
 npm ci
 npm run compile
 code .
 ```
 
-Press **F5** to launch the Extension Development Host with the example file. Open any `.jsonl`, `.ndjson`, or `.parquet` file to use the viewer. For an existing editor, use **Reopen Editor With → JSONL Viewer**, or run **JSONL Viewer: Open File** from the command palette.
+Press **F5** to launch the Extension Development Host with the example file. Open any `.jsonl`, `.ndjson`, or `.parquet` file to use the viewer. For an existing editor, use **Reopen Editor With → Record Explorer**, or run **Record Explorer: Open File** from the command palette.
 
 ## Install
 
 ```sh
 npm run package
-code --install-extension jsonl-viewer-0.4.0.vsix
+code --install-extension record-explorer-0.4.1.vsix
 ```
+
+If you installed JSONL Viewer, uninstall that extension before installing Record Explorer to avoid duplicate file handlers. Existing `jsonlViewer` setting keys, command IDs, and editor associations remain supported.
 
 You can also use **Extensions: Install from VSIX** in VS Code. The extension requires VS Code 1.95 or newer.
 
@@ -46,7 +48,7 @@ Rows appear while indexing. Blank lines remain selectable and show an empty-line
 
 Formatting preserves the original numbers and key order, including large integers, exponent notation, trailing decimal zeros, and duplicate keys. Formatting changes whitespace only. Text is rendered as text, so file contents cannot insert HTML or scripts into the viewer.
 
-The default maximum selected row size is 8 MiB. Change **JSONL Viewer: Max Row Size MB** in Settings to allow up to 128 MiB. Very large individual rows take longer to parse and display. If formatting would exceed 32 million characters, the original JSON is shown with a message. The viewer supports files on disk and does not load virtual filesystem documents or unsaved text edits.
+The default maximum selected row size is 8 MiB. Change **Record Explorer: Max Row Size MB** in Settings to allow up to 128 MiB. Very large individual rows take longer to parse and display. If formatting would exceed 32 million characters, the original JSON is shown with a message. The viewer supports files on disk and does not load virtual filesystem documents or unsaved text edits.
 
 ## Parquet
 

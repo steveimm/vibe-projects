@@ -112,7 +112,7 @@ class JsonlEditorProvider implements vscode.CustomReadonlyEditorProvider<JsonlDo
     constructor(private context: vscode.ExtensionContext) {}
 
     openCustomDocument(uri: vscode.Uri): JsonlDocument {
-        if (uri.scheme !== 'file') throw new Error('JSONL Viewer currently supports files on disk.');
+        if (uri.scheme !== 'file') throw new Error('Record Explorer currently supports files on disk.');
         return new JsonlDocument(uri);
     }
 

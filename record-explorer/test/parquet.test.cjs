@@ -10,7 +10,7 @@ const { parseParquetJson, serializeParquetValue } = require('../dist/parquet-jso
 
 async function fixture(t, options) {
     const { parquetWriteBuffer } = await import('hyparquet-writer');
-    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'jsonl-viewer-parquet-'));
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'record-explorer-parquet-'));
     const filePath = path.join(directory, 'records.parquet');
     await fs.writeFile(filePath, new Uint8Array(parquetWriteBuffer(options)));
     const file = new ParquetFile();
@@ -89,7 +89,7 @@ test('empty Parquet, row limits, invalid ranges and corrupt input have clear res
     assert.equal((await populated.file.row(0, 100)).kind, 'tooLarge');
     await assert.rejects(populated.file.row(1, 8388608), /outside/);
     await assert.rejects(populated.file.rows(-1, 10), /Invalid/);
-    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'jsonl-viewer-corrupt-'));
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'record-explorer-corrupt-'));
     const filePath = path.join(directory, 'broken.parquet');
     await fs.writeFile(filePath, 'not a parquet file');
     const file = new ParquetFile();

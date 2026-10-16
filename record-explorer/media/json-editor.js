@@ -49,8 +49,8 @@ export function createJsonEditor(container, { wordWrap, plainText = false, onPre
             const value = style.getPropertyValue(`--vscode-${name.replaceAll('.', '-')}`).trim();
             if (/^#[\da-f]{3,8}$/i.test(value)) colors[name] = value;
         }
-        monaco.editor.defineTheme('jsonl-viewer', { base, inherit: true, rules: [], colors });
-        monaco.editor.setTheme('jsonl-viewer');
+        monaco.editor.defineTheme('record-explorer', { base, inherit: true, rules: [], colors });
+        monaco.editor.setTheme('record-explorer');
         const fontSize = parseFloat(style.getPropertyValue('--vscode-editor-font-size')) || 13;
         editor?.updateOptions({
             fontFamily: style.getPropertyValue('--vscode-editor-font-family').trim() || 'monospace',
@@ -62,7 +62,7 @@ export function createJsonEditor(container, { wordWrap, plainText = false, onPre
     const fontSize = parseFloat(style.getPropertyValue('--vscode-editor-font-size')) || 13;
     editor = monaco.editor.create(container, {
         model: null,
-        theme: 'jsonl-viewer',
+        theme: 'record-explorer',
         readOnly: true,
         domReadOnly: true,
         automaticLayout: true,
