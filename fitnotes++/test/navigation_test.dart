@@ -91,7 +91,8 @@ class _Exercises extends ExerciseRepository {
 }
 
 class _Workouts extends WorkoutRepository {
-  _Workouts(super.db);
+  _Workouts(super.db, {this.dayOrder = const [1, 2]});
+  final List<int> dayOrder;
   int savedSets = 0;
   @override
   Future<int> addSet({
@@ -110,12 +111,12 @@ class _Workouts extends WorkoutRepository {
   Future<WorkoutSet?> lastSet(int exerciseId, String date) async => null;
   @override
   Stream<List<LoggedSet>> watchDayLog(String date) => Stream.value([
-    for (final e in _exercises.take(2))
+    for (final e in dayOrder.map((id) => _exercises.firstWhere((e) => e.id == id)))
       LoggedSet(set: _set(e.id, date), exerciseName: e.name, colorArgb: 0xFFC0392B, exerciseType: 0),
   ]);
 }
 
-Future<GoRouter> _show(WidgetTester tester, {String location = '/'}) async {
+Future<GoRouter> _show(WidgetTester tester, {String location = '/', List<int> dayOrder = const [1, 2]}) async {
   tester.view.physicalSize = const Size(390, 850);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -128,7 +129,7 @@ Future<GoRouter> _show(WidgetTester tester, {String location = '/'}) async {
     ProviderScope(
       overrides: [
         exerciseRepositoryProvider.overrideWithValue(_Exercises(db)),
-        workoutRepositoryProvider.overrideWithValue(_Workouts(db)),
+        workoutRepositoryProvider.overrideWithValue(_Workouts(db, dayOrder: dayOrder)),
         settingsProvider.overrideWith((ref) => Stream.value(_settings)),
         categoriesProvider.overrideWith(
           (ref) => Stream.value(const [
@@ -164,6 +165,36 @@ Future<void> _back(WidgetTester tester, {bool system = false}) async {
 }
 
 void main() {
+  testWidgets('workout exercise menu preserves Home order regardless of the selected exercise', (tester) async {
+    await _show(tester, dayOrder: [2, 1]);
+    expect(tester.getTopLeft(find.text('Row')).dy, lessThan(tester.getTopLeft(find.text('Bench press')).dy));
+    await tester.tap(find.text('Bench press'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Workout exercises'));
+    await tester.pumpAndSettle();
+    final sheet = find.byType(BottomSheet);
+    final row = find.descendant(of: sheet, matching: find.text('Row'));
+    final bench = find.descendant(of: sheet, matching: find.text('Bench press'));
+    expect(tester.getTopLeft(row).dy, lessThan(tester.getTopLeft(bench).dy));
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+    expect(tester.widget<ExerciseDetailScreen>(find.byType(ExerciseDetailScreen)).exerciseId, 2);
+    await tester.tap(find.byTooltip('Workout exercises'));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(row).dy, lessThan(tester.getTopLeft(bench).dy));
+  });
+
+  testWidgets('an exercise with no sets is appended without moving the existing workout exercises', (tester) async {
+    await _show(tester, location: '/log/3?date=${Dates.today()}', dayOrder: [2, 1]);
+    await tester.tap(find.byTooltip('Workout exercises'));
+    await tester.pumpAndSettle();
+    final sheet = find.byType(BottomSheet);
+    final names = ['Row', 'Bench press', 'Press 03'];
+    final positions = names.map((name) => tester.getTopLeft(find.descendant(of: sheet, matching: find.text(name))).dy).toList();
+    expect(positions[0], lessThan(positions[1]));
+    expect(positions[1], lessThan(positions[2]));
+  });
+
   testWidgets('body-part picker keeps its search and scroll when returning from an exercise', (tester) async {
     await _show(tester);
     expect(find.byType(NavigationDestination), findsNWidgets(4));

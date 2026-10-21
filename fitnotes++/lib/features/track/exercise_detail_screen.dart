@@ -101,12 +101,13 @@ class ExerciseDetailScreen extends ConsumerWidget {
     await attempt(context, () async {
       final sets = await ref.read(workoutRepositoryProvider).dayLog(date);
       if (!context.mounted) return;
-      final names = <int, String>{exercise.id: exercise.name};
+      final names = <int, String>{};
       final counts = <int, int>{};
       for (final set in sets) {
         names[set.set.exerciseId] = set.exerciseName;
         counts.update(set.set.exerciseId, (n) => n + 1, ifAbsent: () => 1);
       }
+      names.putIfAbsent(exercise.id, () => exercise.name);
       final selected = await showModalBottomSheet<int>(
         context: context,
         isScrollControlled: true,
