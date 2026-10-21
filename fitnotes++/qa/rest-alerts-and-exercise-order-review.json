@@ -1,0 +1,129 @@
+{
+  "version": "1.10.1+26",
+  "schema_version": 10,
+  "status": "complete",
+  "implementation_commits": [
+    "90b5f07",
+    "e2add5b"
+  ],
+  "requirements": [
+    "The exercise switcher preserves the Home workout order instead of moving the current exercise to the front.",
+    "Rest completion is scheduled independently of the countdown service and can start alert playback while the screen is off.",
+    "Pause, replacement, extension, and cancellation update or remove the system alarm. Stale alarm intents do not alert.",
+    "Keep the existing countdown notification and Cancel action, and avoid holding a CPU wake lock for the countdown."
+  ],
+  "implementation": {
+    "alarm": "AlarmManager.setAlarmClock with a foreground-priority explicit broadcast and deadline validation.",
+    "permission": "SCHEDULE_EXACT_ALARM checked before scheduling, with one-time explanation and an Alarms & reminders Settings entry.",
+    "wake_locks": "Bounded locks only for receiver-to-service delivery and alert playback.",
+    "data_migration": "None."
+  },
+  "validation": {
+    "static_analysis": "No issues found",
+    "full_suite": 93,
+    "emulator": "FitNotes_API_36, Android 16/API 36, ARM64",
+    "exercise_menu": "All five exercises in an existing workout matched the saved Home order with the second exercise selected.",
+    "baseline": "The original 1.10.0 build rang on time in the first forced-Doze test. The intermittent physical-device failure was not reproduced on this emulator.",
+    "sleep_mode_note": "AOSP rejected forced deep-idle entry while the new imminent alarm-clock alarm existed. Tests verified the display remained asleep before and during playback, including after service and process termination.",
+    "physical_device_verified": false,
+    "alarm_rounds": {
+      "locked-first": {
+        "deadline": 1792548408121,
+        "playback_started": 1792548408251.0,
+        "delay_ms": 130.0,
+        "service_stopped_before_expiry": false,
+        "screen_off_before_and_after": true,
+        "countdown_wake_lock": false,
+        "saved_timer_cleared": true,
+        "force_idle_result": "Unable to go deep idle; stopped at INACTIVE"
+      },
+      "locked-service-stopped": {
+        "deadline": 1792548566802,
+        "playback_started": 1792548566987.0,
+        "delay_ms": 185.0,
+        "service_stopped_before_expiry": true,
+        "screen_off_before_and_after": true,
+        "countdown_wake_lock": false,
+        "saved_timer_cleared": true,
+        "force_idle_result": "Unable to go deep idle; stopped at INACTIVE"
+      },
+      "locked-process-killed": {
+        "deadline": 1792548795384,
+        "playback_started": 1792548796239.0,
+        "delay_ms": 855.0,
+        "service_stopped_before_expiry": true,
+        "process_killed_before_expiry": true,
+        "screen_off_before_and_after": true,
+        "countdown_wake_lock": false,
+        "saved_timer_cleared": true,
+        "force_idle_result": "Unable to go deep idle; stopped at INACTIVE"
+      },
+      "release-process-killed": {
+        "deadline": 1792549798787,
+        "playback_started": 1792549799856.0,
+        "delay_ms": 1069.0,
+        "service_stopped_before_expiry": true,
+        "process_killed_before_expiry": true,
+        "screen_off_before_and_after": true,
+        "countdown_wake_lock": false,
+        "saved_timer_cleared": true,
+        "force_idle_result": "Unable to go deep idle; stopped at INACTIVE"
+      }
+    },
+    "cancellation": {
+      "pause_removes_alarm": true,
+      "resume_restores_alarm": true,
+      "extension_replaces_alarm": true,
+      "stale_intents_ignored": true,
+      "notification_cancel_clears_both": true,
+      "in_app_cancel_clears_both": true,
+      "no_audio_past_cancelled_deadlines": true
+    },
+    "screenshots": [
+      "build/qa/1.10.1/home-order.png",
+      "build/qa/1.10.1/exercise-menu.png",
+      "build/qa/1.10.1/alarm-access-prompt.png",
+      "build/qa/1.10.1/release-settings.png"
+    ],
+    "release_smoke": "Alarms & reminders shows Allowed, the original one-minute rest setting is restored, and installed APK hash matches the release artifact."
+  },
+  "data_preservation": {
+    "checkpoint": "build/qa/1.10.1/original.tar",
+    "test_sets_added": 0,
+    "all_original_tables_and_values_preserved": true,
+    "original_timer_settings_restored": true,
+    "temporary_sleep_controls_restored": true
+  },
+  "release": {
+    "build_commands": [
+      "flutter build apk --debug --split-per-abi",
+      "flutter build apk --release --split-per-abi"
+    ],
+    "artifacts": [
+      {
+        "path": "build/releases/1.10.1/app-arm64-v8a-release.apk",
+        "sha256": "0f33f0d491b38a1645bbfae0d4b36c94ea5004da9c16ee6b9690e57c73f2961d"
+      },
+      {
+        "path": "build/releases/1.10.1/app-armeabi-v7a-release.apk",
+        "sha256": "7e42080f62e678d99c751b954f2f82cb65ebfb91297e939e29075da2e6581f82"
+      },
+      {
+        "path": "build/releases/1.10.1/app-x86_64-release.apk",
+        "sha256": "3dd7a4003ce8bfcb11cd89ea6c54ecb59356e1d2424743227d7728b4843fb742"
+      }
+    ],
+    "installed": {
+      "version_name": "1.10.1",
+      "version_code": 2026,
+      "abi": "arm64-v8a",
+      "debuggable": false,
+      "sha256": "0f33f0d491b38a1645bbfae0d4b36c94ea5004da9c16ee6b9690e57c73f2961d"
+    }
+  },
+  "api_references": [
+    "https://developer.android.com/training/monitoring-device-state/doze-standby",
+    "https://developer.android.com/develop/background-work/services/alarms",
+    "https://developer.android.com/reference/android/content/Intent#FLAG_RECEIVER_FOREGROUND"
+  ]
+}
