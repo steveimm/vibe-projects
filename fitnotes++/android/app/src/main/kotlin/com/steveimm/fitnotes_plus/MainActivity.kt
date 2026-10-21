@@ -58,6 +58,20 @@ class MainActivity : FlutterActivity() {
                     startActivity(intent)
                     result.success(null)
                 }
+                "restAlarmAccess" -> result.success(mapOf(
+                    "supported" to (Build.VERSION.SDK_INT >= 31), "allowed" to restAlarmAllowed()))
+                "claimRestAlarmPrompt" -> {
+                    val allowed = restAlarmAllowed()
+                    val consent = getSharedPreferences("fitnotes_permissions", MODE_PRIVATE)
+                    val prompt = !allowed && !consent.getBoolean("rest_alarm_requested", false)
+                    if (prompt) consent.edit().putBoolean("rest_alarm_requested", true).apply()
+                    result.success(prompt)
+                }
+                "restAlarmSettings" -> {
+                    if (Build.VERSION.SDK_INT >= 31) startActivity(
+                        Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName")))
+                    result.success(null)
+                }
                 "saveFile" -> {
                     if (pendingSave != null) { result.error("busy", "A file picker is already open.", null) }
                     else {
@@ -185,6 +199,15 @@ class MainActivity : FlutterActivity() {
             consent.edit().putBoolean("notifications_requested", true).apply()
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 72)
         }
+    }
+
+    private fun restAlarmAllowed(): Boolean {
+        val allowed = RestAlarmReceiver.canSchedule(this)
+        val consent = getSharedPreferences("fitnotes_permissions", MODE_PRIVATE)
+        if (consent.getBoolean("rest_alarm_allowed", false) != allowed) {
+            consent.edit().putBoolean("rest_alarm_allowed", allowed).putBoolean("rest_alarm_requested", false).apply()
+        }
+        return allowed
     }
 
     @Deprecated("Deprecated in Java")

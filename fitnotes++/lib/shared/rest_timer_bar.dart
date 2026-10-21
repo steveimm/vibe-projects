@@ -1,13 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/services/rest_timer.dart';
+import 'rest_alarm_access.dart';
 import '../core/util/format.dart';
 
 class RestTimerBar extends ConsumerWidget {
   const RestTimerBar({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(restTimerProvider, (previous, next) {
+      if (previous?.visible != true && next.visible) unawaited(requestRestAlarmAccess(context, ref));
+    });
     final timer = ref.watch(restTimerProvider);
     final control = ref.read(restTimerProvider.notifier);
     final colors = Theme.of(context).colorScheme;

@@ -19,6 +19,7 @@ import '../../core/util/dates.dart';
 import '../../core/util/format.dart';
 import '../../shared/widgets.dart';
 import '../../shared/rest_sound_tile.dart';
+import '../../shared/rest_alarm_access.dart';
 
 Future<File> _recoveryFile() async => File('${(await getApplicationDocumentsDirectory()).path}/fitnotes-before-restore.sqlite');
 final _recoveryProvider = FutureProvider.autoDispose((ref) async => (await _recoveryFile()).exists());
@@ -35,6 +36,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final units = ref.watch(unitsProvider);
+    final alarmAccess = ref.watch(restAlarmAccessProvider).asData?.value;
     final season = ref.watch(seasonsProvider).asData?.value.firstOrNull;
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -196,6 +198,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         () => attempt(context, () async {
                           await DeviceService.call('notificationSettings');
                         }),
+                      ),
+                    if (alarmAccess?.supported == true)
+                      _tile(
+                        Icons.alarm_rounded,
+                        'Alarms & reminders',
+                        alarmAccess!.allowed ? 'Allowed' : 'Allow alerts while asleep',
+                        () => attempt(context, () async => DeviceService.call('restAlarmSettings')),
                       ),
                   ],
                 ),

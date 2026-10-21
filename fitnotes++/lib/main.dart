@@ -8,6 +8,7 @@ import 'core/providers.dart';
 import 'core/services/device_service.dart';
 import 'core/services/rest_timer.dart';
 import 'core/services/workout_auto_stop.dart';
+import 'shared/rest_alarm_access.dart';
 
 void main() {
   runApp(const ProviderScope(child: FitNotesApp()));
@@ -51,7 +52,10 @@ class _FitNotesAppState extends ConsumerState<FitNotesApp> with WidgetsBindingOb
   void didChangeAppLifecycleState(AppLifecycleState state) {
     ref.read(restTimerProvider.notifier).setVisible(state == AppLifecycleState.resumed);
     ref.read(workoutAutoStopProvider).setVisible(state == AppLifecycleState.resumed);
-    if (state == AppLifecycleState.resumed) ref.read(selectedDateProvider.notifier).refreshToday();
+    if (state == AppLifecycleState.resumed) {
+      ref.read(selectedDateProvider.notifier).refreshToday();
+      ref.invalidate(restAlarmAccessProvider);
+    }
   }
 
   @override

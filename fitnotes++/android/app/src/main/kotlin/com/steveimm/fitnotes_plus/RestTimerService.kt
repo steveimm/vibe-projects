@@ -31,6 +31,8 @@ class RestTimerService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == STOP) {
+            RestAlarmReceiver.cancel(this)
+            RestAlarmReceiver.releaseDeliveryLock()
             clearSavedTimer(this)
             completed = false
             stopCallbacks()
@@ -41,6 +43,12 @@ class RestTimerService : Service() {
             return START_NOT_STICKY
         }
         val deadline = preferences.getLong("deadline", 0)
+        if (intent?.action == RestAlarmReceiver.EXPIRE &&
+            (intent.getLongExtra("deadline", 0) != deadline || !isCurrent(deadline))) {
+            RestAlarmReceiver.releaseDeliveryLock()
+            if (!isCurrent(deadline) && !completed) stopSelf()
+            return if (isCurrent(deadline)) START_STICKY else START_NOT_STICKY
+        }
         if (deadline <= 0 || preferences.getBoolean("paused", false) || preferences.getBoolean("finished", false)) { stopSelf(); return START_NOT_STICKY }
         stopCallbacks()
         completed = false
@@ -67,11 +75,21 @@ class RestTimerService : Service() {
         else startForeground(ONGOING_ID, notification)
         notifications.cancel(COMPLETE_ID)
         if (wakeLock?.isHeld == true) wakeLock?.release()
+        wakeLock = null
         val remaining = (deadline - System.currentTimeMillis()).coerceIn(0, 3_600_000)
-        wakeLock = (getSystemService(POWER_SERVICE) as PowerManager).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "FitNotes:rest").apply {
-            acquire(remaining + RestAlertPlayer.MAX_DURATION_MS + 2000)
+        if (remaining == 0L) {
+            complete(deadline)
+            return START_NOT_STICKY
         }
-        alert = Runnable { if (isCurrent(deadline)) complete() }
+        RestAlarmReceiver.schedule(this)
+        RestAlarmReceiver.releaseDeliveryLock()
+        alert = object : Runnable {
+            override fun run() {
+                if (!isCurrent(deadline)) return
+                val left = deadline - System.currentTimeMillis()
+                if (left > 0) handler.postDelayed(this, left) else complete(deadline)
+            }
+        }
         handler.postDelayed(alert!!, remaining)
         countdown = object : Runnable {
             override fun run() {
@@ -85,8 +103,8 @@ class RestTimerService : Service() {
         return START_STICKY
     }
 
-    private fun isCurrent(deadline: Long): Boolean = preferences.getLong("deadline", 0) == deadline &&
-        !preferences.getBoolean("paused", false)
+    private fun isCurrent(deadline: Long): Boolean = deadline > 0 && preferences.getLong("deadline", 0) == deadline &&
+        !preferences.getBoolean("paused", false) && !preferences.getBoolean("finished", false)
 
     private fun remainingText(deadline: Long): String {
         val seconds = ((deadline - System.currentTimeMillis() + 999) / 1000).coerceAtLeast(0)
@@ -100,13 +118,17 @@ class RestTimerService : Service() {
         val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, channel) else Notification.Builder(this)
         return builder.setSmallIcon(R.drawable.app_symbol).setColor(0xFF326A59.toInt())
             .setVisibility(Notification.VISIBILITY_PUBLIC)
-            .setContentIntent(PendingIntent.getActivity(this, 1, Intent(this, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+            .setContentIntent(RestAlarmReceiver.showIntent(this))
     }
 
     @Suppress("DEPRECATION")
-    private fun complete() {
+    private fun complete(deadline: Long) {
+        if (completed || !isCurrent(deadline) || System.currentTimeMillis() < deadline) return
+        wakeLock = (getSystemService(POWER_SERVICE) as PowerManager).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "FitNotes:rest-alert").apply {
+            acquire(RestAlertPlayer.MAX_DURATION_MS + 2000)
+        }
+        RestAlarmReceiver.releaseDeliveryLock()
+        RestAlarmReceiver.cancel(this)
         val playSound = preferences.getBoolean("sound", true)
         val vibrate = preferences.getBoolean("vibrate", false)
         val soundUri = preferences.getString("soundUri", null)
@@ -168,11 +190,14 @@ class RestTimerService : Service() {
             edit.apply()
         }
 
-        fun start(context: Context) {
+        fun start(context: Context, alarmDeadline: Long? = null) {
             val intent = Intent(context, RestTimerService::class.java)
+            if (alarmDeadline != null) intent.setAction(RestAlarmReceiver.EXPIRE).putExtra("deadline", alarmDeadline)
             if (Build.VERSION.SDK_INT >= 26) context.startForegroundService(intent) else context.startService(intent)
         }
         fun stop(context: Context, clear: Boolean = true) {
+            RestAlarmReceiver.cancel(context)
+            RestAlarmReceiver.releaseDeliveryLock()
             if (clear) clearSavedTimer(context)
             context.stopService(Intent(context, RestTimerService::class.java))
             val manager = context.getSystemService(NotificationManager::class.java)
