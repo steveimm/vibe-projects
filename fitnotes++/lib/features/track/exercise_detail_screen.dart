@@ -246,7 +246,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           label: 'Weight',
           unit: units.weightLabel,
           controller: _weight,
-          step: units.weightFromKg(widget.exercise.weightIncrement ?? settings?.defaultWeightIncrement ?? 2.5),
+          step: widget.exercise.weightIncrement ?? settings?.defaultWeightIncrement ?? 2.5,
           onStep: (delta) => _stepCanonical(delta, weight: true),
           onChanged: _changed,
           onLabelTap: _saving || _changingWeightUnit || settings == null ? null : _toggleWeightUnit,

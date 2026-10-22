@@ -25,10 +25,9 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
   final _rest = TextEditingController();
   final _increment = TextEditingController();
   int? _category;
-  WeightUnit? _weightUnit;
   bool _includeBodyweight = false;
   final _multipliers = <MultiplierValue>[];
-  double? _incrementKg;
+  double? _loadedIncrement;
   String? _incrementText;
   ExerciseType _type = ExerciseType.weightAndReps;
   bool _loading = false, _saving = false, _failed = false;
@@ -50,17 +49,15 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
       final multipliers = await repo.watchMultipliers(ex.id).first;
       await ref.read(settingsProvider.future);
       if (!mounted) return;
-      _weightUnit = ex.weightUnit;
       _includeBodyweight = ex.includeBodyweight;
       _multipliers
         ..clear()
         ..addAll(multipliers.map((m) => (label: m.label, factor: m.factor, enabled: m.enabled)));
-      final units = ref.read(unitsProvider).withWeightUnit(_weightUnit);
       _name.text = ex.name;
       _notes.text = ex.notes ?? '';
       _rest.text = ex.defaultRestTimeSeconds == null ? '' : '${ex.defaultRestTimeSeconds}';
-      _increment.text = ex.weightIncrement == null ? '' : Fmt.number(units.weightFromKg(ex.weightIncrement!));
-      _incrementKg = ex.weightIncrement;
+      _increment.text = ex.weightIncrement == null ? '' : Fmt.number(ex.weightIncrement!);
+      _loadedIncrement = ex.weightIncrement;
       _incrementText = _increment.text;
       setState(() {
         _category = ex.categoryId;
@@ -88,7 +85,6 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
   @override
   Widget build(BuildContext context) {
     final systemUnits = ref.watch(unitsProvider);
-    final units = systemUnits.withWeightUnit(_weightUnit);
     final categories = ref.watch(categoriesProvider);
     final bodyweight = ref.watch(bodyweightProvider(Dates.today())).asData?.value;
     final history = widget.exerciseId == null ? null : ref.watch(exerciseHistoryProvider(widget.exerciseId!)).asData?.value;
@@ -250,7 +246,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
                                 child: TextFormField(
                                   controller: _increment,
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  decoration: InputDecoration(labelText: 'Weight step', suffixText: units.weightLabel),
+                                  decoration: const InputDecoration(labelText: 'Weight step'),
                                   validator: (v) =>
                                       v!.trim().isEmpty || ((double.tryParse(v) ?? 0) > 0 && (double.tryParse(v) ?? 999) <= 100)
                                       ? null
@@ -318,16 +314,11 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
       final repo = ref.read(exerciseRepositoryProvider);
       final notes = _notes.text.trim().isEmpty ? null : _notes.text.trim();
       final increment = double.tryParse(_increment.text);
-      final units = ref.read(unitsProvider).withWeightUnit(_weightUnit);
       final includeBodyweight =
           _type.hasWeight &&
           _includeBodyweight &&
           await ref.read(progressRepositoryProvider).latestBodyweight(Dates.today()) != null;
-      final kg = increment == null
-          ? null
-          : _incrementKg != null && _increment.text == _incrementText
-          ? _incrementKg
-          : units.weightToKg(increment);
+      final step = _increment.text == _incrementText ? _loadedIncrement : increment;
       if (id == null) {
         id = await repo.createExercise(
           name: _name.text.trim(),
@@ -335,7 +326,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
           type: _type,
           notes: notes,
           restSeconds: int.tryParse(_rest.text),
-          weightIncrement: kg,
+          weightIncrement: step,
           includeBodyweight: Value(includeBodyweight),
           multipliers: List.of(_multipliers),
         );
@@ -347,7 +338,7 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
           type: _type,
           notes: notes,
           restSeconds: int.tryParse(_rest.text),
-          weightIncrement: kg,
+          weightIncrement: step,
           includeBodyweight: Value(includeBodyweight),
           multipliers: List.of(_multipliers),
         );

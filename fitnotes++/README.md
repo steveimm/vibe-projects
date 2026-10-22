@@ -18,7 +18,7 @@ The exercise and set counts stay visible while scrolling, with a circular + butt
 
 ## Data behavior
 
-Weights are stored in kilograms and distances in meters. Exercise weight units control input, including routine presets and weight increments. Logs and graphs use the app unit. Toggling the input unit reinterprets the entered number in that unit. Existing sets change only when saved. A combined multiplier is captured when a set is added, including a copied or routine-generated set. Bodyweight uses the latest measurement on or before the workout date. Editing a set preserves its captured multiplier and bodyweight. The counter contains only the entered weight. The calculation below it shows conversion, named factors, bodyweight, and the kg total. The displayed 0.45 lb-to-kg factor is rounded, while calculations use 0.45359237. For example, 100 lb with factors 0.5 and 0.8 records 18.1436948 kg, displayed as 18.14 kg.
+Weights are stored in kilograms and distances in meters. Exercise weight units control input, including routine presets. Weight increments are unitless: 2.5 adds 2.5 in the selected input unit. Logs and graphs use the app unit. Toggling the input unit reinterprets the entered number in that unit. Existing sets change only when saved. A combined multiplier is captured when a set is added, including a copied or routine-generated set. Bodyweight uses the latest measurement on or before the workout date. Editing a set preserves its captured multiplier and bodyweight. The counter contains only the entered weight. The calculation below it shows conversion, named factors, bodyweight, and the kg total. The displayed 0.45 lb-to-kg factor is rounded, while calculations use 0.45359237. For example, 100 lb with factors 0.5 and 0.8 records 18.1436948 kg, displayed as 18.14 kg.
 
 Copied and routine sets appear as "Not completed" in the log and calendar. They do not count toward volume, records, graphs, or performed-workout counts until marked complete. Logging a new set records it as performed. Sets performed today capture a separate logging timestamp, shown beside the set number. Editing values preserves that time. Copied and routine sets receive their timestamp when completed today. Backdated, imported, and pre-existing sets retain an unknown time. Full backups preserve known times, while the standard FitNotes CSV format has no set timestamp column.
 
@@ -30,7 +30,7 @@ Original `.fitnotes` imports merge categories, exercises, workout sets, set comm
 
 CSV exports contain performed sets in the standard ten-column FitNotes format, using canonical kg/meters and effective weights. CSV import also supports the legacy combined `Weight (lbs)` column. Reimporting an export does not duplicate matching sets. Use a full backup to retain raw weights, multipliers, RPE, routines, and preferences.
 
-Schema version 9 migrates existing databases without discarding their workout history. Version 2 through 9 backups can be restored. The reference backup and reconstruction notes are in [`ref/`](ref/) and [`FITNOTES_REFERENCE.md`](FITNOTES_REFERENCE.md).
+Schema version 11 makes weight increments unitless while preserving previously configured amounts. Existing workout history is unchanged. Version 2 through 11 backups can be restored. The reference backup and reconstruction notes are in [`ref/`](ref/) and [`FITNOTES_REFERENCE.md`](FITNOTES_REFERENCE.md).
 
 ## Development
 

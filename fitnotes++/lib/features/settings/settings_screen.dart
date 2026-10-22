@@ -35,7 +35,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
-    final units = ref.watch(unitsProvider);
     final alarmAccess = ref.watch(restAlarmAccessProvider).asData?.value;
     final season = ref.watch(seasonsProvider).asData?.value.firstOrNull;
     return Scaffold(
@@ -79,12 +78,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Card(
                 child: Column(
                   children: [
-                    _tile(Icons.exposure_plus_1_rounded, 'Weight increment', units.weight(s.defaultWeightIncrement), () async {
+                    _tile(Icons.exposure_plus_1_rounded, 'Weight increment', Fmt.number(s.defaultWeightIncrement), () async {
                       final value = await prompt(
                         context,
                         title: 'Weight increment',
-                        label: 'Increment (${units.weightLabel})',
-                        value: Fmt.number(units.weightFromKg(s.defaultWeightIncrement)),
+                        label: 'Increment',
+                        value: Fmt.number(s.defaultWeightIncrement),
                         maxLength: 8,
                         keyboard: const TextInputType.numberWithOptions(decimal: true),
                         validate: (v) {
@@ -96,9 +95,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         await _update(
                           AppSettingsCompanion(
                             defaultWeightIncrement: Value(
-                              value == Fmt.number(units.weightFromKg(s.defaultWeightIncrement))
-                                  ? s.defaultWeightIncrement
-                                  : units.weightToKg(double.parse(value)),
+                              value == Fmt.number(s.defaultWeightIncrement) ? s.defaultWeightIncrement : double.parse(value),
                             ),
                           ),
                         );

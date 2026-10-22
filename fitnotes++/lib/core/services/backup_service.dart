@@ -127,6 +127,7 @@ class BackupService {
           }
         }
         if (version < 10) await db.backfillSessionActivity();
+        if (version < 11) await db.makeWeightIncrementsUnitless();
       });
       db.markTablesUpdated(db.allTables);
     } finally {

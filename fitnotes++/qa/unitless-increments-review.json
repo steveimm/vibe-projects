@@ -1,0 +1,77 @@
+{
+  "version": "1.10.4+29",
+  "schema_version": 11,
+  "status": "complete",
+  "requirements": [
+    "Default and per-exercise weight increments are unitless. A step of 2.5 adds or subtracts 2.5 in either kg or lb.",
+    "Remove units from the increment setting, dialog, and exercise weight-step field.",
+    "Preserve previously configured numeric amounts during database upgrade and old-backup restore.",
+    "Keep logged weights, bodyweight, multipliers, and history unchanged."
+  ],
+  "validation": {
+    "static_analysis": "No issues found",
+    "full_suite": 96,
+    "migration_checks": [
+      "Schema-10 upgrades and restores retain 2.5 steps for kg, lb, and inherited exercise units with both metric and imperial app settings.",
+      "Null exercise increments stay null and existing set weights remain unchanged.",
+      "Schema-11 backup restoration does not convert unitless increments again."
+    ],
+    "emulator": "FitNotes_API_36, Android 16/API 36, ARM64",
+    "emulator_checks": [
+      "The default increment dialog displays Increment with value 2.5 and no unit.",
+      "With no exercise override, 50 lb increases to 52.5 lb. After switching to kg, plus increases to 55 and minus returns to 52.5.",
+      "Saved a custom step of 1.25 in the exercise editor. Plus/minus apply 1.25 in both kg and lb.",
+      "SQLite confirms the custom step is stored as 1.25 and the global default as 2.5.",
+      "All original sets remained unchanged during testing. No test sets were added.",
+      "Restored the original database, upgraded to schema 11, and compared every original table value.",
+      "Installed release 1.10.4 launches and Settings shows Weight increment 2.5 with no unit. Installed APK hash matches the release artifact."
+    ],
+    "screenshots": [
+      "build/qa/1.10.4/default-increment.png",
+      "build/qa/1.10.4/default-lb-step.png",
+      "build/qa/1.10.4/custom-increment.png",
+      "build/qa/1.10.4/custom-lb-step.png",
+      "build/qa/1.10.4/release-settings.png"
+    ],
+    "logs": [
+      "build/qa/1.10.4/tests.log",
+      "build/qa/1.10.4/increment-tests.log",
+      "build/qa/1.10.4/analyze.log",
+      "build/qa/1.10.4/build-debug.log",
+      "build/qa/1.10.4/build-release.log"
+    ]
+  },
+  "data_preservation": {
+    "checkpoint": "build/qa/1.10.4/original.tar",
+    "test_sets_added": 0,
+    "all_original_tables_and_values_preserved": true,
+    "restored_sets": 8463,
+    "restored_measurements": 108
+  },
+  "release": {
+    "build_commands": [
+      "flutter build apk --debug --split-per-abi",
+      "flutter build apk --release --split-per-abi"
+    ],
+    "artifacts": [
+      {
+        "path": "build/releases/1.10.4/app-arm64-v8a-release.apk",
+        "sha256": "346b09e12c9f70b39f64ba7c60b49dc47cf43b69ebcde9f1ddb8b72ad93fc859"
+      },
+      {
+        "path": "build/releases/1.10.4/app-armeabi-v7a-release.apk",
+        "sha256": "c49c35c306ec31db86afc66a848ed0bbf35048a824230db8caefb509f6493571"
+      },
+      {
+        "path": "build/releases/1.10.4/app-x86_64-release.apk",
+        "sha256": "6cd1332b3a113acd8a33dd233f015c5cb99436c8f57cb9ac9e5317468562aaed"
+      }
+    ],
+    "installed": {
+      "version_name": "1.10.4",
+      "version_code": 2029,
+      "abi": "arm64-v8a",
+      "sha256": "346b09e12c9f70b39f64ba7c60b49dc47cf43b69ebcde9f1ddb8b72ad93fc859"
+    }
+  }
+}

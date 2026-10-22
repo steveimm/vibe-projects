@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'tables.dart';
+import '../util/format.dart';
 
 part 'database.g.dart';
 
@@ -50,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.memory() : super(NativeDatabase.memory());
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -110,11 +111,30 @@ class AppDatabase extends _$AppDatabase {
         }
         await backfillSessionActivity();
       }
+      if (from < 11) await makeWeightIncrementsUnitless();
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+
+  Future<void> makeWeightIncrementsUnitless() async {
+    final kgPerPound = const Units(true).weightToKg(1);
+    await customStatement(
+      '''
+      UPDATE exercises SET weight_increment = weight_increment / ?
+      WHERE weight_increment IS NOT NULL AND
+        (weight_unit = ? OR (weight_unit IS NULL AND (SELECT use_imperial FROM app_settings WHERE id = 1) = 1))
+    ''',
+      [kgPerPound, WeightUnit.pounds.index],
+    );
+    await customStatement(
+      '''
+      UPDATE app_settings SET default_weight_increment = default_weight_increment / ? WHERE use_imperial = 1
+    ''',
+      [kgPerPound],
+    );
+  }
 
   Future<void> backfillSessionActivity() async {
     await customStatement('''
