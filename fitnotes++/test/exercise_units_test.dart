@@ -209,9 +209,7 @@ void main() {
     await closed;
   });
 
-  testWidgets('lb input logs kg after multipliers, edits retain precision, and changing the exercise unit converts the input', (
-    tester,
-  ) async {
+  testWidgets('unit toggles keep the entered number and save it using the selected unit, including set edits', (tester) async {
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     tester.view.physicalSize = const Size(390, 850);
     tester.view.devicePixelRatio = 1;
@@ -266,8 +264,8 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await tester.tap(find.text('Weight · lb'));
       await _flush(tester);
-      expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '45.36');
-      expect(find.text('× 0.5 (Pulley) × 0.8 (Cable) = 18.14 kg'), findsOneWidget);
+      expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '100');
+      expect(find.text('× 0.5 (Pulley) × 0.8 (Cable) = 40 kg'), findsOneWidget);
       await tester.tap(find.text('Weight · kg'));
       await _flush(tester);
       expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '100');
@@ -284,16 +282,22 @@ void main() {
     await tester.pump();
     expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '100');
     await tester.enterText(find.byType(TextField).at(1), '9');
-    await tester.showKeyboard(find.byType(TextField).first);
-    await tester.tap(find.text('Weight · lb'));
-    await _flush(tester);
-    expect(find.text('Weight · kg'), findsOneWidget);
-    expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '45.36');
-    expect(tester.widget<TextField>(find.byType(TextField).at(1)).controller!.text, '9');
     await tester.tap(find.byTooltip('Update set'));
     await _flush(tester);
     await tester.runAsync(() async => logged = await WorkoutRepository(db).dayLog(Dates.today()));
     expect(logged!.single.set.rawWeight, original.rawWeight);
+    await tester.tap(find.byKey(ValueKey('logged-set-${original.id}')));
+    await tester.pump();
+    await tester.showKeyboard(find.byType(TextField).first);
+    await tester.tap(find.text('Weight · lb'));
+    await _flush(tester);
+    expect(find.text('Weight · kg'), findsOneWidget);
+    expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '100');
+    expect(tester.widget<TextField>(find.byType(TextField).at(1)).controller!.text, '9');
+    await tester.tap(find.byTooltip('Update set'));
+    await _flush(tester);
+    await tester.runAsync(() async => logged = await WorkoutRepository(db).dayLog(Dates.today()));
+    expect(logged!.single.set.rawWeight, 100);
     expect(logged!.single.set.weightMultiplier, original.weightMultiplier);
     expect(logged!.single.set.reps, 9);
     await tester.runAsync(() async {
@@ -312,7 +316,7 @@ void main() {
     await _flush(tester);
     await tester.tap(find.byKey(ValueKey('logged-set-${original.id}')));
     await tester.pump();
-    expect(find.text('× 0.4 (Saved multiplier) = 18.14 kg'), findsOneWidget);
+    expect(find.text('× 0.4 (Saved multiplier) = 40 kg'), findsOneWidget);
     expect(find.textContaining('New pulley'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());

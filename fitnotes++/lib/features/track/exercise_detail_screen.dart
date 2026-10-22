@@ -209,15 +209,10 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
   void didUpdateWidget(covariant _TrackTab oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.exercise.weightUnit == widget.exercise.weightUnit) return;
-    final systemUnits = ref.read(unitsProvider);
-    final typed = double.tryParse(_weight.text.replaceAll(',', '.'));
-    if (typed == null || !typed.isFinite) return;
-    final kg = _weight.text == _loadedWeightText && _loadedWeight != null
-        ? _loadedWeight!
-        : systemUnits.withWeightUnit(oldWidget.exercise.weightUnit).weightToKg(typed);
-    _weight.text = Fmt.number(systemUnits.withWeightUnit(widget.exercise.weightUnit).weightFromKg(kg));
-    _loadedWeight = kg;
-    _loadedWeightText = _weight.text;
+    _loadedWeight = null;
+    _loadedWeightText = null;
+    _touched = true;
+    _error = null;
   }
 
   @override
