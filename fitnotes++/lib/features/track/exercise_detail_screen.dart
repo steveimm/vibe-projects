@@ -162,6 +162,7 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
   WorkoutSet? _editing;
   WorkoutSet? _previous;
   bool _saving = false, _touched = false, _savedSet = false;
+  bool _changingWeightUnit = false;
   String? _error;
   @override
   bool get wantKeepAlive => true;
@@ -253,6 +254,8 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
           step: units.weightFromKg(widget.exercise.weightIncrement ?? settings?.defaultWeightIncrement ?? 2.5),
           onStep: (delta) => _stepCanonical(delta, weight: true),
           onChanged: _changed,
+          onLabelTap: _saving || _changingWeightUnit || settings == null ? null : _toggleWeightUnit,
+          labelTooltip: units.weightImperial ? 'Switch to kg' : 'Switch to lb',
         ),
       if (type.hasReps) _StepField(label: 'Reps', controller: _reps, step: 1, integer: true, onChanged: _changed),
       if (type.hasDistance)
@@ -360,7 +363,13 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
         ],
         AppFloatingActionButton(
           tooltip: _editing == null ? 'Log set' : 'Update set',
-          onPressed: _saving || settings == null || !factorData.hasValue || missingBodyweight || widget.exercise.archived
+          onPressed:
+              _saving ||
+                  _changingWeightUnit ||
+                  settings == null ||
+                  !factorData.hasValue ||
+                  missingBodyweight ||
+                  widget.exercise.archived
               ? null
               : _save,
           icon: _editing == null ? Icons.add_rounded : Icons.check_rounded,
@@ -456,6 +465,18 @@ class _TrackTabState extends ConsumerState<_TrackTab> with AutomaticKeepAliveCli
       _loadedDistanceText = controller.text;
     }
     _changed();
+  }
+
+  Future<void> _toggleWeightUnit() async {
+    final units = ref.read(unitsProvider).withWeightUnit(widget.exercise.weightUnit);
+    setState(() => _changingWeightUnit = true);
+    await attempt(
+      context,
+      () => ref
+          .read(exerciseRepositoryProvider)
+          .setWeightUnit(widget.exercise.id, units.weightImperial ? WeightUnit.kilograms : WeightUnit.pounds),
+    );
+    if (mounted) setState(() => _changingWeightUnit = false);
   }
 
   void _changed() => setState(() {
@@ -690,6 +711,8 @@ class _StepField extends StatelessWidget {
     required this.step,
     required this.onChanged,
     this.onStep,
+    this.onLabelTap,
+    this.labelTooltip,
     this.unit = '',
     this.integer = false,
     this.duration = false,
@@ -700,6 +723,8 @@ class _StepField extends StatelessWidget {
   final bool integer, duration;
   final VoidCallback onChanged;
   final ValueChanged<double>? onStep;
+  final VoidCallback? onLabelTap;
+  final String? labelTooltip;
 
   TextStyle _numberStyle(BuildContext context, double width) {
     final style = Theme.of(context).textTheme.bodyLarge!.copyWith(fontSize: 22, fontWeight: FontWeight.w700);
@@ -744,18 +769,16 @@ class _StepField extends StatelessWidget {
               icon: const Icon(Icons.remove_rounded, size: 19),
             ),
             Expanded(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  '$label${unit.isEmpty ? '' : ' · $unit'}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
+              child: labelTooltip == null
+                  ? _label(context)
+                  : Tooltip(
+                      message: labelTooltip!,
+                      child: TextButton(
+                        onPressed: onLabelTap,
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 40)),
+                        child: _label(context),
+                      ),
+                    ),
             ),
             IconButton(tooltip: 'Increase $label', onPressed: () => _bump(step), icon: const Icon(Icons.add_rounded, size: 19)),
           ],
@@ -802,6 +825,15 @@ class _StepField extends StatelessWidget {
           ),
         ),
       ],
+    ),
+  );
+
+  Widget _label(BuildContext context) => FittedBox(
+    fit: BoxFit.scaleDown,
+    child: Text(
+      '$label${unit.isEmpty ? '' : ' · $unit'}',
+      textAlign: TextAlign.center,
+      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurfaceVariant),
     ),
   );
 }

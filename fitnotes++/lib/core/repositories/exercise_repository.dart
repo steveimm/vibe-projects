@@ -177,6 +177,9 @@ class ExerciseRepository {
   Future<void> setFavourite(int id, bool value) =>
       (db.update(db.exercises)..where((e) => e.id.equals(id))).write(ExercisesCompanion(isFavourite: Value(value)));
 
+  Future<void> setWeightUnit(int id, WeightUnit unit) =>
+      (db.update(db.exercises)..where((e) => e.id.equals(id))).write(ExercisesCompanion(weightUnit: Value(unit)));
+
   Future<void> setArchived(int id, bool value) =>
       (db.update(db.exercises)..where((e) => e.id.equals(id))).write(ExercisesCompanion(archived: Value(value)));
 

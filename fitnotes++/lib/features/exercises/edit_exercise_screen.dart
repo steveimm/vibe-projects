@@ -184,27 +184,6 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
                         ),
                         if (_type.hasWeight) ...[
                           const SizedBox(height: 12),
-                          DropdownButtonFormField<int>(
-                            key: ValueKey(_weightUnit),
-                            onTap: dismissKeyboard,
-                            isExpanded: true,
-                            initialValue: _weightUnit?.index ?? -1,
-                            decoration: const InputDecoration(labelText: 'Weight unit'),
-                            items: [
-                              DropdownMenuItem(
-                                value: -1,
-                                child: Text(
-                                  'Use app setting (${systemUnits.weightLabel})',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const DropdownMenuItem(value: 0, child: Text('kg')),
-                              const DropdownMenuItem(value: 1, child: Text('lb')),
-                            ],
-                            onChanged: (value) => _changeWeightUnit(value == -1 ? null : WeightUnit.values[value!]),
-                          ),
-                          const SizedBox(height: 8),
                           Card(
                             child: SwitchListTile(
                               title: const Text('Add bodyweight'),
@@ -305,24 +284,6 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
     );
   }
 
-  void _changeWeightUnit(WeightUnit? unit) {
-    final systemUnits = ref.read(unitsProvider);
-    final typed = double.tryParse(_increment.text);
-    final kg = _increment.text == _incrementText && _incrementKg != null
-        ? _incrementKg
-        : typed == null
-        ? null
-        : systemUnits.withWeightUnit(_weightUnit).weightToKg(typed);
-    setState(() {
-      _weightUnit = unit;
-      if (kg != null) {
-        _increment.text = Fmt.number(systemUnits.withWeightUnit(unit).weightFromKg(kg));
-        _incrementKg = kg;
-        _incrementText = _increment.text;
-      }
-    });
-  }
-
   Future<void> _editMultiplier([int? index]) async {
     dismissKeyboard();
     final others = [
@@ -375,7 +336,6 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
           notes: notes,
           restSeconds: int.tryParse(_rest.text),
           weightIncrement: kg,
-          weightUnit: Value(_weightUnit),
           includeBodyweight: Value(includeBodyweight),
           multipliers: List.of(_multipliers),
         );
@@ -388,7 +348,6 @@ class _EditExerciseScreenState extends ConsumerState<EditExerciseScreen> {
           notes: notes,
           restSeconds: int.tryParse(_rest.text),
           weightIncrement: kg,
-          weightUnit: Value(_weightUnit),
           includeBodyweight: Value(includeBodyweight),
           multipliers: List.of(_multipliers),
         );

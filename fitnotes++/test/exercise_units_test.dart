@@ -134,6 +134,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final db = AppDatabase.memory();
+    await tester.runAsync(() => db.update(db.appSettings).write(const AppSettingsCompanion(useImperial: Value(true))));
     final container = ProviderContainer(overrides: [databaseProvider.overrideWithValue(db)]);
     final router = createAppRouter();
     await tester.pumpWidget(
@@ -148,10 +149,7 @@ void main() {
     await tester.tap(find.byTooltip('Create exercise'));
     await _flush(tester);
     await tester.enterText(find.byType(TextFormField).first, 'New pulley');
-    await tester.tap(find.byKey(const ValueKey<WeightUnit?>(null)));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('lb').last);
-    await tester.pumpAndSettle();
+    expect(find.text('Weight unit'), findsNothing);
     for (final factor in ['0.5', '0.8']) {
       await tester.tap(find.byTooltip('Add multiplier'));
       await tester.pumpAndSettle();
@@ -170,12 +168,15 @@ void main() {
     late Exercise exercise;
     await tester.runAsync(() async {
       exercise = (await (db.select(db.exercises)..where((e) => e.name.equals('New pulley'))).get()).single;
-      expect(exercise.weightUnit, WeightUnit.pounds);
+      expect(exercise.weightUnit, isNull);
       final factors = await (db.select(db.exerciseMultipliers)..where((m) => m.exerciseId.equals(exercise.id))).get();
       expect(factors.map((m) => m.label), ['Multiplier 1', 'Multiplier 2']);
       expect(factors.map((m) => m.factor), [0.5, 0.8]);
       expect(factors.map((m) => m.enabled), [true, false]);
     });
+    await tester.tap(find.text('Weight · lb'));
+    await _flush(tester);
+    expect(find.text('Weight · kg'), findsOneWidget);
     await tester.tap(find.byTooltip('Edit exercise'));
     await _flush(tester);
     await tester.tap(find.text('Multiplier 1'));
@@ -189,6 +190,16 @@ void main() {
       () async =>
           expect(await (db.select(db.exerciseMultipliers)..where((m) => m.exerciseId.equals(exercise.id))).get(), hasLength(2)),
     );
+    await tester.tap(find.byTooltip('Edit exercise'));
+    await _flush(tester);
+    expect(find.text('Weight unit'), findsNothing);
+    await tester.tap(find.byTooltip('Save exercise'));
+    await _flush(tester);
+    await tester.runAsync(() async {
+      expect((await ExerciseRepository(db).getExercise(exercise.id)).weightUnit, WeightUnit.kilograms);
+      expect((await db.select(db.appSettings).getSingle()).useImperial, isTrue);
+      expect((await db.select(db.exercises).get()).where((e) => e.id != exercise.id).every((e) => e.weightUnit == null), isTrue);
+    });
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     router.dispose();
@@ -252,6 +263,15 @@ void main() {
     await tester.enterText(find.byType(TextField).at(1), '8');
     await tester.pump();
     expect(find.text('× 0.45 (lb to kg) × 0.5 (Pulley) × 0.8 (Cable) = 18.14 kg'), findsOneWidget);
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.text('Weight · lb'));
+      await _flush(tester);
+      expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '45.36');
+      expect(find.text('× 0.5 (Pulley) × 0.8 (Cable) = 18.14 kg'), findsOneWidget);
+      await tester.tap(find.text('Weight · kg'));
+      await _flush(tester);
+      expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '100');
+    }
     await tester.tap(find.byTooltip('Log set'));
     await _flush(tester);
     List<LoggedSet>? logged;
@@ -264,29 +284,22 @@ void main() {
     await tester.pump();
     expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '100');
     await tester.enterText(find.byType(TextField).at(1), '9');
-    await tester.tap(find.byTooltip('Update set'));
-    await _flush(tester);
     await tester.showKeyboard(find.byType(TextField).first);
-    await tester.tap(find.byTooltip('Edit exercise'));
-    await _flush(tester);
-    final unitField = find.byKey(const ValueKey<WeightUnit?>(WeightUnit.pounds));
-    await tester.tap(unitField);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('kg').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Save exercise'));
+    await tester.tap(find.text('Weight · lb'));
     await _flush(tester);
     expect(find.text('Weight · kg'), findsOneWidget);
-    expect(tester.widget<EditableText>(find.byType(EditableText).first).focusNode.hasFocus, isFalse);
     expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, '45.36');
-    await tester.tap(find.byKey(ValueKey('logged-set-${original.id}')));
-    await tester.pump();
+    expect(tester.widget<TextField>(find.byType(TextField).at(1)).controller!.text, '9');
     await tester.tap(find.byTooltip('Update set'));
     await _flush(tester);
     await tester.runAsync(() async => logged = await WorkoutRepository(db).dayLog(Dates.today()));
     expect(logged!.single.set.rawWeight, original.rawWeight);
     expect(logged!.single.set.weightMultiplier, original.weightMultiplier);
     expect(logged!.single.set.reps, 9);
+    await tester.runAsync(() async {
+      expect((await repo.getExercise(id)).weightUnit, WeightUnit.kilograms);
+      expect((await db.select(db.appSettings).getSingle()).useImperial, isFalse);
+    });
     await tester.runAsync(() async {
       await repo.updateExercise(
         id: id,
