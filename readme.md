@@ -20,3 +20,4 @@ Here are the current list of projects:
 | [Fretmate](./fretmate/) | Android guitar tuner for six-string standard tuning with a metronome | GPT-6 |
 | [Record Explorer](./record-explorer/) | VS Code extension for browsing JSONL and Parquet records with collapsible JSON and readable text previews | GPT-6.1-Sol |
 | [FitNotes++](./fitnotes++/) | Android workout logger with routines, progress charts, measurements, and FitNotes import | GPT-6-Astra |
+| [PocketPilot](./PocketPilot/) | Android agent that operates phone apps from natural-language instructions | GPT-6-Astra |
