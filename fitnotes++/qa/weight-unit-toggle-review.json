@@ -1,0 +1,81 @@
+{
+  "version": "1.10.2+27",
+  "schema_version": 10,
+  "status": "complete",
+  "implementation_commit": "23aff06",
+  "requirements": [
+    "Tap the existing Weight · kg/lb label to switch input units directly while logging.",
+    "Remove the weight-unit selector from exercise settings and keep the choice per exercise.",
+    "Preserve physical weight and full kg precision through toggles, increments, saving, and editing.",
+    "Keep multipliers, captured bodyweight, the app unit, and unrelated exercise settings unchanged."
+  ],
+  "validation": {
+    "static_analysis": "No issues found",
+    "full_suite": 93,
+    "widget_checks": [
+      "Repeated lb/kg round trips retain full precision while showing at most two decimal places.",
+      "Existing-set edits preserve pending rep changes and saved multiplier/bodyweight values across unit switches.",
+      "A new exercise inherits imperial app units until toggled, and saving exercise settings preserves the override.",
+      "Other exercises and the global unit are unchanged.",
+      "Weight and reps cards retain equal heights at widths 320, 360, and 390 with text scales 1.0 and 1.3. A 999.99 entry fits at text scale 2.0 as well."
+    ],
+    "emulator": "FitNotes_API_36, Android 16/API 36, ARM64",
+    "emulator_checks": [
+      "Tapped Weight · lb to convert 100 lb to 45.36 kg, and tapped again to return to 100 lb.",
+      "Increase/decrease controls preserved the canonical weight through a 2.5 kg increment and decrement.",
+      "Logged the converted weight and changed reps from 8 to 9 while switching the selected set back to lb.",
+      "SQLite inspection confirmed raw_weight 45.359237 kg, multiplier 1.0, bodyweight 0, and 9 reps.",
+      "The unit selector is absent from exercise settings. Saving settings preserves the selected kg unit.",
+      "Restarting the app retained kg input and the last entered weight.",
+      "Visually inspected the kg/lb logging layouts and settings screen.",
+      "Final release opens the restored original exercise with 50 lb input and three original sets."
+    ],
+    "screenshots": [
+      "build/qa/1.10.2/input-kg.png",
+      "build/qa/1.10.2/logged-lb.png",
+      "build/qa/1.10.2/exercise-settings.png",
+      "build/qa/1.10.2/settings-return-kg.png",
+      "build/qa/1.10.2/release-exercise.png"
+    ],
+    "logs": [
+      "build/qa/1.10.2/analyze.log",
+      "build/qa/1.10.2/tests.log",
+      "build/qa/1.10.2/build-debug.log",
+      "build/qa/1.10.2/build-release.log"
+    ]
+  },
+  "data_preservation": {
+    "checkpoint": "build/qa/1.10.2/original.tar",
+    "temporary_sets_added": 1,
+    "temporary_sets_removed": 1,
+    "all_original_tables_and_values_preserved": true,
+    "restored_sets": 8463,
+    "restored_measurements": 108
+  },
+  "release": {
+    "build_commands": [
+      "flutter build apk --debug --split-per-abi",
+      "flutter build apk --release --split-per-abi"
+    ],
+    "artifacts": [
+      {
+        "path": "build/releases/1.10.2/app-arm64-v8a-release.apk",
+        "sha256": "f5f62e631b1b0d78fdd64f8c7a69383c5f466787b552b137315a360567d18998"
+      },
+      {
+        "path": "build/releases/1.10.2/app-armeabi-v7a-release.apk",
+        "sha256": "8c47418d714fa760c98f929d7aae6120f2dff0f723d8396a9e0b3ade15d03075"
+      },
+      {
+        "path": "build/releases/1.10.2/app-x86_64-release.apk",
+        "sha256": "4fde4cdfb44e2681dde6b561486a162751bc2200ffbb6f7309515aa3ce5ff043"
+      }
+    ],
+    "installed": {
+      "version_name": "1.10.2",
+      "version_code": 2027,
+      "abi": "arm64-v8a",
+      "sha256": "f5f62e631b1b0d78fdd64f8c7a69383c5f466787b552b137315a360567d18998"
+    }
+  }
+}
